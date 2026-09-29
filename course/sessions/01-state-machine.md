@@ -447,3 +447,20 @@ L is locked in.
 > [!abstract] PI
 
 P is locked in.
+
+
+> [!question] Quiz
+> Free-order attacker staging. The player has added A and B but hasn't sent `Done`, and now wants B not to attack after all. What can the core offer?
+>
+> 1. A "remove B" action, since nothing has happened in the game yet.
+> 2. Nothing, since adding B already declared B as an attacker.
+> 3. An undo of the last `apply`, since `Game` stores its past states.
+
+
+> [!success] Quiz — correct ✓
+> Your answer: 1. A "remove B" action, since nothing has happened in the game yet.
+> Correct answer: 1
+>
+> Note: a remove B action is fine, the amount of actions is bounded by the number of attackers still
+>
+> The draft is only a question half-answered. No game event has fired, so the core can offer an action that edits the draft, "remove B" or `Cancel`, and nothing needs undoing. Adding B didn't declare anything, because declaring happens at `Done`. `Game` also doesn't keep past states: node S says it holds only what future rules need. Undo, if you ever want it, is a shell feature. The shell keeps old clones or replays $(s_0, \text{decisions})$ minus the last one.
