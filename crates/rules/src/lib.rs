@@ -146,6 +146,15 @@ impl Illegal {
     }
 }
 
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub enum PlayerInteractionState {
+    #[default]
+    Board,
+    Picker {
+        options: Vec<Card>,
+    },
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Player {
     id: PlayerId,
@@ -154,7 +163,7 @@ pub struct Player {
     health: i32,
     hand: Hand,
     deck: Deck,
-    revealed_cards: Vec<Card>,
+    interaction_state: PlayerInteractionState,
 }
 
 impl Player {
@@ -165,8 +174,8 @@ impl Player {
             max_mana: 0,
             health: 10,
             hand: Hand::empty(),
-            revealed_cards: Vec::new(),
             deck,
+            interaction_state: PlayerInteractionState::default(),
         }
     }
 
@@ -181,19 +190,25 @@ impl Player {
     }
 
     pub fn reveal(&mut self, count: u8) {
+        let mut options = Vec::new();
         for _ in 0..count {
             let Some(card) = self.deck.pop_front() else {
                 break;
             };
 
-            self.revealed_cards.push(card);
+            options.push(card);
         }
+        self.interaction_state = PlayerInteractionState::Picker { options }
     }
 
     pub fn pick_revealed(&mut self, index: usize) -> (Card, Vec<Card>) {
-        let mut cards = self.revealed_cards.drain(..).collect::<Vec<_>>();
-        let picked = cards.remove(index);
-        (picked, cards)
+        let PlayerInteractionState::Picker { mut options } =
+            std::mem::take(&mut self.interaction_state)
+        else {
+            unreachable!();
+        };
+        let picked = options.remove(index);
+        (picked, options)
     }
 }
 
@@ -354,7 +369,10 @@ impl Game {
     }
 
     pub fn revealed(&self, player_id: PlayerId) -> &[Card] {
-        &self.get_player(player_id).revealed_cards
+        match &self.get_player(player_id).interaction_state {
+            PlayerInteractionState::Board => &[],
+            PlayerInteractionState::Picker { options } => options,
+        }
     }
 
     pub fn winner(&self) -> Option<PlayerId> {
