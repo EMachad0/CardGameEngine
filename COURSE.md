@@ -15,7 +15,17 @@ Understand card game systems well enough to design MTG, Hearthstone, or Yu-Gi-Oh
 - End at a node boundary, not mid-node. Commit once per node.
 - Core track (A to G, T, K) is concept-first with one small exercise per session. Application track (H, I, J) gets one design session each. Implementation there is optional.
 
-## Knowledge map (from the 2025-09-28 probe)
+## Knowledge map (from the 2025-09-28 probe, updated in session 01)
+
+Session 01 (R1, S, L, P, G all landed on the first node check):
+- Determinism: a seeded RNG in the state, the clock in the shell (timer becomes an `EndTurn` input). Knows `HashMap`, `thread_rng` and `Instant::now` break replay.
+- State is everything (Markov): hidden info like deck order is state, and UI hover/animation is not. `Game` has no log.
+- `legal_actions` is the one definition of legality. The UI reads it. `apply` is `Ok` iff the action is listed, and `Err` changes nothing (validate before mutating).
+- Proposed per-player `apply(player, action)` himself, citing simultaneous decisions.
+- Rust reading is solid: `Clone` for search, `self` by value loses the game on `Err`, `?` does no rollback, owned `Vec` vs a borrowed iterator.
+- Action granularity was the one probe miss. He picked `Attack(Vec<Id>)` because he read staging as imposing an order. Fixed once the draft-in-state idea was explicit. His own model was fixed-order yes/no per creature.
+- Vocabulary slip: said the core is "influenced by events" when he meant actions. Actions in, events out. Watch for this in session 03.
+- Retrieval: now says unprompted that death is a state check, not a setter side effect, and that a boxed closure is opaque.
 
 Solid:
 - Card definition (never changes) vs instance with its own ID and modifiers.
@@ -44,12 +54,15 @@ Rust: knows traits, generics, lifetimes, but they don't come naturally when desi
 - Final exam (K): add a Yu-Gi-Oh style chain without rewriting the core. Learner knows YGO best.
 - Effects: `enum` by default (open to a code escape hatch later).
 - Two IDs: stable card ID and per-zone object ID.
+- Core API (session 01): `legal_actions(&self, player) -> Vec<Action>`, `apply(&mut self, player, action) -> Result<(), Illegal>`, and a pure `applied(&self, …) -> Result<Game, Illegal>` wrapper. There's no `current_player()`: whoever has a non-empty list is being waited on. Crate `rules` in a `crates/` workspace. The seeded SplitMix64 `rules::Rng` lives in `Game`. Hand indices are the card identity until session 02, deliberately.
 - Tooling wanted: card data files with validation, generated rules text, test tooling (scenario DSL, replays, fuzzer), headless CLI with a machine-readable protocol so bots and LLM agents can playtest, a visual editor, hot reload.
 
 ## Open threads
 
 - Where does a half-finished effect live between `apply` calls? (node G)
 - Return vs push for events. (node D)
+- "Costs (1) less per spell cast this turn": his observer design (a -1 modifier on the card) vs a counter in state. Which one handles a copy drawn after the spells? Open session 02 (C) with this.
+- Hand index vs ID: open session 02 (B) with a failing case, like an effect that remembers a card or a log entry after the hand shifts.
 
 ## Dependency map
 
@@ -109,7 +122,7 @@ graph TD
 | # | Nodes | Topic | Status |
 |---|-------|-------|--------|
 | 00 | probe | Knowledge probe and plan | done |
-| 01 | R1, A | Game as a state machine, `legal_actions` + `apply` | next |
+| 01 | R1, A | Game as a state machine, `legal_actions` + `apply` | nodes done; exercise in progress (`crates/rules`, tests red) |
 | 02 | R2, B, C | Definitions, objects, IDs; derived stats and state checks | |
 | 03 | D | Events out; return vs push | |
 | 04 | R3, E | Effects as data | |
@@ -130,4 +143,10 @@ graph TD
 - YGO SEGOC order: turn player mandatory, non-turn player mandatory, turn player optional, non-turn player optional. Same category, the owner picks order. Source: Yugipedia "Simultaneous Effects", YGOrganization part 3.
 - YGO spell speed: respond only with equal or higher speed. Spell Speed 1 can't respond. Source: Yugipedia "Spell Speed".
 - YGO: optional "when... you can" triggers miss the timing unless their condition was the last thing to happen. "If" and mandatory triggers don't miss it. Source: Yugipedia "If... You Can VS When... You Can".
+- OpenSpiel `State`: `legal_actions()`, `apply_action()` (in place), `child()` (clone + apply), `current_player()`, `is_terminal()`, `returns()`, `is_chance_node()`, `chance_outcomes()` giving `(action, prob)` pairs. `kChancePlayerId = -1`, simultaneous `-2`. Chance moves are ordinary actions in explicit-stochastic mode. In sampled mode the game keeps its own RNG. Source: open_spiel docs/concepts.md, spiel.h, spiel_globals.h.
+- SabberStone: `Controller.Options()` returns `List<PlayerTask>`, empty for the player who isn't acting. `Game.Process(task)` mutates in place. `Game.Clone(...)` for search. Source: SabberStoneCore Controller.cs, Game.cs.
+- Metastone: public `GameContext.getValidActions()`. `performAction` is private; `GameLogic.performGameAction(playerId, action)` is public. The engine calls out with `IBehaviour.requestAction(context, player, validActions)`. Source: demilich1/metastone GameContext.java, IBehaviour.java.
+- Forge: the engine calls out to `PlayerController` (`chooseSpellAbilityToPlay()`, `declareAttackers(...)`), with human and AI implementations. Source: Card-Forge PlayerController.java, PhaseHandler.java.
+- Rust std `HashMap`: each instance gets its own random seed, so iteration order differs even within one process. Source: doc.rust-lang.org HashMap, RandomState.
+- `.pi/agents/researcher.md` points at an OpenRouter model with no login on this machine. Use the `general-purpose` subagent for fact checks until that's changed.
 - Toolchain on this machine: rustc/cargo 1.92. Check crate versions (bevy, rand, ron, proptest, insta) when adding them. Bevy was at 0.20 RC in the index at probe time.

@@ -621,3 +621,8 @@ Before you start writing, one Rust question about the signatures you're about to
 > Correct answer: 4
 >
 > The shell's loop is "get the list, pick one, `apply` it." If the list borrows `&self`, the picked `&Action` keeps that shared borrow alive, and `apply(&mut self, …)` needs an exclusive one, so the borrow checker rejects the loop. You'd end up cloning anyway. The actions also aren't stored anywhere in `Game`, since they're computed from the hand and mana, so there's nothing natural to borrow from. An owned `Vec` ends the borrow the moment `legal_actions` returns. The same reasoning explains `hand(&self) -> &[Card]` going the other way: callers only read it, so a borrowed slice costs nothing and they can't mutate through it. Returning `impl Iterator` from a method is fine in Rust, and `&Action == &Action` compiles.
+
+
+> [!abstract] PI
+
+Landed. Before handing over I'll save today's progress to `COURSE.md`, so nothing is lost if the session gets cut short while you implement.
