@@ -315,3 +315,62 @@ The second way puts every random outcome in the log. That helps search algorithm
 > [!abstract] PI
 
 R1 is locked in. Setting up the repo now so we can commit per node.
+
+
+> [!question] Quiz
+> A card reads "Costs (1) less for each spell you've cast this turn." `legal_actions(&self)` has to know whether you can afford it right now. What must `Game` contain for that?
+>
+> 1. A counter of spells cast this turn, reset when the turn ends.
+> 2. The full list of every action taken since the game began.
+> 3. Nothing extra: the card's current cost can be stored by the shell.
+> 4. Nothing extra: `legal_actions` can scan the shell's event log.
+
+
+> [!failure] Quiz — incorrect ✗
+> Your answer: 4. Nothing extra: `legal_actions` can scan the shell's event log.
+> Correct answer: 1
+>
+> Note: How I would do it: playing a card is an event and the card observes when cards are played and if they are speels it adds a -1 cost modifier to itself.
+>
+> `legal_actions(&self)` sees only `Game`, so any fact a rule asks about has to be inside `Game`. The shell's log and a cost the shell stored are both outside it, and in a replay or a bot's clone they may not exist at all. The full history would work, but it's far more than the rule needs. The rule asks one question, how many spells this turn, so the state keeps just the answer to it. That's the general pattern: the state is a summary of the past, holding exactly what future rules can ask about.
+
+
+> [!question] Quiz
+> A bot clones the `Game` mid-turn to try a move, after you've cast two spells. The bot's clone has no shell and no shell event log. The card in your hand should cost 2 less. In which design does the clone still know that?
+>
+> 1. Log scan: the core rescans the log, so the clone recomputes the count.
+> 2. Both: the modifiers and the log are copied along with the `Game`.
+> 3. Yours: the −1 modifiers live on the card inside `Game`, so they're cloned.
+
+
+> [!success] Quiz — correct ✓
+> Your answer: 3. Yours: the −1 modifiers live on the card inside `Game`, so they're cloned.
+> Correct answer: 3
+>
+> Note: game does not have log, only current state
+>
+> `Clone` copies what's inside `Game` and nothing else. Your modifiers are fields of a card instance in `Game`, so they come along. The shell's log isn't part of `Game`, so the clone has nothing to rescan, and the log-scan design gets the cost wrong in every bot simulation. Your observer design and the counter design both pass for the same reason: the fact lives in the state.
+
+
+> [!question] Quiz
+> Which of these belong inside `Game`? Select all that do.
+>
+> 1. The order of the cards in each player's deck
+> 2. The attack animation still playing on screen
+> 3. The RNG's current state
+> 4. Which card the mouse is hovering over
+> 5. Which player must make the next decision
+
+
+> [!success] Quiz — correct ✓
+> Your answer: 1. The order of the cards in each player's deck, 3. The RNG's current state, 5. Which player must make the next decision
+> Correct answer: 1, 3, 5
+>
+> Note: 2 and 4 only live on an ui shell
+>
+> The test is whether any future rule can depend on it. The next random pick depends on the RNG state. The next draw depends on the deck order, even though neither player can see it. The core holds hidden information too, and per-player views come later in node I. What's legal right now depends on who decides. Hover and animation are shell state: no rule asks about them, so they stay out, and the core would be wrong to read them.
+
+
+> [!abstract] PI
+
+S is locked in. Committing, then on to the contract.
