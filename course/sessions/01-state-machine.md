@@ -412,3 +412,38 @@ S is locked in. Committing, then on to the contract.
 > [!abstract] PI
 
 L is locked in.
+
+
+> [!question] Quiz
+> `apply` validates with its own hand-written checks, separate from `legal_actions`, and the two drift apart. Which direction of drift lets a hacked network client do something no honest player can?
+>
+> 1. `apply` accepts an action that `legal_actions` doesn't list.
+> 2. `legal_actions` lists an action that `apply` rejects.
+> 3. Neither, since the server only forwards actions from `legal_actions`.
+
+
+> [!success] Quiz — correct ✓
+> Your answer: 1. `apply` accepts an action that `legal_actions` doesn't list.
+> Correct answer: 1
+>
+> Honest clients only send listed actions, so an action that's accepted but unlisted is reachable only by someone crafting packets. That's an exploit. The other direction is a bug honest players hit, with a move offered and then refused, and the fuzzer's `expect` catches it. A hacked client isn't bound by anything the server "forwards": it sends raw bytes. The only defense is `apply` itself.
+
+
+> [!question] Quiz
+> A different `apply` skips the membership check. For `Play`, it subtracts the card's cost from mana, then looks up the chosen target, finds it's gone, and returns `Err`. What's wrong?
+>
+> 1. Nothing, since the caller's `?` rolls the mutation back on `Err`.
+> 2. The player lost mana on a rejected action, so `Err` changed the game.
+> 3. Nothing, since returning `Err` tells the caller to discard the game.
+
+
+> [!success] Quiz — correct ✓
+> Your answer: 2. The player lost mana on a rejected action, so `Err` changed the game.
+> Correct answer: 2
+>
+> `Err` promises the game is untouched. A server rejects the packet and keeps playing, and a bot drops the move and tries another. Here mana is already spent, so the rejected action leaked a state change. `?` only returns the error early, and it never undoes writes. The fix is the pattern above: finish every check before the first write.
+
+
+> [!abstract] PI
+
+P is locked in.
