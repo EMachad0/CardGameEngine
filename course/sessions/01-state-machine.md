@@ -600,3 +600,24 @@ So I'd make `&mut` the primitive and add `applied` as the wrapper.
 > [!abstract] PI
 
 Now the throwaway reference implementation in `/tmp`, to check that the tests themselves are right:
+
+
+> [!abstract] PI
+
+Before you start writing, one Rust question about the signatures you're about to write:
+
+
+> [!question] Quiz
+> Why should `legal_actions` return an owned `Vec<Action>` rather than `impl Iterator<Item = &Action> + '_` borrowing the game?
+>
+> 1. An iterator can't be returned from a method, only from a free function.
+> 2. A `Vec` is faster to build than a lazy iterator over the hand.
+> 3. A borrowed `&Action` can't be compared with `==` to an owned one.
+> 4. A shell holding the borrowed items couldn't then call `apply(&mut self)`.
+
+
+> [!success] Quiz — correct ✓
+> Your answer: 4. A shell holding the borrowed items couldn't then call `apply(&mut self)`.
+> Correct answer: 4
+>
+> The shell's loop is "get the list, pick one, `apply` it." If the list borrows `&self`, the picked `&Action` keeps that shared borrow alive, and `apply(&mut self, …)` needs an exclusive one, so the borrow checker rejects the loop. You'd end up cloning anyway. The actions also aren't stored anywhere in `Game`, since they're computed from the hand and mana, so there's nothing natural to borrow from. An owned `Vec` ends the borrow the moment `legal_actions` returns. The same reasoning explains `hand(&self) -> &[Card]` going the other way: callers only read it, so a borrowed slice costs nothing and they can't mutate through it. Returning `impl Iterator` from a method is fine in Rust, and `&Action == &Action` compiles.
