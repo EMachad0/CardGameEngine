@@ -374,3 +374,41 @@ R1 is locked in. Setting up the repo now so we can commit per node.
 > [!abstract] PI
 
 S is locked in. Committing, then on to the contract.
+
+
+> [!question] Quiz
+> Your Bevy UI highlights playable cards using its own check: `card.cost <= mana && is_my_turn`. Later you add a card: "Your opponent can't cast spells next turn." Your opponent plays that turn with 5 mana and a 3-cost spell. What happens?
+>
+> 1. The UI dims the spell, since the core's new rule updates it.
+> 2. The UI highlights the spell, and the core rejects it when played.
+> 3. The core accepts the spell, since the UI already validated it.
+
+
+> [!success] Quiz — correct ✓
+> Your answer: 2. The UI highlights the spell, and the core rejects it when played.
+> Correct answer: 2
+>
+> Note: 2 which is wrong, ui playable cards should come from available_actions
+>
+> The UI's check is a second copy of the rules, and only the core's copy learned the new restriction. Nothing links them, so they drift apart, and the player sees a move offered and then refused. The core must never accept a move just because a shell said it's fine. Bots, network clients and fuzzers send whatever they send, so the core validates everything. The fix is to keep one copy: the UI highlights a card when some action in `legal_actions()` plays it.
+
+
+> [!question] Quiz
+> Metastone's engine builds `validActions`, then calls `behaviour.requestAction(context, player, validActions)` and waits for the answer. What's the real difference from our core?
+>
+> 1. Where randomness lives: there the behaviour object supplies the RNG.
+> 2. What gets offered: there the engine offers every action, legal or not.
+> 3. Who drives the loop: there the engine calls the player; here the shell calls the core.
+> 4. Who defines legality: there the player object decides which actions are valid.
+
+
+> [!success] Quiz — correct ✓
+> Your answer: 3. Who drives the loop: there the engine calls the player; here the shell calls the core.
+> Correct answer: 3
+>
+> In both designs the engine computes the legal list. Metastone hands the player `validActions`, already filtered. The only difference is control flow. In Metastone the engine owns the loop and calls out, and while it waits, its call stack is holding the game mid-step. In our core, `apply` returns, and everything needed to continue is in `Game` (node S). That's why a Bevy frame loop, a network server or a test can drive our core without the engine blocking anyone. It's also the seed of R4 in session 06.
+
+
+> [!abstract] PI
+
+L is locked in.
