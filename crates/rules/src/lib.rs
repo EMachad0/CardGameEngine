@@ -262,24 +262,7 @@ impl Game {
         if !self.legal_actions(player_id).contains(&action) {
             Err(Illegal::new(player_id, action))
         } else {
-            match action {
-                Action::Play { hand_index } => {
-                    let card = self.get_player_mut(player_id).hand.remove(hand_index);
-                    self.apply_card(player_id, card);
-                }
-                Action::Pick { index } => {
-                    let player = self.get_player_mut(player_id);
-                    let (picked, other_cards) = player.pick_revealed(index);
-                    player.hand.add(picked);
-                    other_cards
-                        .into_iter()
-                        .for_each(|c| player.deck.push_back(c));
-                }
-                Action::EndTurn => {
-                    self.turn_order.end_turn();
-                    self.start_turn();
-                }
-            }
+            self.apply_action(player_id, action);
             Ok(())
         }
     }
@@ -292,7 +275,28 @@ impl Game {
         player.draw(1);
     }
 
-    pub fn apply_card(&mut self, player_id: PlayerId, card: Card) {
+    fn apply_action(&mut self, player_id: PlayerId, action: Action) {
+        match action {
+            Action::Play { hand_index } => {
+                let card = self.get_player_mut(player_id).hand.remove(hand_index);
+                self.apply_card(player_id, card);
+            }
+            Action::Pick { index } => {
+                let player = self.get_player_mut(player_id);
+                let (picked, other_cards) = player.pick_revealed(index);
+                player.hand.add(picked);
+                other_cards
+                    .into_iter()
+                    .for_each(|c| player.deck.push_back(c));
+            }
+            Action::EndTurn => {
+                self.turn_order.end_turn();
+                self.start_turn();
+            }
+        }
+    }
+
+    fn apply_card(&mut self, player_id: PlayerId, card: Card) {
         match card {
             Card::Bolt { damage } => {
                 let player = self.get_player_mut(player_id);
@@ -318,29 +322,30 @@ impl Game {
     }
 
     pub fn legal_actions(&self, player_id: PlayerId) -> Vec<Action> {
-        let mut actions = Vec::new();
-        if self.turn_order.get_current_player_id() != player_id {
-            return actions;
-        }
         if self.winner().is_some() {
-            return actions;
+            return Vec::new();
+        }
+        if self.turn_order.get_current_player_id() != player_id {
+            return Vec::new();
         }
 
-        let revealed_cards = self.revealed(player_id);
-        if !revealed_cards.is_empty() {
-            actions.extend((0..revealed_cards.len()).map(|i| Action::Pick { index: i }));
-            return actions;
-        }
+        let mut actions = Vec::new();
+        match &self.get_player(player_id).interaction_state {
+            PlayerInteractionState::Board => {
+                let mana = self.mana(player_id);
+                let hand = self.hand(player_id);
+                for (i, card) in hand.iter().enumerate() {
+                    if card.mana_cost() <= mana {
+                        actions.push(Action::Play { hand_index: i });
+                    }
+                }
 
-        let mana = self.mana(player_id);
-        let hand = self.hand(player_id);
-        for (i, card) in hand.iter().enumerate() {
-            if card.mana_cost() <= mana {
-                actions.push(Action::Play { hand_index: i });
+                actions.push(Action::EndTurn);
+            }
+            PlayerInteractionState::Picker { options } => {
+                actions.extend((0..options.len()).map(|i| Action::Pick { index: i }));
             }
         }
-
-        actions.push(Action::EndTurn);
         actions
     }
 
@@ -376,13 +381,10 @@ impl Game {
     }
 
     pub fn winner(&self) -> Option<PlayerId> {
-        let mut iter = self.players.iter().filter(|s| s.health > 0);
-        if let Some(first) = iter.next()
-            && iter.next().is_none()
-        {
-            Some(first.id)
-        } else {
-            None
+        let mut alive = self.players.iter().filter(|s| s.health > 0);
+        match (alive.next(), alive.next()) {
+            (Some(player), None) => Some(player.id),
+            _ => None,
         }
     }
 }
