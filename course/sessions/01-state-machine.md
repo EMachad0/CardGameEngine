@@ -464,3 +464,139 @@ P is locked in.
 > Note: a remove B action is fine, the amount of actions is bounded by the number of attackers still
 >
 > The draft is only a question half-answered. No game event has fired, so the core can offer an action that edits the draft, "remove B" or `Cancel`, and nothing needs undoing. Adding B didn't declare anything, because declaring happens at `Done`. `Game` also doesn't keep past states: node S says it holds only what future rules need. Undo, if you ever want it, is a shell feature. The shell keeps old clones or replays $(s_0, \text{decisions})$ minus the last one.
+
+
+> [!question] Quiz
+> A network server passes every incoming action straight to `apply(&mut self, action)`. During player 1's turn, player 2's client sends `EndTurn`. What happens?
+>
+> 1. The core rejects it, since `EndTurn` isn't legal for player 2 right now.
+> 2. The core ends player 1's turn, since it can't tell who sent the action.
+> 3. The core ignores it, since only the current player's socket reaches `apply`.
+
+
+> [!success] Quiz — correct ✓
+> Your answer: 2. The core ends player 1's turn, since it can't tell who sent the action.
+> Correct answer: 2
+>
+> Note: either the server or the game should validate that that action can be performed by that player, I can see 3 working but putting the player who is executing the action on apply better, it would also allow for more interactive games where both players have available actions at the same time
+>
+> `apply(action)` validates the action against the current decider's list, and `EndTurn` is on player 1's list, so it goes through. Player 2 just ended your turn. The core can't reject "not your decision" because the sender never reaches it, and "only the right socket reaches `apply`" is exactly the check this server skipped. Either every server remembers to check `sender == current_player()`, or the player becomes part of the call: `apply(player, action)` validated against `legal_actions(player)`. With the second version, P's membership check covers "not your turn" for free, since the other player's list is empty. SabberStone does this: `Options()` returns an empty list for the player who isn't acting.
+
+
+> [!abstract] PI
+
+That's the right call, and simultaneous decisions (both players mulliganing at once, say) are a real reason for it. OpenSpiel has a separate "simultaneous node" concept for exactly that. With per-player lists we don't need `current_player()` at all: whoever has a non-empty list is being waited on. The fuzzer just gathers `(player, action)` pairs from both lists.
+
+Here's my proposal for the exercise. Push back on anything.
+
+**The game.** Heroes start at 10 health. `Game::new` shuffles both decks with the seeded RNG, each player draws 3, and player 0's first turn starts. At the start of a turn, the active player's max mana goes up by 1 (capped at 10), mana refills, and they draw 1. Drawing from an empty deck deals 1 damage to your hero instead. When a hero hits 0 or less, the other player wins and both lists go empty. There are three cards:
+
+| Card | Cost | Effect |
+|---|---|---|
+| `Bolt { damage }` | `damage` | Deal `damage` to the enemy hero |
+| `WildBolt` | 1 | Deal 3 damage to a random hero, possibly your own |
+| `Forage` | 1 | Reveal up to 2 cards from the top of your deck. Pick 1 into your hand; the rest go to the bottom. If nothing is revealed, nothing happens |
+
+**Legal actions.** The active player with no pending choice gets `Play { hand_index }` for each affordable card, plus `EndTurn`. While a Forage is pending, the only actions are `Pick { index }`, one per revealed card. The other player gets nothing.
+
+**The API** you'd write, with the signatures that tests will compile against:
+
+```rust
+pub struct PlayerId(pub u8);            // 0 or 1. Newtype, so it can't mix with a hand index.
+pub enum Card { Bolt { damage: u8 }, WildBolt, Forage }
+pub enum Action { Play { hand_index: usize }, Pick { index: usize }, EndTurn }
+pub struct Illegal { pub player: PlayerId, pub action: Action }
+pub struct Game { /* yours */ }         // all derive Clone, Debug, PartialEq, Eq
+
+impl Game {
+    pub fn new(seed: u64, decks: [Vec<Card>; 2]) -> Game;             // shuffles
+    pub fn with_deck_order(seed: u64, decks: [Vec<Card>; 2]) -> Game; // no shuffle; index 0 = top
+    pub fn legal_actions(&self, player: PlayerId) -> Vec<Action>;
+    pub fn apply(&mut self, player: PlayerId, action: Action) -> Result<(), Illegal>;
+    pub fn winner(&self) -> Option<PlayerId>;
+    pub fn health(&self, p: PlayerId) -> i32;
+    pub fn mana(&self, p: PlayerId) -> u8;
+    pub fn hand(&self, p: PlayerId) -> &[Card];
+    pub fn deck(&self, p: PlayerId) -> &[Card];                       // top first
+}
+```
+
+**Who writes what.** I write the Cargo workspace (`crates/rules`), a small seeded PRNG (`rules::Rng`, SplitMix64, no dependencies), and the tests. You write `Game`, the enums, and every method above.
+
+`with_deck_order` exists because node S says a test can build a position directly. Scenario tests use it, so a Forage test knows exactly what gets revealed.
+
+Hand indices as card identity are deliberately naive. Session 02 replaces them with IDs.
+
+The tests will cover five things:
+- **Rejection.** Every unlisted action returns `Err` and leaves the game `==` to its clone.
+- **Wrong player.** A player can't act on the opponent's turn.
+- **Forage.** A pending Forage restricts the list to picks, and a pick lands the chosen card in the hand and the other at the bottom of the deck.
+- **Playouts.** Across 200 seeded random playouts, every listed action is accepted, every game ends, and once there's a winner both lists are empty.
+- **Replay.** Rebuilding a game from its seed plus its recorded actions gives an equal `Game`.
+
+
+> [!question] Question
+> Agree on this game and API so I can write the tests against it?
+>
+> 1. Agreed, write the tests (Recommended)
+> 2. Change the API first
+> 3. Change the game rules first
+
+
+> [!example] Answer
+> Other: what about multiple copies of the same card? referencing cards by index and not id doesnt sound optimal, what is pick indexed on? should apply mutate the game instead of being pure?
+
+
+> [!abstract] PI
+
+Good questions. Taking them in order:
+
+**Multiple copies.** Two `Bolt { damage: 2 }` in hand show up as `Play { hand_index: 0 }` and `Play { hand_index: 1 }`: two listed actions with identical outcomes. IDs wouldn't change that. Two copies with two IDs still give two actions with the same outcome, because the duplication comes from the copies being symmetric, not from how cards are named. Only playing "by definition," like `Play { card: Bolt { damage: 2 } }`, merges them. That breaks as soon as one copy gets buffed and the copies stop being equal. So duplicates are a bot-efficiency issue, not a correctness one.
+
+**Index vs ID.** You're right that indices aren't the end state. Within one state they're safe, because `legal_actions` is rebuilt after every `apply`, so `Play { hand_index: 1 }` always means the current hand. They break when something refers to a card across states: a log entry saying "played hand[1]" once the hand has shifted, a UI sprite following a card while the hand reorders, or an effect that remembers "that card" until end of turn. Nothing in today's game does that, which is why I deferred IDs. It's your call, though.
+
+**What `Pick` indexes.** The pending Forage's revealed list, position 0 or 1. You caught a hole there: a shell has to be able to see that list to render the choice. I'll add `fn revealed(&self, p: PlayerId) -> &[Card]`, which is empty when nothing is pending.
+
+**Mutate or pure.** Either works. Here's what each costs:
+- A pure `apply(&self, p, a) -> Result<Game, Illegal>` clones the whole state on every call. In return, `Err` can't change anything even by accident, and old states survive.
+- `apply(&mut self, …)` is the cheaper primitive. It gets atomicity from check-then-mutate, and callers clone only when they need to. Bots do; the UI doesn't.
+
+The deciding asymmetry is that the pure version is a three-line wrapper around the mutating one, while the reverse needs a clone every call:
+
+```rust
+pub fn applied(&self, p: PlayerId, a: Action) -> Result<Game, Illegal> {
+    let mut next = self.clone();
+    next.apply(p, a)?;
+    Ok(next)
+}
+```
+
+So I'd make `&mut` the primitive and add `applied` as the wrapper.
+
+
+> [!question] Question
+> Card identity for today's exercise: indices or IDs?
+>
+> 1. Keep hand indices today; session 02 introduces IDs from a failing case (Recommended)
+> 2. Use a simple instance ID now (`CardId`), and session 02 refines it
+
+
+> [!example] Answer
+> 1. Keep hand indices today; session 02 introduces IDs from a failing case (Recommended)
+
+
+> [!question] Question
+> `apply` shape: `&mut self` as the primitive plus a pure `applied(&self, …) -> Result<Game, Illegal>` wrapper?
+>
+> 1. Yes: `&mut` primitive plus `applied` wrapper (Recommended)
+> 2. Only `&mut self`, no wrapper
+> 3. Only pure `applied(&self)`, cloning every call
+
+
+> [!example] Answer
+> 1. Yes: `&mut` primitive plus `applied` wrapper (Recommended)
+
+
+> [!abstract] PI
+
+Now the throwaway reference implementation in `/tmp`, to check that the tests themselves are right:
