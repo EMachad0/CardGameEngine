@@ -166,7 +166,7 @@ fn random_playout(seed: u64, picker_seed: u64) -> (Game, Vec<(PlayerId, Action)>
         // Cards never appear from nowhere or vanish, except the one being played.
         let mut expected = before;
         if matches!(a, Action::Play { .. }) {
-            expected[p.0 as usize] -= 1;
+            expected[p.0] -= 1;
         }
         assert_eq!(after, expected, "seed {seed}: card count changed wrongly after {p:?} {a:?}");
 

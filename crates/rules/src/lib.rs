@@ -1,17 +1,24 @@
 //! Rules core. Session 01 toy game: see ../SPEC.md.
 
 mod rng;
-use std::{
-    collections::{HashMap, VecDeque},
-    ops::Add,
-};
+use std::{collections::VecDeque, ops::Add};
 
 pub use rng::Rng;
 
 // Yours from here: PlayerId, Card, Action, Illegal, Game, and the methods in SPEC.md.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct PlayerId(pub u8);
+pub struct PlayerId(pub usize);
+
+impl PlayerId {
+    pub fn new(idx: usize) -> Self {
+        Self(idx)
+    }
+
+    pub fn idx(&self) -> usize {
+        self.0
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TurnOrder {
@@ -20,7 +27,8 @@ pub struct TurnOrder {
 }
 
 impl TurnOrder {
-    pub fn new(players: Vec<PlayerId>) -> Self {
+    pub fn new(player_count: usize) -> Self {
+        let players = (0..player_count).map(PlayerId).collect();
         Self {
             current_idx: 0,
             players,
@@ -41,6 +49,10 @@ impl TurnOrder {
 
     pub fn end_turn(&mut self) {
         self.current_idx = self.next_player_idx();
+    }
+
+    pub fn player_from_index(&self, idx: usize) -> PlayerId {
+        self.players[idx]
     }
 }
 
@@ -189,7 +201,7 @@ impl PlayerState {
 pub struct Game {
     rng: rng::Rng,
     turn_order: TurnOrder,
-    player_states: HashMap<PlayerId, PlayerState>,
+    player_states: Vec<PlayerState>,
 }
 
 impl Game {
@@ -203,21 +215,25 @@ impl Game {
 
     fn setup(seed: u64, decks: [Vec<Card>; 2], shuffle: bool) -> Self {
         let mut rng = Rng::new(seed);
-        let player_ids = (0..decks.len())
-            .map(|i| PlayerId(i as u8))
+        let turn_order = TurnOrder::new(decks.len());
+
+        let mut player_states = decks
+            .into_iter()
+            .enumerate()
+            .map(|(i, deck)| {
+                let player_id = turn_order.player_from_index(i);
+                let player_deck = Deck::new(deck);
+                PlayerState::new(player_id, player_deck)
+            })
             .collect::<Vec<_>>();
-        let mut player_states = HashMap::new();
-        for (i, deck) in decks.into_iter().enumerate() {
-            let player_id = player_ids[i];
-            let mut player_deck = Deck::new(deck);
+
+        for player_state in player_states.iter_mut() {
             if shuffle {
-                player_deck.shuffle(&mut rng);
+                rng.shuffle(player_state.deck.as_mut_slice());
             }
-            let mut player_state = PlayerState::new(player_id, player_deck);
             player_state.draw(3);
-            player_states.insert(player_id, player_state);
         }
-        let turn_order = TurnOrder::new(player_ids);
+
         let mut game = Self {
             rng,
             player_states,
@@ -314,13 +330,11 @@ impl Game {
     }
 
     fn player_state(&self, player: PlayerId) -> &PlayerState {
-        self.player_states.get(&player).expect("player not found")
+        &self.player_states[player.idx()]
     }
 
     fn player_state_mut(&mut self, player: PlayerId) -> &mut PlayerState {
-        self.player_states
-            .get_mut(&player)
-            .expect("player not found")
+        &mut self.player_states[player.idx()]
     }
 
     pub fn hand(&self, player: PlayerId) -> &[Card] {
@@ -344,7 +358,7 @@ impl Game {
     }
 
     pub fn winner(&self) -> Option<PlayerId> {
-        let mut iter = self.player_states.values().filter(|s| s.health > 0);
+        let mut iter = self.player_states.iter().filter(|s| s.health > 0);
         if let Some(first) = iter.next()
             && iter.next().is_none()
         {

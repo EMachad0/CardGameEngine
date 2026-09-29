@@ -626,3 +626,28 @@ Before you start writing, one Rust question about the signatures you're about to
 > [!abstract] PI
 
 Landed. Before handing over I'll save today's progress to `COURSE.md`, so nothing is lost if the session gets cut short while you implement.
+
+
+> [!abstract] PI
+
+That's everything for today's theory: R1, S, L, P and G each passed their check. The work is committed locally in the new repo, with no remote.
+
+## Your turn: implement `crates/rules/src/lib.rs`
+
+The spec and the exact API are in `crates/rules/SPEC.md`. The tests are in `crates/rules/tests/contract.rs`. Leave the tests and `rng.rs` as they are. If a test seems to contradict the spec, tell me, because the spec is the contract.
+
+**A suggested order:**
+1. Write all the types and method signatures, with `todo!()` bodies. The tests then compile and each one fails on its own, instead of the whole file refusing to build.
+2. Setup and the read accessors, then `cargo test -p rules --test contract setup`.
+3. `legal_actions`, then `apply` with the membership check as its first line (pattern P). Run `... bolt`, `... end_turn`, `... rejected`.
+4. Forage's pending pick: `... forage`.
+5. Game over, including fatigue at turn start: `... lethal`, `... fatigue`.
+6. Last, the property tests: `... playouts`, `... replay`. They check every invariant at every step of 250 random games and report the seed of the first failure.
+
+**Design choices that are yours.** Be ready to say why for each one.
+- How to store per-player data. Two named fields, or `[Side; 2]` indexed through `PlayerId`? Where does the `PlayerId` → index mapping live, and how many places know about it?
+- What shape the pending Forage takes: an `Option<…>` field, or an enum for the phase the game is in. Node G says it's state either way.
+- Where "is someone dead?" gets checked. The tests require it after card damage *and* after fatigue at turn start. Notice how many places that ends up being. It's the setup for the timing node in session 02.
+- `WildBolt` uses `self.rng`. If anything nondeterministic slips in, the determinism check runs every listed action twice on two clones and will catch it.
+
+When everything is green, or you're stuck, say so. I'll review against the spec and today's nodes and then commit the exercise.
