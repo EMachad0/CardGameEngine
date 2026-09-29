@@ -35,23 +35,23 @@ impl TurnOrder {
         }
     }
 
-    pub fn current_player(&self) -> PlayerId {
+    pub fn get_current_player_id(&self) -> PlayerId {
         self.players[self.current_idx]
     }
 
-    fn next_player_idx(&self) -> usize {
+    fn get_next_player_idx(&self) -> usize {
         (self.current_idx + 1) % self.players.len()
     }
 
-    pub fn next_player(&self) -> PlayerId {
-        self.players[self.next_player_idx()]
+    pub fn get_next_player_id(&self) -> PlayerId {
+        self.players[self.get_next_player_idx()]
     }
 
     pub fn end_turn(&mut self) {
-        self.current_idx = self.next_player_idx();
+        self.current_idx = self.get_next_player_idx();
     }
 
-    pub fn player_from_index(&self, idx: usize) -> PlayerId {
+    pub fn get_player_id_from_turn_index(&self, idx: usize) -> PlayerId {
         self.players[idx]
     }
 }
@@ -147,8 +147,8 @@ impl Illegal {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PlayerState {
-    player_id: PlayerId,
+pub struct Player {
+    id: PlayerId,
     mana: u8,
     max_mana: u8,
     health: i32,
@@ -157,10 +157,10 @@ pub struct PlayerState {
     revealed_cards: Vec<Card>,
 }
 
-impl PlayerState {
-    pub fn new(player_id: PlayerId, deck: Deck) -> Self {
+impl Player {
+    pub fn new(id: PlayerId, deck: Deck) -> Self {
         Self {
-            player_id,
+            id,
             mana: 0,
             max_mana: 0,
             health: 10,
@@ -201,7 +201,7 @@ impl PlayerState {
 pub struct Game {
     rng: rng::Rng,
     turn_order: TurnOrder,
-    player_states: Vec<PlayerState>,
+    players: Vec<Player>,
 }
 
 impl Game {
@@ -217,48 +217,48 @@ impl Game {
         let mut rng = Rng::new(seed);
         let turn_order = TurnOrder::new(decks.len());
 
-        let mut player_states = decks
+        let mut players = decks
             .into_iter()
             .enumerate()
             .map(|(i, deck)| {
-                let player_id = turn_order.player_from_index(i);
+                let player_id = turn_order.get_player_id_from_turn_index(i);
                 let player_deck = Deck::new(deck);
-                PlayerState::new(player_id, player_deck)
+                Player::new(player_id, player_deck)
             })
             .collect::<Vec<_>>();
 
-        for player_state in player_states.iter_mut() {
+        for player in players.iter_mut() {
             if shuffle {
-                rng.shuffle(player_state.deck.as_mut_slice());
+                rng.shuffle(player.deck.as_mut_slice());
             }
-            player_state.draw(3);
+            player.draw(3);
         }
 
         let mut game = Self {
             rng,
-            player_states,
+            players,
             turn_order,
         };
         game.start_turn();
         game
     }
 
-    pub fn apply(&mut self, player: PlayerId, action: Action) -> Result<(), Illegal> {
-        if !self.legal_actions(player).contains(&action) {
-            Err(Illegal::new(player, action))
+    pub fn apply(&mut self, player_id: PlayerId, action: Action) -> Result<(), Illegal> {
+        if !self.legal_actions(player_id).contains(&action) {
+            Err(Illegal::new(player_id, action))
         } else {
             match action {
                 Action::Play { hand_index } => {
-                    let card = self.player_state_mut(player).hand.remove(hand_index);
-                    self.apply_card(player, card);
+                    let card = self.get_player_mut(player_id).hand.remove(hand_index);
+                    self.apply_card(player_id, card);
                 }
                 Action::Pick { index } => {
-                    let player_state = self.player_state_mut(player);
-                    let (picked, other_cards) = player_state.pick_revealed(index);
-                    player_state.hand.add(picked);
+                    let player = self.get_player_mut(player_id);
+                    let (picked, other_cards) = player.pick_revealed(index);
+                    player.hand.add(picked);
                     other_cards
                         .into_iter()
-                        .for_each(|c| player_state.deck.push_back(c));
+                        .for_each(|c| player.deck.push_back(c));
                 }
                 Action::EndTurn => {
                     self.turn_order.end_turn();
@@ -270,55 +270,55 @@ impl Game {
     }
 
     fn start_turn(&mut self) {
-        let current_player = self.turn_order.current_player();
-        let player_state = self.player_state_mut(current_player);
-        player_state.max_mana = player_state.max_mana.add(1).min(10);
-        player_state.mana = player_state.max_mana;
-        player_state.draw(1);
+        let current_player_id = self.turn_order.get_current_player_id();
+        let player = self.get_player_mut(current_player_id);
+        player.max_mana = player.max_mana.add(1).min(10);
+        player.mana = player.max_mana;
+        player.draw(1);
     }
 
-    pub fn apply_card(&mut self, player: PlayerId, card: Card) {
+    pub fn apply_card(&mut self, player_id: PlayerId, card: Card) {
         match card {
             Card::Bolt { damage } => {
-                let player_state = self.player_state_mut(player);
-                player_state.mana -= card.mana_cost();
+                let player = self.get_player_mut(player_id);
+                player.mana -= card.mana_cost();
 
-                let target_player = self.turn_order.next_player();
-                let target_player_state = self.player_state_mut(target_player);
-                target_player_state.health -= damage as i32;
+                let target_player_id = self.turn_order.get_next_player_id();
+                let target_player = self.get_player_mut(target_player_id);
+                target_player.health -= damage as i32;
             }
             Card::WildBolt => {}
             Card::Forage => {
-                let player_state = self.player_state_mut(player);
-                player_state.reveal(2);
-                player_state.mana -= card.mana_cost();
+                let player = self.get_player_mut(player_id);
+                player.reveal(2);
+                player.mana -= card.mana_cost();
             }
         }
     }
 
-    pub fn applied(&self, player: PlayerId, action: Action) -> Result<Self, Illegal> {
+    pub fn applied(&self, player_id: PlayerId, action: Action) -> Result<Self, Illegal> {
         let mut game = self.clone();
-        game.apply(player, action)?;
+        game.apply(player_id, action)?;
         Ok(game)
     }
 
-    pub fn legal_actions(&self, player: PlayerId) -> Vec<Action> {
+    pub fn legal_actions(&self, player_id: PlayerId) -> Vec<Action> {
         let mut actions = Vec::new();
-        if self.turn_order.current_player() != player {
+        if self.turn_order.get_current_player_id() != player_id {
             return actions;
         }
         if self.winner().is_some() {
             return actions;
         }
 
-        let revealed_cards = self.revealed(player);
+        let revealed_cards = self.revealed(player_id);
         if !revealed_cards.is_empty() {
             actions.extend((0..revealed_cards.len()).map(|i| Action::Pick { index: i }));
             return actions;
         }
 
-        let mana = self.mana(player);
-        let hand = self.hand(player);
+        let mana = self.mana(player_id);
+        let hand = self.hand(player_id);
         for (i, card) in hand.iter().enumerate() {
             if card.mana_cost() <= mana {
                 actions.push(Action::Play { hand_index: i });
@@ -329,40 +329,40 @@ impl Game {
         actions
     }
 
-    fn player_state(&self, player: PlayerId) -> &PlayerState {
-        &self.player_states[player.idx()]
+    fn get_player(&self, player_id: PlayerId) -> &Player {
+        &self.players[player_id.idx()]
     }
 
-    fn player_state_mut(&mut self, player: PlayerId) -> &mut PlayerState {
-        &mut self.player_states[player.idx()]
+    fn get_player_mut(&mut self, player_id: PlayerId) -> &mut Player {
+        &mut self.players[player_id.idx()]
     }
 
-    pub fn hand(&self, player: PlayerId) -> &[Card] {
-        self.player_state(player).hand.as_slice()
+    pub fn hand(&self, player_id: PlayerId) -> &[Card] {
+        self.get_player(player_id).hand.as_slice()
     }
 
-    pub fn deck(&self, player: PlayerId) -> Vec<Card> {
-        self.player_state(player).deck.as_slice()
+    pub fn deck(&self, player_id: PlayerId) -> Vec<Card> {
+        self.get_player(player_id).deck.as_slice()
     }
 
-    pub fn mana(&self, player: PlayerId) -> u8 {
-        self.player_state(player).mana
+    pub fn mana(&self, player_id: PlayerId) -> u8 {
+        self.get_player(player_id).mana
     }
 
-    pub fn health(&self, player: PlayerId) -> i32 {
-        self.player_state(player).health
+    pub fn health(&self, player_id: PlayerId) -> i32 {
+        self.get_player(player_id).health
     }
 
-    pub fn revealed(&self, player: PlayerId) -> &[Card] {
-        &self.player_state(player).revealed_cards
+    pub fn revealed(&self, player_id: PlayerId) -> &[Card] {
+        &self.get_player(player_id).revealed_cards
     }
 
     pub fn winner(&self) -> Option<PlayerId> {
-        let mut iter = self.player_states.iter().filter(|s| s.health > 0);
+        let mut iter = self.players.iter().filter(|s| s.health > 0);
         if let Some(first) = iter.next()
             && iter.next().is_none()
         {
-            Some(first.player_id)
+            Some(first.id)
         } else {
             None
         }
