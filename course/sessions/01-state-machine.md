@@ -777,3 +777,8 @@ Once it's green, I'll commit, close session 01 in `COURSE.md`, and set up sessio
 > [!quote] YOU
 
 done, hashmap was removed for both determinism and simplicity
+
+
+> [!abstract] PI
+
+Session 01's exercise is done. Closing out `COURSE.md` and creating the session 02 log file, since `/md-log` needs the file to exist:

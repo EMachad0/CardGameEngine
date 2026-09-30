@@ -26,6 +26,15 @@ Session 01 (R1, S, L, P, G all landed on the first node check):
 - Action granularity was the one probe miss. He picked `Attack(Vec<Id>)` because he read staging as imposing an order. Fixed once the draft-in-state idea was explicit. His own model was fixed-order yes/no per creature.
 - Vocabulary slip: said the core is "influenced by events" when he meant actions. Actions in, events out. Watch for this in session 03.
 - Retrieval: now says unprompted that death is a state check, not a setter side effect, and that a boxed closure is opaque.
+- Seeds: answered "I don't know" on seed-shift test robustness (the abstract phrasing was the problem). It landed once shown as code: a seed fixes a stream, each random event takes the next number, and an unrelated extra draw shifts every later outcome. Tests should assert properties across seeds, not pin a seed to an outcome.
+
+Session 01 exercise (`crates/rules`, all green):
+- He writes the validate/mutate split by instinct (`apply` checks membership, then an infallible `apply_action`). Derived `winner()` from health instead of setting a flag in N places.
+- Strong TDD discipline: didn't implement WildBolt because no test pinned it. That was right, and the gap was in my tests.
+- Pushed back on my review, correctly. Player identity (`PlayerId` → `Player`) and turn sequence (`TurnOrder`) are separate concepts, and I had wrongly called `TurnOrder` a second copy. Argue specifics with him and concede when he's right. Only the setup line that coupled them needed changing.
+- Leans toward N-player generality (`TurnOrder`, `(idx + 1) % len`). Wants explicit targeting, since `opponent()` doesn't generalize.
+- Removed an early `HashMap<PlayerId, _>` for determinism and simplicity, unprompted.
+- Rust he produced: newtypes (`Deck`, `Hand`, a private-field `PlayerId` with `const fn new`), enum pending state, `std::mem::take`, `let`-`else`. Used `VecDeque` and changed `deck()` to return a `Vec` copy.
 
 Solid:
 - Card definition (never changes) vs instance with its own ID and modifiers.
@@ -38,12 +47,12 @@ Solid:
 
 Partial:
 - Effects as data. Got it once shown in concrete Rust (inspect, serialize, highlight targets). First guess was "enum is faster than dyn dispatch". Did not reach for inspectability unprompted.
-- Pending choice: has the idea, hasn't yet seen that the half-finished effect must be stored as data, not on the call stack.
+- Pending choice: has the idea. Session 01 update: solid for simple drafts (Discover picks, attacker drafts, and Forage in the exercise are all state in `Game`). Not yet tested on a half-finished effect *mid-resolution* ("deal 3, then if it died draw" paused for a target). That's session 06.
 
 Gaps (teach into these):
 - Timing, i.e. *when* things run. Put the death check in a health setter ("every change goes through the setter"). Dislodged by the "can't die this turn" expiry case, but still needs a proper node. Chose the trigger queue for decoupling reasons, not for re-entrancy and timing reasons.
 - Core to shell output. Unsure whether the core should return events or push them.
-- Determinism sources. Knows the core must be deterministic, didn't know std `HashMap` iteration order is randomized per process.
+- ~~Determinism sources.~~ Closed in session 01 (`HashMap`, `thread_rng`, `Instant::now`, and seeds as streams).
 - Property-based testing. Sees crashes and rejected legal moves as fuzz findings. Missed invariants you assert yourself (card in two zones, replay divergence).
 
 Rust: knows traits, generics, lifetimes, but they don't come naturally when designing. Explain *why* each trait, generic, or ownership choice is the one to make.
@@ -54,12 +63,17 @@ Rust: knows traits, generics, lifetimes, but they don't come naturally when desi
 - Final exam (K): add a Yu-Gi-Oh style chain without rewriting the core. Learner knows YGO best.
 - Effects: `enum` by default (open to a code escape hatch later).
 - Two IDs: stable card ID and per-zone object ID.
-- Core API (session 01): `legal_actions(&self, player) -> Vec<Action>`, `apply(&mut self, player, action) -> Result<(), Illegal>`, and a pure `applied(&self, …) -> Result<Game, Illegal>` wrapper. There's no `current_player()`: whoever has a non-empty list is being waited on. Crate `rules` in a `crates/` workspace. The seeded SplitMix64 `rules::Rng` lives in `Game`. Hand indices are the card identity until session 02, deliberately.
+- Core API (session 01): `legal_actions(&self, player) -> Vec<Action>`, `apply(&mut self, player, action) -> Result<(), Illegal>`, and a pure `applied(&self, …) -> Result<Game, Illegal>` wrapper. There's no `current_player()`: whoever has a non-empty list is being waited on. Crate `rules` in a `crates/` workspace. The seeded SplitMix64 `rules::Rng` lives in `Game`. Hand indices are the card identity until session 02, deliberately. `PlayerId` has a private field, with `const fn new(usize)` and `idx()`. `deck()` returns `Vec<Card>`. Cost payment lives once in the `Play` arm, not per card.
 - Tooling wanted: card data files with validation, generated rules text, test tooling (scenario DSL, replays, fuzzer), headless CLI with a machine-readable protocol so bots and LLM agents can playtest, a visual editor, hot reload.
 
 ## Open threads
 
-- Where does a half-finished effect live between `apply` calls? (node G)
+- Where does a half-finished effect live between `apply` calls? (node 06-G)
+- Two dead heroes: the derived `winner()` returns `None` when both are at 0 or less, so the game would continue. Nothing can cause it yet. Use it in session 02 (C, state checks) together with "can't die this turn".
+- The decider is always the turn player: `legal_actions` returns empty for the non-turn player before it reads their `interaction_state`, so an opponent-side pick or response is never offered. Sessions 06 and 08.
+- Explicit targeting: he wants it. Session 04 (effects as data, `TargetSpec`, target choice as a decision).
+- Chance as an input (OpenSpiel style) for testing random effects without seeds. Session 07.
+- Minor: Bolt targets `(caster.idx() + 1) % len`, which treats the identity index as seat order. That contradicts his own identity vs turn-order split. Mention it when targeting comes up.
 - Return vs push for events. (node D)
 - "Costs (1) less per spell cast this turn": his observer design (a -1 modifier on the card) vs a counter in state. Which one handles a copy drawn after the spells? Open session 02 (C) with this.
 - Hand index vs ID: open session 02 (B) with a failing case, like an effect that remembers a card or a log entry after the hand shifts.
@@ -122,8 +136,8 @@ graph TD
 | # | Nodes | Topic | Status |
 |---|-------|-------|--------|
 | 00 | probe | Knowledge probe and plan | done |
-| 01 | R1, A | Game as a state machine, `legal_actions` + `apply` | nodes done; exercise in progress (`crates/rules`, tests red) |
-| 02 | R2, B, C | Definitions, objects, IDs; derived stats and state checks | |
+| 01 | R1, A | Game as a state machine, `legal_actions` + `apply` | done (exercise green: 3 rng + 20 contract tests) |
+| 02 | R2, B, C | Definitions, objects, IDs; derived stats and state checks | next |
 | 03 | D | Events out; return vs push | |
 | 04 | R3, E | Effects as data | |
 | 05 | F | Triggers, replacements, statics | |
