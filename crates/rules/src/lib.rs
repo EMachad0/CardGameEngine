@@ -11,7 +11,7 @@ pub use rng::Rng;
 pub struct PlayerId(usize);
 
 impl PlayerId {
-    pub fn new(idx: usize) -> Self {
+    pub const fn new(idx: usize) -> Self {
         Self(idx)
     }
 
@@ -238,7 +238,7 @@ impl Game {
             .into_iter()
             .enumerate()
             .map(|(i, deck)| {
-                let player_id = turn_order.get_player_id_from_turn_index(i);
+                let player_id = PlayerId::new(i);
                 let player_deck = Deck::new(deck);
                 Player::new(player_id, player_deck)
             })
@@ -303,11 +303,15 @@ impl Game {
     fn apply_card(&mut self, player_id: PlayerId, card: Card) {
         match card {
             Card::Bolt { damage } => {
-                let target_player_id = self.turn_order.get_next_player_id();
+                let target_player_id = PlayerId::new((player_id.idx() + 1) % self.players.len());
                 let target_player = self.get_player_mut(target_player_id);
                 target_player.health -= damage as i32;
             }
-            Card::WildBolt => {}
+            Card::WildBolt => {
+                let target_player_id = PlayerId::new(self.rng.below(self.players.len()));
+                let target_player = self.get_player_mut(target_player_id);
+                target_player.health -= 3;
+            }
             Card::Forage => {
                 let player = self.get_player_mut(player_id);
                 player.reveal(2);
