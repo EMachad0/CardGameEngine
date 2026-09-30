@@ -198,7 +198,9 @@ impl Player {
 
             options.push(card);
         }
-        self.interaction_state = PlayerInteractionState::Picker { options }
+        if !options.is_empty() {
+            self.interaction_state = PlayerInteractionState::Picker { options }
+        }
     }
 
     pub fn pick_revealed(&mut self, index: usize) -> (Card, Vec<Card>) {
