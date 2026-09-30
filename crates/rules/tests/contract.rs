@@ -6,8 +6,8 @@
 
 use rules::{Action, Card, Game, Illegal, PlayerId, Rng};
 
-const P0: PlayerId = PlayerId(0);
-const P1: PlayerId = PlayerId(1);
+const P0: PlayerId = PlayerId::new(0);
+const P1: PlayerId = PlayerId::new(1);
 const PLAYERS: [PlayerId; 2] = [P0, P1];
 
 fn bolt(damage: u8) -> Card {
@@ -198,7 +198,7 @@ fn random_playout(seed: u64, picker_seed: u64) -> (Game, Vec<(PlayerId, Action)>
         // Cards never appear from nowhere or vanish, except the one being played.
         let mut expected = before;
         if matches!(a, Action::Play { .. }) {
-            expected[p.0] -= 1;
+            expected[p.idx()] -= 1;
         }
         assert_eq!(
             after, expected,
@@ -436,6 +436,60 @@ fn applied_returns_a_new_game_and_leaves_the_original_alone() {
             player: P1,
             action: Action::EndTurn
         })
+    );
+}
+
+#[test]
+fn every_card_pays_its_cost() {
+    for card in [bolt(1), bolt(3), Card::WildBolt, Card::Forage] {
+        // The card is on top, so it's hand[0] after the opening draw.
+        let mut deck0 = vec![card.clone()];
+        deck0.extend(vec![bolt(9); 20]);
+        let mut game = Game::with_deck_order(0, [deck0, vec![bolt(9); 20]]);
+        while game.mana(P0) < cost(&card) {
+            game.apply(P0, Action::EndTurn).unwrap();
+            game.apply(P1, Action::EndTurn).unwrap();
+        }
+        assert_eq!(game.hand(P0)[0], card);
+
+        let before = game.mana(P0);
+        game.apply(P0, play(0)).unwrap();
+        assert_eq!(game.mana(P0), before - cost(&card), "{card:?}");
+    }
+}
+
+/// WildBolt's target is random, so these tests assert what holds for every
+/// seed instead of pinning a seed to an outcome (which would break the moment
+/// any unrelated code draws from the RNG earlier).
+fn cast_wild_bolt(seed: u64) -> (i32, i32) {
+    let deck0 = vec![Card::WildBolt; 6];
+    let mut game = Game::with_deck_order(seed, [deck0, vec![bolt(1); 6]]);
+    game.apply(P0, play(0)).unwrap();
+    assert_eq!(game.mana(P0), 0, "seed {seed}: WildBolt costs 1");
+    (10 - game.health(P0), 10 - game.health(P1))
+}
+
+#[test]
+fn wild_bolt_hits_exactly_one_hero_for_three() {
+    for seed in 0..100 {
+        let lost = cast_wild_bolt(seed);
+        assert!(
+            lost == (3, 0) || lost == (0, 3),
+            "seed {seed}: health lost (caster, enemy) = {lost:?}"
+        );
+    }
+}
+
+#[test]
+fn wild_bolt_can_hit_either_hero() {
+    let outcomes: Vec<(i32, i32)> = (0..100).map(cast_wild_bolt).collect();
+    assert!(
+        outcomes.contains(&(3, 0)),
+        "never hit the caster in 100 seeds"
+    );
+    assert!(
+        outcomes.contains(&(0, 3)),
+        "never hit the enemy in 100 seeds"
     );
 }
 

@@ -4,7 +4,8 @@ The tests in `tests/contract.rs` check this spec. You write everything in `src/l
 
 ## Rules
 
-- Two players, `PlayerId(0)` and `PlayerId(1)`. Heroes start at 10 health.
+- Two players, `PlayerId::new(0)` and `PlayerId::new(1)`. Heroes start at 10 health.
+- A player's identity (`PlayerId`) is separate from turn order. Deck `i` belongs to `PlayerId::new(i)` no matter who goes first.
 - Setup:
   1. `Game::new` seeds the game's `Rng` with `seed`, shuffles player 0's deck, then player 1's deck.
      `Game::with_deck_order` seeds the `Rng` the same way but doesn't shuffle.
@@ -22,7 +23,7 @@ The tests in `tests/contract.rs` check this spec. You write everything in `src/l
 
 | Card | Cost | Effect |
 |---|---|---|
-| `Bolt { damage }` | `damage` | Deal `damage` to the enemy hero. |
+| `Bolt { damage }` | `damage` | Deal `damage` to the enemy hero, meaning the caster's enemy, not whoever's turn is next. |
 | `WildBolt` | 1 | Deal 3 damage to a random hero, possibly your own. Use the game's `Rng`. |
 | `Forage` | 1 | Reveal the top 2 cards of your deck, or fewer if the deck is smaller. If nothing is revealed, nothing happens. Otherwise you must pick one: it goes to the end of your hand, and the rest go to the bottom of your deck in the order they were revealed. |
 
@@ -44,7 +45,11 @@ The tests in `tests/contract.rs` check this spec. You write everything in `src/l
 
 ```rust
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct PlayerId(pub u8);
+pub struct PlayerId(/* private */ usize);
+impl PlayerId {
+    pub const fn new(idx: usize) -> PlayerId; // const, so callers can write `const P0: PlayerId = ...`
+    pub fn idx(&self) -> usize;
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Card { Bolt { damage: u8 }, WildBolt, Forage }
@@ -68,7 +73,7 @@ impl Game {
     pub fn health(&self, p: PlayerId) -> i32;
     pub fn mana(&self, p: PlayerId) -> u8;
     pub fn hand(&self, p: PlayerId) -> &[Card];
-    pub fn deck(&self, p: PlayerId) -> &[Card];     // top first
+    pub fn deck(&self, p: PlayerId) -> Vec<Card>;   // a copy, top first (VecDeque can't lend one slice)
     pub fn revealed(&self, p: PlayerId) -> &[Card]; // pending Forage cards; empty if none
 }
 ```

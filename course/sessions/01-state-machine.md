@@ -671,3 +671,88 @@ coninue I had to do a small fix
 > [!abstract] PI
 
 All green: 3 RNG tests and 17 contract tests, clippy clean, and your `lib.rs` is rustfmt-clean. The rustfmt diffs are all in my test file, which I'll fix. First, a quick check on WildBolt:
+
+
+> [!abstract] PI
+
+Your implementation is committed (`e6a9a65`), and the rustfmt fix to my test file is a separate commit. I'm assuming your "small fix" was `deck()` returning `Vec<Card>`, since `VecDeque` can't lend one contiguous `&[Card]` through `&self`. That's a fair call, and I'll update the spec to match.
+
+## Review
+
+**What's good, with today's nodes in mind:**
+- **Pattern P, exactly.** `apply` checks membership and then calls `apply_action`, which can't fail. Validation and mutation are in separate functions, so a rejected action can't have touched anything.
+- **`winner()` is derived, not stored.** I asked how many places would need to check for death, and you answered with zero: it's computed from health whenever someone asks. That's a state check done on read. There's one limit. If a future card damages both heroes, both are dead, `winner()` returns `None`, and the game keeps going with two corpses. Nothing can do that today, but it's where session 02 starts.
+- **The pending pick is an enum** (`PlayerInteractionState`), which is node G, and `revealed()` reads it. The `unreachable!()` in `pick_revealed` is justified, because P guarantees a `Pick` only arrives while `Picker` is set.
+- **Newtypes for `Deck` and `Hand`**, which keep the collection methods on the collection.
+
+**Issues, most important first:**
+1. **WildBolt is free, not just a no-op.** Mana gets paid inside each card's arm (`Bolt` and `Forage` each subtract it), so the card you skipped also skipped payment. "Pay the cost" is a rule of *playing a card*, not of any one card. It belongs once in the `Play` arm, before `apply_card`. Then a new card can't forget it. It's the same lesson as the health setter: put a rule where it holds for every case. On the TDD point, you're right. No test pinned WildBolt, and that gap is mine. The question below is about how to close it.
+2. **`TurnOrder` is a second copy of the `PlayerId` → index mapping.** `TurnOrder.players[i]` is always `PlayerId(i)`, and `Game.players` is indexed by `id.idx()`. They agree only because nobody reorders turns. Add a coin flip for who goes first, so that `TurnOrder.players = [P1, P0]`, and setup gives `Game.players[0]` the id P1, while `get_player(P1)` reads `players[1]`, which is P0's player. A plain `active: PlayerId` plus `fn opponent(p)` removes that copy. `decks: [_; 2]` already fixes the player count at 2, so the N-player generality isn't buying anything yet.
+3. **Bolt targets `get_next_player_id()`, meaning whoever plays next,** rather than the caster's enemy. They coincide only because there are two players and only the active player can play. Derive the target from `player_id`, which would be `opponent(player_id)`.
+4. **The decider is always the turn player.** `legal_actions` returns empty for the non-turn player before it looks at `interaction_state`. So if a card ever makes the *opponent* pick ("your opponent discards a card of their choice," or a YGO response), their `Picker` gets stored but is never offered. You put pending state on each player, which is the right shape for your simultaneous-decisions idea, but the check order undoes it. No change is needed today. It'll matter in sessions 06 and 08.
+5. **Nits.**
+   - `Deck::as_slice` returns a copied `Vec`. Rust naming convention is `as_` for a cheap borrow and `to_` for an allocating copy, so call it `to_vec`.
+   - `max_mana.add(1).min(10)` can be `(max_mana + 1).min(10)`, and then the `ops::Add` import goes.
+   - `PlayerId::new` and `idx()` duplicate the `pub` field.
+
+Now, closing the WildBolt gap. A random effect can't be tested by asserting one exact outcome, unless you tie the test to a particular seed.
+
+
+> [!question] Quiz
+> You write WildBolt tests. Later, setup gains one extra RNG call (say, shuffling a sideboard), which shifts every seed's random outcomes. Which tests keep passing? Select all.
+>
+> 1. For seeds 7 and 8: WildBolt hits different heroes, so their healths differ.
+> 2. For seed 7: WildBolt hits the caster, so the caster's health becomes 7.
+> 3. Across seeds 0..100: "hits the caster" and "hits the enemy" each happen at least once.
+> 4. For seeds 0..100: the caster's mana drops by 1, and exactly one hero loses exactly 3.
+
+
+> [!question] Quiz — I don't know
+> Your answer: I don't know
+> Correct answer: 3, 4
+>
+> Note: maybe I dont get the question, it depends on how the tests are coded no?
+>
+> Tests that assert what holds for every seed don't care which outcome a given seed produces, so shifting the RNG stream can't break them. "Both outcomes occur in 100 seeds" can in principle fail, but the chance is about $2^{-99}$, so it's safe in practice, and it catches "always hits the enemy" bugs. Tests that pin a seed are testing the RNG's stream, not the card. Any unrelated extra RNG call breaks them, and they fail for reasons that have nothing to do with WildBolt. There's a third option from R1: make the outcome an input, as with OpenSpiel's chance player. Then a test simply picks "chance chose the caster," and no seed is involved. That's a bigger API change, so it's parked for session 07.
+
+
+> [!question] Quiz
+> With seed 7, WildBolt hits the caster. You change setup to call `rng.next_u64()` once more before the first turn. The seed is still 7, and WildBolt's code is unchanged. What can happen to that same WildBolt now?
+>
+> 1. It still hits the caster, since the seed and WildBolt's code are unchanged.
+> 2. It panics, since the RNG state no longer matches the seed stored in `Game`.
+> 3. It may hit the enemy, since its roll now comes later in seed 7's stream.
+
+
+> [!success] Quiz — correct ✓
+> Your answer: 3. It may hit the enemy, since its roll now comes later in seed 7's stream.
+> Correct answer: 3
+>
+> A seed fixes the whole stream of numbers, not the result of any single event. Which number an event gets depends on how many were drawn before it. One extra draw in setup shifts every later event by one position, so WildBolt now reads a different number and may pick the other hero. Nothing panics. `Game` stores only the RNG's current state, not the seed, so there's nothing to "match." This is why tests pin properties ("exactly one hero loses 3") rather than seed-to-outcome pairs.
+
+
+> [!quote] YOU
+
+about your point on the ordering of players, I disagree, u see, turn order holds players in turn order, it is a coincedence that first player is 0 and so on, players always hold players based on the on the idx on their idx, if a order shuffle happens we would only shuffle the turn order and the players vec would stay the same, player 1 would still be player 1 but that does not mean it is the second to play. I did the get_next_player_id because I think the target should be explicit so we dont limit the engine to 2 player games, a "opponent" function doesnt make sense when there are multiples. I implied some suggestions already which broke the api for the tests.
+
+
+> [!abstract] PI
+
+Let me look at what you changed before answering.
+
+
+> [!question] Quiz
+> Two players. Suppose a future rule lets the non-turn player respond, as with your simultaneous-actions idea or a YGO chain. During P0's turn, P1 plays Bolt. Bolt's target is `self.turn_order.get_next_player_id()`. Who gets hit?
+>
+> 1. P1, since the target is the player after P0, whose turn it is.
+> 2. P0, since the target is the player after P1, who cast the Bolt.
+> 3. Nobody, since `apply` rejects a Bolt from the non-turn player.
+
+
+> [!success] Quiz — correct ✓
+> Your answer: 1. P1, since the target is the player after P0, whose turn it is.
+> Correct answer: 1
+>
+> Note: p1 here, I think we should have explicit targetting eventually to avoid this type of bugs
+>
+> `get_next_player_id()` reads the turn cursor, `current_idx + 1`. It never looks at who cast the card. During P0's turn that's P1, so P1 bolts himself. Today "after the turn player" and "after the caster" coincide, because only the turn player can act. Your per-player `apply` and your simultaneous-decisions idea are exactly what break that assumption. Being explicit means being explicit about the caster, with something like `turn_order.next_after(player_id)`. The premise here is that a rule lets P1 act, so "rejected" is ruled out by the question, even though that's what today's `legal_actions` would do.
