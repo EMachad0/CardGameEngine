@@ -67,7 +67,10 @@ fn assert_unlisted_rejected(game: &Game) {
             let result = g.apply(p, a.clone());
             assert_eq!(
                 result,
-                Err(Illegal { player: p, action: a.clone() }),
+                Err(Illegal {
+                    player: p,
+                    action: a.clone()
+                }),
                 "unlisted {a:?} for {p:?} was not rejected"
             );
             assert_eq!(&g, game, "rejected {a:?} for {p:?} changed the game");
@@ -82,9 +85,16 @@ fn assert_listed_accepted_and_deterministic(game: &Game) {
         for a in game.legal_actions(p) {
             let mut first = game.clone();
             let mut second = game.clone();
-            assert_eq!(first.apply(p, a.clone()), Ok(()), "listed {a:?} for {p:?} was rejected");
+            assert_eq!(
+                first.apply(p, a.clone()),
+                Ok(()),
+                "listed {a:?} for {p:?} was rejected"
+            );
             second.apply(p, a.clone()).unwrap();
-            assert_eq!(first, second, "same state + same action gave different games: {a:?}");
+            assert_eq!(
+                first, second,
+                "same state + same action gave different games: {a:?}"
+            );
         }
     }
 }
@@ -93,16 +103,25 @@ fn assert_invariants(game: &Game) {
     for p in PLAYERS {
         let legal = game.legal_actions(p);
         for (i, a) in legal.iter().enumerate() {
-            assert!(!legal[i + 1..].contains(a), "duplicate {a:?} in legal_actions({p:?})");
+            assert!(
+                !legal[i + 1..].contains(a),
+                "duplicate {a:?} in legal_actions({p:?})"
+            );
         }
         assert!(game.mana(p) <= 10, "mana above cap for {p:?}");
     }
 
-    let deciders = PLAYERS.iter().filter(|&&p| !game.legal_actions(p).is_empty()).count();
+    let deciders = PLAYERS
+        .iter()
+        .filter(|&&p| !game.legal_actions(p).is_empty())
+        .count();
     match game.winner() {
         Some(w) => {
             assert_eq!(deciders, 0, "game is over but someone still has actions");
-            assert!(game.health(other(w)) <= 0, "winner declared but loser has health left");
+            assert!(
+                game.health(other(w)) <= 0,
+                "winner declared but loser has health left"
+            );
             assert!(game.health(w) > 0, "winner is dead");
         }
         None => {
@@ -168,7 +187,10 @@ fn random_playout(seed: u64, picker_seed: u64) -> (Game, Vec<(PlayerId, Action)>
         if matches!(a, Action::Play { .. }) {
             expected[p.0] -= 1;
         }
-        assert_eq!(after, expected, "seed {seed}: card count changed wrongly after {p:?} {a:?}");
+        assert_eq!(
+            after, expected,
+            "seed {seed}: card count changed wrongly after {p:?} {a:?}"
+        );
 
         log.push((p, a));
     }
@@ -226,7 +248,10 @@ fn end_turn_starts_the_opponents_turn() {
 
     game.apply(P1, Action::EndTurn).unwrap();
     assert_eq!(game.mana(P0), 2, "max mana grows by one per turn");
-    assert_eq!(game.hand(P0), &[bolt(1), bolt(2), bolt(3), bolt(4), bolt(5)]);
+    assert_eq!(
+        game.hand(P0),
+        &[bolt(1), bolt(2), bolt(3), bolt(4), bolt(5)]
+    );
     assert_actions(&game, P0, &[play(0), play(1), Action::EndTurn]);
 }
 
@@ -248,7 +273,13 @@ fn acting_on_the_opponents_turn_is_rejected_and_changes_nothing() {
 
     for a in [Action::EndTurn, play(0)] {
         let mut g = game.clone();
-        assert_eq!(g.apply(P1, a.clone()), Err(Illegal { player: P1, action: a }));
+        assert_eq!(
+            g.apply(P1, a.clone()),
+            Err(Illegal {
+                player: P1,
+                action: a
+            })
+        );
         assert_eq!(g, game);
     }
 }
@@ -264,7 +295,15 @@ fn unaffordable_and_out_of_range_plays_are_rejected() {
 
 #[test]
 fn forage_offers_only_picks_until_one_is_made() {
-    let deck0 = vec![Card::Forage, bolt(1), bolt(1), bolt(1), bolt(5), bolt(6), bolt(2)];
+    let deck0 = vec![
+        Card::Forage,
+        bolt(1),
+        bolt(1),
+        bolt(1),
+        bolt(5),
+        bolt(6),
+        bolt(2),
+    ];
     let deck1 = vec![bolt(1); 6];
     let mut game = Game::with_deck_order(0, [deck0, deck1]);
 
@@ -280,7 +319,11 @@ fn forage_offers_only_picks_until_one_is_made() {
 
     assert!(game.revealed(P0).is_empty());
     assert_eq!(game.hand(P0), &[bolt(1), bolt(1), bolt(1), bolt(6)]);
-    assert_eq!(game.deck(P0), &[bolt(2), bolt(5)], "unpicked card goes to the bottom");
+    assert_eq!(
+        game.deck(P0),
+        &[bolt(2), bolt(5)],
+        "unpicked card goes to the bottom"
+    );
     assert_actions(&game, P0, &[Action::EndTurn]);
 }
 
@@ -367,7 +410,10 @@ fn applied_returns_a_new_game_and_leaves_the_original_alone() {
 
     assert_eq!(
         game.applied(P1, Action::EndTurn),
-        Err(Illegal { player: P1, action: Action::EndTurn })
+        Err(Illegal {
+            player: P1,
+            action: Action::EndTurn
+        })
     );
 }
 
@@ -398,7 +444,10 @@ fn new_actually_shuffles() {
 fn random_playouts_keep_every_invariant_and_terminate() {
     for seed in 0..200 {
         let (game, log) = random_playout(seed, seed.wrapping_mul(31).wrapping_add(7));
-        assert!(game.winner().is_some(), "seed {seed}: ended without a winner");
+        assert!(
+            game.winner().is_some(),
+            "seed {seed}: ended without a winner"
+        );
         assert!(!log.is_empty());
     }
 }
