@@ -1,4 +1,4 @@
-//! The card containers a player owns: `Deck` (top first) and `Hand` (oldest first).
+//! A player's card containers. `Deck` is ordered top first and `Hand` oldest first.
 
 use std::collections::VecDeque;
 
@@ -14,7 +14,7 @@ impl Deck {
         Self(deck.into())
     }
 
-    /// A copy, top first. A `VecDeque` can't lend one contiguous slice.
+    /// A copy, top first. Through `&self`, a `VecDeque` can't lend one contiguous slice.
     pub(crate) fn to_vec(&self) -> Vec<Card> {
         self.0.iter().copied().collect()
     }
@@ -42,12 +42,12 @@ impl Hand {
         Self(Vec::new())
     }
 
-    /// Appends to the end (newest).
+    /// Appends to the end.
     pub(crate) fn add(&mut self, card: Card) {
         self.0.push(card);
     }
 
-    /// Removes one card; the others keep their order.
+    /// Removes one card. The others keep their order.
     pub(crate) fn remove(&mut self, index: usize) -> Card {
         self.0.remove(index)
     }
@@ -59,13 +59,8 @@ impl Hand {
 
 #[cfg(test)]
 mod tests {
-    use super::{Deck, Hand};
-    use crate::cards::Card;
-    use crate::rng::Rng;
-
-    fn bolt(damage: u8) -> Card {
-        Card::Bolt { damage }
-    }
+    use super::*;
+    use crate::testkit::*;
 
     #[test]
     fn deck_takes_from_the_top_and_puts_on_the_bottom() {

@@ -1,7 +1,7 @@
 //! One player's record inside `Game`: resources, zones, and any pending choice.
 //!
-//! Fields are `pub(super)`: the rules that change them live in `Game`'s
-//! implementation, and nothing outside `game` can see them.
+//! Fields are `pub(super)`, so `Game` can change them and nothing outside
+//! `game` can see them.
 
 use crate::cards::Card;
 use crate::ids::PlayerId;
@@ -40,7 +40,7 @@ impl Player {
         }
     }
 
-    /// Top of the deck to the end of the hand, `count` times.
+    /// Moves the top card to the end of the hand, `count` times.
     /// Each draw from an empty deck costs 1 health instead.
     pub(super) fn draw(&mut self, count: u8) {
         for _ in 0..count {
@@ -68,8 +68,8 @@ impl Player {
         }
     }
 
-    /// Ends the pending pick: returns the chosen card and the rest in reveal order.
-    /// Only valid while a pick is pending; `legal_actions` guarantees that.
+    /// Ends the pending pick. Returns the chosen card and the rest in reveal order.
+    /// Panics if no pick is pending.
     pub(super) fn pick_revealed(&mut self, index: usize) -> (Card, Vec<Card>) {
         let PlayerInteractionState::Picker { mut options } =
             std::mem::take(&mut self.interaction_state)
@@ -83,17 +83,11 @@ impl Player {
 
 #[cfg(test)]
 mod tests {
-    use super::{Player, PlayerInteractionState};
-    use crate::cards::Card;
-    use crate::ids::PlayerId;
-    use crate::zones::Deck;
-
-    fn bolt(damage: u8) -> Card {
-        Card::Bolt { damage }
-    }
+    use super::*;
+    use crate::testkit::*;
 
     fn player_with(deck: Vec<Card>) -> Player {
-        Player::new(PlayerId::new(0), Deck::new(deck))
+        Player::new(P0, Deck::new(deck))
     }
 
     #[test]

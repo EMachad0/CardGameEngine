@@ -32,8 +32,7 @@ impl TurnOrder {
 
 #[cfg(test)]
 mod tests {
-    use super::TurnOrder;
-    use crate::ids::PlayerId;
+    use super::*;
 
     #[test]
     fn seat_zero_goes_first() {

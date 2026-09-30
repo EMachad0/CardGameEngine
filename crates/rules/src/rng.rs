@@ -1,7 +1,6 @@
-//! A tiny deterministic PRNG (SplitMix64).
+//! SplitMix64, a tiny deterministic PRNG.
 //!
-//! Same seed, same sequence, on every machine and every run. It lives inside
-//! `Game`, so its state is part of the game state (node S) and a replay from
+//! Same seed, same sequence, on every machine and every run, so a replay from
 //! the same seed reproduces every random outcome (node R1).
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -23,13 +22,13 @@ impl Rng {
     }
 
     /// An integer in `0..n`. Panics if `n == 0`.
-    /// Uses modulo, so it's very slightly biased. Irrelevant for tiny `n`.
+    /// Modulo biases it slightly toward low values, which doesn't matter for small `n`.
     pub fn below(&mut self, n: usize) -> usize {
         assert!(n > 0, "Rng::below(0)");
         (self.next_u64() % n as u64) as usize
     }
 
-    /// Fisher-Yates shuffle, in place.
+    /// Fisher-Yates shuffle.
     pub fn shuffle<T>(&mut self, items: &mut [T]) {
         for i in (1..items.len()).rev() {
             let j = self.below(i + 1);
@@ -40,7 +39,7 @@ impl Rng {
 
 #[cfg(test)]
 mod tests {
-    use super::Rng;
+    use super::*;
 
     #[test]
     fn matches_reference_splitmix64_output() {

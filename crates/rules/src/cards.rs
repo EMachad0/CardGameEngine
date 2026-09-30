@@ -1,5 +1,4 @@
 //! Printed card data: which cards exist and what they cost.
-//! What a card does when played lives in `game::resolve`.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Card {
@@ -20,7 +19,7 @@ impl Card {
 
 #[cfg(test)]
 mod tests {
-    use super::Card;
+    use super::*;
 
     #[test]
     fn costs_match_the_spec_table() {

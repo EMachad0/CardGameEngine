@@ -1,13 +1,12 @@
 //! Rules core: a deterministic card game state machine. Spec: ../SPEC.md.
 //!
-//! The crate interface is the `pub use` list below and nothing else. Every
-//! other item is `pub(crate)` or narrower, so internals can move freely.
+//! The public API is the `pub use` list below. Every other item is
+//! `pub(crate)` or narrower, so changing one can't break a caller.
 //!
 //! Layout:
 //! - `ids`, `action`, `cards`: public data types.
-//! - `rng`, `turn`, `zones`: modules that own private state behind a small interface.
-//! - `game`: `Game` and its interface. Procedures that need all of `Game`'s
-//!   state live in child modules under `game/`, which can read its private fields.
+//! - `rng`, `turn`, `zones`: types whose fields are private to their module.
+//! - `game`: `Game` and its methods. Its child modules can read `Game`'s private fields.
 
 mod action;
 mod cards;
@@ -16,6 +15,9 @@ mod ids;
 mod rng;
 mod turn;
 mod zones;
+
+#[cfg(test)]
+mod testkit;
 
 pub use action::{Action, Illegal};
 pub use cards::Card;

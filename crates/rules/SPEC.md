@@ -1,6 +1,32 @@
 # Session 01 toy game: spec
 
-The tests in `tests/contract.rs` check this spec. You write everything in `src/lib.rs` except `mod rng`.
+Two kinds of tests check this spec:
+
+- Rule tests cover setup, turns and cards. They sit in the `#[cfg(test)] mod tests` at the bottom of the `src/` file that implements the rule.
+- Contract tests cover legality, rejection and determinism. They live in `tests/contract/` and use only the public API.
+
+## Layout
+
+`src/lib.rs` declares the modules and re-exports the API below. Nothing else is public.
+
+| File | Holds |
+|---|---|
+| `ids.rs` | `PlayerId` |
+| `action.rs` | `Action`, `Illegal` |
+| `cards.rs` | `Card` and its cost |
+| `rng.rs` | `Rng` |
+| `turn.rs` | seat order |
+| `zones.rs` | `Deck`, `Hand` |
+| `game.rs` | `Game` with setup, turn start, `legal_actions`, `apply` and the queries |
+| `game/player.rs` | one player's record |
+| `game/resolve.rs` | what `apply` does once an action is legal: card effects, picks and end of turn |
+| `testkit.rs` | helpers for the in-file tests, built only under `cfg(test)` |
+
+| Test file | Holds |
+|---|---|
+| `tests/contract/support.rs` | action builders, the cost oracle, invariants and the random playout driver |
+| `tests/contract/legality.rs` | P on exact positions |
+| `tests/contract/properties.rs` | R1, L and P over seeded playouts |
 
 ## Rules
 
@@ -39,7 +65,7 @@ The tests in `tests/contract.rs` check this spec. You write everything in `src/l
 
 - `apply(p, a)` is `Ok(())` if and only if `a` is in `legal_actions(p)`.
 - If `apply` returns `Err`, it's `Err(Illegal { player: p, action: a })`, and the game is unchanged.
-- Everything that affects the future lives in `Game` (node S). The core never reads a clock, OS randomness, or a std `HashMap`'s iteration order (node R1).
+- Everything that affects the future lives in `Game` (node S). The core never reads a clock, OS randomness, or a std `HashMap`'s iteration order (node R1). This crate's `clippy.toml` bans `HashMap`, `HashSet`, `Instant::now` and `SystemTime::now`, and the workspace lints make any use of them a clippy error.
 
 ## API
 
@@ -82,4 +108,5 @@ impl Game {
 
 ```sh
 cargo test -p rules
+cargo clippy -p rules --all-targets
 ```

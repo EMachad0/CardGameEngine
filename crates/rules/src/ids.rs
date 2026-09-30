@@ -1,6 +1,6 @@
 //! Identity newtypes.
 
-/// A player's identity, separate from seat order: deck `i` belongs to
+/// A player's identity, separate from seat order. Deck `i` belongs to
 /// `PlayerId::new(i)` no matter who goes first.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PlayerId(usize);

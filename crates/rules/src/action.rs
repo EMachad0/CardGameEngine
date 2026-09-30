@@ -9,8 +9,6 @@ pub enum Action {
     EndTurn,
 }
 
-/// Returned by `Game::apply` for any action not in `legal_actions`.
-/// The game is unchanged when you get one.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Illegal {
     pub player: PlayerId,
