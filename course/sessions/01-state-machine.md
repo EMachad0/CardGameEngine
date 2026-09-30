@@ -651,3 +651,23 @@ The spec and the exact API are in `crates/rules/SPEC.md`. The tests are in `crat
 - `WildBolt` uses `self.rng`. If anything nondeterministic slips in, the determinism check runs every listed action twice on two clones and will catch it.
 
 When everything is green, or you're stuck, say so. I'll review against the spec and today's nodes and then commit the exercise.
+
+
+> [!quote] YOU
+
+finished, wdyt?
+
+
+> [!quote] YOU
+
+I did not write Wildbolt because no test had its behaviour
+
+
+> [!quote] YOU
+
+coninue I had to do a small fix
+
+
+> [!abstract] PI
+
+All green: 3 RNG tests and 17 contract tests, clippy clean, and your `lib.rs` is rustfmt-clean. The rustfmt diffs are all in my test file, which I'll fix. First, a quick check on WildBolt:
