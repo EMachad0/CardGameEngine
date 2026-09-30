@@ -756,3 +756,24 @@ Let me look at what you changed before answering.
 > Note: p1 here, I think we should have explicit targetting eventually to avoid this type of bugs
 >
 > `get_next_player_id()` reads the turn cursor, `current_idx + 1`. It never looks at who cast the card. During P0's turn that's P1, so P1 bolts himself. Today "after the turn player" and "after the caster" coincide, because only the turn player can act. Your per-player `apply` and your simultaneous-decisions idea are exactly what break that assumption. Being explicit means being explicit about the caster, with something like `turn_order.next_after(player_id)`. The premise here is that a rule lets P1 act, so "rejected" is ruled out by the question, even though that's what today's `legal_actions` would do.
+
+
+> [!abstract] PI
+
+The tests and spec are committed (`bbc73e1`). Back to you:
+
+1. **`pub const fn new`** on `PlayerId`. The tests won't compile without it.
+2. **WildBolt:** 3 damage to a random hero, picked with `self.rng`. That turns `wild_bolt_hits_exactly_one_hero_for_three` and `wild_bolt_can_hit_either_hero` green.
+3. **Setup:** `PlayerId::new(i)` in place of `get_player_id_from_turn_index(i)`.
+4. **Bolt's target** keyed off the caster, for example a `turn_order.next_after(player_id)`.
+
+Items 3 and 4 have no tests, and that's deliberate. Nothing in the public API can observe them today, because turn order is never shuffled and only the turn player can cast. They're refactors under green, which is TDD's third step: the existing tests must stay green while you change the structure. A test for them arrives with the first rule that makes them observable.
+
+Your history shows that v1 kept players in a `HashMap<PlayerId, _>`. Did determinism play into removing it? If setup had shuffled decks while iterating that map, `new_is_a_function_of_seed_and_decks` would have caught it: each `HashMap` instance gets its own seed, so two `Game::new(seed, …)` calls in the same process could shuffle the players in different orders.
+
+Once it's green, I'll commit, close session 01 in `COURSE.md`, and set up session 02.
+
+
+> [!quote] YOU
+
+done, hashmap was removed for both determinism and simplicity

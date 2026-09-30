@@ -4,6 +4,9 @@
 //! can construct a state directly). Property tests run seeded random playouts
 //! and check the L/P contract and R1 determinism at every step.
 
+// The spec promises `Card: Clone`, not `Copy`. Cards may carry names or text later.
+#![allow(clippy::clone_on_copy)]
+
 use rules::{Action, Card, Game, Illegal, PlayerId, Rng};
 
 const P0: PlayerId = PlayerId::new(0);
