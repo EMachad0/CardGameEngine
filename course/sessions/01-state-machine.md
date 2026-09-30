@@ -782,3 +782,47 @@ done, hashmap was removed for both determinism and simplicity
 > [!abstract] PI
 
 Session 01's exercise is done. Closing out `COURSE.md` and creating the session 02 log file, since `/md-log` needs the file to exist:
+
+
+> [!abstract] PI
+
+Session 01 is finished and committed (`ab661dd`), and the working tree is clean.
+
+**Your fixes.** All four items are in. `const fn new`, `PlayerId::new(i)` in setup, and a WildBolt that uses `self.rng` all look right. Bolt now targets relative to the caster, which fixes the bug where P1's Bolt could hit P1. One small leftover: `(caster.idx() + 1) % len` treats the identity index as seat order, which is exactly the coupling you argued against. It gives the same result in a 2-player game, so I've parked it until explicit targeting arrives in session 04. The suite is 3 RNG tests and 20 contract tests, all green, clippy clean and fmt clean.
+
+**Covered today:**
+- **R1:** the core is deterministic, and the start state plus the decisions *is* the game.
+- **S:** everything that affects the future lives in `Game`.
+- **L:** `legal_actions` is the only definition of legality.
+- **P:** `apply` is `Ok` only for listed actions, and `Err` changes nothing.
+- **G:** decisions are steps in the interface, not events in the game.
+
+**Recorded in `COURSE.md`:**
+- The knowledge map now includes the seed-as-stream gap, which closed during the session. I also noted that you were right about turn order vs identity.
+- Seven new open threads, each with a target session. Session 02 opens with two of them: the two-dead-heroes case, where your derived `winner()` returns `None`, and your observer-vs-counter design for "costs less per spell."
+
+**To start session 02:**
+```
+/new
+/name 02-definitions-objects
+/md-log course/sessions/02-definitions-objects.md
+continue the course
+```
+I've already created the log file.
+
+One setup note: `.pi/agents/researcher.md` still points at an OpenRouter model this machine has no login for. I used the general-purpose agent for fact checks today. If you want the researcher back, change its `model:` line to a provider you're logged into.
+
+
+> [!quote] YOU
+
+I asked to change the .pi agents to sonnet 5.5 but I think it should be opus 5.5 can u change?
+
+
+> [!abstract] PI
+
+The file `researcher.md` shows two changed lines, not one, so I'm checking the other one:
+
+
+> [!abstract] PI
+
+It still fails with the OpenRouter error. Either the extension cached the agent definitions when the session started, or it's reading a different `researcher.md`. Checking which:
