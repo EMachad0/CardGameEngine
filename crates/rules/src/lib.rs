@@ -1,14 +1,14 @@
 //! Rules core. Session 01 toy game: see ../SPEC.md.
 
 mod rng;
-use std::{collections::VecDeque, ops::Add};
+use std::collections::VecDeque;
 
 pub use rng::Rng;
 
 // Yours from here: PlayerId, Card, Action, Illegal, Game, and the methods in SPEC.md.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct PlayerId(pub usize);
+pub struct PlayerId(usize);
 
 impl PlayerId {
     pub fn new(idx: usize) -> Self {
@@ -81,7 +81,7 @@ impl Deck {
         Self(deck.into())
     }
 
-    pub fn as_slice(&self) -> Vec<Card> {
+    pub fn to_vec(&self) -> Vec<Card> {
         self.0.iter().cloned().collect::<Vec<_>>()
     }
 
@@ -272,7 +272,7 @@ impl Game {
     fn start_turn(&mut self) {
         let current_player_id = self.turn_order.get_current_player_id();
         let player = self.get_player_mut(current_player_id);
-        player.max_mana = player.max_mana.add(1).min(10);
+        player.max_mana = (player.max_mana + 1).min(10);
         player.mana = player.max_mana;
         player.draw(1);
     }
@@ -280,7 +280,9 @@ impl Game {
     fn apply_action(&mut self, player_id: PlayerId, action: Action) {
         match action {
             Action::Play { hand_index } => {
-                let card = self.get_player_mut(player_id).hand.remove(hand_index);
+                let player = self.get_player_mut(player_id);
+                let card = player.hand.remove(hand_index);
+                player.mana -= card.mana_cost();
                 self.apply_card(player_id, card);
             }
             Action::Pick { index } => {
@@ -301,9 +303,6 @@ impl Game {
     fn apply_card(&mut self, player_id: PlayerId, card: Card) {
         match card {
             Card::Bolt { damage } => {
-                let player = self.get_player_mut(player_id);
-                player.mana -= card.mana_cost();
-
                 let target_player_id = self.turn_order.get_next_player_id();
                 let target_player = self.get_player_mut(target_player_id);
                 target_player.health -= damage as i32;
@@ -312,7 +311,6 @@ impl Game {
             Card::Forage => {
                 let player = self.get_player_mut(player_id);
                 player.reveal(2);
-                player.mana -= card.mana_cost();
             }
         }
     }
@@ -364,7 +362,7 @@ impl Game {
     }
 
     pub fn deck(&self, player_id: PlayerId) -> Vec<Card> {
-        self.get_player(player_id).deck.as_slice()
+        self.get_player(player_id).deck.to_vec()
     }
 
     pub fn mana(&self, player_id: PlayerId) -> u8 {

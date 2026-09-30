@@ -46,6 +46,14 @@ fn candidate_actions(game: &Game) -> Vec<Action> {
     all
 }
 
+/// Card costs per SPEC.md. Deliberately written out here, not read from the core.
+fn cost(card: &Card) -> u8 {
+    match card {
+        Card::Bolt { damage } => *damage,
+        Card::WildBolt | Card::Forage => 1,
+    }
+}
+
 fn card_count(game: &Game, p: PlayerId) -> usize {
     game.hand(p).len() + game.deck(p).len() + game.revealed(p).len()
 }
@@ -178,6 +186,11 @@ fn random_playout(seed: u64, picker_seed: u64) -> (Game, Vec<(PlayerId, Action)>
 
         let (p, a) = options[picker.below(options.len())].clone();
         let before = [card_count(&game, P0), card_count(&game, P1)];
+        let mana_before = game.mana(p);
+        let played = match a {
+            Action::Play { hand_index } => Some(game.hand(p)[hand_index].clone()),
+            _ => None,
+        };
         game.apply(p, a.clone())
             .unwrap_or_else(|e| panic!("seed {seed}: listed action rejected: {e:?}"));
         let after = [card_count(&game, P0), card_count(&game, P1)];
@@ -191,6 +204,15 @@ fn random_playout(seed: u64, picker_seed: u64) -> (Game, Vec<(PlayerId, Action)>
             after, expected,
             "seed {seed}: card count changed wrongly after {p:?} {a:?}"
         );
+
+        // Playing any card pays exactly its cost.
+        if let Some(card) = played {
+            assert_eq!(
+                game.mana(p),
+                mana_before - cost(&card),
+                "seed {seed}: playing {card:?} didn't pay its cost"
+            );
+        }
 
         log.push((p, a));
     }
