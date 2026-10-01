@@ -4,7 +4,11 @@
 //! what it lists, and an `Err` leaves the game unchanged. Child modules:
 //! - `player`: one player's resources, zones and pending choice.
 //! - `resolve`: the mutation half of `apply`.
+//! - `derived`: attack, health and cost, computed on read.
+//! - `check`: the state check at the end of every `apply`.
 
+mod check;
+mod derived;
 mod player;
 mod resolve;
 
@@ -157,43 +161,66 @@ impl Game {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::cards::{BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK, WILD_BOLT};
     use crate::testkit::*;
+    use crate::{Action, DefId, Game, Illegal, ObjectId, Outcome};
 
-    fn sample_deck() -> Vec<Card> {
+    fn sample_deck() -> Vec<DefId> {
         vec![
-            bolt(1),
-            bolt(2),
-            Card::Forage,
-            bolt(3),
-            Card::WildBolt,
-            bolt(1),
-            Card::Forage,
-            bolt(2),
-            bolt(4),
-            Card::WildBolt,
+            SPARK, BOLT, FORAGE, RECRUIT, WILD_BOLT, CAPTAIN, BLAST, GIANT, SPARK, RECRUIT,
         ]
     }
 
     #[test]
     fn setup_draws_three_each_then_starts_player_0s_turn() {
-        let deck0 = vec![bolt(1), bolt(2), bolt(3), bolt(4), bolt(5)];
-        let deck1 = vec![bolt(1), bolt(1), bolt(1), bolt(2), bolt(2)];
+        let deck0 = vec![SPARK, BOLT, RECRUIT, CAPTAIN, BLAST];
+        let deck1 = vec![SPARK, SPARK, SPARK, BOLT, BOLT];
         let game = Game::with_deck_order(0, [deck0, deck1]);
 
-        assert_eq!(game.hand(P0), &[bolt(1), bolt(2), bolt(3), bolt(4)]);
-        assert_eq!(game.deck(P0), &[bolt(5)]);
-        assert_eq!(game.hand(P1), &[bolt(1), bolt(1), bolt(1)]);
-        assert_eq!(game.deck(P1), &[bolt(2), bolt(2)]);
+        assert_eq!(hand_defs(&game, P0), [SPARK, BOLT, RECRUIT, CAPTAIN]);
+        assert_eq!(deck_defs(&game, P0), [BLAST]);
+        assert_eq!(hand_defs(&game, P1), [SPARK, SPARK, SPARK]);
+        assert_eq!(deck_defs(&game, P1), [BOLT, BOLT]);
         assert_eq!(game.mana(P0), 1);
         assert_eq!(game.mana(P1), 0);
-        assert_eq!(game.health(P0), 10);
-        assert_eq!(game.health(P1), 10);
-        assert_eq!(game.winner(), None);
-        assert!(game.revealed(P0).is_empty());
+        assert_eq!(game.hero_health(P0), 10);
+        assert_eq!(game.hero_health(P1), 10);
+        assert_eq!(game.outcome(), None);
+        for p in [P0, P1] {
+            assert!(game.revealed(p).is_empty());
+            assert!(game.board(p).is_empty());
+        }
 
-        assert_actions(&game, P0, &[play(0), Action::EndTurn]);
+        let spark = in_hand(&game, P0, SPARK);
+        assert_actions(&game, P0, &[play(spark), Action::EndTurn]);
         assert_actions(&game, P1, &[]);
+    }
+
+    #[test]
+    fn copies_of_one_card_are_distinct_objects() {
+        let deck = vec![RECRUIT; 8];
+        let game = Game::with_deck_order(0, [deck.clone(), deck]);
+
+        let mut ids: Vec<ObjectId> = [P0, P1]
+            .into_iter()
+            .flat_map(|p| [game.hand(p), game.deck(p)].concat())
+            .collect();
+        assert_eq!(ids.len(), 16);
+        ids.sort();
+        ids.dedup();
+        assert_eq!(ids.len(), 16, "two cards share an ObjectId");
+    }
+
+    #[test]
+    fn each_copy_in_hand_is_its_own_play_action() {
+        let deck = vec![RECRUIT; 8];
+        let mut game = Game::with_deck_order(0, [deck.clone(), deck]);
+        turn_with_mana(&mut game, P0, 2);
+
+        let mut expected: Vec<Action> = game.hand(P0).into_iter().map(play).collect();
+        assert_eq!(expected.len(), 5);
+        expected.push(Action::EndTurn);
+        assert_actions(&game, P0, &expected);
     }
 
     #[test]
@@ -201,96 +228,70 @@ mod tests {
         let unshuffled = Game::with_deck_order(0, [sample_deck(), sample_deck()]);
         let differs = (0..20).any(|seed| {
             let g = Game::new(seed, [sample_deck(), sample_deck()]);
-            g.hand(P0) != unshuffled.hand(P0) || g.deck(P0) != unshuffled.deck(P0)
+            hand_defs(&g, P0) != hand_defs(&unshuffled, P0)
+                || deck_defs(&g, P0) != deck_defs(&unshuffled, P0)
         });
         assert!(differs, "20 seeds and never a different deck order");
     }
 
     #[test]
     fn end_turn_starts_the_opponents_turn() {
-        let deck = vec![bolt(1), bolt(2), bolt(3), bolt(4), bolt(5), bolt(6)];
+        let deck = vec![SPARK, SPARK, BOLT, BOLT, RECRUIT, RECRUIT];
         let mut game = Game::with_deck_order(0, [deck.clone(), deck]);
 
         game.apply(P0, Action::EndTurn).unwrap();
         assert_eq!(game.mana(P1), 1);
-        assert_eq!(game.hand(P1), &[bolt(1), bolt(2), bolt(3), bolt(4)]);
+        assert_eq!(hand_defs(&game, P1), [SPARK, SPARK, BOLT, BOLT]);
+        let hand = game.hand(P1);
         assert_actions(&game, P0, &[]);
-        assert_actions(&game, P1, &[play(0), Action::EndTurn]);
+        assert_actions(&game, P1, &[play(hand[0]), play(hand[1]), Action::EndTurn]);
 
         game.apply(P1, Action::EndTurn).unwrap();
         assert_eq!(game.mana(P0), 2, "max mana grows by one per turn");
-        assert_eq!(
-            game.hand(P0),
-            &[bolt(1), bolt(2), bolt(3), bolt(4), bolt(5)]
-        );
-        assert_actions(&game, P0, &[play(0), play(1), Action::EndTurn]);
+        assert_eq!(hand_defs(&game, P0), [SPARK, SPARK, BOLT, BOLT, RECRUIT]);
+        let mut expected: Vec<Action> = game.hand(P0).into_iter().map(play).collect();
+        expected.push(Action::EndTurn);
+        assert_actions(&game, P0, &expected);
     }
 
     #[test]
     fn mana_caps_at_ten() {
-        let deck = vec![bolt(9); 20];
+        let deck = vec![BOLT; 30];
         let mut game = Game::with_deck_order(0, [deck.clone(), deck]);
-        for _ in 0..12 {
-            game.apply(P0, Action::EndTurn).unwrap();
-            game.apply(P1, Action::EndTurn).unwrap();
+        for _ in 0..24 {
+            end_turn(&mut game);
         }
         assert_eq!(game.mana(P0), 10);
     }
 
     #[test]
     fn drawing_from_an_empty_deck_deals_one_damage() {
-        let deck1 = vec![bolt(1), bolt(1), bolt(1)];
-        let mut game = Game::with_deck_order(0, [vec![bolt(1); 6], deck1]);
+        let mut game = Game::with_deck_order(0, [vec![BOLT; 6], vec![SPARK; 3]]);
 
         game.apply(P0, Action::EndTurn).unwrap();
-        assert_eq!(game.health(P1), 9);
+        assert_eq!(game.hero_health(P1), 9);
         assert_eq!(game.hand(P1).len(), 3);
     }
 
     #[test]
-    fn lethal_ends_the_game_mid_turn() {
-        // Player 1's deck runs out at setup, so they take 1 fatigue each turn.
-        // Player 0 plays Bolt 9 as soon as mana reaches 9.
-        let deck0 = vec![bolt(9); 10];
-        let deck1 = vec![bolt(9); 3];
-        let mut game = Game::with_deck_order(0, [deck0, deck1]);
-
-        for _ in 0..8 {
-            game.apply(P0, Action::EndTurn).unwrap();
-            game.apply(P1, Action::EndTurn).unwrap();
-        }
-        assert_eq!(game.health(P1), 2);
-        assert_eq!(game.mana(P0), 9);
-
-        game.apply(P0, play(0)).unwrap();
-
-        assert_eq!(game.winner(), Some(P0));
+    fn fatigue_at_turn_start_can_end_the_game() {
+        let mut game = Game::with_deck_order(0, [vec![BOLT; 30], vec![BOLT; 3]]);
+        end_turns_until_over(&mut game);
+        assert_eq!(game.outcome(), Some(Outcome::Won(P0)));
+        assert!(game.hero_health(P1) <= 0);
         assert_actions(&game, P0, &[]);
         assert_actions(&game, P1, &[]);
     }
 
     #[test]
-    fn fatigue_at_turn_start_can_end_the_game() {
-        let mut game = Game::with_deck_order(0, [vec![bolt(9); 30], vec![bolt(9); 3]]);
-        while game.winner().is_none() {
-            game.apply(P0, Action::EndTurn).unwrap();
-            if game.winner().is_none() {
-                game.apply(P1, Action::EndTurn).unwrap();
-            }
-        }
-        assert_eq!(game.winner(), Some(P0));
-        assert!(game.health(P1) <= 0);
-    }
-
-    #[test]
     fn applied_returns_a_new_game_and_leaves_the_original_alone() {
-        let deck = vec![bolt(1); 6];
+        let deck = vec![SPARK; 6];
         let game = Game::with_deck_order(0, [deck.clone(), deck]);
         let snapshot = game.clone();
 
-        let next = game.applied(P0, play(0)).unwrap();
+        let next = game.applied(P0, play(in_hand(&game, P0, SPARK))).unwrap();
         assert_eq!(game, snapshot);
-        assert_eq!(next.health(P1), 9);
+        assert_eq!(next.hero_health(P1), 9);
 
         assert_eq!(
             game.applied(P1, Action::EndTurn),

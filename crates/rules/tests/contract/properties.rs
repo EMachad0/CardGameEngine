@@ -1,8 +1,8 @@
-//! Determinism (R1) and the L and P contract, over seeded random playouts.
+//! R1, L, P, B and C over seeded random playouts.
 
 use rules::Game;
 
-use crate::support::*;
+use crate::playout::{random_playout, sample_deck};
 
 #[test]
 fn new_is_a_function_of_seed_and_decks() {
@@ -18,8 +18,8 @@ fn random_playouts_keep_every_invariant_and_terminate() {
     for seed in 0..200 {
         let (game, log) = random_playout(seed, seed.wrapping_mul(31).wrapping_add(7));
         assert!(
-            game.winner().is_some(),
-            "seed {seed}: ended without a winner"
+            game.outcome().is_some(),
+            "seed {seed}: ended without an outcome"
         );
         assert!(!log.is_empty());
     }

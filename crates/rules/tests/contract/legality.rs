@@ -1,16 +1,19 @@
 //! P on exact positions. An unlisted action returns the exact `Illegal` and
 //! leaves the game unchanged.
 
-use rules::{Action, Card, Game, Illegal};
+use rules::cards::{BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK};
+use rules::{Action, Game, Illegal, Outcome};
 
 use crate::support::*;
 
 #[test]
 fn acting_on_the_opponents_turn_is_rejected_and_changes_nothing() {
-    let deck = vec![bolt(1); 6];
+    let deck = vec![SPARK; 6];
     let game = Game::with_deck_order(0, [deck.clone(), deck]);
+    let own_card = game.hand(P1)[0];
+    let opponents_card = game.hand(P0)[0];
 
-    for a in [Action::EndTurn, play(0)] {
+    for a in [Action::EndTurn, play(own_card), play(opponents_card)] {
         let mut g = game.clone();
         assert_eq!(
             g.apply(P1, a.clone()),
@@ -24,42 +27,55 @@ fn acting_on_the_opponents_turn_is_rejected_and_changes_nothing() {
 }
 
 #[test]
-fn unaffordable_and_out_of_range_plays_are_rejected() {
-    let deck = vec![bolt(1), bolt(5), bolt(5), bolt(5), bolt(5)];
+fn unaffordable_cards_and_cards_outside_the_hand_are_rejected() {
+    let deck = vec![SPARK, BOLT, CAPTAIN, BLAST, GIANT];
     let game = Game::with_deck_order(0, [deck.clone(), deck]);
 
-    assert_actions(&game, P0, &[play(0), Action::EndTurn]);
+    assert_actions(
+        &game,
+        P0,
+        &[play(in_hand(&game, P0, SPARK)), Action::EndTurn],
+    );
     assert_unlisted_rejected(&game);
 }
 
 #[test]
 fn a_pending_pick_rejects_everything_else() {
-    let deck0 = vec![
-        Card::Forage,
-        bolt(1),
-        bolt(1),
-        bolt(1),
-        bolt(5),
-        bolt(6),
-        bolt(2),
-    ];
-    let mut game = Game::with_deck_order(0, [deck0, vec![bolt(1); 6]]);
-    game.apply(P0, play(0)).unwrap();
+    let deck0 = vec![FORAGE, SPARK, SPARK, SPARK, RECRUIT, CAPTAIN, BOLT];
+    let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
+    game.apply(P0, play(in_hand(&game, P0, FORAGE))).unwrap();
 
-    assert_actions(&game, P0, &[pick(0), pick(1)]);
+    let revealed = game.revealed(P0);
+    assert_actions(&game, P0, &[pick(revealed[0]), pick(revealed[1])]);
     assert_unlisted_rejected(&game);
 }
 
 #[test]
-fn a_finished_game_rejects_everything() {
-    // Player 1 fatigues to 2 health, then player 0's Bolt 9 ends it.
-    let mut game = Game::with_deck_order(0, [vec![bolt(9); 10], vec![bolt(9); 3]]);
-    for _ in 0..8 {
-        game.apply(P0, Action::EndTurn).unwrap();
-        game.apply(P1, Action::EndTurn).unwrap();
-    }
-    game.apply(P0, play(0)).unwrap();
+fn a_card_that_left_every_zone_cant_be_played_again() {
+    let deck = vec![SPARK; 8];
+    let mut game = Game::with_deck_order(0, [deck.clone(), deck]);
+    let spark = in_hand(&game, P0, SPARK);
+    game.apply(P0, play(spark)).unwrap();
+    end_turn(&mut game);
+    end_turn(&mut game);
+    assert_eq!(game.def(spark), None);
 
-    assert_eq!(game.winner(), Some(P0));
+    let before = game.clone();
+    assert_eq!(
+        game.apply(P0, play(spark)),
+        Err(Illegal {
+            player: P0,
+            action: play(spark)
+        })
+    );
+    assert_eq!(game, before);
+}
+
+#[test]
+fn a_finished_game_rejects_everything() {
+    let mut game = Game::with_deck_order(0, [vec![BOLT; 30], vec![BOLT; 3]]);
+    end_turns_until_over(&mut game);
+
+    assert_eq!(game.outcome(), Some(Outcome::Won(P0)));
     assert_unlisted_rejected(&game);
 }
