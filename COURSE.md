@@ -48,6 +48,14 @@ Session 02 nodes (all landed on the node check):
 - Caching: he picked per-minion event-driven invalidation (miss). His model was "every change emits an event, so recache on every change." The dependent-values gap was shown with a silenced Captain leaving a stale Recruit, and that landed. He then asked whether a full rebuild is too costly. Answered with rough costs (about 100 steps per rebuild, and caching only pays when reads far outnumber actions). Ranking: no cache, then a lazy full rebuild (dirty flag), then incremental only with a real dependency graph.
 - State checks: death is committed because it has consequences, and deriving it creates a fixed-point cycle. Collect then commit; loop to a fixed point. Outcome needs `Draw`. With N players, elimination must be committed, because a derived one is undone by a heal.
 
+Session 02 exercise design (guided by questions, at his request, not presented):
+- Got these right: the `DefId` candidates (index, enum, `&'static str`; not `String`); per-field `match` scatters a card's data; nested `Kind` instead of a flat struct (his own concern: "atk on spells"); an enum can't name a file-defined card. His note: an index breaks on reorder and a name on rename. He proposed UUIDs, with the codes known at compile time.
+- Missed load-time validation: he picked "catch it when the effect resolves" and over-applied node B's stale-ID `None` to definitions. Fixed by splitting runtime staleness (`Option`) from fixed data (validate at load).
+- Raised hot reload mid-game, which led to pinning the data version (R2). On "where does each game's table live" he proposed append-only versioned definitions in one table (the version goes in the `DefId`). That's valid, and I conceded. The per-game `Arc<CardDb>` alternative is deferred to session H.
+- Gap: he didn't know effects can be data ("is there a point of cards as data if effects can't be data?"). Taught that code defines the vocabulary (enum plus interpreter) and data composes it (variant plus numbers). The draw-vs-damage check landed.
+- Chose `DefId(&'static str)` stable codes, `CardDef` with a nested `Kind`, behavior as `Effect`/`CostRule`/`Aura` data, and a `static` table behind one `def(id)` lookup.
+- Process: the quiz UI doesn't show the prose above it. Put any code the question depends on into the question or its `details`.
+
 Solid:
 - Card definition (never changes) vs instance with its own ID and modifiers.
 - Non-commuting modifiers ("set to 1" vs "+2") need an ordering rule. Noted himself that 1 vs 3 is a design choice.
@@ -76,6 +84,7 @@ Rust: knows traits, generics, lifetimes, but they don't come naturally when desi
 - Effects: `enum` by default (open to a code escape hatch later).
 - Two IDs: stable card ID and per-zone object ID.
 - Core API (session 01): `legal_actions(&self, player) -> Vec<Action>`, `apply(&mut self, player, action) -> Result<(), Illegal>`, and a pure `applied(&self, …) -> Result<Game, Illegal>` wrapper. There's no `current_player()`: whoever has a non-empty list is being waited on. Crate `rules` in a `crates/` workspace. The seeded SplitMix64 `rules::Rng` lives in `Game`. Hand indices are the card identity until session 02, deliberately. `PlayerId` has a private field, with `const fn new(usize)` and `idx()`. `deck()` returns `Vec<Card>`. Cost payment lives once in the `Play` arm, not per card.
+- Session 02: `DefId(&'static str)` stable codes; `CardDef { code, name, cost, kind }` with `Kind::Spell { effect } | Kind::Minion { attack, health, aura }`; mechanics as enums (`Effect`, `CostRule`) interpreted by code; a `static` table behind one `def(id)` lookup for now. `Outcome { Won(PlayerId), Draw }`. `Action::{Play, Pick}` carry `ObjectId`. Tests accept either hand to board ID policy.
 - Tooling wanted: card data files with validation, generated rules text, test tooling (scenario DSL, replays, fuzzer), headless CLI with a machine-readable protocol so bots and LLM agents can playtest, a visual editor, hot reload.
 
 ## Open threads
@@ -88,7 +97,9 @@ Rust: knows traits, generics, lifetimes, but they don't come naturally when desi
 - Minor: Bolt targets `(caster.idx() + 1) % len`, which treats the identity index as seat order. That contradicts his own identity vs turn-order split. Mention it when targeting comes up.
 - Return vs push for events. (node D)
 - "Costs (1) less per spell cast this turn": his observer design (a -1 modifier on the card) vs a counter in state. Which one handles a copy drawn after the spells? Open session 02 (C) with this.
-- Hand index vs ID: open session 02 (B) with a failing case, like an effect that remembers a card or a log entry after the hand shifts.
+- ~~Hand index vs ID~~: done in session 02 (Lure).
+- Session H: versioned definitions in one append-only table (his design) vs a per-game `Arc<CardDb>` snapshot. Hot reload as a recorded input. Load-time validation of card codes referenced in data. Stable codes in files vs runtime index.
+- Session 02 review: ask about where objects live (per-zone `Vec` vs arena), the hand to board ID policy, counter vs list for spells cast, derived vs committed outcome, hero damage vs health, and the per-field `match` in the old `Card::mana_cost`.
 
 ## Dependency map
 
@@ -149,7 +160,7 @@ graph TD
 |---|-------|-------|--------|
 | 00 | probe | Knowledge probe and plan | done |
 | 01 | R1, A | Game as a state machine, `legal_actions` + `apply` | done (exercise green: 3 rng + 20 contract tests) |
-| 02 | R2, B, C | Definitions, objects, IDs; derived stats and state checks | next |
+| 02 | R2, B, C | Definitions, objects, IDs; derived stats and state checks | nodes done; exercise tests committed (`4d459e0`), learner implementing |
 | 03 | D | Events out; return vs push | |
 | 04 | R3, E | Effects as data | |
 | 05 | F | Triggers, replacements, statics | |
