@@ -25,8 +25,7 @@ pub enum CardDefKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MonsterCardDef {
     pub health: i32,
-    pub atk: i32,
-    pub def: i32,
+    pub attack: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

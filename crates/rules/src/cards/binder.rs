@@ -33,7 +33,7 @@ impl Binder {
 
     pub fn attack(&self, def_id: DefId) -> Option<i32> {
         match &self.get(def_id).kind {
-            CardDefKind::Monster(monster_card_def) => Some(monster_card_def.atk),
+            CardDefKind::Monster(monster_card_def) => Some(monster_card_def.attack),
             CardDefKind::Spell(_spell_card_def) => None,
         }
     }

@@ -86,9 +86,7 @@ impl Game {
         let effects = self
             .on_play_effect(object_id)
             .expect("unexpected lookup error")
-            .iter()
-            .cloned()
-            .collect::<Vec<_>>();
+            .to_vec();
 
         effects.into_iter().for_each(|e| {
             self.apply_effect(player_id, e);
@@ -139,7 +137,7 @@ impl Game {
 
     /// Moves the top card to the end of the hand, `count` times.
     /// Each draw from an empty deck costs 1 health instead.
-    pub fn draw(&mut self, player_id: PlayerId, count: usize) {
+    pub(crate) fn draw(&mut self, player_id: PlayerId, count: usize) {
         let player = self.get_player_mut(player_id);
         for _ in 0..count {
             if let Some(card) = player.zones.deck.pop_front() {

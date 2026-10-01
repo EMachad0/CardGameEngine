@@ -38,10 +38,6 @@ impl Deck {
 pub(crate) struct Hand(Vec<ObjectId>);
 
 impl Hand {
-    pub(crate) fn empty() -> Self {
-        Self(Vec::new())
-    }
-
     /// Appends to the end.
     pub(crate) fn add(&mut self, card: ObjectId) {
         self.0.push(card);
@@ -57,7 +53,7 @@ impl Hand {
     }
 
     pub(crate) fn contains(&self, object_id: &ObjectId) -> bool {
-        self.0.contains(&object_id)
+        self.0.contains(object_id)
     }
 
     fn position(&self, object_id: ObjectId) -> Option<usize> {
@@ -71,12 +67,6 @@ pub(crate) struct Board {
 }
 
 impl Board {
-    pub(crate) fn empty() -> Self {
-        Self {
-            monsters: Vec::new(),
-        }
-    }
-
     /// Appends to the end.
     pub(crate) fn add(&mut self, card: ObjectId) {
         self.monsters.push(card);
@@ -98,7 +88,7 @@ impl Board {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct Zones {
+pub(crate) struct Zones {
     pub hand: Hand,
     pub deck: Deck,
     pub board: Board,

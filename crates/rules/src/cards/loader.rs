@@ -63,6 +63,19 @@ impl CardDefLoader {
                     count: 2,
                 }]),
             },
+            CardDef {
+                id: RECRUIT,
+                name: "Recruit".to_string(),
+                kind: CardDefKind::Monster(MonsterCardDef {
+                    health: 1,
+                    attack: 1,
+                }),
+                mana_cost: 1,
+                on_play_effect: EffectSequence(vec![Effect::RevealToPicker {
+                    targeteer: PlayerTargeteer::Caster,
+                    count: 2,
+                }]),
+            },
         ]
     }
 
@@ -71,7 +84,7 @@ impl CardDefLoader {
 
         // TODO: strengthen this valition
         for def_id in [FORAGE, BOLT, WILD_BOLT] {
-            if defs.iter().find(|def| def.id == def_id).is_none() {
+            if !defs.iter().any(|def| def.id == def_id) {
                 return Err(CardDefNotFound(def_id));
             }
         }

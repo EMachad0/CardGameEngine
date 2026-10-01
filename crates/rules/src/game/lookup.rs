@@ -1,8 +1,8 @@
 //! Attack, health and cost, computed on read from history and printed data (node C).
 
 use crate::{
-    Game, ObjectId, PlayerId,
-    cards::{CardDefNotFound, Effect},
+    DefId, Game, ObjectId, PlayerId,
+    cards::{CardDefNotFound, Effect, Object},
 };
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
@@ -20,11 +20,18 @@ impl Game {
         self.get_player(player_id).health
     }
 
-    pub fn mana_cost(&self, object_id: ObjectId) -> LookupResult<Option<u8>> {
-        let obj = self
-            .objects
+    fn object(&self, object_id: ObjectId) -> LookupResult<&Object> {
+        self.objects
             .get(object_id)
-            .ok_or(LookupError::ObjectNotFound(object_id))?;
+            .ok_or(LookupError::ObjectNotFound(object_id))
+    }
+
+    pub fn def_id(&self, object_id: ObjectId) -> LookupResult<DefId> {
+        self.object(object_id).map(|obj| obj.def_id)
+    }
+
+    pub fn mana_cost(&self, object_id: ObjectId) -> LookupResult<Option<u8>> {
+        let obj = self.object(object_id)?;
         if !self
             .get_player(obj.player_id)
             .zones
@@ -39,26 +46,17 @@ impl Game {
     }
 
     pub fn health(&self, object_id: ObjectId) -> LookupResult<Option<i32>> {
-        let obj = self
-            .objects
-            .get(object_id)
-            .ok_or(LookupError::ObjectNotFound(object_id))?;
+        let obj = self.object(object_id)?;
         Ok(self.binder.health(obj.def_id))
     }
 
     pub fn attack(&self, object_id: ObjectId) -> LookupResult<Option<i32>> {
-        let obj = self
-            .objects
-            .get(object_id)
-            .ok_or(LookupError::ObjectNotFound(object_id))?;
+        let obj = self.object(object_id)?;
         Ok(self.binder.attack(obj.def_id))
     }
 
     pub fn on_play_effect(&self, object_id: ObjectId) -> LookupResult<&[Effect]> {
-        let obj = self
-            .objects
-            .get(object_id)
-            .ok_or(LookupError::ObjectNotFound(object_id))?;
+        let obj = self.object(object_id)?;
         Ok(self.binder.on_play_effect(obj.def_id))
     }
 }

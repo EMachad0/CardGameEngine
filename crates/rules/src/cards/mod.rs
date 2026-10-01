@@ -8,4 +8,4 @@ pub use definition::{DefId, Effect, PlayerTargeteer};
 pub use loader::{
     BLAST, BOLT, CAPTAIN, CardDefLoader, CardDefNotFound, FORAGE, GIANT, RECRUIT, SPARK, WILD_BOLT,
 };
-pub use object::{ObjectBag, ObjectId, Object};
+pub use object::{Object, ObjectBag, ObjectId};
