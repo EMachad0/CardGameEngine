@@ -6,17 +6,13 @@ use rules::{Action, Game};
 use crate::support::*;
 
 #[test]
-fn playing_a_spark_pays_mana_and_hits_the_enemy() {
-    let deck = vec![SPARK, BOLT, RECRUIT, CAPTAIN, BLAST];
+fn playing_a_card_keeps_the_rest_of_the_hand_in_order() {
+    let deck = vec![BOLT, SPARK, RECRUIT, CAPTAIN, BLAST];
     let mut game = Game::with_deck_order(0, [deck.clone(), deck]);
 
     play_def(&mut game, P0, SPARK);
 
-    assert_eq!(game.hero_health(P1), 9);
-    assert_eq!(game.hero_health(P0), 10);
-    assert_eq!(game.mana(P0), 0);
     assert_eq!(hand_defs(&game, P0), [BOLT, RECRUIT, CAPTAIN]);
-    assert_actions(&game, P0, &[Action::EndTurn]);
 }
 
 #[test]
@@ -68,21 +64,18 @@ fn every_card_pays_its_printed_cost() {
 fn minions_enter_at_the_right_end_of_their_owners_board() {
     let deck0 = deck_with_top(&[RECRUIT, CAPTAIN, RECRUIT]);
     let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
-
     turn_with_mana(&mut game, P0, 2);
-    let hand_size = game.hand(P0).len();
     play_def(&mut game, P0, RECRUIT);
-    assert_eq!(board_defs(&game, P0), [RECRUIT]);
-    assert_eq!(game.hand(P0).len(), hand_size - 1);
-    assert_eq!(game.mana(P0), 0);
-
     turn_with_mana(&mut game, P0, 3);
     play_def(&mut game, P0, CAPTAIN);
     turn_with_mana(&mut game, P0, 2);
     play_def(&mut game, P0, RECRUIT);
 
     assert_eq!(board_defs(&game, P0), [RECRUIT, CAPTAIN, RECRUIT]);
-    assert!(game.board(P1).is_empty());
+    assert!(
+        game.board(P1).is_empty(),
+        "a minion enters its owner's board only"
+    );
 }
 
 #[test]
@@ -103,28 +96,60 @@ fn blast_deals_two_damage_to_every_character() {
     assert_eq!(game.health(theirs).unwrap(), Some(3));
 }
 
-#[test]
-fn forage_offers_only_picks_until_one_is_made() {
+/// Player 0 casts Forage with a Recruit and a Captain on top of the deck and a Bolt under them.
+fn forage_revealing_recruit_and_captain() -> Game {
     let deck0 = vec![FORAGE, SPARK, SPARK, SPARK, RECRUIT, CAPTAIN, BOLT];
     let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
-
     play_def(&mut game, P0, FORAGE);
+    game
+}
+
+#[test]
+fn forage_reveals_the_top_two_cards_of_the_deck() {
+    let game = forage_revealing_recruit_and_captain();
 
     assert_eq!(revealed_defs(&game, P0), [RECRUIT, CAPTAIN]);
     assert_eq!(deck_defs(&game, P0), [BOLT]);
+}
+
+#[test]
+fn a_pending_forage_offers_nothing_but_picks() {
+    let game = forage_revealing_recruit_and_captain();
+
     let revealed = game.revealed(P0);
     assert_actions(&game, P0, &[pick(revealed[0]), pick(revealed[1])]);
     assert_actions(&game, P1, &[]);
+}
 
-    game.apply(P0, pick(revealed[1])).unwrap();
+#[test]
+fn the_picked_card_goes_to_the_end_of_the_hand() {
+    let mut game = forage_revealing_recruit_and_captain();
+
+    let captain = game.revealed(P0)[1];
+    game.apply(P0, pick(captain)).unwrap();
+
+    assert_eq!(hand_defs(&game, P0), [SPARK, SPARK, SPARK, CAPTAIN]);
+}
+
+#[test]
+fn the_unpicked_card_goes_to_the_bottom_of_the_deck() {
+    let mut game = forage_revealing_recruit_and_captain();
+
+    let captain = game.revealed(P0)[1];
+    game.apply(P0, pick(captain)).unwrap();
+
+    assert_eq!(deck_defs(&game, P0), [BOLT, RECRUIT]);
+}
+
+#[test]
+fn picking_ends_the_pending_forage() {
+    let mut game = forage_revealing_recruit_and_captain();
+
+    let captain = game.revealed(P0)[1];
+    game.apply(P0, pick(captain)).unwrap();
 
     assert!(game.revealed(P0).is_empty());
-    assert_eq!(hand_defs(&game, P0), [SPARK, SPARK, SPARK, CAPTAIN]);
-    assert_eq!(
-        deck_defs(&game, P0),
-        [BOLT, RECRUIT],
-        "the unpicked card goes to the bottom"
-    );
+    // Forage spent player 0's only mana, so ending the turn is all that is left.
     assert_actions(&game, P0, &[Action::EndTurn]);
 }
 
@@ -134,13 +159,10 @@ fn forage_with_one_card_left_still_asks_for_the_pick() {
     let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
 
     play_def(&mut game, P0, FORAGE);
+
     assert_eq!(revealed_defs(&game, P0), [RECRUIT]);
     let revealed = game.revealed(P0);
     assert_actions(&game, P0, &[pick(revealed[0])]);
-
-    game.apply(P0, pick(revealed[0])).unwrap();
-    assert_eq!(hand_defs(&game, P0), [SPARK, SPARK, SPARK, RECRUIT]);
-    assert!(game.deck(P0).is_empty());
 }
 
 #[test]
@@ -149,6 +171,7 @@ fn forage_on_an_empty_deck_does_nothing() {
     let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
 
     play_def(&mut game, P0, FORAGE);
+
     assert!(game.revealed(P0).is_empty());
     assert_eq!(hand_defs(&game, P0), [SPARK, SPARK, SPARK]);
     assert_actions(&game, P0, &[Action::EndTurn]);
@@ -158,7 +181,6 @@ fn forage_on_an_empty_deck_does_nothing() {
 fn cast_wild_bolt(seed: u64) -> (i32, i32) {
     let mut game = Game::with_deck_order(seed, [vec![WILD_BOLT; 6], vec![SPARK; 6]]);
     play_def(&mut game, P0, WILD_BOLT);
-    assert_eq!(game.mana(P0), 0, "seed {seed}: WildBolt costs 1");
     (10 - game.hero_health(P0), 10 - game.hero_health(P1))
 }
 

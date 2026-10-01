@@ -27,7 +27,7 @@ fn acting_on_the_opponents_turn_is_rejected_and_changes_nothing() {
 }
 
 #[test]
-fn unaffordable_cards_and_cards_outside_the_hand_are_rejected() {
+fn only_affordable_cards_in_the_hand_can_be_played() {
     let deck = vec![SPARK, BOLT, CAPTAIN, BLAST, GIANT];
     let game = Game::with_deck_order(0, [deck.clone(), deck]);
 
@@ -80,14 +80,21 @@ fn a_finished_game_rejects_everything() {
 }
 
 #[test]
-fn applied_returns_a_new_game_and_leaves_the_original_alone() {
+fn applied_returns_the_next_game_without_changing_the_original() {
     let deck = vec![SPARK; 6];
     let game = Game::with_deck_order(0, [deck.clone(), deck]);
     let snapshot = game.clone();
 
     let next = game.applied(P0, play(in_hand(&game, P0, SPARK))).unwrap();
+
     assert_eq!(game, snapshot);
-    assert_eq!(next.hero_health(P1), 9);
+    assert_eq!(next.hero_health(P1), 9, "the Spark resolved in the copy");
+}
+
+#[test]
+fn applied_rejects_an_unlisted_action() {
+    let deck = vec![SPARK; 6];
+    let game = Game::with_deck_order(0, [deck.clone(), deck]);
 
     assert_eq!(
         game.applied(P1, Action::EndTurn),

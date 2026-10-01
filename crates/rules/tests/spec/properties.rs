@@ -21,7 +21,10 @@ fn random_playouts_keep_every_invariant_and_terminate() {
             game.outcome().is_some(),
             "seed {seed}: ended without an outcome"
         );
-        assert!(!log.is_empty());
+        assert!(
+            !log.is_empty(),
+            "seed {seed}: the game ended before any decision"
+        );
     }
 }
 
