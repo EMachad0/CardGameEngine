@@ -40,6 +40,10 @@ pub enum Effect {
         targeteer: PlayerTargeteer,
         damage: u8,
     },
+    DamageMonster {
+        targeteer: MonsterTargeteer,
+        damage: u8,
+    },
     Draw {
         targeteer: PlayerTargeteer,
         count: usize,
@@ -55,4 +59,9 @@ pub enum PlayerTargeteer {
     Caster,
     RandomPlayer,
     NextPlayer,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MonsterTargeteer {
+    All,
 }

@@ -6,7 +6,7 @@
 
 use super::Game;
 use crate::action::Action;
-use crate::cards::{Effect, PlayerTargeteer};
+use crate::cards::definition::{Effect, MonsterTargeteer, PlayerTargeteer};
 use crate::game::PlayerInteractionState;
 use crate::game::lookup::LookupError;
 use crate::ids::PlayerId;
@@ -120,18 +120,44 @@ impl Game {
                     player.interaction_state = PlayerInteractionState::Picker { options }
                 }
             }
+            Effect::DamageMonster { targeteer, damage } => {
+                let targets = self
+                    .resolve_monster_targeteer(caster, targeteer)
+                    .into_iter()
+                    .copied()
+                    .collect::<Vec<_>>();
+                for target in targets.into_iter() {
+                    if let Some(object) = self.objects.get_mut(target) {
+                        object.damage += damage;
+                    }
+                }
+            }
         }
     }
 
     fn resolve_player_targeteer(
         &mut self,
         caster: PlayerId,
-        targetter: PlayerTargeteer,
+        targeteer: PlayerTargeteer,
     ) -> PlayerId {
-        match targetter {
+        match targeteer {
             PlayerTargeteer::Caster => caster,
             PlayerTargeteer::RandomPlayer => PlayerId::new(self.rng.below(self.players.len())),
             PlayerTargeteer::NextPlayer => self.turn_order.get_player_after(caster),
+        }
+    }
+
+    fn resolve_monster_targeteer(
+        &mut self,
+        _caster: PlayerId,
+        targeteer: MonsterTargeteer,
+    ) -> Vec<&ObjectId> {
+        match targeteer {
+            MonsterTargeteer::All => self
+                .players
+                .iter()
+                .flat_map(|player| player.zones.board.as_slice())
+                .collect(),
         }
     }
 

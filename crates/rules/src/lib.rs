@@ -18,7 +18,7 @@ mod turn;
 mod zones;
 
 pub use action::{Action, IllegalAction};
-pub use cards::{DefId, ObjectBag, ObjectId};
+pub use cards::{definition::DefId, object::ObjectId};
 pub use game::{ApplyError, Game, LookupError};
 pub use ids::PlayerId;
 pub use outcome::Outcome;

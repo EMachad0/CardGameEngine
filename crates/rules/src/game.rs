@@ -11,13 +11,15 @@ mod player;
 mod resolve;
 
 use crate::action::Action;
-use crate::cards::{Binder, CardDefLoader, Object};
+use crate::cards::CardDefLoader;
+use crate::cards::binder::Binder;
+use crate::cards::object::{Modifiers, Object, ObjectBag};
+use crate::game::player::{Player, PlayerInteractionState};
 use crate::ids::PlayerId;
 use crate::rng::Rng;
 use crate::turn::TurnOrder;
 use crate::zones::Deck;
-use crate::{DefId, ObjectBag, ObjectId, Outcome};
-use player::{Player, PlayerInteractionState};
+use crate::{DefId, ObjectId, Outcome};
 
 pub use lookup::LookupError;
 pub use resolve::ApplyError;
@@ -65,6 +67,8 @@ impl Game {
                     def_id,
                     object_id: objects.next_id(),
                     player_id: player.id,
+                    modifiers: Modifiers::default(),
+                    damage: 0,
                 })
                 .collect::<Vec<_>>();
             let deck = Deck::new(objects.insert_all(deck_objs));

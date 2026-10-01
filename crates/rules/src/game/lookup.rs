@@ -2,7 +2,7 @@
 
 use crate::{
     DefId, Game, ObjectId, PlayerId,
-    cards::{CardDefNotFound, Effect, Object},
+    cards::{CardDefNotFound, definition::Effect, object::Object},
 };
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]

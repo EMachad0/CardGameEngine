@@ -98,8 +98,9 @@ impl Zones {}
 
 #[cfg(test)]
 mod tests {
+    use crate::cards::object::ObjectBag;
+
     use super::*;
-    use crate::ObjectBag;
 
     fn ids<const N: usize>() -> [ObjectId; N] {
         let mut bag = ObjectBag::default();

@@ -71,10 +71,7 @@ impl CardDefLoader {
                     attack: 1,
                 }),
                 mana_cost: 1,
-                on_play_effect: EffectSequence(vec![Effect::RevealToPicker {
-                    targeteer: PlayerTargeteer::Caster,
-                    count: 2,
-                }]),
+                on_play_effect: EffectSequence::default(),
             },
         ]
     }
