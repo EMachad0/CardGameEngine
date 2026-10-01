@@ -6,49 +6,147 @@
 
 use super::Game;
 use crate::action::Action;
-use crate::cards::Card;
+use crate::cards::{Effect, PlayerTargeteer};
+use crate::game::PlayerInteractionState;
+use crate::game::lookup::LookupError;
 use crate::ids::PlayerId;
+use crate::{IllegalAction, ObjectId};
+
+#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+pub enum ApplyError {
+    #[error("Lookup: {0}")]
+    Lookup(#[from] LookupError),
+    #[error("Illegal Action")]
+    IllegalAction(IllegalAction),
+}
 
 impl Game {
-    pub(super) fn apply_action(&mut self, player_id: PlayerId, action: Action) {
+    pub fn applied(&self, player_id: PlayerId, action: Action) -> Result<Self, ApplyError> {
+        let mut game = self.clone();
+        game.apply(player_id, action)?;
+        Ok(game)
+    }
+
+    /// `Ok` if and only if `action` is in `legal_actions(player_id)`.
+    /// An `Err` leaves the game unchanged.
+    pub fn apply(&mut self, player_id: PlayerId, action: Action) -> Result<(), ApplyError> {
+        if !self.legal_actions(player_id).contains(&action) {
+            Err(ApplyError::IllegalAction(IllegalAction::new(
+                player_id, action,
+            )))
+        } else {
+            self.apply_action(player_id, action)?;
+            Ok(())
+        }
+    }
+
+    pub(super) fn apply_action(
+        &mut self,
+        player_id: PlayerId,
+        action: Action,
+    ) -> Result<(), ApplyError> {
         match action {
-            Action::Play { hand_index } => {
-                let player = self.get_player_mut(player_id);
-                let card = player.hand.remove(hand_index);
-                player.mana -= card.mana_cost();
-                self.apply_card(player_id, card);
+            Action::Play { object_id } => {
+                let mana_cost = self.mana_cost(object_id).map_err(ApplyError::from)?.ok_or(
+                    ApplyError::IllegalAction(IllegalAction::new(player_id, action)),
+                )?;
+                self.get_player_mut(player_id)
+                    .zones
+                    .hand
+                    .remove(object_id)
+                    .expect("object not in hand");
+                self.get_player_mut(player_id).mana -= mana_cost;
+                self.play_card(player_id, object_id);
             }
-            Action::Pick { index } => {
+            Action::Pick { object_id } => {
                 let player = self.get_player_mut(player_id);
-                let (picked, other_cards) = player.pick_revealed(index);
-                player.hand.add(picked);
-                other_cards
-                    .into_iter()
-                    .for_each(|c| player.deck.push_back(c));
+                let PlayerInteractionState::Picker { mut options } =
+                    std::mem::take(&mut player.interaction_state)
+                else {
+                    unreachable!();
+                };
+                if let Some(idx) = options.iter().position(|id| *id == object_id) {
+                    let picked = options.remove(idx);
+                    player.zones.hand.add(picked);
+                    options
+                        .into_iter()
+                        .for_each(|c| player.zones.deck.push_back(c));
+                }
             }
             Action::EndTurn => {
                 self.turn_order.end_turn();
                 self.start_turn();
             }
+        };
+        Ok(())
+    }
+
+    fn play_card(&mut self, player_id: PlayerId, object_id: ObjectId) {
+        // TODO remove this clone
+        let effects = self
+            .on_play_effect(object_id)
+            .expect("unexpected lookup error")
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>();
+
+        effects.into_iter().for_each(|e| {
+            self.apply_effect(player_id, e);
+        });
+    }
+
+    fn apply_effect(&mut self, caster: PlayerId, effect: Effect) {
+        match effect {
+            Effect::DamagePlayer { targeteer, damage } => {
+                let target = self.resolve_player_targeteer(caster, targeteer);
+                let player = self.get_player_mut(target);
+                player.health -= damage as i32;
+            }
+            Effect::Draw { targeteer, count } => {
+                let target = self.resolve_player_targeteer(caster, targeteer);
+                self.draw(target, count);
+            }
+            Effect::RevealToPicker { targeteer, count } => {
+                let target = self.resolve_player_targeteer(caster, targeteer);
+                let player = self.get_player_mut(target);
+
+                let mut options = Vec::new();
+                for _ in 0..count {
+                    let Some(card) = player.zones.deck.pop_front() else {
+                        break;
+                    };
+
+                    options.push(card);
+                }
+                if !options.is_empty() {
+                    player.interaction_state = PlayerInteractionState::Picker { options }
+                }
+            }
         }
     }
 
-    fn apply_card(&mut self, player_id: PlayerId, card: Card) {
-        match card {
-            Card::Bolt { damage } => {
-                let target_player_id = PlayerId::new((player_id.idx() + 1) % self.players.len());
-                let target_player = self.get_player_mut(target_player_id);
-                target_player.health -= damage as i32;
-            }
-            Card::WildBolt => {
-                let target_player_id = PlayerId::new(self.rng.below(self.players.len()));
-                let target_player = self.get_player_mut(target_player_id);
-                target_player.health -= 3;
-            }
-            Card::Forage => {
-                let player = self.get_player_mut(player_id);
-                player.reveal(2);
-            }
+    fn resolve_player_targeteer(
+        &mut self,
+        caster: PlayerId,
+        targetter: PlayerTargeteer,
+    ) -> PlayerId {
+        match targetter {
+            PlayerTargeteer::Caster => caster,
+            PlayerTargeteer::RandomPlayer => PlayerId::new(self.rng.below(self.players.len())),
+            PlayerTargeteer::NextPlayer => self.turn_order.get_player_after(caster),
+        }
+    }
+
+    /// Moves the top card to the end of the hand, `count` times.
+    /// Each draw from an empty deck costs 1 health instead.
+    pub fn draw(&mut self, player_id: PlayerId, count: usize) {
+        let player = self.get_player_mut(player_id);
+        for _ in 0..count {
+            if let Some(card) = player.zones.deck.pop_front() {
+                player.zones.hand.add(card);
+            } else {
+                player.health -= 1;
+            };
         }
     }
 }
@@ -110,7 +208,7 @@ mod tests {
             let mut game = Game::with_deck_order(0, [deck_with_top(&[def]), deck_with_top(&[])]);
             turn_with_mana(&mut game, P0, cost);
             let card = in_hand(&game, P0, def);
-            assert_eq!(game.cost(card), Some(cost), "{def:?}");
+            assert_eq!(game.mana_cost(card).unwrap(), Some(cost), "{def:?}");
 
             let before = game.mana(P0);
             game.apply(P0, play(card)).unwrap();
@@ -153,8 +251,8 @@ mod tests {
 
         assert_eq!(game.hero_health(P0), 8);
         assert_eq!(game.hero_health(P1), 8);
-        assert_eq!(game.health(mine), Some(3));
-        assert_eq!(game.health(theirs), Some(3));
+        assert_eq!(game.health(mine).unwrap(), Some(3));
+        assert_eq!(game.health(theirs).unwrap(), Some(3));
     }
 
     #[test]

@@ -1,5 +1,68 @@
 //! Attack, health and cost, computed on read from history and printed data (node C).
 
+use crate::{
+    Game, ObjectId, PlayerId,
+    cards::{CardDefNotFound, Effect},
+};
+
+#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+pub enum LookupError {
+    #[error("Object not found")]
+    ObjectNotFound(ObjectId),
+    #[error("Card definition not found")]
+    DefinitionNotFound(#[from] CardDefNotFound),
+}
+
+type LookupResult<T> = Result<T, LookupError>;
+
+impl Game {
+    pub fn hero_health(&self, player_id: PlayerId) -> i32 {
+        self.get_player(player_id).health
+    }
+
+    pub fn mana_cost(&self, object_id: ObjectId) -> LookupResult<Option<u8>> {
+        let obj = self
+            .objects
+            .get(object_id)
+            .ok_or(LookupError::ObjectNotFound(object_id))?;
+        if !self
+            .get_player(obj.player_id)
+            .zones
+            .hand
+            .contains(&object_id)
+        {
+            Ok(None)
+        } else {
+            let def_mana_cost = self.binder.mana_cost(obj.def_id);
+            Ok(Some(def_mana_cost))
+        }
+    }
+
+    pub fn health(&self, object_id: ObjectId) -> LookupResult<Option<i32>> {
+        let obj = self
+            .objects
+            .get(object_id)
+            .ok_or(LookupError::ObjectNotFound(object_id))?;
+        Ok(self.binder.health(obj.def_id))
+    }
+
+    pub fn attack(&self, object_id: ObjectId) -> LookupResult<Option<i32>> {
+        let obj = self
+            .objects
+            .get(object_id)
+            .ok_or(LookupError::ObjectNotFound(object_id))?;
+        Ok(self.binder.attack(obj.def_id))
+    }
+
+    pub fn on_play_effect(&self, object_id: ObjectId) -> LookupResult<&[Effect]> {
+        let obj = self
+            .objects
+            .get(object_id)
+            .ok_or(LookupError::ObjectNotFound(object_id))?;
+        Ok(self.binder.on_play_effect(obj.def_id))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::Game;
@@ -15,15 +78,19 @@ mod tests {
         turn_with_mana(&mut game, P1, 2);
         let recruit = summon(&mut game, P1, RECRUIT);
 
-        assert_eq!(game.attack(captain), Some(1));
-        assert_eq!(game.health(captain), Some(1));
-        assert_eq!(game.attack(recruit), Some(2));
+        assert_eq!(game.attack(captain).unwrap(), Some(1));
+        assert_eq!(game.health(captain).unwrap(), Some(1));
+        assert_eq!(game.attack(recruit).unwrap(), Some(2));
         assert_eq!(
-            game.health(recruit),
+            game.health(recruit).unwrap(),
             Some(2),
             "an enemy Captain gives no buff"
         );
-        assert_eq!(game.cost(captain), None, "cost is for cards in a hand");
+        assert_eq!(
+            game.mana_cost(captain).unwrap(),
+            None,
+            "cost is for cards in a hand"
+        );
     }
 
     #[test]
@@ -31,9 +98,9 @@ mod tests {
         let game = Game::with_deck_order(0, [deck_with_top(&[RECRUIT]), deck_with_top(&[])]);
         let recruit = in_hand(&game, P0, RECRUIT);
 
-        assert_eq!(game.cost(recruit), Some(2));
-        assert_eq!(game.attack(recruit), None);
-        assert_eq!(game.health(recruit), None);
+        assert_eq!(game.mana_cost(recruit).unwrap(), Some(2));
+        assert_eq!(game.attack(recruit).unwrap(), None);
+        assert_eq!(game.health(recruit).unwrap(), None);
     }
 
     #[test]
@@ -48,11 +115,11 @@ mod tests {
         let later = summon(&mut game, P0, RECRUIT);
 
         for recruit in [earlier, later] {
-            assert_eq!(game.attack(recruit), Some(3));
-            assert_eq!(game.health(recruit), Some(3));
+            assert_eq!(game.attack(recruit).unwrap(), Some(3));
+            assert_eq!(game.health(recruit).unwrap(), Some(3));
         }
-        assert_eq!(game.attack(captain), Some(1), "no buff to itself");
-        assert_eq!(game.health(captain), Some(1), "no buff to itself");
+        assert_eq!(game.attack(captain).unwrap(), Some(1), "no buff to itself");
+        assert_eq!(game.health(captain).unwrap(), Some(1), "no buff to itself");
     }
 
     #[test]
@@ -67,11 +134,11 @@ mod tests {
         let recruit = summon(&mut game, P0, RECRUIT);
 
         for captain in [first, second] {
-            assert_eq!(game.attack(captain), Some(2));
-            assert_eq!(game.health(captain), Some(2));
+            assert_eq!(game.attack(captain).unwrap(), Some(2));
+            assert_eq!(game.health(captain).unwrap(), Some(2));
         }
-        assert_eq!(game.attack(recruit), Some(4));
-        assert_eq!(game.health(recruit), Some(4));
+        assert_eq!(game.attack(recruit).unwrap(), Some(4));
+        assert_eq!(game.health(recruit).unwrap(), Some(4));
     }
 
     #[test]
@@ -80,15 +147,15 @@ mod tests {
         let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
         turn_with_mana(&mut game, P0, 8);
         let giant = summon(&mut game, P0, GIANT);
-        assert_eq!(game.attack(giant), Some(5));
-        assert_eq!(game.health(giant), Some(5));
+        assert_eq!(game.attack(giant).unwrap(), Some(5));
+        assert_eq!(game.health(giant).unwrap(), Some(5));
 
         turn_with_mana(&mut game, P0, 6);
         play_def(&mut game, P0, BLAST);
-        assert_eq!(game.health(giant), Some(3));
+        assert_eq!(game.health(giant).unwrap(), Some(3));
         play_def(&mut game, P0, BLAST);
-        assert_eq!(game.health(giant), Some(1));
-        assert_eq!(game.attack(giant), Some(5));
+        assert_eq!(game.health(giant).unwrap(), Some(1));
+        assert_eq!(game.attack(giant).unwrap(), Some(5));
     }
 
     #[test]
@@ -99,14 +166,14 @@ mod tests {
         let giant = summon(&mut game, P0, GIANT);
         turn_with_mana(&mut game, P0, 6);
         summon(&mut game, P0, CAPTAIN);
-        assert_eq!(game.attack(giant), Some(6));
-        assert_eq!(game.health(giant), Some(6));
+        assert_eq!(game.attack(giant).unwrap(), Some(6));
+        assert_eq!(game.health(giant).unwrap(), Some(6));
 
         play_def(&mut game, P0, BLAST);
 
         assert_eq!(board_defs(&game, P0), [GIANT]);
-        assert_eq!(game.attack(giant), Some(5));
-        assert_eq!(game.health(giant), Some(3));
+        assert_eq!(game.attack(giant).unwrap(), Some(5));
+        assert_eq!(game.health(giant).unwrap(), Some(3));
     }
 
     #[test]
@@ -114,27 +181,31 @@ mod tests {
         let deck0 = deck_with_top(&[GIANT, SPARK, SPARK, SPARK, RECRUIT]);
         let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[SPARK])]);
         let giant = in_hand(&game, P0, GIANT);
-        assert_eq!(game.cost(giant), Some(8));
+        assert_eq!(game.mana_cost(giant).unwrap(), Some(8));
 
         play_def(&mut game, P0, SPARK);
-        assert_eq!(game.cost(giant), Some(7));
+        assert_eq!(game.mana_cost(giant).unwrap(), Some(7));
 
         turn_with_mana(&mut game, P1, 1);
         play_def(&mut game, P1, SPARK);
         assert_eq!(
-            game.cost(giant),
+            game.mana_cost(giant).unwrap(),
             Some(7),
             "the opponent's spells don't count"
         );
 
         turn_with_mana(&mut game, P0, 2);
         play_def(&mut game, P0, RECRUIT);
-        assert_eq!(game.cost(giant), Some(7), "minions don't count");
+        assert_eq!(
+            game.mana_cost(giant).unwrap(),
+            Some(7),
+            "minions don't count"
+        );
 
         turn_with_mana(&mut game, P0, 2);
         play_def(&mut game, P0, SPARK);
         play_def(&mut game, P0, SPARK);
-        assert_eq!(game.cost(giant), Some(5));
+        assert_eq!(game.mana_cost(giant).unwrap(), Some(5));
     }
 
     #[test]
@@ -149,7 +220,7 @@ mod tests {
 
         turn_with_mana(&mut game, P0, 3);
 
-        assert_eq!(game.cost(in_hand(&game, P0, GIANT)), Some(5));
+        assert_eq!(game.mana_cost(in_hand(&game, P0, GIANT)).unwrap(), Some(5));
     }
 
     #[test]
@@ -167,7 +238,11 @@ mod tests {
                 cast += 1;
 
                 let cost = 8u8.saturating_sub(cast);
-                assert_eq!(game.cost(giant), Some(cost), "after {cast} spells");
+                assert_eq!(
+                    game.mana_cost(giant).unwrap(),
+                    Some(cost),
+                    "after {cast} spells"
+                );
                 assert_eq!(
                     game.legal_actions(P0).contains(&play(giant)),
                     cost <= game.mana(P0),
@@ -177,6 +252,6 @@ mod tests {
             }
             end_turn(&mut game);
         }
-        assert_eq!(game.cost(giant), Some(0));
+        assert_eq!(game.mana_cost(giant).unwrap(), Some(0));
     }
 }

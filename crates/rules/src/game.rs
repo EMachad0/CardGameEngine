@@ -8,138 +8,158 @@
 //! - `check`: the state check at the end of every `apply`.
 
 mod check;
-mod derived;
+mod lookup;
 mod player;
 mod resolve;
 
-use crate::action::{Action, Illegal};
-use crate::cards::Card;
+use crate::action::Action;
+use crate::cards::{Binder, CardDefLoader, Object};
 use crate::ids::PlayerId;
 use crate::rng::Rng;
 use crate::turn::TurnOrder;
 use crate::zones::Deck;
+use crate::{DefId, ObjectBag, ObjectId, Outcome};
 use player::{Player, PlayerInteractionState};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+pub use resolve::ApplyError;
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Game {
     rng: Rng,
     turn_order: TurnOrder,
     players: Vec<Player>,
+    // todo: only pub because of testkit which is bad design
+    pub(crate) objects: ObjectBag,
+    binder: Binder,
+    outcome: Option<Outcome>,
 }
 
 impl Game {
     /// Seeds the `Rng`, shuffles both decks, deals 3 cards each and starts player 0's turn.
-    pub fn new(seed: u64, decks: [Vec<Card>; 2]) -> Self {
+    pub fn new(seed: u64, decks: [Vec<DefId>; 2]) -> Self {
         Self::setup(seed, decks, true)
     }
 
     /// Like `new`, but keeps each deck in the given order, index 0 on top.
-    pub fn with_deck_order(seed: u64, decks: [Vec<Card>; 2]) -> Self {
+    pub fn with_deck_order(seed: u64, decks: [Vec<DefId>; 2]) -> Self {
         Self::setup(seed, decks, false)
     }
 
-    fn setup(seed: u64, decks: [Vec<Card>; 2], shuffle: bool) -> Self {
-        let mut rng = Rng::new(seed);
-        let turn_order = TurnOrder::new(decks.len());
+    fn setup(seed: u64, decks: [Vec<DefId>; 2], shuffle: bool) -> Self {
+        let rng = Rng::new(seed);
 
-        let mut players = decks
-            .into_iter()
-            .enumerate()
-            .map(|(i, deck)| Player::new(PlayerId::new(i), Deck::new(deck)))
+        // may explode not sure how to handle yet
+        let defs = CardDefLoader.load_and_validate().unwrap();
+        let binder = Binder::new(defs);
+
+        let mut objects = ObjectBag::default();
+
+        let player_count = decks.len();
+        let player_ids = (0..player_count).map(PlayerId::new).collect::<Vec<_>>();
+        let mut players = player_ids
+            .iter()
+            .map(|player_id| Player::new(*player_id))
             .collect::<Vec<_>>();
-
-        for player in players.iter_mut() {
-            if shuffle {
-                player.deck.shuffle(&mut rng);
-            }
-            player.draw(3);
+        for (player, deck_defs) in players.iter_mut().zip(decks.into_iter()) {
+            let deck_objs = deck_defs
+                .into_iter()
+                .map(|def_id| Object {
+                    def_id,
+                    object_id: objects.next_id(),
+                    player_id: player.id,
+                })
+                .collect::<Vec<_>>();
+            let deck = Deck::new(objects.insert_all(deck_objs));
+            player.zones.deck = deck;
         }
+        let turn_order = TurnOrder::new(player_ids.clone());
 
         let mut game = Self {
             rng,
             turn_order,
             players,
+            objects,
+            binder,
+            outcome: None,
         };
+
+        for player in game.players.iter_mut() {
+            if shuffle {
+                player.zones.deck.shuffle(&mut game.rng);
+            }
+        }
+
+        for player_id in player_ids {
+            game.draw(player_id, 3);
+        }
+
         game.start_turn();
         game
     }
 
     pub fn legal_actions(&self, player_id: PlayerId) -> Vec<Action> {
-        if self.winner().is_some() {
-            return Vec::new();
-        }
-        if self.turn_order.get_current_player_id() != player_id {
+        if self.outcome().is_some() {
             return Vec::new();
         }
 
         let mut actions = Vec::new();
         match &self.get_player(player_id).interaction_state {
             PlayerInteractionState::Board => {
+                if self.turn_order.get_current_player_id() != player_id {
+                    return Vec::new();
+                }
+
                 let mana = self.mana(player_id);
                 let hand = self.hand(player_id);
-                for (i, card) in hand.iter().enumerate() {
-                    if card.mana_cost() <= mana {
-                        actions.push(Action::Play { hand_index: i });
+                for object_id in hand.iter().cloned() {
+                    if let Ok(Some(mana_cost)) = self.mana_cost(object_id)
+                        && mana_cost <= mana
+                    {
+                        actions.push(Action::Play { object_id });
                     }
                 }
 
                 actions.push(Action::EndTurn);
             }
             PlayerInteractionState::Picker { options } => {
-                actions.extend((0..options.len()).map(|i| Action::Pick { index: i }));
+                actions.extend(
+                    options
+                        .iter()
+                        .cloned()
+                        .map(|object_id| Action::Pick { object_id }),
+                );
             }
         }
         actions
     }
 
-    /// `Ok` if and only if `action` is in `legal_actions(player_id)`.
-    /// An `Err` leaves the game unchanged.
-    pub fn apply(&mut self, player_id: PlayerId, action: Action) -> Result<(), Illegal> {
-        if !self.legal_actions(player_id).contains(&action) {
-            Err(Illegal::new(player_id, action))
-        } else {
-            self.apply_action(player_id, action);
-            Ok(())
-        }
-    }
-
-    pub fn applied(&self, player_id: PlayerId, action: Action) -> Result<Self, Illegal> {
-        let mut game = self.clone();
-        game.apply(player_id, action)?;
-        Ok(game)
-    }
-
-    pub fn hand(&self, player_id: PlayerId) -> &[Card] {
-        self.get_player(player_id).hand.as_slice()
+    pub fn hand(&self, player_id: PlayerId) -> &[ObjectId] {
+        self.get_player(player_id).zones.hand.as_slice()
     }
 
     /// A copy, top first.
-    pub fn deck(&self, player_id: PlayerId) -> Vec<Card> {
-        self.get_player(player_id).deck.to_vec()
+    pub fn deck(&self, player_id: PlayerId) -> Vec<ObjectId> {
+        self.get_player(player_id).zones.deck.to_vec()
+    }
+
+    pub fn board(&self, player_id: PlayerId) -> &[ObjectId] {
+        self.get_player(player_id).zones.board.as_slice()
     }
 
     pub fn mana(&self, player_id: PlayerId) -> u8 {
         self.get_player(player_id).mana
     }
 
-    pub fn health(&self, player_id: PlayerId) -> i32 {
-        self.get_player(player_id).health
-    }
-
     /// The cards a pending Forage revealed. Empty if nothing is pending.
-    pub fn revealed(&self, player_id: PlayerId) -> &[Card] {
+    pub fn revealed(&self, player_id: PlayerId) -> &[ObjectId] {
         match &self.get_player(player_id).interaction_state {
             PlayerInteractionState::Board => &[],
             PlayerInteractionState::Picker { options } => options,
         }
     }
 
-    pub fn winner(&self) -> Option<PlayerId> {
-        let mut alive = self.players.iter().filter(|s| s.health > 0);
-        match (alive.next(), alive.next()) {
-            (Some(player), None) => Some(player.id),
-            _ => None,
-        }
+    pub fn outcome(&self) -> Option<Outcome> {
+        self.outcome
     }
 
     fn start_turn(&mut self) {
@@ -147,7 +167,7 @@ impl Game {
         let player = self.get_player_mut(current_player_id);
         player.max_mana = (player.max_mana + 1).min(10);
         player.mana = player.max_mana;
-        player.draw(1);
+        self.draw(current_player_id, 1);
     }
 
     fn get_player(&self, player_id: PlayerId) -> &Player {
@@ -162,8 +182,9 @@ impl Game {
 #[cfg(test)]
 mod tests {
     use crate::cards::{BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK, WILD_BOLT};
+    use crate::game::resolve::ApplyError;
     use crate::testkit::*;
-    use crate::{Action, DefId, Game, Illegal, ObjectId, Outcome};
+    use crate::{Action, DefId, Game, IllegalAction, ObjectId, Outcome};
 
     fn sample_deck() -> Vec<DefId> {
         vec![
@@ -203,7 +224,7 @@ mod tests {
 
         let mut ids: Vec<ObjectId> = [P0, P1]
             .into_iter()
-            .flat_map(|p| [game.hand(p), game.deck(p)].concat())
+            .flat_map(|p| [game.hand(p), &game.deck(p)].concat())
             .collect();
         assert_eq!(ids.len(), 16);
         ids.sort();
@@ -217,7 +238,7 @@ mod tests {
         let mut game = Game::with_deck_order(0, [deck.clone(), deck]);
         turn_with_mana(&mut game, P0, 2);
 
-        let mut expected: Vec<Action> = game.hand(P0).into_iter().map(play).collect();
+        let mut expected: Vec<Action> = game.hand(P0).into_iter().map(|o| play(*o)).collect();
         assert_eq!(expected.len(), 5);
         expected.push(Action::EndTurn);
         assert_actions(&game, P0, &expected);
@@ -249,7 +270,7 @@ mod tests {
         game.apply(P1, Action::EndTurn).unwrap();
         assert_eq!(game.mana(P0), 2, "max mana grows by one per turn");
         assert_eq!(hand_defs(&game, P0), [SPARK, SPARK, BOLT, BOLT, RECRUIT]);
-        let mut expected: Vec<Action> = game.hand(P0).into_iter().map(play).collect();
+        let mut expected: Vec<Action> = game.hand(P0).into_iter().map(|o| play(*o)).collect();
         expected.push(Action::EndTurn);
         assert_actions(&game, P0, &expected);
     }
@@ -295,10 +316,10 @@ mod tests {
 
         assert_eq!(
             game.applied(P1, Action::EndTurn),
-            Err(Illegal {
-                player: P1,
+            Err(ApplyError::IllegalAction(IllegalAction {
+                player_id: P1,
                 action: Action::EndTurn
-            })
+            }))
         );
     }
 }

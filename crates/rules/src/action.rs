@@ -1,22 +1,22 @@
 //! What a player sends in, and what comes back when it isn't legal.
 
-use crate::ids::PlayerId;
+use crate::{ObjectId, ids::PlayerId};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
-    Play { hand_index: usize },
-    Pick { index: usize },
+    Play { object_id: ObjectId },
+    Pick { object_id: ObjectId },
     EndTurn,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Illegal {
-    pub player: PlayerId,
+pub struct IllegalAction {
+    pub player_id: PlayerId,
     pub action: Action,
 }
 
-impl Illegal {
-    pub(crate) fn new(player: PlayerId, action: Action) -> Self {
-        Self { player, action }
+impl IllegalAction {
+    pub(crate) fn new(player_id: PlayerId, action: Action) -> Self {
+        Self { player_id, action }
     }
 }

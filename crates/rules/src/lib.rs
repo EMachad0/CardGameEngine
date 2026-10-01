@@ -9,18 +9,20 @@
 //! - `game`: `Game` and its methods. Its child modules can read `Game`'s private fields.
 
 mod action;
-mod cards;
+pub mod cards;
 mod game;
 mod ids;
+mod outcome;
 mod rng;
 mod turn;
 mod zones;
 
-#[cfg(test)]
+// #[cfg(test)]
 mod testkit;
 
-pub use action::{Action, Illegal};
-pub use cards::Card;
-pub use game::Game;
+pub use action::{Action, IllegalAction};
+pub use cards::{ObjectBag, ObjectId, DefId};
+pub use game::{ApplyError, Game};
 pub use ids::PlayerId;
+pub use outcome::Outcome;
 pub use rng::Rng;

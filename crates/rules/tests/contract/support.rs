@@ -3,18 +3,18 @@
 
 use std::collections::BTreeSet;
 
-use rules::{Action, DefId, Game, Illegal, ObjectId, PlayerId};
+use rules::{Action, ApplyError, Game, IllegalAction, ObjectId, PlayerId};
 
 pub(crate) const P0: PlayerId = PlayerId::new(0);
 pub(crate) const P1: PlayerId = PlayerId::new(1);
 pub(crate) const PLAYERS: [PlayerId; 2] = [P0, P1];
 
-pub(crate) fn play(card: ObjectId) -> Action {
-    Action::Play { card }
+pub(crate) fn play(object_id: ObjectId) -> Action {
+    Action::Play { object_id }
 }
 
-pub(crate) fn pick(card: ObjectId) -> Action {
-    Action::Pick { card }
+pub(crate) fn pick(object_id: ObjectId) -> Action {
+    Action::Pick { object_id }
 }
 
 pub(crate) fn other(p: PlayerId) -> PlayerId {
@@ -22,18 +22,18 @@ pub(crate) fn other(p: PlayerId) -> PlayerId {
 }
 
 /// The first card in `p`'s hand with definition `def`.
-pub(crate) fn in_hand(game: &Game, p: PlayerId, def: DefId) -> ObjectId {
-    game.hand(p)
-        .into_iter()
-        .find(|&id| game.def(id) == Some(def))
-        .unwrap_or_else(|| panic!("no {def:?} in {p:?}'s hand"))
-}
+// pub(crate) fn in_hand(game: &Game, p: PlayerId, def_id: DefId) -> ObjectId {
+//     game.hand(p)
+//         .into_iter()
+//         .find(|&id| def(game, id) == Some(def))
+//         .unwrap_or_else(|| panic!("no {def:?} in {p:?}'s hand"))
+// }
 
 /// Every id in a zone: hand, deck, revealed and board, for each player.
 pub(crate) fn zone_ids(game: &Game) -> Vec<ObjectId> {
     PLAYERS
         .iter()
-        .flat_map(|&p| [game.hand(p), game.deck(p), game.revealed(p), game.board(p)].concat())
+        .flat_map(|&p| [game.hand(p), &game.deck(p), game.revealed(p), game.board(p)].concat())
         .collect()
 }
 
@@ -95,10 +95,10 @@ pub(crate) fn assert_unlisted_rejected_with(game: &Game, extra: &BTreeSet<Object
             let mut g = game.clone();
             assert_eq!(
                 g.apply(p, a.clone()),
-                Err(Illegal {
-                    player: p,
+                Err(ApplyError::IllegalAction(IllegalAction {
+                    player_id: p,
                     action: a.clone()
-                }),
+                })),
                 "unlisted {a:?} for {p:?} was not rejected"
             );
             assert_eq!(&g, game, "rejected {a:?} for {p:?} changed the game");

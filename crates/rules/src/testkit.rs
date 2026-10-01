@@ -7,12 +7,12 @@ use crate::{Action, DefId, Game, ObjectId, PlayerId};
 pub(crate) const P0: PlayerId = PlayerId::new(0);
 pub(crate) const P1: PlayerId = PlayerId::new(1);
 
-pub(crate) fn play(card: ObjectId) -> Action {
-    Action::Play { card }
+pub(crate) fn play(object_id: ObjectId) -> Action {
+    Action::Play { object_id }
 }
 
-pub(crate) fn pick(card: ObjectId) -> Action {
-    Action::Pick { card }
+pub(crate) fn pick(object_id: ObjectId) -> Action {
+    Action::Pick { object_id }
 }
 
 /// `top`, then 20 Bolts as filler.
@@ -33,12 +33,13 @@ pub(crate) fn assert_actions(game: &Game, p: PlayerId, expected: &[Action]) {
     );
 }
 
+pub(crate) fn def(game: &Game, object_id: ObjectId) -> Option<DefId> {
+    game.objects.get(object_id).map(|o| o.def_id)
+}
+
 pub(crate) fn defs(game: &Game, ids: &[ObjectId]) -> Vec<DefId> {
     ids.iter()
-        .map(|&id| {
-            game.def(id)
-                .unwrap_or_else(|| panic!("def({id:?}) is None"))
-        })
+        .map(|&id| def(game, id).unwrap_or_else(|| panic!("def({id:?}) is None")))
         .collect()
 }
 
@@ -58,16 +59,19 @@ pub(crate) fn board_defs(game: &Game, p: PlayerId) -> Vec<DefId> {
     defs(game, &game.board(p))
 }
 
-pub(crate) fn has_in_hand(game: &Game, p: PlayerId, def: DefId) -> bool {
-    game.hand(p).into_iter().any(|id| game.def(id) == Some(def))
+pub(crate) fn has_in_hand(game: &Game, p: PlayerId, def_id: DefId) -> bool {
+    game.hand(p)
+        .into_iter()
+        .any(|id| def(game, *id) == Some(def_id))
 }
 
 /// The first card in `p`'s hand with definition `def`.
-pub(crate) fn in_hand(game: &Game, p: PlayerId, def: DefId) -> ObjectId {
-    game.hand(p)
+pub(crate) fn in_hand(game: &Game, p: PlayerId, def_id: DefId) -> ObjectId {
+    *game
+        .hand(p)
         .into_iter()
-        .find(|&id| game.def(id) == Some(def))
-        .unwrap_or_else(|| panic!("no {def:?} in {p:?}'s hand"))
+        .find(|&id| def(game, *id) == Some(def_id))
+        .unwrap_or_else(|| panic!("no {def_id:?} in {p:?}'s hand"))
 }
 
 /// Plays the first card in `p`'s hand with definition `def`.

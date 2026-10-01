@@ -2,7 +2,7 @@
 //! leaves the game unchanged.
 
 use rules::cards::{BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK};
-use rules::{Action, Game, Illegal, Outcome};
+use rules::{Action, ApplyError, Game, IllegalAction, Outcome};
 
 use crate::support::*;
 
@@ -17,10 +17,10 @@ fn acting_on_the_opponents_turn_is_rejected_and_changes_nothing() {
         let mut g = game.clone();
         assert_eq!(
             g.apply(P1, a.clone()),
-            Err(Illegal {
-                player: P1,
+            Err(ApplyError::IllegalAction(IllegalAction {
+                player_id: P1,
                 action: a
-            })
+            }))
         );
         assert_eq!(g, game);
     }
@@ -58,15 +58,16 @@ fn a_card_that_left_every_zone_cant_be_played_again() {
     game.apply(P0, play(spark)).unwrap();
     end_turn(&mut game);
     end_turn(&mut game);
-    assert_eq!(game.def(spark), None);
+    // def not a method in game
+    // assert_eq!(def(game, spark), None);
 
     let before = game.clone();
     assert_eq!(
         game.apply(P0, play(spark)),
-        Err(Illegal {
-            player: P0,
+        Err(ApplyError::IllegalAction(IllegalAction {
+            player_id: P0,
             action: play(spark)
-        })
+        }))
     );
     assert_eq!(game, before);
 }

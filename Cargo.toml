@@ -2,6 +2,9 @@
 resolver = "3"
 members = ["crates/rules"]
 
+[workspace.dependencies]
+thiserror = { version = "2.0.21" }
+
 [workspace.lints.rust]
 unsafe_code = "forbid"
 unreachable_pub = "warn"

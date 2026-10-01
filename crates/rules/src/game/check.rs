@@ -21,8 +21,8 @@ mod tests {
 
         assert!(game.board(P0).is_empty());
         assert!(game.board(P1).is_empty());
-        assert_eq!(game.health(mine), None);
-        assert_eq!(game.health(theirs), None);
+        assert_eq!(game.health(mine).unwrap(), None);
+        assert_eq!(game.health(theirs).unwrap(), None);
         assert_eq!(game.outcome(), None);
     }
 
@@ -38,7 +38,7 @@ mod tests {
         turn_with_mana(&mut game, P0, 3);
         summon(&mut game, P0, CAPTAIN);
         turn_with_mana(&mut game, P0, 3);
-        assert_eq!(game.health(recruit), Some(3));
+        assert_eq!(game.health(recruit).unwrap(), Some(3));
 
         play_def(&mut game, P0, BLAST);
 
@@ -47,7 +47,7 @@ mod tests {
             "left {:?}",
             board_defs(&game, P0)
         );
-        assert_eq!(game.health(recruit), None);
+        assert_eq!(game.health(recruit).unwrap(), None);
     }
 
     #[test]

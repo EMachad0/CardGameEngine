@@ -1001,3 +1001,10 @@ I saved today's progress to `COURSE.md` but haven't committed it. Your review is
 > [!quote] YOU
 
 commit the course files and I will do the exercise
+
+
+> [!abstract] PI
+
+I committed `COURSE.md` and the session 02 log as `dc8349a`, and the working tree is clean.
+
+Over to you for the exercise. The tests and spec are in `4d459e0`. They're red until your new API exists, because `src/` still has the old `Card` code. When you're done or stuck, tell me and I'll review against `SPEC.md`. I'll also ask you about the design choices still open: where objects live, whether a card keeps its `ObjectId` from hand to board, counter vs list for spells cast, whether the outcome is derived or committed, and whether heroes store damage or health.
