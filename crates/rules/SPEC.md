@@ -1,9 +1,6 @@
 # Session 02 game: spec
 
-Two kinds of tests check this spec:
-
-- Rule tests cover setup, turns, cards, derived values and the state check. They sit in the `#[cfg(test)] mod tests` at the bottom of the `src/` file that implements the rule, and they use only the public API plus `testkit`.
-- Contract tests cover legality, rejection, determinism, IDs and derived values over random playouts. They live in `tests/contract/` and use only the public API.
+The tests for this spec live in `tests/spec/`. `docs/testing.md` says where each test goes.
 
 ## Layout
 
@@ -11,28 +8,22 @@ Two kinds of tests check this spec:
 
 | File | Holds |
 |---|---|
-| `ids.rs` | `PlayerId`, `DefId`, `ObjectId` |
-| `action.rs` | `Action`, `Illegal` |
-| `cards.rs` | the printed card table and the `cards` constants |
+| `ids.rs` | `PlayerId` |
+| `action.rs` | `Action`, `IllegalAction` |
+| `outcome.rs` | `Outcome` |
+| `cards/definition.rs` | `DefId`, `CardDef`, `Effect` |
+| `cards/loader.rs` | the printed card table and the `cards` constants |
+| `cards/binder.rs` | printed values by `DefId` |
+| `cards/object.rs` | `ObjectId`, `Object`, `ObjectBag` |
 | `rng.rs` | `Rng` |
 | `turn.rs` | seat order |
 | `zones.rs` | the card containers |
-| `game.rs` | `Game` with setup, turn start, `legal_actions`, `apply`, the queries and `Outcome` |
+| `game.rs` | `Game` with setup, turn start, `legal_actions` and the zone queries |
 | `game/player.rs` | one player's record |
-| `game/resolve.rs` | what `apply` does once an action is legal: card effects, picks and end of turn |
-| `game/derived.rs` | attack, health and cost, computed on read |
-| `game/check.rs` | the state check at the end of every `apply` |
-| `testkit.rs` | helpers for the in-file tests, built only under `cfg(test)` |
+| `game/resolve.rs` | `apply`, `applied`, `ApplyError`, and what `apply` does once an action is legal |
+| `game/lookup.rs` | `def_id`, `mana_cost`, `attack`, `health`, `hero_health` and `LookupError` |
 
-Where a type lives inside the crate is yours to change. Move its rule tests with it.
-
-| Test file | Holds |
-|---|---|
-| `tests/contract/support.rs` | builders and assertions the other modules share |
-| `tests/contract/model.rs` | an independent model of this spec: printed data, costs in hand, both boards |
-| `tests/contract/playout.rs` | the random playout driver and the invariants it checks at every step |
-| `tests/contract/legality.rs` | P on exact positions |
-| `tests/contract/properties.rs` | R1, L, P, B and C over seeded playouts |
+Where a type lives inside the crate is yours to change.
 
 ## Rules
 
@@ -74,15 +65,15 @@ Where a type lives inside the crate is yours to change. Move its rule tests with
 ## Legal actions
 
 - Game over: nobody has any.
-- Active player, Forage pending: exactly one `Pick { card }` per revealed card. Nothing else.
-- Active player, nothing pending: `Play { card }` for each card in their hand whose current cost is at most their mana, plus `EndTurn`.
+- Active player, Forage pending: exactly one `Pick { object_id }` per revealed card. Nothing else.
+- Active player, nothing pending: `Play { object_id }` for each card in their hand whose current cost is at most their mana, plus `EndTurn`.
 - The other player: none.
 - No duplicates in a list. Order doesn't matter.
 
 ## Contract (nodes L and P)
 
 - `apply(p, a)` is `Ok(())` if and only if `a` is in `legal_actions(p)`.
-- If `apply` returns `Err`, it's `Err(Illegal { player: p, action: a })`, and the game is unchanged.
+- If `apply` returns `Err`, it's `Err(ApplyError::IllegalAction(IllegalAction { player_id: p, action: a }))`, and the game is unchanged.
 - Everything that affects the future lives in `Game` (node S). The core never reads a clock, OS randomness, or a std `HashMap`'s iteration order (node R1). This crate's `clippy.toml` bans `HashMap`, `HashSet`, `Instant::now` and `SystemTime::now`, and the workspace lints make any use of them a clippy error.
 
 ## API
@@ -95,12 +86,12 @@ impl PlayerId {
     pub fn idx(&self) -> usize;
 }
 
-/// Which printed card. Tests get one only from the `cards` constants.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+/// Which printed card. Tests get one only from the `cards` constants and `Game::def_id`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct DefId(/* private */);
 
 /// One object in one game. Tests get one only from the zone queries.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ObjectId(/* private */);
 
 pub mod cards {
@@ -115,36 +106,44 @@ pub mod cards {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Action { Play { card: ObjectId }, Pick { card: ObjectId }, EndTurn }
+pub enum Action { Play { object_id: ObjectId }, Pick { object_id: ObjectId }, EndTurn }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Illegal { pub player: PlayerId, pub action: Action }
+pub struct IllegalAction { pub player_id: PlayerId, pub action: Action }
+
+#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+pub enum ApplyError { Lookup(LookupError), IllegalAction(IllegalAction) }
+
+#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+pub enum LookupError { ObjectNotFound(ObjectId), DefinitionNotFound(CardDefNotFound) }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Outcome { Won(PlayerId), Draw }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Game { /* yours */ }
 
 impl Game {
     pub fn new(seed: u64, decks: [Vec<DefId>; 2]) -> Game;             // shuffles
     pub fn with_deck_order(seed: u64, decks: [Vec<DefId>; 2]) -> Game; // index 0 = top
-    pub fn legal_actions(&self, player: PlayerId) -> Vec<Action>;
-    pub fn apply(&mut self, player: PlayerId, action: Action) -> Result<(), Illegal>;
-    pub fn applied(&self, player: PlayerId, action: Action) -> Result<Game, Illegal>;
-    pub fn outcome(&self) -> Option<Outcome>;         // None while the game goes on
-    pub fn hero_health(&self, p: PlayerId) -> i32;
-    pub fn mana(&self, p: PlayerId) -> u8;
-    pub fn hand(&self, p: PlayerId) -> Vec<ObjectId>;     // oldest first
-    pub fn deck(&self, p: PlayerId) -> Vec<ObjectId>;     // top first
-    pub fn revealed(&self, p: PlayerId) -> Vec<ObjectId>; // pending Forage, in reveal order; empty if none
-    pub fn board(&self, p: PlayerId) -> Vec<ObjectId>;    // left to right
-    pub fn def(&self, id: ObjectId) -> Option<DefId>;     // Some iff id is in a hand, deck, reveal or board
-    pub fn cost(&self, id: ObjectId) -> Option<u8>;       // Some iff id is in a hand
-    pub fn attack(&self, id: ObjectId) -> Option<i32>;    // Some iff id is on a board
-    pub fn health(&self, id: ObjectId) -> Option<i32>;    // Some iff id is on a board
+    pub fn legal_actions(&self, player_id: PlayerId) -> Vec<Action>;
+    pub fn apply(&mut self, player_id: PlayerId, action: Action) -> Result<(), ApplyError>;
+    pub fn applied(&self, player_id: PlayerId, action: Action) -> Result<Game, ApplyError>;
+    pub fn outcome(&self) -> Option<Outcome>;                   // None while the game goes on
+    pub fn hero_health(&self, player_id: PlayerId) -> i32;
+    pub fn mana(&self, player_id: PlayerId) -> u8;
+    pub fn hand(&self, player_id: PlayerId) -> &[ObjectId];     // oldest first
+    pub fn deck(&self, player_id: PlayerId) -> Vec<ObjectId>;   // top first
+    pub fn revealed(&self, player_id: PlayerId) -> &[ObjectId]; // pending Forage, in reveal order; empty if none
+    pub fn board(&self, player_id: PlayerId) -> &[ObjectId];    // left to right
+    pub fn def_id(&self, object_id: ObjectId) -> Result<DefId, LookupError>;
+    pub fn mana_cost(&self, object_id: ObjectId) -> Result<Option<u8>, LookupError>; // Some iff in a hand
+    pub fn attack(&self, object_id: ObjectId) -> Result<Option<i32>, LookupError>;   // Some iff on a board
+    pub fn health(&self, object_id: ObjectId) -> Result<Option<i32>, LookupError>;   // Some iff on a board
 }
 ```
+
+A lookup returns `Err(LookupError::ObjectNotFound(id))` only for an id the game never made. An object that has left every zone is still found. `def_id` returns its card, and `mana_cost`, `attack` and `health` return `Ok(None)`.
 
 Whether an object keeps its `ObjectId` when it moves from hand to board is yours to decide. The tests accept either.
 

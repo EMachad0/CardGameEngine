@@ -17,12 +17,9 @@ mod rng;
 mod turn;
 mod zones;
 
-// #[cfg(test)]
-mod testkit;
-
 pub use action::{Action, IllegalAction};
-pub use cards::{ObjectBag, ObjectId, DefId};
-pub use game::{ApplyError, Game};
+pub use cards::{DefId, ObjectBag, ObjectId};
+pub use game::{ApplyError, Game, LookupError};
 pub use ids::PlayerId;
 pub use outcome::Outcome;
 pub use rng::Rng;

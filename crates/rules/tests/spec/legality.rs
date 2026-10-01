@@ -1,4 +1,4 @@
-//! P on exact positions. An unlisted action returns the exact `Illegal` and
+//! P on exact positions. An unlisted action returns the exact `IllegalAction` and
 //! leaves the game unchanged.
 
 use rules::cards::{BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK};
@@ -58,8 +58,6 @@ fn a_card_that_left_every_zone_cant_be_played_again() {
     game.apply(P0, play(spark)).unwrap();
     end_turn(&mut game);
     end_turn(&mut game);
-    // def not a method in game
-    // assert_eq!(def(game, spark), None);
 
     let before = game.clone();
     assert_eq!(
@@ -79,4 +77,23 @@ fn a_finished_game_rejects_everything() {
 
     assert_eq!(game.outcome(), Some(Outcome::Won(P0)));
     assert_unlisted_rejected(&game);
+}
+
+#[test]
+fn applied_returns_a_new_game_and_leaves_the_original_alone() {
+    let deck = vec![SPARK; 6];
+    let game = Game::with_deck_order(0, [deck.clone(), deck]);
+    let snapshot = game.clone();
+
+    let next = game.applied(P0, play(in_hand(&game, P0, SPARK))).unwrap();
+    assert_eq!(game, snapshot);
+    assert_eq!(next.hero_health(P1), 9);
+
+    assert_eq!(
+        game.applied(P1, Action::EndTurn),
+        Err(ApplyError::IllegalAction(IllegalAction {
+            player_id: P1,
+            action: Action::EndTurn
+        }))
+    );
 }

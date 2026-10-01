@@ -1,9 +1,10 @@
-//! Helpers shared by the contract tests: action builders, turn helpers and the
+//! Helpers shared by the spec tests: action builders, card lookups, turn helpers and the
 //! legality assertions.
 
 use std::collections::BTreeSet;
 
-use rules::{Action, ApplyError, Game, IllegalAction, ObjectId, PlayerId};
+use rules::cards::BOLT;
+use rules::{Action, ApplyError, DefId, Game, IllegalAction, ObjectId, PlayerId};
 
 pub(crate) const P0: PlayerId = PlayerId::new(0);
 pub(crate) const P1: PlayerId = PlayerId::new(1);
@@ -21,13 +22,63 @@ pub(crate) fn other(p: PlayerId) -> PlayerId {
     if p == P0 { P1 } else { P0 }
 }
 
+/// `top`, then 20 Bolts as filler.
+pub(crate) fn deck_with_top(top: &[DefId]) -> Vec<DefId> {
+    let mut deck = top.to_vec();
+    deck.extend(vec![BOLT; 20]);
+    deck
+}
+
+pub(crate) fn defs(game: &Game, ids: &[ObjectId]) -> Vec<DefId> {
+    ids.iter()
+        .map(|&id| {
+            game.def_id(id)
+                .unwrap_or_else(|e| panic!("def_id({id:?}): {e:?}"))
+        })
+        .collect()
+}
+
+pub(crate) fn hand_defs(game: &Game, p: PlayerId) -> Vec<DefId> {
+    defs(game, game.hand(p))
+}
+
+pub(crate) fn deck_defs(game: &Game, p: PlayerId) -> Vec<DefId> {
+    defs(game, &game.deck(p))
+}
+
+pub(crate) fn revealed_defs(game: &Game, p: PlayerId) -> Vec<DefId> {
+    defs(game, game.revealed(p))
+}
+
+pub(crate) fn board_defs(game: &Game, p: PlayerId) -> Vec<DefId> {
+    defs(game, game.board(p))
+}
+
+pub(crate) fn has_in_hand(game: &Game, p: PlayerId, def: DefId) -> bool {
+    game.hand(p).iter().any(|&id| game.def_id(id) == Ok(def))
+}
+
 /// The first card in `p`'s hand with definition `def`.
-// pub(crate) fn in_hand(game: &Game, p: PlayerId, def_id: DefId) -> ObjectId {
-//     game.hand(p)
-//         .into_iter()
-//         .find(|&id| def(game, id) == Some(def))
-//         .unwrap_or_else(|| panic!("no {def:?} in {p:?}'s hand"))
-// }
+pub(crate) fn in_hand(game: &Game, p: PlayerId, def: DefId) -> ObjectId {
+    game.hand(p)
+        .iter()
+        .copied()
+        .find(|&id| game.def_id(id) == Ok(def))
+        .unwrap_or_else(|| panic!("no {def:?} in {p:?}'s hand"))
+}
+
+/// Plays the first card in `p`'s hand with definition `def`.
+pub(crate) fn play_def(game: &mut Game, p: PlayerId, def: DefId) {
+    let action = play(in_hand(game, p, def));
+    game.apply(p, action)
+        .unwrap_or_else(|e| panic!("playing {def:?}: {e:?}"));
+}
+
+/// Plays minion `def` from `p`'s hand and returns its board id.
+pub(crate) fn summon(game: &mut Game, p: PlayerId, def: DefId) -> ObjectId {
+    play_def(game, p, def);
+    *game.board(p).last().expect("the minion entered the board")
+}
 
 /// Every id in a zone: hand, deck, revealed and board, for each player.
 pub(crate) fn zone_ids(game: &Game) -> Vec<ObjectId> {
@@ -57,6 +108,17 @@ pub(crate) fn end_turns_until_over(game: &mut Game) {
     panic!("no outcome after 60 turns");
 }
 
+/// Ends turns until it's `p`'s turn and `p` has at least `mana` mana.
+pub(crate) fn turn_with_mana(game: &mut Game, p: PlayerId, mana: u8) {
+    for _ in 0..40 {
+        if game.legal_actions(p).contains(&Action::EndTurn) && game.mana(p) >= mana {
+            return;
+        }
+        end_turn(game);
+    }
+    panic!("{p:?} never had {mana} mana on their turn");
+}
+
 /// Asserts that `legal_actions(p)` holds the same actions as `expected`, in any order.
 pub(crate) fn assert_actions(game: &Game, p: PlayerId, expected: &[Action]) {
     let actual = game.legal_actions(p);
@@ -69,7 +131,7 @@ pub(crate) fn assert_actions(game: &Game, p: PlayerId, expected: &[Action]) {
 }
 
 /// P for unlisted actions. Each unlisted candidate, for either player, returns
-/// the exact `Illegal` and changes nothing.
+/// the exact `IllegalAction` and changes nothing.
 pub(crate) fn assert_unlisted_rejected(game: &Game) {
     assert_unlisted_rejected_with(game, &BTreeSet::new());
 }
