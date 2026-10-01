@@ -24,6 +24,8 @@ They set the conventions you follow, not material for you to summarize.
 - Every session: `COURSE.md`. It says who writes what in an exercise, and where the learner's
   edge is.
 - Before writing or changing anything in `crates/rules`, tests included: `crates/rules/SPEC.md`.
+- Before writing, moving or deleting any test, or designing code that has to be testable:
+  `docs/testing.md`.
 
 ## Code comments
 
