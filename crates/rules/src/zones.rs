@@ -98,44 +98,90 @@ impl Zones {}
 
 #[cfg(test)]
 mod tests {
-    // use super::*;
-    // use crate::testkit::*;
+    use super::*;
+    use crate::ObjectBag;
 
-    // commented because of bolt function
-    // #[test]
-    // fn deck_takes_from_the_top_and_puts_on_the_bottom() {
-    //     let mut deck = Deck::new(vec![bolt(1), bolt(2), bolt(3)]);
-    //     assert_eq!(deck.pop_front(), Some(bolt(1)));
-    //     deck.push_back(bolt(9));
-    //     assert_eq!(deck.to_vec(), [bolt(2), bolt(3), bolt(9)]);
-    // }
-    //
-    // #[test]
-    // fn empty_deck_gives_nothing() {
-    //     assert_eq!(Deck::new(Vec::new()).pop_front(), None);
-    // }
-    //
-    // #[test]
-    // fn shuffle_is_a_function_of_the_rng_and_keeps_every_card() {
-    //     let cards: Vec<ObjectId> = (1..=10).map(bolt).collect();
-    //     let mut a = Deck::new(cards.clone());
-    //     let mut b = Deck::new(cards.clone());
-    //     a.shuffle(&mut Rng::new(7));
-    //     b.shuffle(&mut Rng::new(7));
-    //     assert_eq!(a, b);
-    //
-    //     let shuffled = a.to_vec();
-    //     assert_eq!(shuffled.len(), cards.len());
-    //     assert!(cards.iter().all(|c| shuffled.contains(c)));
-    // }
-    //
-    // #[test]
-    // fn hand_appends_and_removal_keeps_the_rest_in_order() {
-    //     let mut hand = Hand::empty();
-    //     for d in 1..=4 {
-    //         hand.add(bolt(d));
-    //     }
-    //     assert_eq!(hand.remove(1), bolt(2));
-    //     assert_eq!(hand.as_slice(), [bolt(1), bolt(3), bolt(4)]);
-    // }
+    fn ids<const N: usize>() -> [ObjectId; N] {
+        let mut bag = ObjectBag::default();
+        std::array::from_fn(|_| bag.next_id())
+    }
+
+    fn hand_of(cards: &[ObjectId]) -> Hand {
+        let mut hand = Hand::default();
+        for &card in cards {
+            hand.add(card);
+        }
+        hand
+    }
+
+    #[test]
+    fn a_deck_takes_from_the_top_and_puts_on_the_bottom() {
+        let [a, b, c, d] = ids();
+        let mut deck = Deck::new(vec![a, b, c]);
+
+        assert_eq!(deck.pop_front(), Some(a));
+        deck.push_back(d);
+
+        assert_eq!(deck.to_vec(), [b, c, d]);
+    }
+
+    #[test]
+    fn an_empty_deck_gives_nothing() {
+        assert_eq!(Deck::default().pop_front(), None);
+    }
+
+    #[test]
+    fn a_shuffle_is_a_function_of_the_rng() {
+        let cards: [ObjectId; 10] = ids();
+        let mut a = Deck::new(cards.to_vec());
+        let mut b = Deck::new(cards.to_vec());
+
+        a.shuffle(&mut Rng::new(7));
+        b.shuffle(&mut Rng::new(7));
+
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn a_shuffle_keeps_every_card() {
+        let cards: [ObjectId; 10] = ids();
+        let mut deck = Deck::new(cards.to_vec());
+
+        deck.shuffle(&mut Rng::new(7));
+
+        let mut shuffled = deck.to_vec();
+        shuffled.sort();
+        assert_eq!(shuffled, cards);
+    }
+
+    #[test]
+    fn a_hand_adds_to_the_end() {
+        let [a, b] = ids();
+        let mut hand = Hand::default();
+
+        hand.add(a);
+        hand.add(b);
+
+        assert_eq!(hand.as_slice(), [a, b]);
+    }
+
+    #[test]
+    fn removing_from_a_hand_keeps_the_rest_in_order() {
+        let [a, b, c, d] = ids();
+        let mut hand = hand_of(&[a, b, c, d]);
+
+        assert_eq!(hand.remove(b), Some(b));
+
+        assert_eq!(hand.as_slice(), [a, c, d]);
+    }
+
+    #[test]
+    fn removing_a_card_not_in_the_hand_changes_nothing() {
+        let [a, b] = ids();
+        let mut hand = hand_of(&[a]);
+
+        assert_eq!(hand.remove(b), None);
+
+        assert_eq!(hand.as_slice(), [a]);
+    }
 }
