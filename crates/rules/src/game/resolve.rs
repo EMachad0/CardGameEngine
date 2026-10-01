@@ -6,7 +6,9 @@
 
 use super::Game;
 use crate::action::Action;
-use crate::cards::definition::{Effect, MonsterTargeteer, PlayerTargeteer};
+use crate::cards::definition::{
+    CardDefKind, Effect, MonsterCardDef, MonsterTargeteer, PlayerTargeteer,
+};
 use crate::game::PlayerInteractionState;
 use crate::game::lookup::LookupError;
 use crate::ids::PlayerId;
@@ -56,7 +58,22 @@ impl Game {
                     .remove(object_id)
                     .expect("object not in hand");
                 self.get_player_mut(player_id).mana -= mana_cost;
-                self.play_card(player_id, object_id);
+
+                // TODO remove this clone
+                let effects = self
+                    .on_play_effect(object_id)
+                    .expect("unexpected lookup error")
+                    .to_vec();
+
+                effects.into_iter().for_each(|e| {
+                    self.apply_effect(player_id, e);
+                });
+
+                let def_id = self.def_id(object_id).expect("unexpected lookup error");
+                let def = self.binder.get(def_id);
+                if def.kind.board_presence() {
+                    self.get_player_mut(player_id).zones.board.add(object_id);
+                }
             }
             Action::Pick { object_id } => {
                 let player = self.get_player_mut(player_id);
@@ -79,18 +96,6 @@ impl Game {
             }
         };
         Ok(())
-    }
-
-    fn play_card(&mut self, player_id: PlayerId, object_id: ObjectId) {
-        // TODO remove this clone
-        let effects = self
-            .on_play_effect(object_id)
-            .expect("unexpected lookup error")
-            .to_vec();
-
-        effects.into_iter().for_each(|e| {
-            self.apply_effect(player_id, e);
-        });
     }
 
     fn apply_effect(&mut self, caster: PlayerId, effect: Effect) {

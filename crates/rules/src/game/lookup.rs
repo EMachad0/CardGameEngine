@@ -47,12 +47,30 @@ impl Game {
 
     pub fn health(&self, object_id: ObjectId) -> LookupResult<Option<i32>> {
         let obj = self.object(object_id)?;
-        Ok(self.binder.health(obj.def_id))
+        if !self
+            .get_player(obj.player_id)
+            .zones
+            .board
+            .contains(&object_id)
+        {
+            Ok(None)
+        } else {
+            Ok(self.binder.health(obj.def_id))
+        }
     }
 
     pub fn attack(&self, object_id: ObjectId) -> LookupResult<Option<i32>> {
         let obj = self.object(object_id)?;
-        Ok(self.binder.attack(obj.def_id))
+        if !self
+            .get_player(obj.player_id)
+            .zones
+            .board
+            .contains(&object_id)
+        {
+            Ok(None)
+        } else {
+            Ok(self.binder.attack(obj.def_id))
+        }
     }
 
     pub fn on_play_effect(&self, object_id: ObjectId) -> LookupResult<&[Effect]> {

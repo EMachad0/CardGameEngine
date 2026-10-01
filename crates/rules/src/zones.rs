@@ -39,11 +39,11 @@ pub(crate) struct Hand(Vec<ObjectId>);
 
 impl Hand {
     /// Appends to the end.
-    pub(crate) fn add(&mut self, card: ObjectId) {
-        self.0.push(card);
+    pub(crate) fn add(&mut self, object_id: ObjectId) {
+        self.0.push(object_id);
     }
 
-    /// Removes one card. The others keep their order.
+    /// Removes one object_id. The others keep their order.
     pub(crate) fn remove(&mut self, object_id: ObjectId) -> Option<ObjectId> {
         self.position(object_id).map(|idx| self.0.remove(idx))
     }
@@ -68,8 +68,8 @@ pub(crate) struct Board {
 
 impl Board {
     /// Appends to the end.
-    pub(crate) fn add(&mut self, card: ObjectId) {
-        self.monsters.push(card);
+    pub(crate) fn add(&mut self, object_id: ObjectId) {
+        self.monsters.push(object_id);
     }
 
     /// Removes one card. The others keep their order.
@@ -80,6 +80,10 @@ impl Board {
 
     pub(crate) fn as_slice(&self) -> &[ObjectId] {
         self.monsters.as_slice()
+    }
+
+    pub(crate) fn contains(&self, object_id: &ObjectId) -> bool {
+        self.monsters.contains(object_id)
     }
 
     fn position(&self, object_id: ObjectId) -> Option<usize> {

@@ -22,6 +22,15 @@ pub enum CardDefKind {
     Spell(SpellCardDef),
 }
 
+impl CardDefKind {
+    pub fn board_presence(&self) -> bool {
+        match self {
+            CardDefKind::Monster(_) => true,
+            CardDefKind::Spell(_) => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MonsterCardDef {
     pub health: i32,

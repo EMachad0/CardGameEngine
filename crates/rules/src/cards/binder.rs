@@ -17,7 +17,7 @@ impl Binder {
         Self { defs: map }
     }
 
-    fn get(&self, def_id: DefId) -> &CardDef {
+    pub(crate) fn get(&self, def_id: DefId) -> &CardDef {
         self.defs.get(&def_id).expect("card def not found")
     }
 

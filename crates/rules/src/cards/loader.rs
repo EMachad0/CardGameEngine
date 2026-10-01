@@ -1,6 +1,6 @@
 use crate::cards::definition::{
-    CardDef, CardDefKind, DefId, Effect, EffectSequence, MonsterCardDef, PlayerTargeteer,
-    SpellCardDef,
+    CardDef, CardDefKind, DefId, Effect, EffectSequence, MonsterCardDef, MonsterTargeteer,
+    PlayerTargeteer, SpellCardDef,
 };
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
@@ -8,7 +8,7 @@ use crate::cards::definition::{
 pub struct CardDefNotFound(DefId);
 
 pub const BLAST: DefId = DefId::new("blast");
-pub const CAPTAIN: DefId = DefId::new("blast");
+pub const CAPTAIN: DefId = DefId::new("captain");
 pub const GIANT: DefId = DefId::new("giant");
 pub const RECRUIT: DefId = DefId::new("recruit");
 pub const SPARK: DefId = DefId::new("spark");
@@ -29,7 +29,7 @@ impl CardDefLoader {
                 kind: CardDefKind::Spell(SpellCardDef {}),
                 mana_cost: 1,
                 on_play_effect: EffectSequence(vec![Effect::DamagePlayer {
-                    targeteer: PlayerTargeteer::Caster,
+                    targeteer: PlayerTargeteer::NextPlayer,
                     damage: 1,
                 }]),
             },
@@ -37,10 +37,10 @@ impl CardDefLoader {
                 id: BOLT,
                 name: "Bolt".to_string(),
                 kind: CardDefKind::Spell(SpellCardDef {}),
-                mana_cost: 1,
+                mana_cost: 2,
                 on_play_effect: EffectSequence(vec![Effect::DamagePlayer {
                     targeteer: PlayerTargeteer::NextPlayer,
-                    damage: 1,
+                    damage: 2,
                 }]),
             },
             CardDef {
@@ -51,6 +51,16 @@ impl CardDefLoader {
                 on_play_effect: EffectSequence(vec![Effect::DamagePlayer {
                     targeteer: PlayerTargeteer::RandomPlayer,
                     damage: 3,
+                }]),
+            },
+            CardDef {
+                id: BLAST,
+                name: "Blast".to_string(),
+                kind: CardDefKind::Spell(SpellCardDef {}),
+                mana_cost: 3,
+                on_play_effect: EffectSequence(vec![Effect::DamageMonster {
+                    targeteer: MonsterTargeteer::All,
+                    damage: 2,
                 }]),
             },
             CardDef {
@@ -70,7 +80,27 @@ impl CardDefLoader {
                     health: 1,
                     attack: 1,
                 }),
-                mana_cost: 1,
+                mana_cost: 2,
+                on_play_effect: EffectSequence::default(),
+            },
+            CardDef {
+                id: CAPTAIN,
+                name: "Captain".to_string(),
+                kind: CardDefKind::Monster(MonsterCardDef {
+                    health: 3,
+                    attack: 3,
+                }),
+                mana_cost: 3,
+                on_play_effect: EffectSequence::default(),
+            },
+            CardDef {
+                id: GIANT,
+                name: "Giant".to_string(),
+                kind: CardDefKind::Monster(MonsterCardDef {
+                    health: 3,
+                    attack: 3,
+                }),
+                mana_cost: 3,
                 on_play_effect: EffectSequence::default(),
             },
         ]
