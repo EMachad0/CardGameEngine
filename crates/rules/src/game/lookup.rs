@@ -3,7 +3,6 @@
 use crate::{
     DefId, Game, ObjectId, PlayerId,
     cards::{
-        CardDefNotFound,
         definition::Effect,
         modifier::{Modifier, ModifierEffect, Modifiers},
         object::Object,
@@ -14,8 +13,6 @@ use crate::{
 pub enum LookupError {
     #[error("Object not found")]
     ObjectNotFound(ObjectId),
-    #[error("Card definition not found")]
-    DefinitionNotFound(#[from] CardDefNotFound),
 }
 
 type LookupResult<T> = Result<T, LookupError>;
@@ -179,7 +176,7 @@ impl Game {
             })
             .collect::<Vec<_>>();
         let mut modifiers = Modifiers::new(modifiers);
-        modifiers.extend(obj.modifiers.clone());
+        modifiers.extend(obj.friendly_aura.clone());
         Ok(modifiers)
     }
 

@@ -41,7 +41,7 @@ impl ObjectBag {
     }
 
     pub(crate) fn insert(&mut self, object: Object) -> ObjectId {
-        let object_id = self.next_id();
+        let object_id = object.object_id;
         self.objects.insert(object_id, object);
         object_id
     }
@@ -62,5 +62,32 @@ impl ObjectBag {
 
     pub(crate) fn get_mut(&mut self, object_id: ObjectId) -> Option<&mut Object> {
         self.objects.get_mut(&object_id)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cards::SPARK;
+
+    #[test]
+    fn an_inserted_object_is_stored_under_its_own_id() {
+        let mut bag = ObjectBag::default();
+        let id = bag.next_id();
+
+        let key = bag.insert(Object::new(id, SPARK, PlayerId::new(0)));
+
+        assert_eq!(key, id, "insert must not allocate a second id");
+        assert_eq!(bag.get(id).map(|object| object.object_id), Some(id));
+    }
+
+    #[test]
+    fn each_new_id_is_distinct() {
+        let mut bag = ObjectBag::default();
+
+        let first = bag.next_id();
+        let second = bag.next_id();
+
+        assert_ne!(first, second);
     }
 }

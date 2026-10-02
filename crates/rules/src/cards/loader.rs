@@ -10,18 +10,41 @@ use crate::{
 };
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
-#[error("Card definition not found {0:?}")]
-pub struct CardDefNotFound(DefId);
+pub enum CardDefError {
+    #[error("Card definition not found {0:?}")]
+    NotFound(DefId),
+    #[error("Duplicate {0:?}")]
+    Duplicate(DefId),
+    #[error("Placeholder card def present")]
+    Placeholder,
+}
 
 pub(crate) const PLACEHOLDER: DefId = DefId::new("placeholder");
-pub const BLAST: DefId = DefId::new("blast");
-pub const CAPTAIN: DefId = DefId::new("captain");
-pub const GIANT: DefId = DefId::new("giant");
-pub const RECRUIT: DefId = DefId::new("recruit");
-pub const SPARK: DefId = DefId::new("spark");
-pub const BOLT: DefId = DefId::new("bolt");
-pub const FORAGE: DefId = DefId::new("forage");
-pub const WILD_BOLT: DefId = DefId::new("wild_bolt");
+
+macro_rules! def_ids {
+    ($($name:ident = $id:literal),* $(,)?) => {
+        $(
+            pub const $name: DefId = DefId::new($id);
+        )*
+
+        const ALL_DEF_ID: &[DefId] = &[
+        $(
+            $name,
+        )*
+        ];
+    };
+}
+
+def_ids!(
+    CAPTAIN = "base.captain.v0",
+    BLAST = "base.blast.v0",
+    RECRUIT = "base.recruit.v0",
+    GIANT = "base.giant.v0",
+    SPARK = "base.spark.v0",
+    BOLT = "base.bolt.v0",
+    FORAGE = "base.forage.v0",
+    WILD_BOLT = "base.wild_bolt.v0",
+);
 
 // TODO: loading cards from disk into the engine should be shells job
 #[derive(Debug)]
@@ -131,8 +154,82 @@ impl CardDefLoader {
     }
 
     /// Tests ensure statically defined cards exist
-    pub fn load_and_validate(&self) -> Result<Vec<CardDef>, CardDefNotFound> {
+    pub fn load_and_validate(&self) -> Result<Vec<CardDef>, CardDefError> {
         let defs = self.load_all();
+        validate(&defs)?;
         Ok(defs)
+    }
+}
+
+fn validate(defs: &[CardDef]) -> Result<(), CardDefError> {
+    validate_placeholder(defs)?;
+    validate_duplicates(defs)?;
+    validate_not_found(defs)?;
+    Ok(())
+}
+
+fn validate_placeholder(defs: &[CardDef]) -> Result<(), CardDefError> {
+    match defs.iter().any(|def| def.id == PLACEHOLDER) {
+        true => Err(CardDefError::Placeholder),
+        false => Ok(()),
+    }
+}
+
+fn validate_duplicates(defs: &[CardDef]) -> Result<(), CardDefError> {
+    let mut seen = std::collections::BTreeSet::new();
+    for def in defs.iter() {
+        let def_id = def.id;
+        if !seen.insert(def_id) {
+            return Err(CardDefError::Duplicate(def_id));
+        }
+    }
+    Ok(())
+}
+
+fn validate_not_found(defs: &[CardDef]) -> Result<(), CardDefError> {
+    for def_id in ALL_DEF_ID.iter().copied() {
+        if !defs.iter().any(|def| def.id == def_id) {
+            return Err(CardDefError::NotFound(def_id));
+        }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_built_in_table_is_valid() {
+        assert_eq!(validate(&CardDefLoader.load_all()), Ok(()));
+    }
+
+    #[test]
+    fn a_constant_missing_from_the_table_is_not_found() {
+        let mut defs = CardDefLoader.load_all();
+        defs.retain(|def| def.id != SPARK);
+
+        assert_eq!(validate(&defs), Err(CardDefError::NotFound(SPARK)));
+    }
+
+    #[test]
+    fn two_defs_with_one_id_are_a_duplicate() {
+        let mut defs = CardDefLoader.load_all();
+        let bolt = defs.iter().find(|def| def.id == BOLT).unwrap().clone();
+        defs.push(bolt);
+
+        assert_eq!(validate(&defs), Err(CardDefError::Duplicate(BOLT)));
+    }
+
+    #[test]
+    fn a_def_left_with_the_placeholder_id_is_rejected() {
+        let mut defs = CardDefLoader.load_all();
+        defs.push(CardDef::default());
+
+        assert_eq!(
+            validate(&defs),
+            Err(CardDefError::Placeholder),
+            "a literal that forgot its id falls back to the placeholder"
+        );
     }
 }

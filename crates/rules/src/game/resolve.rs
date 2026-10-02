@@ -8,15 +8,12 @@ use super::Game;
 use crate::action::Action;
 use crate::cards::definition::{Effect, MonsterTargeteer, PlayerTargeteer};
 use crate::cards::modifier::{EffectAmount, Modifier};
-use crate::game::lookup::LookupError;
 use crate::history::{EventKind, HistoryQuery, HistoryQueryKind, PlayerFilter};
 use crate::ids::PlayerId;
 use crate::{IllegalAction, ObjectId};
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum ApplyError {
-    #[error("Lookup: {0}")]
-    Lookup(#[from] LookupError),
     #[error("Illegal Action")]
     IllegalAction(IllegalAction),
 }
@@ -36,22 +33,19 @@ impl Game {
                 player_id, action,
             )))
         } else {
-            self.apply_action(player_id, action)?;
+            self.apply_action(player_id, action);
             self.update();
             Ok(())
         }
     }
 
-    pub(super) fn apply_action(
-        &mut self,
-        player_id: PlayerId,
-        action: Action,
-    ) -> Result<(), ApplyError> {
+    pub(super) fn apply_action(&mut self, player_id: PlayerId, action: Action) {
         match action {
             Action::Play { object_id } => {
-                let mana_cost = self.mana_cost(object_id).map_err(ApplyError::from)?.ok_or(
-                    ApplyError::IllegalAction(IllegalAction::new(player_id, action)),
-                )?;
+                let mana_cost = self
+                    .mana_cost(object_id)
+                    .expect("unexpected lookup error")
+                    .expect("attempt to play card without cost");
                 self.get_player_mut(player_id).mana -= mana_cost;
                 self.play(player_id, object_id);
             }
@@ -63,7 +57,6 @@ impl Game {
                 self.start_turn();
             }
         };
-        Ok(())
     }
 
     pub(crate) fn apply_effect(&mut self, caster: PlayerId, object_id: ObjectId, effect: Effect) {

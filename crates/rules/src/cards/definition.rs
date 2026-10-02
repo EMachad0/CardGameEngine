@@ -1,6 +1,6 @@
 use crate::cards::{loader::PLACEHOLDER, modifier::ModifierEffect};
 
-#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct DefId(&'static str);
 
 impl DefId {
@@ -46,17 +46,17 @@ pub enum CardDefKind {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MonsterCardDef {
-    pub health: i32,
     pub attack: i32,
+    pub health: i32,
     pub friendly_aura_effects: Vec<ModifierEffect>,
     pub hostile_aura_effects: Vec<ModifierEffect>,
 }
 
 impl MonsterCardDef {
-    pub fn new(health: i32, attack: i32) -> Self {
+    pub fn new(attack: i32, health: i32) -> Self {
         Self {
-            health,
             attack,
+            health,
             friendly_aura_effects: Default::default(),
             hostile_aura_effects: Default::default(),
         }

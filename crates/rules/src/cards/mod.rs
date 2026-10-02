@@ -5,5 +5,5 @@ pub(crate) mod modifier;
 pub(crate) mod object;
 
 pub use loader::{
-    BLAST, BOLT, CAPTAIN, CardDefLoader, CardDefNotFound, FORAGE, GIANT, RECRUIT, SPARK, WILD_BOLT,
+    BLAST, BOLT, CAPTAIN, CardDefError, CardDefLoader, FORAGE, GIANT, RECRUIT, SPARK, WILD_BOLT,
 };

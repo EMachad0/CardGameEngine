@@ -12,7 +12,7 @@ The tests for this spec live in `tests/spec/`. `docs/testing.md` says where each
 | `action.rs` | `Action`, `IllegalAction` |
 | `outcome.rs` | `Outcome` |
 | `cards/definition.rs` | `DefId`, `CardDef`, `Effect` |
-| `cards/loader.rs` | the printed card table and the `cards` constants |
+| `cards/loader.rs` | the printed card table, the `cards` constants and the table's validation |
 | `cards/binder.rs` | printed values by `DefId` |
 | `cards/object.rs` | `ObjectId`, `Object`, `ObjectBag` |
 | `rng.rs` | `Rng` |
@@ -87,7 +87,7 @@ impl PlayerId {
 }
 
 /// Which printed card. Tests get one only from the `cards` constants and `Game::def_id`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DefId(/* private */);
 
 /// One object in one game. Tests get one only from the zone queries.
@@ -112,10 +112,10 @@ pub enum Action { Play { object_id: ObjectId }, Pick { object_id: ObjectId }, En
 pub struct IllegalAction { pub player_id: PlayerId, pub action: Action }
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
-pub enum ApplyError { Lookup(LookupError), IllegalAction(IllegalAction) }
+pub enum ApplyError { IllegalAction(IllegalAction) }
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
-pub enum LookupError { ObjectNotFound(ObjectId), DefinitionNotFound(CardDefNotFound) }
+pub enum LookupError { ObjectNotFound(ObjectId) }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Outcome { Won(PlayerId), Draw }
