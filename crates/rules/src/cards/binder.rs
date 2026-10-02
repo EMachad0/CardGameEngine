@@ -38,6 +38,27 @@ impl Binder {
         }
     }
 
+    pub(crate) fn is_spell(&self, def_id: DefId) -> bool {
+        match self.get(def_id).kind {
+            CardDefKind::Spell(_) => true,
+            _ => false,
+        }
+    }
+
+    pub(crate) fn has_board_presence(&self, def_id: DefId) -> bool {
+        match self.get(def_id).kind {
+            CardDefKind::Monster(_) => true,
+            CardDefKind::Spell(_) => false,
+        }
+    }
+
+    pub(crate) fn has_deck_presence(&self, def_id: DefId) -> bool {
+        match self.get(def_id).kind {
+            CardDefKind::Monster(_) => true,
+            CardDefKind::Spell(_) => true,
+        }
+    }
+
     pub(crate) fn mana_cost(&self, def_id: DefId) -> u8 {
         self.get(def_id).mana_cost
     }
@@ -70,5 +91,9 @@ impl Binder {
             CardDefKind::Monster(monster_card_def) => &monster_card_def.hostile_aura_effects,
             CardDefKind::Spell(_spell_card_def) => &[],
         }
+    }
+
+    pub(crate) fn modifier_effects(&self, def_id: DefId) -> &[ModifierEffect] {
+        &self.get(def_id).modifier_effects
     }
 }

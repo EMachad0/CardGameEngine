@@ -45,8 +45,17 @@ impl Game {
         {
             Ok(None)
         } else {
-            let def_mana_cost = self.binder.mana_cost(obj.def_id);
-            Ok(Some(def_mana_cost))
+            let def = self.binder.mana_cost(obj.def_id) as i32;
+            let modifiers = self
+                .modifiers(object_id)?
+                .as_slice()
+                .into_iter()
+                .filter_map(|m| match m.effect {
+                    ModifierEffect::ReduceManaCost { amount } => Some(-self.effect_amount(amount, obj.player_id)),
+                    _ => None,
+                })
+                .sum::<i32>();
+            Ok(Some((def + modifiers).max(0) as u8))
         }
     }
 
@@ -69,6 +78,7 @@ impl Game {
                     ModifierEffect::BuffHealth { amount } => Some(amount),
                     _ => None,
                 })
+                .map(|a| self.effect_amount(a, obj.player_id))
                 .sum::<i32>();
             let damage = self
                 .object(object_id)
@@ -97,6 +107,7 @@ impl Game {
                     ModifierEffect::BuffAtk { amount } => Some(amount),
                     _ => None,
                 })
+                .map(|a| self.effect_amount(a, obj.player_id))
                 .sum::<i32>();
             Ok(Some(def + modifiers))
         }
@@ -104,7 +115,17 @@ impl Game {
 
     fn modifiers(&self, object_id: ObjectId) -> LookupResult<Modifiers> {
         let obj = self.object(object_id)?;
-        let mut modifiers = obj.modifiers.clone();
+        let modifiers = self
+            .binder
+            .modifier_effects(obj.def_id)
+            .into_iter()
+            .map(|e| Modifier {
+                source: object_id,
+                effect: *e,
+            })
+            .collect::<Vec<_>>();
+        let mut modifiers = Modifiers::new(modifiers);
+        modifiers.extend(obj.modifiers.clone());
 
         for other_player_id in self.players().into_iter() {
             for other_object_id in self.board(other_player_id).into_iter().copied() {

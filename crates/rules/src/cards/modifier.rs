@@ -1,4 +1,4 @@
-use crate::ObjectId;
+use crate::{ObjectId, history::HistoryQuery};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(crate) struct Modifiers(Vec<Modifier>);
@@ -28,7 +28,20 @@ pub(crate) struct Modifier {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EffectAmount {
+    Static(i32),
+    History(HistoryQuery),
+}
+
+impl From<i32> for EffectAmount {
+    fn from(value: i32) -> Self {
+        Self::Static(value)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModifierEffect {
-    BuffAtk { amount: i32 },
-    BuffHealth { amount: i32 },
+    BuffAtk { amount: EffectAmount },
+    BuffHealth { amount: EffectAmount },
+    ReduceManaCost { amount: EffectAmount },
 }

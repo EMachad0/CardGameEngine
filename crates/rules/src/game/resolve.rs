@@ -7,8 +7,9 @@
 use super::Game;
 use crate::action::Action;
 use crate::cards::definition::{Effect, MonsterTargeteer, PlayerTargeteer};
-use crate::cards::modifier::Modifier;
+use crate::cards::modifier::{EffectAmount, Modifier};
 use crate::game::lookup::LookupError;
+use crate::history::{EventKind, HistoryQuery, HistoryQueryKind, PlayerFilter};
 use crate::ids::PlayerId;
 use crate::{IllegalAction, ObjectId};
 
@@ -117,6 +118,45 @@ impl Game {
         effects.into_iter().for_each(|e| {
             self.apply_effect(player_id, object_id, e);
         });
+    }
+
+    pub(crate) fn effect_amount(&self, amount: EffectAmount, player_id: PlayerId) -> i32 {
+        match amount {
+            EffectAmount::Static(value) => value,
+            EffectAmount::History(query) => self.history_query(query, player_id),
+        }
+    }
+
+    pub(crate) fn history_query(&self, query: HistoryQuery, player_id: PlayerId) -> i32 {
+        let logs = self.history.logs.iter();
+        let targets = match query.scope {
+            PlayerFilter::All => self.players.iter().map(|p| p.id).collect(),
+            PlayerFilter::Owner => vec![player_id],
+            PlayerFilter::Current => vec![self.turn_order.get_current_player_id()],
+        };
+        match query.kind {
+            HistoryQueryKind::SpellsPlayed => logs
+                .filter(|log| targets.contains(&log.player_id))
+                .filter(|log| match query.turn {
+                    crate::history::TurnFilter::Current => log.turn == self.turn_order.turn_count(),
+                    crate::history::TurnFilter::All => true,
+                })
+                .filter(|log| {
+                    if let EventKind::CardPlayed { object } = &log.event_kind {
+                        if self.binder.is_spell(object.def_id) {
+                            return true;
+                        }
+                    }
+                    false
+                })
+                .count() as i32,
+            HistoryQueryKind::MonsterDied => logs
+                .filter(|log| match &log.event_kind {
+                    EventKind::MonsterDied { .. } => true,
+                    _ => false,
+                })
+                .count() as i32,
+        }
     }
 
     fn resolve_player_targeteer(

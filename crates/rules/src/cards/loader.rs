@@ -1,9 +1,12 @@
-use crate::cards::{
-    definition::{
-        CardDef, CardDefKind, DefId, Effect, EffectSequence, MonsterCardDef, MonsterTargeteer,
-        PlayerTargeteer, SpellCardDef,
+use crate::{
+    cards::{
+        definition::{
+            CardDef, CardDefKind, DefId, Effect, EffectSequence, MonsterCardDef, MonsterTargeteer,
+            PlayerTargeteer, SpellCardDef,
+        },
+        modifier::{EffectAmount, ModifierEffect},
     },
-    modifier::ModifierEffect,
+    history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter},
 };
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
@@ -102,8 +105,8 @@ impl CardDefLoader {
                     health: 1,
                     attack: 1,
                     friendly_aura_effects: vec![
-                        ModifierEffect::BuffAtk { amount: 1 },
-                        ModifierEffect::BuffHealth { amount: 1 },
+                        ModifierEffect::BuffAtk { amount: 1.into() },
+                        ModifierEffect::BuffHealth { amount: 1.into() },
                     ],
                     hostile_aura_effects: Default::default(),
                 }),
@@ -115,6 +118,13 @@ impl CardDefLoader {
                 name: "Giant".to_string(),
                 kind: CardDefKind::Monster(MonsterCardDef::new(5, 5)),
                 mana_cost: 8,
+                modifier_effects: vec![ModifierEffect::ReduceManaCost {
+                    amount: EffectAmount::History(HistoryQuery {
+                        kind: HistoryQueryKind::SpellsPlayed,
+                        scope: PlayerFilter::Owner,
+                        turn: TurnFilter::All,
+                    }),
+                }],
                 ..Default::default()
             },
         ]

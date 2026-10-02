@@ -15,7 +15,7 @@ pub struct CardDef {
     pub name: String,
     pub kind: CardDefKind,
     pub mana_cost: u8,
-    pub modifer_effects: Vec<ModifierEffect>,
+    pub modifier_effects: Vec<ModifierEffect>,
     pub on_play_effect: EffectSequence,
     pub on_board_enter: EffectSequence,
     pub on_board_leave: EffectSequence,
@@ -29,7 +29,7 @@ impl Default for CardDef {
             name: Default::default(),
             kind: CardDefKind::Monster(MonsterCardDef::new(1, 1)),
             mana_cost: Default::default(),
-            modifer_effects: Default::default(),
+            modifier_effects: Default::default(),
             on_play_effect: Default::default(),
             on_board_enter: Default::default(),
             on_board_leave: Default::default(),
@@ -42,22 +42,6 @@ impl Default for CardDef {
 pub enum CardDefKind {
     Monster(MonsterCardDef),
     Spell(SpellCardDef),
-}
-
-impl CardDefKind {
-    pub fn board_presence(&self) -> bool {
-        match self {
-            CardDefKind::Monster(_) => true,
-            CardDefKind::Spell(_) => false,
-        }
-    }
-
-    pub fn deck_presence(&self) -> bool {
-        match self {
-            CardDefKind::Monster(_) => true,
-            CardDefKind::Spell(_) => true,
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

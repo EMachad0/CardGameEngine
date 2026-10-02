@@ -8,9 +8,9 @@ pub(crate) enum EventKind {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct EventLog {
-    player_id: PlayerId,
-    event_kind: EventKind,
-    turn: u32,
+    pub player_id: PlayerId,
+    pub event_kind: EventKind,
+    pub turn: u32,
 }
 
 impl EventLog {
@@ -21,6 +21,32 @@ impl EventLog {
             turn,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PlayerFilter {
+    Current,
+    All,
+    Owner,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TurnFilter {
+    Current,
+    All,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HistoryQuery {
+    pub kind: HistoryQueryKind,
+    pub scope: PlayerFilter,
+    pub turn: TurnFilter,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HistoryQueryKind {
+    SpellsPlayed,
+    MonsterDied,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]

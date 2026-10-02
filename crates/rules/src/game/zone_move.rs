@@ -39,8 +39,7 @@ impl Game {
         }
 
         let def_id = self.def_id(object_id).expect("unexpected lookup error");
-        let def = self.binder.get(def_id);
-        if def.kind.board_presence() {
+        if self.binder.has_board_presence(def_id) {
             self.spawn(player_id, object_id);
         }
     }
@@ -79,8 +78,7 @@ impl Game {
             .expect("object not in board");
 
         let def_id = self.def_id(object_id).expect("unexpected lookup error");
-        let def = self.binder.get(def_id);
-        if def.kind.deck_presence() {
+        if self.binder.has_deck_presence(def_id) {
             self.emtomb(player_id, object_id);
         }
     }
