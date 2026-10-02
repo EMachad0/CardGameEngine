@@ -105,6 +105,20 @@ linted. An editor that runs clippy without the flag hides every test lint.
 `cargo test -p rules --test spec state_check` runs the crate tests whose path contains
 `state_check`.
 
+## Benchmarks
+
+Benchmarks use criterion and live in `crates/<crate>/benches/`. Like crate tests, they use only
+the crate's public interface. They can't import `tests/`, so each bench builds its own fixtures.
+
+A bench may pin a seed, because it measures and asserts nothing. A rules change that shifts the
+RNG stream also changes the pinned game, so numbers from before and after such a change don't
+compare directly.
+
+`cargo bench -p rules` runs them and reports the change since the last run.
+`cargo bench -p rules -- clone` runs the benches whose name contains `clone`, and
+`cargo bench -p rules -- --test` runs each one once as a smoke test. The checks don't run benches,
+but clippy with `--all-targets` lints them.
+
 ## References
 
 - `crates/rules/SPEC.md`: what the rules crate promises.

@@ -4,6 +4,7 @@ members = ["crates/rules"]
 
 [workspace.dependencies]
 thiserror = { version = "2.0.21" }
+criterion = { version = "0.8.2" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
