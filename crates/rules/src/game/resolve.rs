@@ -142,19 +142,14 @@ impl Game {
                     crate::history::TurnFilter::All => true,
                 })
                 .filter(|log| {
-                    if let EventKind::CardPlayed { object } = &log.event_kind {
-                        if self.binder.is_spell(object.def_id) {
-                            return true;
-                        }
-                    }
-                    false
+                    matches!(
+                        &log.event_kind,
+                        EventKind::CardPlayed { object } if self.binder.is_spell(object.def_id)
+                    )
                 })
                 .count() as i32,
             HistoryQueryKind::MonsterDied => logs
-                .filter(|log| match &log.event_kind {
-                    EventKind::MonsterDied { .. } => true,
-                    _ => false,
-                })
+                .filter(|log| matches!(&log.event_kind, EventKind::MonsterDied { .. }))
                 .count() as i32,
         }
     }

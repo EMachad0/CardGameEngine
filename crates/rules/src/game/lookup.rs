@@ -49,9 +49,11 @@ impl Game {
             let modifiers = self
                 .modifiers(object_id)?
                 .as_slice()
-                .into_iter()
+                .iter()
                 .filter_map(|m| match m.effect {
-                    ModifierEffect::ReduceManaCost { amount } => Some(-self.effect_amount(amount, obj.player_id)),
+                    ModifierEffect::ReduceManaCost { amount } => {
+                        Some(-self.effect_amount(amount, obj.player_id))
+                    }
                     _ => None,
                 })
                 .sum::<i32>();
@@ -73,7 +75,7 @@ impl Game {
             let modifiers = self
                 .modifiers(object_id)?
                 .as_slice()
-                .into_iter()
+                .iter()
                 .filter_map(|m| match m.effect {
                     ModifierEffect::BuffHealth { amount } => Some(amount),
                     _ => None,
@@ -118,7 +120,7 @@ impl Game {
         let modifiers = self
             .binder
             .modifier_effects(obj.def_id)
-            .into_iter()
+            .iter()
             .map(|e| Modifier {
                 source: object_id,
                 effect: *e,
@@ -128,7 +130,7 @@ impl Game {
         modifiers.extend(obj.modifiers.clone());
 
         for other_player_id in self.players().into_iter() {
-            for other_object_id in self.board(other_player_id).into_iter().copied() {
+            for other_object_id in self.board(other_player_id).iter().copied() {
                 if object_id == other_object_id {
                     continue;
                 }
@@ -170,7 +172,7 @@ impl Game {
         let modifiers = self
             .binder
             .friendly_aura_effects(obj.def_id)
-            .into_iter()
+            .iter()
             .map(|e| Modifier {
                 source: object_id,
                 effect: *e,
@@ -186,7 +188,7 @@ impl Game {
         let modifiers = self
             .binder
             .hostile_aura_effects(obj.def_id)
-            .into_iter()
+            .iter()
             .map(|e| Modifier {
                 source: object_id,
                 effect: *e,

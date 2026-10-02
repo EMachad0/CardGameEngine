@@ -39,10 +39,7 @@ impl Binder {
     }
 
     pub(crate) fn is_spell(&self, def_id: DefId) -> bool {
-        match self.get(def_id).kind {
-            CardDefKind::Spell(_) => true,
-            _ => false,
-        }
+        matches!(self.get(def_id).kind, CardDefKind::Spell(_))
     }
 
     pub(crate) fn has_board_presence(&self, def_id: DefId) -> bool {

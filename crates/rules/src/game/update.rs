@@ -8,7 +8,7 @@ impl Game {
 
     fn find_dead(&self) -> Option<ObjectId> {
         for player_id in self.players().into_iter() {
-            for object_id in self.board(player_id).into_iter().copied() {
+            for object_id in self.board(player_id).iter().copied() {
                 if let Ok(Some(health)) = self.health(object_id)
                     && health <= 0
                 {
