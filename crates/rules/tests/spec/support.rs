@@ -148,13 +148,14 @@ pub(crate) fn assert_unlisted_rejected_with(game: &Game, extra: &BTreeSet<Object
         candidates.push(pick(id));
     }
 
+    // Each rejection is asserted to leave `g` equal to `game`, so one clone serves every candidate.
+    let mut g = game.clone();
     for p in PLAYERS {
         let legal = game.legal_actions(p);
         for a in &candidates {
             if legal.contains(a) {
                 continue;
             }
-            let mut g = game.clone();
             assert_eq!(
                 g.apply(p, a.clone()),
                 Err(ApplyError::IllegalAction(IllegalAction {
