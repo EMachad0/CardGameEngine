@@ -10,22 +10,52 @@ pub(crate) struct Object {
     pub def_id: DefId,
     pub object_id: ObjectId,
     pub player_id: PlayerId,
-    pub modifiers: Modifiers,
     pub damage: u8,
+    pub modifiers: Modifiers,
+    pub friendly_aura: Modifiers,
+}
+
+impl Object {
+    pub fn new(object_id: ObjectId, def_id: DefId, player_id: PlayerId) -> Self {
+        Self {
+            object_id,
+            def_id,
+            player_id,
+            damage: 0,
+            modifiers: Modifiers::default(),
+            friendly_aura: Modifiers::default(),
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(crate) struct Modifiers(Vec<Modifier>);
 
 impl Modifiers {
+    pub(crate) fn new(modifiers: Vec<Modifier>) -> Self {
+        Self(modifiers)
+    }
+
     pub(crate) fn add(&mut self, modifier: Modifier) {
         self.0.push(modifier);
     }
 
-    pub(crate) fn remove(&mut self, modifier: Modifier) {
-        if let Some(idx) = self.0.iter().position(|m| *m == modifier) {
-            let _ = self.0.remove(idx);
-        }
+    pub(crate) fn extend(&mut self, modifiers: Self) {
+        self.0.extend(modifiers.0);
+    }
+
+    // pub(crate) fn remove(&mut self, modifier: Modifier) {
+    //     if let Some(idx) = self.0.iter().position(|m| *m == modifier) {
+    //         let _ = self.0.remove(idx);
+    //     }
+    // }
+
+    pub(crate) fn as_slice(&self) -> &[Modifier] {
+        self.0.as_slice()
+    }
+
+    pub(crate) fn clear(&mut self) {
+        self.0.clear();
     }
 }
 
@@ -36,7 +66,7 @@ pub(crate) struct Modifier {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum ModifierEffect {
+pub enum ModifierEffect {
     BuffAtk { amount: i32 },
     BuffHealth { amount: i32 },
 }

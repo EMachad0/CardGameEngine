@@ -1,6 +1,9 @@
 use std::collections::BTreeMap;
 
-use crate::cards::definition::{CardDef, CardDefKind, DefId, Effect};
+use crate::cards::{
+    definition::{CardDef, CardDefKind, DefId, Effect},
+    object::ModifierEffect,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Binder {
@@ -41,5 +44,31 @@ impl Binder {
 
     pub(crate) fn on_play_effect(&self, def_id: DefId) -> &[Effect] {
         &self.get(def_id).on_play_effect.0
+    }
+
+    pub(crate) fn on_board_enter(&self, def_id: DefId) -> &[Effect] {
+        &self.get(def_id).on_board_enter.0
+    }
+
+    pub(crate) fn on_board_leave(&self, def_id: DefId) -> &[Effect] {
+        &self.get(def_id).on_board_leave.0
+    }
+
+    pub(crate) fn on_death(&self, def_id: DefId) -> &[Effect] {
+        &self.get(def_id).on_death.0
+    }
+
+    pub(crate) fn friendly_aura_effects(&self, def_id: DefId) -> &[ModifierEffect] {
+        match &self.get(def_id).kind {
+            CardDefKind::Monster(monster_card_def) => &monster_card_def.friendly_aura_effects,
+            CardDefKind::Spell(_spell_card_def) => &[],
+        }
+    }
+
+    pub(crate) fn hostile_aura_effects(&self, def_id: DefId) -> &[ModifierEffect] {
+        match &self.get(def_id).kind {
+            CardDefKind::Monster(monster_card_def) => &monster_card_def.hostile_aura_effects,
+            CardDefKind::Spell(_spell_card_def) => &[],
+        }
     }
 }

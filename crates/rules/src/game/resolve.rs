@@ -7,6 +7,7 @@
 use super::Game;
 use crate::action::Action;
 use crate::cards::definition::{Effect, MonsterTargeteer, PlayerTargeteer};
+use crate::cards::object::Modifier;
 use crate::game::PlayerInteractionState;
 use crate::game::lookup::LookupError;
 use crate::ids::PlayerId;
@@ -36,6 +37,7 @@ impl Game {
             )))
         } else {
             self.apply_action(player_id, action)?;
+            self.update();
             Ok(())
         }
     }
@@ -50,43 +52,11 @@ impl Game {
                 let mana_cost = self.mana_cost(object_id).map_err(ApplyError::from)?.ok_or(
                     ApplyError::IllegalAction(IllegalAction::new(player_id, action)),
                 )?;
-                self.get_player_mut(player_id)
-                    .zones
-                    .hand
-                    .remove(object_id)
-                    .expect("object not in hand");
                 self.get_player_mut(player_id).mana -= mana_cost;
-
-                // TODO remove this clone
-                let effects = self
-                    .on_play_effect(object_id)
-                    .expect("unexpected lookup error")
-                    .to_vec();
-
-                effects.into_iter().for_each(|e| {
-                    self.apply_effect(player_id, e);
-                });
-
-                let def_id = self.def_id(object_id).expect("unexpected lookup error");
-                let def = self.binder.get(def_id);
-                if def.kind.board_presence() {
-                    self.get_player_mut(player_id).zones.board.add(object_id);
-                }
+                self.play(player_id, object_id);
             }
             Action::Pick { object_id } => {
-                let player = self.get_player_mut(player_id);
-                let PlayerInteractionState::Picker { mut options } =
-                    std::mem::take(&mut player.interaction_state)
-                else {
-                    unreachable!();
-                };
-                if let Some(idx) = options.iter().position(|id| *id == object_id) {
-                    let picked = options.remove(idx);
-                    player.zones.hand.add(picked);
-                    options
-                        .into_iter()
-                        .for_each(|c| player.zones.deck.push_back(c));
-                }
+                self.pick(player_id, object_id);
             }
             Action::EndTurn => {
                 self.turn_order.end_turn();
@@ -96,7 +66,7 @@ impl Game {
         Ok(())
     }
 
-    fn apply_effect(&mut self, caster: PlayerId, effect: Effect) {
+    pub(crate) fn apply_effect(&mut self, caster: PlayerId, object_id: ObjectId, effect: Effect) {
         match effect {
             Effect::DamagePlayer { targeteer, damage } => {
                 let targets = self.resolve_player_targeteer(caster, targeteer);
@@ -111,33 +81,43 @@ impl Game {
                     self.draw(target, count);
                 }
             }
-            Effect::RevealToPicker { targeteer, count } => {
+            Effect::Reveal { targeteer, count } => {
                 let targets = self.resolve_player_targeteer(caster, targeteer);
                 for target in targets.into_iter() {
-                    let player = self.get_player_mut(target);
-
-                    let mut options = Vec::new();
-                    for _ in 0..count {
-                        let Some(card) = player.zones.deck.pop_front() else {
-                            break;
-                        };
-
-                        options.push(card);
-                    }
-                    if !options.is_empty() {
-                        player.interaction_state = PlayerInteractionState::Picker { options }
-                    }
+                    self.reveal(target, count);
                 }
             }
             Effect::DamageMonster { targeteer, damage } => {
-                let targets = self.resolve_monster_targeteer(caster, targeteer);
+                let targets = self.resolve_monster_targeteer(caster, object_id, targeteer);
                 for target in targets.into_iter() {
                     if let Some(object) = self.objects.get_mut(target) {
                         object.damage += damage;
                     }
                 }
             }
+            Effect::AddFriendlyAura { targeteer, effect } => {
+                let targets = self.resolve_monster_targeteer(caster, object_id, targeteer);
+                for target in targets.into_iter() {
+                    if let Some(object) = self.objects.get_mut(target) {
+                        object.friendly_aura.add(Modifier {
+                            source: object_id,
+                            effect,
+                        });
+                    }
+                }
+            }
         }
+    }
+
+    pub(crate) fn apply_effects(
+        &mut self,
+        player_id: PlayerId,
+        object_id: ObjectId,
+        effects: Vec<Effect>,
+    ) {
+        effects.into_iter().for_each(|e| {
+            self.apply_effect(player_id, object_id, e);
+        });
     }
 
     fn resolve_player_targeteer(
@@ -158,6 +138,7 @@ impl Game {
     fn resolve_monster_targeteer(
         &mut self,
         _caster: PlayerId,
+        object_id: ObjectId,
         targeteer: MonsterTargeteer,
     ) -> Vec<ObjectId> {
         match targeteer {
@@ -167,19 +148,7 @@ impl Game {
                 .flat_map(|player| player.zones.board.as_slice())
                 .copied()
                 .collect(),
-        }
-    }
-
-    /// Moves the top card to the end of the hand, `count` times.
-    /// Each draw from an empty deck costs 1 health instead.
-    pub(crate) fn draw(&mut self, player_id: PlayerId, count: usize) {
-        let player = self.get_player_mut(player_id);
-        for _ in 0..count {
-            if let Some(card) = player.zones.deck.pop_front() {
-                player.zones.hand.add(card);
-            } else {
-                player.health -= 1;
-            };
+            MonsterTargeteer::Itself => vec![object_id],
         }
     }
 }

@@ -1,6 +1,9 @@
-use crate::cards::definition::{
-    CardDef, CardDefKind, DefId, Effect, EffectSequence, MonsterCardDef, MonsterTargeteer,
-    PlayerTargeteer, SpellCardDef,
+use crate::cards::{
+    definition::{
+        CardDef, CardDefKind, DefId, Effect, EffectSequence, MonsterCardDef, MonsterTargeteer,
+        PlayerTargeteer, SpellCardDef,
+    },
+    object::ModifierEffect,
 };
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
@@ -32,6 +35,9 @@ impl CardDefLoader {
                     targeteer: PlayerTargeteer::NextPlayer,
                     damage: 1,
                 }]),
+                on_board_enter: EffectSequence::default(),
+                on_board_leave: EffectSequence::default(),
+                on_death: EffectSequence::default(),
             },
             CardDef {
                 id: BOLT,
@@ -42,6 +48,9 @@ impl CardDefLoader {
                     targeteer: PlayerTargeteer::NextPlayer,
                     damage: 2,
                 }]),
+                on_board_enter: EffectSequence::default(),
+                on_board_leave: EffectSequence::default(),
+                on_death: EffectSequence::default(),
             },
             CardDef {
                 id: WILD_BOLT,
@@ -52,6 +61,9 @@ impl CardDefLoader {
                     targeteer: PlayerTargeteer::RandomPlayer,
                     damage: 3,
                 }]),
+                on_board_enter: EffectSequence::default(),
+                on_board_leave: EffectSequence::default(),
+                on_death: EffectSequence::default(),
             },
             CardDef {
                 id: BLAST,
@@ -68,46 +80,70 @@ impl CardDefLoader {
                         damage: 2,
                     },
                 ]),
+                on_board_enter: EffectSequence::default(),
+                on_board_leave: EffectSequence::default(),
+                on_death: EffectSequence::default(),
             },
             CardDef {
                 id: FORAGE,
                 name: "Forage".to_string(),
                 kind: CardDefKind::Spell(SpellCardDef {}),
                 mana_cost: 1,
-                on_play_effect: EffectSequence(vec![Effect::RevealToPicker {
+                on_play_effect: EffectSequence(vec![Effect::Reveal {
                     targeteer: PlayerTargeteer::Caster,
                     count: 2,
                 }]),
+                on_board_enter: EffectSequence::default(),
+                on_board_leave: EffectSequence::default(),
+                on_death: EffectSequence::default(),
             },
             CardDef {
                 id: RECRUIT,
                 name: "Recruit".to_string(),
                 kind: CardDefKind::Monster(MonsterCardDef {
-                    health: 1,
-                    attack: 1,
+                    health: 2,
+                    attack: 2,
+                    friendly_aura_effects: Vec::new(),
+                    hostile_aura_effects: Vec::new(),
                 }),
                 mana_cost: 2,
                 on_play_effect: EffectSequence::default(),
+                on_board_enter: EffectSequence::default(),
+                on_board_leave: EffectSequence::default(),
+                on_death: EffectSequence::default(),
             },
             CardDef {
                 id: CAPTAIN,
                 name: "Captain".to_string(),
                 kind: CardDefKind::Monster(MonsterCardDef {
-                    health: 3,
-                    attack: 3,
+                    health: 1,
+                    attack: 1,
+                    friendly_aura_effects: vec![
+                        ModifierEffect::BuffAtk { amount: 1 },
+                        ModifierEffect::BuffHealth { amount: 1 },
+                    ],
+                    hostile_aura_effects: Vec::new(),
                 }),
                 mana_cost: 3,
                 on_play_effect: EffectSequence::default(),
+                on_board_enter: EffectSequence::default(),
+                on_board_leave: EffectSequence::default(),
+                on_death: EffectSequence::default(),
             },
             CardDef {
                 id: GIANT,
                 name: "Giant".to_string(),
                 kind: CardDefKind::Monster(MonsterCardDef {
-                    health: 3,
-                    attack: 3,
+                    health: 5,
+                    attack: 5,
+                    friendly_aura_effects: Vec::new(),
+                    hostile_aura_effects: Vec::new(),
                 }),
                 mana_cost: 3,
                 on_play_effect: EffectSequence::default(),
+                on_board_enter: EffectSequence::default(),
+                on_board_leave: EffectSequence::default(),
+                on_death: EffectSequence::default(),
             },
         ]
     }

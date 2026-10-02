@@ -9,11 +9,13 @@
 mod lookup;
 mod player;
 mod resolve;
+mod update;
+mod zone_move;
 
 use crate::action::Action;
 use crate::cards::CardDefLoader;
 use crate::cards::binder::Binder;
-use crate::cards::object::{Modifiers, Object, ObjectBag};
+use crate::cards::object::{Object, ObjectBag};
 use crate::game::player::{Player, PlayerInteractionState};
 use crate::ids::PlayerId;
 use crate::rng::Rng;
@@ -63,13 +65,7 @@ impl Game {
         for (player, deck_defs) in players.iter_mut().zip(decks.into_iter()) {
             let deck_objs = deck_defs
                 .into_iter()
-                .map(|def_id| Object {
-                    def_id,
-                    object_id: objects.next_id(),
-                    player_id: player.id,
-                    modifiers: Modifiers::default(),
-                    damage: 0,
-                })
+                .map(|def_id| Object::new(objects.next_id(), def_id, player.id))
                 .collect::<Vec<_>>();
             let deck = Deck::new(objects.insert_all(deck_objs));
             player.zones.deck = deck;
@@ -178,5 +174,9 @@ impl Game {
 
     fn get_player_mut(&mut self, player_id: PlayerId) -> &mut Player {
         &mut self.players[player_id.idx()]
+    }
+
+    pub fn players(&self) -> Vec<PlayerId> {
+        self.players.iter().map(|p| p.id).collect()
     }
 }

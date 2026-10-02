@@ -92,13 +92,22 @@ impl Board {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub(crate) struct Graveyard(Vec<ObjectId>);
+
+impl Graveyard {
+    /// Appends to the top.
+    pub(super) fn add(&mut self, object_id: ObjectId) {
+        self.0.push(object_id);
+    }
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(crate) struct Zones {
     pub hand: Hand,
     pub deck: Deck,
     pub board: Board,
+    pub graveyard: Graveyard,
 }
-
-impl Zones {}
 
 #[cfg(test)]
 mod tests {
