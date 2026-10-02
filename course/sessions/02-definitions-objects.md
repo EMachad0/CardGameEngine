@@ -1008,3 +1008,280 @@ commit the course files and I will do the exercise
 I committed `COURSE.md` and the session 02 log as `dc8349a`, and the working tree is clean.
 
 Over to you for the exercise. The tests and spec are in `4d459e0`. They're red until your new API exists, because `src/` still has the old `Card` code. When you're done or stuck, tell me and I'll review against `SPEC.md`. I'll also ask you about the design choices still open: where objects live, whether a card keeps its `ObjectId` from hand to board, counter vs list for spells cast, whether the outcome is derived or committed, and whether heroes store damage or health.
+
+
+> [!quote] YOU
+
+hey, I think I am done, wdyt?
+
+
+> [!abstract] PI
+
+The three checks are green: fmt, clippy, and 13 + 57 tests. The test counts don't match what I committed (35 in-file + 8 contract), so first I'll see what changed in the tests since `4d459e0`:
+
+
+> [!abstract] PI
+
+He moved the rule tests into `tests/spec/` and rewrote them, so first I'll make sure no check got lost. Before and after, by test name:
+
+
+> [!abstract] PI
+
+I've read the whole implementation. Two more things before I write the review: how the spec changed, and a quick check of two suspected bugs.
+
+
+> [!abstract] PI
+
+Both suspicions are confirmed by the throwaway tests in `/tmp/review`. Your repo is untouched.
+
+## Review
+
+The checks are green: fmt, clippy, and 70 tests. You also kept every check from my suite when you moved it to `tests/spec/`, except the "gone ID has no def" assertions. That removal is consistent with your design, since objects stay in the bag forever.
+
+**What's good, with today's nodes in mind:**
+- **History is node C done right.** `History` is a list of events, each with its turn number, and `HistoryQuery` filters it. "This turn" is a filter, so there's no reset hook. Giant's discount is data (`EffectAmount::History`), not an `if def == GIANT`. That's your counters question from this morning, answered in code.
+- **The aura is derived.** `modifiers()` scans the board when it's read, so the Captain's buff disappears with no leave hook. The mirror instinct from the probe didn't show up here.
+- **A per-game `Arc` table (`Binder`).** That's the pinned-snapshot design from R2.
+- **Two session 01 threads are fixed.** `legal_actions` checks for a pending `Picker` *before* the turn check, so an opponent-side pick would now be offered. And targeting is relative to the caster (`get_player_after(caster)`).
+- **The state check is one call** (`update()` at the end of `apply`), so fatigue at turn start is covered. You also added benchmarks before optimizing anything.
+
+**Issues, most important first:**
+
+1. **A minion's personal buff leaks to its friends.** In the probe, A got a personal `+2` attack and B, next to it, went from 2 to 4. `friendly_aura()` adds the source's `obj.modifiers`, which are its *own* buffs, to every friend. You probably meant `obj.friendly_aura`, the field `AddFriendlyAura` writes, which nothing ever reads. It's invisible today only because nothing writes `modifiers` yet.
+2. **Every object's ID is stored twice, and the two disagree.** The probe shows key `ObjectId(6)` holding an `Object` whose `object_id` field is `ObjectId(0)`. `setup` calls `objects.next_id()` for the field, then `insert` allocates a *second* ID for the key. Nothing reads the field today, but `History` clones whole `Object`s into its log, so the first trigger that asks "which object died?" gets the wrong ID. This is today's mirror lesson in a new place: one fact, two stores, wrong from the first allocation. The fix is to allocate once and keep one source.
+3. **The state check kills one at a time.** `while let Some(id) = find_dead() { kill(id) }` kills the first dead minion it finds, fires its `on_death` effects, then rescans. The question below is about what that does.
+4. **Errors that can't happen are in the public API.** After the membership check, `ApplyError::Lookup` can't occur. `CardDefNotFound` is never constructed, so `DefinitionNotFound` can't occur either, and `Binder::get` panics instead. `apply_action` is fallible now, which weakens the session 01 split of "validate first, then mutation can't fail." Every caller has to handle variants that never arrive.
+5. **`CardDef: Default` hides missing fields.** Forget `kind:` on a spell and it silently becomes a 1/1 minion. Forget `id:` and it's `"placeholder"`, which silently overwrites the other card with the same ID in the `BTreeMap`. `load_and_validate` doesn't validate anything yet. It's the same problem as a `_ =>` arm.
+6. **Untested branches.** `HistoryQueryKind::MonsterDied` ignores its scope and turn filters, which becomes a bug the day a card uses it. Also unused by any card, and so untested: `PlayerFilter::Current`, `TurnFilter::Current`, `Effect::Draw`, `on_board_leave`, hostile auras, and `has_deck_presence` (which is always `true`). Either cut them until a card needs them, or give each one a test card.
+7. **Nit.** `MonsterCardDef::new(health, attack)` takes the reverse of the "attack/health" order you use everywhere else. The first asymmetric minion will get swapped.
+
+Item 3 is the one with the most to learn from, so here's a hypothetical card:
+
+
+> [!question] Quiz
+> Hypothetical card Medic, a 1/1 with "Deathrattle: give your other minions +2 health." Your board holds a Medic and a Recruit (2/2), and Blast hits both for 2. Your `update_deaths` runs `while let Some(id) = find_dead() { kill(id) }`, and `kill` fires `on_death` right away. What decides whether the Recruit survives?
+>
+> find_dead scans players in order, then each board left to right, and returns the first minion at 0 health or less.
+>
+> 1. Board order: it survives only if the Medic sits to its left.
+> 2. Nothing: it always dies, since both were at 0 when the check began.
+> 3. Nothing: it always survives, since the deathrattle resolves before any death.
+
+
+> [!success] Quiz — correct ✓
+> Your answer: 1. Board order: it survives only if the Medic sits to its left.
+> Correct answer: 1
+>
+> Note: board order yes, I dont like it actually
+>
+> With the Medic on the left, `find_dead` returns it first, `kill` fires the deathrattle, and the Recruit becomes 2/4 with 2 damage. The rescan then finds it alive. With the Recruit on the left, the Recruit is found and killed first, and the Medic's +2 goes to nobody. The same position gives two different results depending on where the cards sit. That's what "collect, then commit" prevents. MTG 704.3 and Hearthstone's Death Creation Step both evaluate every minion against the same state, remove all the dead at once, and only then resolve deathrattles. Under both, the Recruit dies, every time. The fix is to have each pass collect every dead minion first, remove them together, and fire `on_death` after that. Session 05 will decide the order of those deathrattles.
+
+
+> [!question] Question
+> How do you want to handle the review findings?
+>
+> 1. Fix #1 and #2 now, carry #3 to session 05 (Recommended)
+> 2. Fix #1, #2 and #3 now
+> 3. Close the session, carry everything
+
+
+> [!example] Answer
+> Other: we carry 3 and 6, the others I would like to fix now
+
+
+> [!abstract] PI
+
+Fixing #1, #2, #4, #5 and #7 now, and carrying #3 and #6. Two of those (#4 and #5) change interfaces, so the decisions are yours. One question to ground #4 first:
+
+
+> [!question] Quiz
+> `apply` checks `legal_actions(p).contains(&action)` first. `legal_actions` lists `Play { object_id }` only when `mana_cost(object_id)` is `Ok(Some(cost))` and `cost <= mana`. Once that check passes, which `Err` can `apply` still return?
+>
+> 1. `ApplyError::Lookup`: `apply_action` repeats the lookup, and it can fail the second time.
+> 2. None: the same state already gave `Ok(Some(cost))`, so every later lookup succeeds.
+> 3. `ApplyError::IllegalAction`: the `ok_or` in `apply_action` can still reject the card.
+
+
+> [!success] Quiz — correct ✓
+> Your answer: 2. None: the same state already gave `Ok(Some(cost))`, so every later lookup succeeds.
+> Correct answer: 2
+>
+> `apply_action` runs on the same state that `legal_actions` just read, and lookups are pure functions of that state, so it gets the same `Ok(Some(cost))`. Both later error paths are dead code. So the only error a caller can ever see is the membership failure, and the signature can say exactly that: `apply(...) -> Result<(), IllegalAction>`, with an infallible `apply_action` behind it. That's the session 01 split again: validate in one place, and after that, mutation can't fail. A `.expect("listed actions resolve")` inside `apply_action` documents the invariant, and the property tests would catch it if it ever broke.
+
+
+> [!question] Question
+> For #4, which signatures do you want?
+>
+> apply can only fail on membership. For lookups: DefinitionNotFound is never constructed; ObjectNotFound can happen for an id this game never allocated (from another game, say). Since your bag keeps every object forever, every id this game ever handed out resolves.
+>
+> 1. apply -> Result<(), IllegalAction>; lookups keep Result<Option<T>, LookupError> with only ObjectNotFound (Recommended)
+> 2. apply -> Result<(), IllegalAction>; lookups return plain Option<T>
+> 3. Keep ApplyError, only drop DefinitionNotFound
+
+
+> [!example] Answer
+> Other: I would like to keep all, definition not found is for the case where we have a static DefId and we cant find it when loading the cards, I just dont know how to do that without having to type every id again is a list to check, this check would happen on setup that is why binder always expects because after validation the error would never happen
+
+
+> [!question] Quiz
+> The constants (`SPARK`, `BOLT`, ...) and the list the validation walks are two copies of one fact, which is the mirror problem again. Which way gives you both from a single source, with no build step?
+>
+> Today's card table is Rust code in loader.rs, not a file on disk.
+>
+> 1. A unit test that lists every constant, updated by hand each time a card is added.
+> 2. A `build.rs` that reads the card table and writes the constants into `OUT_DIR`.
+> 3. A `macro_rules!` you call once with `SPARK = "spark", ...`, expanding to the constants and an `ALL` slice.
+
+
+> [!question] Quiz — I don't know
+> Your answer: I don't know
+> Correct answer: 3
+>
+> Note: actually u are correct, we should remove the def not found error from the apply error as it never happens there. for this one I guess the macro but I dont know the syntax to write one
+>
+> A declarative macro takes the list once and expands it twice: one `pub const` per entry, plus `pub(crate) const ALL: &[DefId] = &[SPARK, BOLT, ...];`. Adding a card means adding one line to the macro call, and the constant and the list can't drift apart, because both come from the same tokens. Then `validate` checks that every id in `ALL` is in the loaded defs (that's `CardDefNotFound`) and that no two loaded defs share an id. A hand-maintained test list is the second copy you wanted to avoid. A `build.rs` gets one source too, but it needs a build step and a file to read, and today's table is Rust code. Codegen pays off in session H, if the constants should come from the card files.
+
+
+> [!question] Quiz
+> Your call will be `card_ids! { SPARK = "spark", BOLT = "bolt", }`. Which matcher accepts it?
+>
+> 1. `($name:ident = $code:literal),* $(,)?`
+> 2. `($($name:ident = $code:literal),* $(,)?)`
+> 3. `($($name:literal = $code:ident),* $(,)?)`
+
+
+> [!failure] Quiz — incorrect ✗
+> Your answer: 1. `($name:ident = $code:literal),* $(,)?`
+> Correct answer: 2
+>
+> Note: could we have the name from the code or the oposite so we type the word once?
+>
+> `SPARK` is an identifier and `"spark"` is a string literal, so the fragments are `ident` then `literal`, and the pair has to sit inside `$( ... )` for the `,*` to repeat it. Without the inner `$( ... )`, the matcher describes one pair followed by stray `,*` tokens, and the second entry doesn't match. With the fragments swapped, `SPARK` isn't a literal, so the first token already fails.
+
+
+> [!question] Quiz
+> With the shortcut, `SPARK`'s stable code is `stringify!(SPARK)`, so `"SPARK"`. A year later you rename the constant to `LIGHTNING_SPARK` to match a new card name. What happens to saved decks and replays that stored the code?
+>
+> 1. They break: the code silently became `"LIGHTNING_SPARK"`, so the old `"SPARK"` resolves to nothing.
+> 2. The build fails: `stringify!` refuses identifiers that differ from the card's name.
+> 3. They still load: the constant was renamed, but the stable code stays `"SPARK"`.
+
+
+> [!success] Quiz — correct ✓
+> Your answer: 1. They break: the code silently became `"LIGHTNING_SPARK"`, so the old `"SPARK"` resolves to nothing.
+> Correct answer: 1
+>
+> Note: hmmmm
+>
+> `stringify!` reads whatever identifier is there at compile time, so renaming the constant rewrites the code without anyone deciding to. That's the rename problem you pointed out earlier, moved from the card's name to the Rust name. The two words do different jobs. The identifier is for Rust readers, and you can rename it freely. The literal is the stable code, written once and never changed. Typing both is the price of keeping them independent. If repetition bothers you, keep the code short and meaningless (`"c001"`). Then nobody is tempted to "fix" it when the name changes.
+
+
+> [!abstract] PI
+
+Right, there's nothing magic to recover there: the rename problem doesn't go away, it only moves. Two interface decisions left before I write the red tests. First, #5:
+
+
+> [!question] Question
+> How should CardDef stop hiding missing fields?
+>
+> Today `..Default::default()` fills id with "placeholder" and kind with Monster 1/1, so a forgotten id or kind compiles silently.
+>
+> 1. Drop Default on CardDef; group the optional hooks (on_play, on_board_enter, on_board_leave, on_death, modifier_effects) in a Hooks struct that derives Default (Recommended)
+> 2. Constructors CardDef::spell(...) and CardDef::monster(...), plus builder methods for the optional parts
+> 3. Keep Default and rely on validation
+
+
+> [!example] Answer
+> 3. Keep Default and rely on validation
+
+
+> [!abstract] PI
+
+Your call. Validation can still catch one more case: any def that still carries the `"placeholder"` id. A forgotten `kind` stays invisible, since a 1/1 minion is a legal card. Last decision:
+
+
+> [!question] Question
+> What signature should validation have, so its failure paths can be tested?
+>
+> Your docs/testing.md asks for a happy and an unhappy test per behavior. Today load_and_validate(&self) takes no input, so a test can't feed it a broken table.
+>
+> 1. fn validate(defs: &[CardDef]) -> Result<(), CardDefError>, with CardDefError { NotFound(DefId), Duplicate(DefId), Placeholder }, checked against the macro's ALL (Recommended)
+> 2. Same function, but keep CardDefNotFound as the only error
+> 3. Keep load_and_validate(&self) as is
+
+
+> [!example] Answer
+> 1. fn validate(defs: &[CardDef]) -> Result<(), CardDefError>, with CardDefError { NotFound(DefId), Duplicate(DefId), Placeholder }, checked against the macro's ALL (Recommended)
+
+
+> [!abstract] PI
+
+Now I'll check the tests in the `/tmp/review` copy. They should be red against your current code, and green against a reference fix:
+
+
+> [!abstract] PI
+
+The red tests are written and nothing is committed. Please review them first.
+
+**What I added** (fmt-clean):
+- `cards/object.rs`, `mod tests`:
+  - `an_inserted_object_is_stored_under_its_own_id` is red. It pins #2.
+  - `each_new_id_is_distinct` is green. It's the happy path.
+- `cards/loader.rs`, `mod tests`, against `validate(&[CardDef]) -> Result<(), CardDefError>`:
+  - `the_built_in_table_is_valid`
+  - `a_constant_missing_from_the_table_is_not_found`, which expects `NotFound(SPARK)`
+  - `two_defs_with_one_id_are_a_duplicate`, which expects `Duplicate(BOLT)`
+  - `a_def_left_with_the_placeholder_id_is_rejected`, which expects `Placeholder`
+
+These don't compile until `validate` and `CardDefError` exist. In `/tmp/review` I ran them two ways. With a stub `validate` that always returns `Ok`, the three unhappy tests and the `ObjectBag` test fail. With a reference fix, the whole suite is green, 19 unit plus 57 spec tests. So fixing `insert` doesn't break setup.
+
+**Your fixes:**
+1. `friendly_aura()` reads the wrong field. This is a refactor that keeps everything green, since no public-API test can see it.
+2. Allocate each `ObjectId` once. This turns `an_inserted_object_is_stored_under_its_own_id` green.
+3. Reshape `ApplyError` the way you want. Then I'll update `tests/spec` and `SPEC.md` to match your code.
+4. Write the `card_ids!` macro (constants plus `ALL`), `CardDefError`, and `validate`, with `load_and_validate` calling it.
+5. Change `MonsterCardDef::new` to take `(attack, health)`.
+
+**Carried to later sessions:** #3 (collect then commit) opens session 05 with the Medic, and #6 (untested branches). Both are in `COURSE.md` under open threads, together with your review notes. That file isn't committed yet either.
+
+Once you're happy with the tests, should I commit them now (with a message listing the red ones, per your `docs/testing.md`), or wait and commit them together with your fixes?
+
+
+> [!quote] YOU
+
+done, I believe I aldo applyed the changes, commit as u wish
+
+
+> [!abstract] PI
+
+All three checks pass: fmt, clippy, and 19 unit plus 57 spec tests. Before committing, here's the review of your fixes plus my two small changes.
+
+**Your fixes:**
+- **#1:** `friendly_aura()` now reads `obj.friendly_aura`, so a personal buff stays personal.
+- **#2:** `insert` uses the object's own ID, so each object is allocated once and the key matches the field.
+- **#4:** `ApplyError` is just `IllegalAction` now, and `apply_action` can't fail. The `expect`s state the invariant ("listed actions resolve"). That's the session 01 split back in place.
+- **#5:** the `def_ids!` macro produces the constants and `ALL_DEF_ID` from one list, and `validate` runs at load. Your codes are versioned (`"base.bolt.v0"`), which is your append-only design built into the IDs. Nice.
+- **#7:** it's `(attack, health)` now, fields included.
+
+**Nits.** None of these block the commit:
+- `#[macro_export]` publishes `def_ids!` as `rules::def_ids!`. It wouldn't even work from outside the crate, because it calls `count!` and names `DefId` without a full path. Dropping the attribute keeps it local.
+- `count!` exists only to size the array. A slice, `const ALL_DEF_ID: &[DefId] = &[$($name),*];`, needs no count.
+- `insert` now trusts the caller's ID, and a reused ID silently overwrites an object in the `BTreeMap`. A single `bag.create(def_id, player_id) -> ObjectId` that allocates and inserts in one step would make double allocation impossible to write.
+
+**My changes:**
+- **`HashSet` → `BTreeSet` in `validate_duplicates`.** Your R1 lint caught it. In this case it was a false alarm: `seen` only answers membership and is never iterated, so its order can't leak into the game. The ban is deliberately blunt, though, and following it here costs nothing.
+- **`SPEC.md` now matches your code:** `ApplyError { IllegalAction }`, `LookupError { ObjectNotFound }`, `DefId: Hash`, and the `loader.rs` row mentions validation.
+
+I'm also closing out session 02 in `COURSE.md` and creating the session 03 log file, so everything can go in together:
+
+
+> [!question] Question
+> Commit everything (your fixes, my tests, the BTreeSet swap, the SPEC sync, COURSE.md and the session 03 log file)?
+>
+> 1. Commit, two commits: code+tests, then course notes (Recommended)
+> 2. Commit everything as one commit
+> 3. Wait, I want to change something first
+
+
+> [!example] Answer
+> Other: commit two commits, I am fine with insert trusting the caller's id, it was done this way so changes to Object dont ripple to object bag

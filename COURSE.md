@@ -56,6 +56,17 @@ Session 02 exercise design (guided by questions, at his request, not presented):
 - Chose `DefId(&'static str)` stable codes, `CardDef` with a nested `Kind`, behavior as `Effect`/`CostRule`/`Aura` data, and a `static` table behind one `def(id)` lookup.
 - Process: the quiz UI doesn't show the prose above it. Put any code the question depends on into the question or its `details`.
 
+Session 02 exercise review (green: fmt, clippy, 13 unit + 57 spec tests). He moved the rule tests to `tests/spec/` and wrote `docs/testing.md`; all checks survived except "gone id has no def" (objects stay in the bag forever, by design):
+- Strong: `History` as a list of events with turn numbers, plus `HistoryQuery` filters, and Giant's discount as data (`EffectAmount::History`). That's node C, including "this turn" as a filter with no reset hook. The aura is derived on read (no leave hook). A per-game `Arc` `Binder`. Fixed the session 01 threads (a pending `Picker` is checked before the turn check; targeting is relative to the caster). Added benchmarks before optimizing. Effects-as-data vocabulary arrived early (`Effect`, targeteers, `EffectSequence` hooks).
+- Bugs, shown by throwaway probes: (1) `friendly_aura()` adds the source's own `obj.modifiers` to every friend, so personal buffs leak, while `obj.friendly_aura` is written and never read; (2) `ObjectBag` allocates twice (`Object::new(next_id())` then `insert` allocates the key), so the field is `ObjectId(0)` under key `ObjectId(6)`. That's the mirror lesson in a new place.
+- (3) The state check kills one at a time and fires `on_death` inside the loop: not collect-then-commit. Quiz: he saw that the Medic case depends on board order ("I don't like it"). Carried to session 05 as the opening failing case (Medic: "Deathrattle: give your other minions +2 health").
+- (4) Unreachable error variants (`ApplyError::Lookup`, `DefinitionNotFound` in lookups). He first wanted to keep them all, then agreed `DefinitionNotFound` belongs to loading, not `apply`. He'll reshape `ApplyError`; tests and SPEC follow his code.
+- (5) He kept `CardDef: Default` (placeholder id, Monster 1/1 kind) and chose validation instead: `validate(defs) -> Result<(), CardDefError { NotFound, Duplicate, Placeholder }>` against a `card_ids!` macro's `ALL`. Taught `macro_rules!` (missed the `$( ... ),*` group syntax, then got it). His idea of deriving the code with `stringify!` was rejected by his own rename argument.
+- (6) Untested speculative branches (`MonsterDied` ignores its filters, `PlayerFilter::Current`, `Draw`, `on_board_leave`, hostile auras, `has_deck_presence`). Carried.
+- (7) `MonsterCardDef::new(health, attack)` argument order. He fixes it.
+- Red tests written for (2) in `cards/object.rs` and (5) in `cards/loader.rs`, verified red now and green with a reference fix. (1) and (7) are refactors with no public-API test possible.
+- He fixed (1), (2), (4), (5) and (7). `ApplyError` is only `IllegalAction` and `apply_action` is infallible again. `LookupError` is only `ObjectNotFound`. A `def_ids!` macro (with a `count!` helper and an unneeded `#[macro_export]`, both nits) makes the constants and `ALL_DEF_ID`. Codes are versioned (`"base.bolt.v0"`), his append-only design. His own R1 lint caught a `HashSet` in `validate_duplicates`: membership only, never iterated, so a false positive, swapped to `BTreeSet` anyway. `ObjectBag::insert` trusts the caller's id. He kept it on purpose, so changes to `Object` don't ripple into `ObjectBag`.
+
 Solid:
 - Card definition (never changes) vs instance with its own ID and modifiers.
 - Non-commuting modifiers ("set to 1" vs "+2") need an ordering rule. Noted himself that 1 vs 3 is a design choice.
@@ -99,7 +110,10 @@ Rust: knows traits, generics, lifetimes, but they don't come naturally when desi
 - "Costs (1) less per spell cast this turn": his observer design (a -1 modifier on the card) vs a counter in state. Which one handles a copy drawn after the spells? Open session 02 (C) with this.
 - ~~Hand index vs ID~~: done in session 02 (Lure).
 - Session H: versioned definitions in one append-only table (his design) vs a per-game `Arc<CardDb>` snapshot. Hot reload as a recorded input. Load-time validation of card codes referenced in data. Stable codes in files vs runtime index.
-- Session 02 review: ask about where objects live (per-zone `Vec` vs arena), the hand to board ID policy, counter vs list for spells cast, derived vs committed outcome, hero damage vs health, and the per-field `match` in the old `Card::mana_cost`.
+- Session 05 opener: collect-then-commit in his `update_deaths` (kills one at a time, `on_death` inside the loop). Use the Medic card as the red test. Also decide the order of simultaneous deathrattles.
+- Untested speculative branches in `rules` (`HistoryQueryKind::MonsterDied` ignores scope and turn filters, `PlayerFilter::Current`, `TurnFilter::Current`, `Effect::Draw`, `on_board_leave`, hostile auras, `has_deck_presence`). Cut them or give each a test card when its session comes.
+- Hand to board keeps the `ObjectId` and the bag keeps objects forever, so a "+500 until end of turn" in `obj.modifiers` would survive a bounce. Raise this when bounce arrives (the zone-reset table).
+- Session 02 review (asked or answered): where objects live (per-zone `Vec` vs arena), the hand to board ID policy, counter vs list for spells cast, derived vs committed outcome, hero damage vs health, and the per-field `match` in the old `Card::mana_cost`.
 
 ## Dependency map
 
@@ -160,8 +174,8 @@ graph TD
 |---|-------|-------|--------|
 | 00 | probe | Knowledge probe and plan | done |
 | 01 | R1, A | Game as a state machine, `legal_actions` + `apply` | done (exercise green: 3 rng + 20 contract tests) |
-| 02 | R2, B, C | Definitions, objects, IDs; derived stats and state checks | nodes done; exercise tests committed (`4d459e0`), learner implementing |
-| 03 | D | Events out; return vs push | |
+| 02 | R2, B, C | Definitions, objects, IDs; derived stats and state checks | done (green: 19 unit + 57 spec tests; review fixes applied) |
+| 03 | D | Events out; return vs push | next. Open with his `History`/`EventLog` inside `Game`: rules history (state, read by rules) vs the event stream to the shell (output). Same data or not? |
 | 04 | R3, E | Effects as data | |
 | 05 | F | Triggers, replacements, statics | |
 | 06 | R4, G | Resolution loop, pending choices, stored half-finished effects | |
