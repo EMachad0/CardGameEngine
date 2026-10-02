@@ -5,7 +5,8 @@ use crate::{
     cards::{
         CardDefNotFound,
         definition::Effect,
-        object::{Modifier, ModifierEffect, Modifiers, Object},
+        modifier::{Modifier, ModifierEffect, Modifiers},
+        object::Object,
     },
 };
 

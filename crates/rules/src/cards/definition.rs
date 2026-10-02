@@ -1,4 +1,4 @@
-use crate::cards::{loader::PLACEHOLDER, object::ModifierEffect};
+use crate::cards::{loader::PLACEHOLDER, modifier::ModifierEffect};
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq)]
 pub struct DefId(&'static str);

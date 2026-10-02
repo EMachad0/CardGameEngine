@@ -3,7 +3,7 @@ use crate::cards::{
         CardDef, CardDefKind, DefId, Effect, EffectSequence, MonsterCardDef, MonsterTargeteer,
         PlayerTargeteer, SpellCardDef,
     },
-    object::ModifierEffect,
+    modifier::ModifierEffect,
 };
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]

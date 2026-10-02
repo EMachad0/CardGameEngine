@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::cards::{
     definition::{CardDef, CardDefKind, DefId, Effect},
-    object::ModifierEffect,
+    modifier::ModifierEffect,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
