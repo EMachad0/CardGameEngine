@@ -1,7 +1,7 @@
 use crate::{
     Game, ObjectId, PlayerId,
     game::PlayerInteractionState,
-    history::{EventKind, EventLog},
+    history::{HistoryEntry, HistoryKind},
 };
 
 impl Game {
@@ -29,9 +29,9 @@ impl Game {
             self.apply_effects(player_id, object_id, effects);
         }
         if let Some(object) = self.objects.get(object_id) {
-            self.history.logs.push(EventLog::new(
+            self.history.entries.push(HistoryEntry::new(
                 player_id,
-                EventKind::CardPlayed {
+                HistoryKind::CardPlayed {
                     object: object.clone(),
                 },
                 self.turn_order.turn_count(),
@@ -56,9 +56,9 @@ impl Game {
             self.apply_effects(player_id, object_id, effects);
         }
         if let Some(object) = self.objects.get(object_id) {
-            self.history.logs.push(EventLog::new(
+            self.history.entries.push(HistoryEntry::new(
                 player_id,
-                EventKind::MonsterDied {
+                HistoryKind::MonsterDied {
                     object: object.clone(),
                 },
                 self.turn_order.turn_count(),

@@ -16,7 +16,7 @@ fn acting_on_the_opponents_turn_is_rejected_and_changes_nothing() {
     for a in [Action::EndTurn, play(own_card), play(opponents_card)] {
         let mut g = game.clone();
         assert_eq!(
-            g.apply(P1, a.clone()),
+            g.apply(P1, a.clone(), &mut ()),
             Err(ApplyError::IllegalAction(IllegalAction {
                 player_id: P1,
                 action: a
@@ -43,7 +43,8 @@ fn only_affordable_cards_in_the_hand_can_be_played() {
 fn a_pending_pick_rejects_everything_else() {
     let deck0 = vec![FORAGE, SPARK, SPARK, SPARK, RECRUIT, CAPTAIN, BOLT];
     let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
-    game.apply(P0, play(in_hand(&game, P0, FORAGE))).unwrap();
+    game.apply(P0, play(in_hand(&game, P0, FORAGE)), &mut ())
+        .unwrap();
 
     let revealed = game.revealed(P0);
     assert_actions(&game, P0, &[pick(revealed[0]), pick(revealed[1])]);
@@ -55,13 +56,13 @@ fn a_card_that_left_every_zone_cant_be_played_again() {
     let deck = vec![SPARK; 8];
     let mut game = Game::with_deck_order(0, [deck.clone(), deck]);
     let spark = in_hand(&game, P0, SPARK);
-    game.apply(P0, play(spark)).unwrap();
+    game.apply(P0, play(spark), &mut ()).unwrap();
     end_turn(&mut game);
     end_turn(&mut game);
 
     let before = game.clone();
     assert_eq!(
-        game.apply(P0, play(spark)),
+        game.apply(P0, play(spark), &mut ()),
         Err(ApplyError::IllegalAction(IllegalAction {
             player_id: P0,
             action: play(spark)

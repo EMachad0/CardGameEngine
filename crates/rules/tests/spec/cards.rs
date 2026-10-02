@@ -55,7 +55,7 @@ fn every_card_pays_its_printed_cost() {
         assert_eq!(game.mana_cost(card).unwrap(), Some(cost), "{def:?}");
 
         let before = game.mana(P0);
-        game.apply(P0, play(card)).unwrap();
+        game.apply(P0, play(card), &mut ()).unwrap();
         assert_eq!(game.mana(P0), before - cost, "{def:?}");
     }
 }
@@ -126,7 +126,7 @@ fn the_picked_card_goes_to_the_end_of_the_hand() {
     let mut game = forage_revealing_recruit_and_captain();
 
     let captain = game.revealed(P0)[1];
-    game.apply(P0, pick(captain)).unwrap();
+    game.apply(P0, pick(captain), &mut ()).unwrap();
 
     assert_eq!(hand_defs(&game, P0), [SPARK, SPARK, SPARK, CAPTAIN]);
 }
@@ -136,7 +136,7 @@ fn the_unpicked_card_goes_to_the_bottom_of_the_deck() {
     let mut game = forage_revealing_recruit_and_captain();
 
     let captain = game.revealed(P0)[1];
-    game.apply(P0, pick(captain)).unwrap();
+    game.apply(P0, pick(captain), &mut ()).unwrap();
 
     assert_eq!(deck_defs(&game, P0), [BOLT, RECRUIT]);
 }
@@ -146,7 +146,7 @@ fn picking_ends_the_pending_forage() {
     let mut game = forage_revealing_recruit_and_captain();
 
     let captain = game.revealed(P0)[1];
-    game.apply(P0, pick(captain)).unwrap();
+    game.apply(P0, pick(captain), &mut ()).unwrap();
 
     assert!(game.revealed(P0).is_empty());
     // Forage spent player 0's only mana, so ending the turn is all that is left.

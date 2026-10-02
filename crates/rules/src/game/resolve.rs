@@ -8,9 +8,9 @@ use super::Game;
 use crate::action::Action;
 use crate::cards::definition::{Effect, MonsterTargeteer, PlayerTargeteer};
 use crate::cards::modifier::{EffectAmount, Modifier};
-use crate::history::{EventKind, HistoryQuery, HistoryQueryKind, PlayerFilter};
+use crate::history::{HistoryKind, HistoryQuery, HistoryQueryKind, PlayerFilter};
 use crate::ids::PlayerId;
-use crate::{IllegalAction, ObjectId};
+use crate::{IllegalAction, ObjectId, Observer};
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum ApplyError {
@@ -21,13 +21,18 @@ pub enum ApplyError {
 impl Game {
     pub fn applied(&self, player_id: PlayerId, action: Action) -> Result<Self, ApplyError> {
         let mut game = self.clone();
-        game.apply(player_id, action)?;
+        game.apply(player_id, action, &mut ())?;
         Ok(game)
     }
 
     /// `Ok` if and only if `action` is in `legal_actions(player_id)`.
     /// An `Err` leaves the game unchanged.
-    pub fn apply(&mut self, player_id: PlayerId, action: Action) -> Result<(), ApplyError> {
+    pub fn apply(
+        &mut self,
+        player_id: PlayerId,
+        action: Action,
+        _obs: &mut impl Observer,
+    ) -> Result<(), ApplyError> {
         if !self.legal_actions(player_id).contains(&action) {
             Err(ApplyError::IllegalAction(IllegalAction::new(
                 player_id, action,
@@ -121,28 +126,30 @@ impl Game {
     }
 
     pub(crate) fn history_query(&self, query: HistoryQuery, player_id: PlayerId) -> i32 {
-        let logs = self.history.logs.iter();
+        let entries = self.history.entries.iter();
         let targets = match query.scope {
             PlayerFilter::All => self.players.iter().map(|p| p.id).collect(),
             PlayerFilter::Owner => vec![player_id],
             PlayerFilter::Current => vec![self.turn_order.get_current_player_id()],
         };
         match query.kind {
-            HistoryQueryKind::SpellsPlayed => logs
-                .filter(|log| targets.contains(&log.player_id))
-                .filter(|log| match query.turn {
-                    crate::history::TurnFilter::Current => log.turn == self.turn_order.turn_count(),
+            HistoryQueryKind::SpellsPlayed => entries
+                .filter(|entry| targets.contains(&entry.player_id))
+                .filter(|entry| match query.turn {
+                    crate::history::TurnFilter::Current => {
+                        entry.turn == self.turn_order.turn_count()
+                    }
                     crate::history::TurnFilter::All => true,
                 })
-                .filter(|log| {
+                .filter(|entry| {
                     matches!(
-                        &log.event_kind,
-                        EventKind::CardPlayed { object } if self.binder.is_spell(object.def_id)
+                        &entry.kind,
+                        HistoryKind::CardPlayed { object } if self.binder.is_spell(object.def_id)
                     )
                 })
                 .count() as i32,
-            HistoryQueryKind::MonsterDied => logs
-                .filter(|log| matches!(&log.event_kind, EventKind::MonsterDied { .. }))
+            HistoryQueryKind::MonsterDied => entries
+                .filter(|entry| matches!(&entry.kind, HistoryKind::MonsterDied { .. }))
                 .count() as i32,
         }
     }

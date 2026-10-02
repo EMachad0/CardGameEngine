@@ -70,7 +70,7 @@ pub(crate) fn in_hand(game: &Game, p: PlayerId, def: DefId) -> ObjectId {
 /// Plays the first card in `p`'s hand with definition `def`.
 pub(crate) fn play_def(game: &mut Game, p: PlayerId, def: DefId) {
     let action = play(in_hand(game, p, def));
-    game.apply(p, action)
+    game.apply(p, action, &mut ())
         .unwrap_or_else(|e| panic!("playing {def:?}: {e:?}"));
 }
 
@@ -94,7 +94,7 @@ pub(crate) fn end_turn(game: &mut Game) {
         .into_iter()
         .find(|&p| game.legal_actions(p).contains(&Action::EndTurn))
         .expect("someone can end their turn");
-    game.apply(p, Action::EndTurn).unwrap();
+    game.apply(p, Action::EndTurn, &mut ()).unwrap();
 }
 
 /// Ends turns until the game is over. Panics after 60 turns instead of looping forever.
@@ -157,7 +157,7 @@ pub(crate) fn assert_unlisted_rejected_with(game: &Game, extra: &BTreeSet<Object
                 continue;
             }
             assert_eq!(
-                g.apply(p, a.clone()),
+                g.apply(p, a.clone(), &mut ()),
                 Err(ApplyError::IllegalAction(IllegalAction {
                     player_id: p,
                     action: a.clone()

@@ -22,7 +22,7 @@ use crate::ids::PlayerId;
 use crate::rng::Rng;
 use crate::turn::TurnOrder;
 use crate::zones::Deck;
-use crate::{DefId, ObjectId, Outcome};
+use crate::{DefId, ObjectId, Outcome, View};
 
 pub use lookup::LookupError;
 pub use resolve::ApplyError;
@@ -182,5 +182,9 @@ impl Game {
 
     pub fn players(&self) -> Vec<PlayerId> {
         self.players.iter().map(|p| p.id).collect()
+    }
+
+    pub fn view(&self, _viewer: PlayerId) -> View {
+        todo!()
     }
 }

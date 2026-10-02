@@ -38,7 +38,8 @@ fn play_out(seed: u64, mut visit: impl FnMut(&Game)) -> Game {
         }
         visit(&game);
         let (p, a) = options.swap_remove(picker.below(options.len()));
-        game.apply(p, a).expect("a listed action is accepted");
+        game.apply(p, a, &mut ())
+            .expect("a listed action is accepted");
     }
     panic!("seed {seed}: no outcome within {MAX_STEPS} steps");
 }

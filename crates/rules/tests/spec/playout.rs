@@ -57,7 +57,7 @@ pub(crate) fn random_playout(seed: u64, picker_seed: u64) -> (Game, Vec<(PlayerI
             _ => None,
         };
 
-        game.apply(p, a.clone())
+        game.apply(p, a.clone(), &mut ())
             .unwrap_or_else(|e| panic!("{context}: listed action rejected: {e:?}"));
 
         let mut expected = off_board_before;
@@ -239,11 +239,11 @@ fn assert_listed_accepted_and_deterministic(game: &Game) {
             let mut first = game.clone();
             let mut second = game.clone();
             assert_eq!(
-                first.apply(p, a.clone()),
+                first.apply(p, a.clone(), &mut ()),
                 Ok(()),
                 "listed {a:?} for {p:?} was rejected"
             );
-            second.apply(p, a.clone()).unwrap();
+            second.apply(p, a.clone(), &mut ()).unwrap();
             assert_eq!(
                 first, second,
                 "same state + same action gave different games: {a:?}"

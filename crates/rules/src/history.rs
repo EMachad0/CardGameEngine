@@ -1,23 +1,23 @@
 use crate::{PlayerId, cards::object::Object};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum EventKind {
+pub(crate) enum HistoryKind {
     CardPlayed { object: Object },
     MonsterDied { object: Object },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct EventLog {
+pub(crate) struct HistoryEntry {
     pub player_id: PlayerId,
-    pub event_kind: EventKind,
+    pub kind: HistoryKind,
     pub turn: u32,
 }
 
-impl EventLog {
-    pub(crate) fn new(player_id: PlayerId, event_kind: EventKind, turn: u32) -> Self {
+impl HistoryEntry {
+    pub(crate) fn new(player_id: PlayerId, kind: HistoryKind, turn: u32) -> Self {
         Self {
             player_id,
-            event_kind,
+            kind,
             turn,
         }
     }
@@ -51,5 +51,5 @@ pub enum HistoryQueryKind {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(crate) struct History {
-    pub logs: Vec<EventLog>,
+    pub entries: Vec<HistoryEntry>,
 }

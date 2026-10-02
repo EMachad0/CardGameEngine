@@ -10,7 +10,7 @@ fn ending_a_turn_hands_the_decision_to_the_opponent() {
     let deck = vec![SPARK, SPARK, BOLT, BOLT, RECRUIT, RECRUIT];
     let mut game = Game::with_deck_order(0, [deck.clone(), deck]);
 
-    game.apply(P0, Action::EndTurn).unwrap();
+    game.apply(P0, Action::EndTurn, &mut ()).unwrap();
 
     // With 1 mana, player 1 can afford the two Sparks but not the Bolts.
     let hand = game.hand(P1);

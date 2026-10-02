@@ -36,7 +36,7 @@ fn replaying_seed_plus_decisions_reproduces_the_game() {
         let mut replay = Game::new(seed, [sample_deck(), sample_deck()]);
         for (p, a) in log {
             replay
-                .apply(p, a.clone())
+                .apply(p, a.clone(), &mut ())
                 .unwrap_or_else(|e| panic!("seed {seed}: replayed action rejected: {e:?}"));
         }
         assert_eq!(replay, original, "seed {seed}: replay diverged");
