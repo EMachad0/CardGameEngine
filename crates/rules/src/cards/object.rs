@@ -16,7 +16,7 @@ pub(crate) struct Object {
 }
 
 impl Object {
-    pub fn new(object_id: ObjectId, def_id: DefId, player_id: PlayerId) -> Self {
+    pub(crate) fn new(object_id: ObjectId, def_id: DefId, player_id: PlayerId) -> Self {
         Self {
             object_id,
             def_id,
@@ -44,18 +44,8 @@ impl Modifiers {
         self.0.extend(modifiers.0);
     }
 
-    // pub(crate) fn remove(&mut self, modifier: Modifier) {
-    //     if let Some(idx) = self.0.iter().position(|m| *m == modifier) {
-    //         let _ = self.0.remove(idx);
-    //     }
-    // }
-
     pub(crate) fn as_slice(&self) -> &[Modifier] {
         self.0.as_slice()
-    }
-
-    pub(crate) fn clear(&mut self) {
-        self.0.clear();
     }
 }
 

@@ -8,7 +8,6 @@ use super::Game;
 use crate::action::Action;
 use crate::cards::definition::{Effect, MonsterTargeteer, PlayerTargeteer};
 use crate::cards::object::Modifier;
-use crate::game::PlayerInteractionState;
 use crate::game::lookup::LookupError;
 use crate::ids::PlayerId;
 use crate::{IllegalAction, ObjectId};
