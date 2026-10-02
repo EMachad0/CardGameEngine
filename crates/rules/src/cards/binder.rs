@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 use crate::cards::{
     definition::{CardDef, CardDefKind, DefId, Effect},
@@ -7,7 +7,8 @@ use crate::cards::{
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Binder {
-    pub defs: BTreeMap<DefId, CardDef>,
+    /// Arc so clone and eq are cheap
+    defs: Arc<BTreeMap<DefId, CardDef>>,
 }
 
 impl Binder {
@@ -17,7 +18,9 @@ impl Binder {
             map.insert(def.id, def);
         });
 
-        Self { defs: map }
+        Self {
+            defs: Arc::new(map),
+        }
     }
 
     pub(crate) fn get(&self, def_id: DefId) -> &CardDef {
