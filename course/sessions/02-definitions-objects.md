@@ -1285,3 +1285,30 @@ I'm also closing out session 02 in `COURSE.md` and creating the session 03 log f
 
 > [!example] Answer
 > Other: commit two commits, I am fine with insert trusting the caller's id, it was done this way so changes to Object dont ripple to object bag
+
+
+> [!abstract] PI
+
+Committed in two commits, and the working tree is clean:
+- `952b2fa`: your review fixes, my tests, the `BTreeSet` swap, and the `SPEC.md` sync.
+- `b56d8dd`: session 02 closed in `COURSE.md`, plus an empty `course/sessions/03-events.md`. I also recorded why you're keeping `insert` trusting the caller's ID.
+
+**Session 02 covered:**
+- **R2:** printed data never changes. It's still part of the start state, so a replay has to pin the data version.
+- **B:** objects and IDs. `ObjectId`s come from a counter in `Game`, and which zone moves reset an object is a rule each game decides.
+- **C:** the state stores history and everything else is derived. A cache gets rebuilt whole, never patched. State checks collect, then commit, and loop until nothing changes.
+- **Card modeling:** you worked out stable codes, a nested `Kind`, and effects as data (code defines the mechanics, data combines them).
+
+**Carried forward:**
+- Session 05 opens with your one-at-a-time death check and the Medic card as the failing test.
+- The untested branches are still listed under open threads.
+
+**Session 03 (D, events out)** starts with a question your code raises. `History` with its `EventLog` lives inside `Game`, and the rules read it. Is that the same thing as the event stream the shell needs for animations and logs?
+
+To start:
+```
+/new
+/name 03-events
+/md-log course/sessions/03-events.md
+continue the course
+```
