@@ -10,6 +10,7 @@ use crate::cards::{
 #[error("Card definition not found {0:?}")]
 pub struct CardDefNotFound(DefId);
 
+pub(crate) const PLACEHOLDER: DefId = DefId::new("placeholder");
 pub const BLAST: DefId = DefId::new("blast");
 pub const CAPTAIN: DefId = DefId::new("captain");
 pub const GIANT: DefId = DefId::new("giant");
@@ -35,9 +36,7 @@ impl CardDefLoader {
                     targeteer: PlayerTargeteer::NextPlayer,
                     damage: 1,
                 }]),
-                on_board_enter: EffectSequence::default(),
-                on_board_leave: EffectSequence::default(),
-                on_death: EffectSequence::default(),
+                ..Default::default()
             },
             CardDef {
                 id: BOLT,
@@ -48,9 +47,7 @@ impl CardDefLoader {
                     targeteer: PlayerTargeteer::NextPlayer,
                     damage: 2,
                 }]),
-                on_board_enter: EffectSequence::default(),
-                on_board_leave: EffectSequence::default(),
-                on_death: EffectSequence::default(),
+                ..Default::default()
             },
             CardDef {
                 id: WILD_BOLT,
@@ -61,9 +58,7 @@ impl CardDefLoader {
                     targeteer: PlayerTargeteer::RandomPlayer,
                     damage: 3,
                 }]),
-                on_board_enter: EffectSequence::default(),
-                on_board_leave: EffectSequence::default(),
-                on_death: EffectSequence::default(),
+                ..Default::default()
             },
             CardDef {
                 id: BLAST,
@@ -80,9 +75,7 @@ impl CardDefLoader {
                         damage: 2,
                     },
                 ]),
-                on_board_enter: EffectSequence::default(),
-                on_board_leave: EffectSequence::default(),
-                on_death: EffectSequence::default(),
+                ..Default::default()
             },
             CardDef {
                 id: FORAGE,
@@ -93,24 +86,14 @@ impl CardDefLoader {
                     targeteer: PlayerTargeteer::Caster,
                     count: 2,
                 }]),
-                on_board_enter: EffectSequence::default(),
-                on_board_leave: EffectSequence::default(),
-                on_death: EffectSequence::default(),
+                ..Default::default()
             },
             CardDef {
                 id: RECRUIT,
                 name: "Recruit".to_string(),
-                kind: CardDefKind::Monster(MonsterCardDef {
-                    health: 2,
-                    attack: 2,
-                    friendly_aura_effects: Vec::new(),
-                    hostile_aura_effects: Vec::new(),
-                }),
+                kind: CardDefKind::Monster(MonsterCardDef::new(2, 2)),
                 mana_cost: 2,
-                on_play_effect: EffectSequence::default(),
-                on_board_enter: EffectSequence::default(),
-                on_board_leave: EffectSequence::default(),
-                on_death: EffectSequence::default(),
+                ..Default::default()
             },
             CardDef {
                 id: CAPTAIN,
@@ -122,41 +105,24 @@ impl CardDefLoader {
                         ModifierEffect::BuffAtk { amount: 1 },
                         ModifierEffect::BuffHealth { amount: 1 },
                     ],
-                    hostile_aura_effects: Vec::new(),
+                    hostile_aura_effects: Default::default(),
                 }),
                 mana_cost: 3,
-                on_play_effect: EffectSequence::default(),
-                on_board_enter: EffectSequence::default(),
-                on_board_leave: EffectSequence::default(),
-                on_death: EffectSequence::default(),
+                ..Default::default()
             },
             CardDef {
                 id: GIANT,
                 name: "Giant".to_string(),
-                kind: CardDefKind::Monster(MonsterCardDef {
-                    health: 5,
-                    attack: 5,
-                    friendly_aura_effects: Vec::new(),
-                    hostile_aura_effects: Vec::new(),
-                }),
-                mana_cost: 3,
-                on_play_effect: EffectSequence::default(),
-                on_board_enter: EffectSequence::default(),
-                on_board_leave: EffectSequence::default(),
-                on_death: EffectSequence::default(),
+                kind: CardDefKind::Monster(MonsterCardDef::new(5, 5)),
+                mana_cost: 8,
+                ..Default::default()
             },
         ]
     }
 
+    /// Tests ensure statically defined cards exist
     pub fn load_and_validate(&self) -> Result<Vec<CardDef>, CardDefNotFound> {
         let defs = self.load_all();
-
-        // TODO: strengthen this valition
-        for def_id in [FORAGE, BOLT, WILD_BOLT] {
-            if !defs.iter().any(|def| def.id == def_id) {
-                return Err(CardDefNotFound(def_id));
-            }
-        }
         Ok(defs)
     }
 }

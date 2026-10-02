@@ -11,6 +11,7 @@
 mod action;
 pub mod cards;
 mod game;
+mod history;
 mod ids;
 mod outcome;
 mod rng;

@@ -17,6 +17,7 @@ use crate::cards::CardDefLoader;
 use crate::cards::binder::Binder;
 use crate::cards::object::{Object, ObjectBag};
 use crate::game::player::{Player, PlayerInteractionState};
+use crate::history::History;
 use crate::ids::PlayerId;
 use crate::rng::Rng;
 use crate::turn::TurnOrder;
@@ -33,6 +34,7 @@ pub struct Game {
     players: Vec<Player>,
     objects: ObjectBag,
     binder: Binder,
+    history: History,
     outcome: Option<Outcome>,
 }
 
@@ -71,6 +73,7 @@ impl Game {
             player.zones.deck = deck;
         }
         let turn_order = TurnOrder::new(player_ids.clone());
+        let history = History::default();
 
         let mut game = Self {
             rng,
@@ -78,6 +81,7 @@ impl Game {
             players,
             objects,
             binder,
+            history,
             outcome: None,
         };
 

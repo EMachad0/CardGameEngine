@@ -2,14 +2,14 @@
 
 use crate::{ObjectId, ids::PlayerId};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Action {
     Play { object_id: ObjectId },
     Pick { object_id: ObjectId },
     EndTurn,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct IllegalAction {
     pub player_id: PlayerId,
     pub action: Action,

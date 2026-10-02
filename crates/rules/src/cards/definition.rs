@@ -1,4 +1,4 @@
-use crate::cards::object::ModifierEffect;
+use crate::cards::{loader::PLACEHOLDER, object::ModifierEffect};
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq)]
 pub struct DefId(&'static str);
@@ -15,10 +15,27 @@ pub struct CardDef {
     pub name: String,
     pub kind: CardDefKind,
     pub mana_cost: u8,
+    pub modifer_effects: Vec<ModifierEffect>,
     pub on_play_effect: EffectSequence,
     pub on_board_enter: EffectSequence,
     pub on_board_leave: EffectSequence,
     pub on_death: EffectSequence,
+}
+
+impl Default for CardDef {
+    fn default() -> Self {
+        Self {
+            id: PLACEHOLDER,
+            name: Default::default(),
+            kind: CardDefKind::Monster(MonsterCardDef::new(1, 1)),
+            mana_cost: Default::default(),
+            modifer_effects: Default::default(),
+            on_play_effect: Default::default(),
+            on_board_enter: Default::default(),
+            on_board_leave: Default::default(),
+            on_death: Default::default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -49,6 +66,17 @@ pub struct MonsterCardDef {
     pub attack: i32,
     pub friendly_aura_effects: Vec<ModifierEffect>,
     pub hostile_aura_effects: Vec<ModifierEffect>,
+}
+
+impl MonsterCardDef {
+    pub fn new(health: i32, attack: i32) -> Self {
+        Self {
+            health,
+            attack,
+            friendly_aura_effects: Default::default(),
+            hostile_aura_effects: Default::default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -1,4 +1,8 @@
-use crate::{Game, ObjectId, PlayerId, game::PlayerInteractionState};
+use crate::{
+    Game, ObjectId, PlayerId,
+    game::PlayerInteractionState,
+    history::{EventKind, EventLog},
+};
 
 impl Game {
     /// Moves the top card to the end of the hand, `count` times.
@@ -24,6 +28,15 @@ impl Game {
         if let Ok(effects) = self.on_play(object_id) {
             self.apply_effects(player_id, object_id, effects);
         }
+        if let Some(object) = self.objects.get(object_id) {
+            self.history.logs.push(EventLog::new(
+                player_id,
+                EventKind::CardPlayed {
+                    object: object.clone(),
+                },
+                self.turn_order.turn_count(),
+            ));
+        }
 
         let def_id = self.def_id(object_id).expect("unexpected lookup error");
         let def = self.binder.get(def_id);
@@ -42,6 +55,15 @@ impl Game {
     pub(crate) fn kill(&mut self, player_id: PlayerId, object_id: ObjectId) {
         if let Ok(effects) = self.on_death(object_id) {
             self.apply_effects(player_id, object_id, effects);
+        }
+        if let Some(object) = self.objects.get(object_id) {
+            self.history.logs.push(EventLog::new(
+                player_id,
+                EventKind::MonsterDied {
+                    object: object.clone(),
+                },
+                self.turn_order.turn_count(),
+            ));
         }
         self.destroy(player_id, object_id);
     }

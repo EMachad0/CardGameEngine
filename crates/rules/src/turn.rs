@@ -5,6 +5,7 @@ use crate::ids::PlayerId;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TurnOrder {
     current_idx: usize,
+    turn_count: u32,
     players: Vec<PlayerId>,
 }
 
@@ -12,6 +13,7 @@ impl TurnOrder {
     pub(crate) fn new(players: Vec<PlayerId>) -> Self {
         Self {
             current_idx: 0,
+            turn_count: 0,
             players,
         }
     }
@@ -22,6 +24,7 @@ impl TurnOrder {
 
     pub(crate) fn end_turn(&mut self) {
         self.current_idx = self.get_next_player_idx();
+        self.turn_count += 1;
     }
 
     pub(crate) fn get_player_after(&self, player_id: PlayerId) -> PlayerId {
@@ -31,6 +34,10 @@ impl TurnOrder {
             .position(|id| *id == player_id)
             .expect("invalid player id");
         self.players[(idx + 1) % self.players.len()]
+    }
+
+    pub(crate) fn turn_count(&self) -> u32 {
+        self.turn_count
     }
 
     fn get_next_player_idx(&self) -> usize {
