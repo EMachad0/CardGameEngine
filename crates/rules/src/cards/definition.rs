@@ -65,6 +65,7 @@ pub enum Effect {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlayerTargeteer {
+    All,
     Caster,
     RandomPlayer,
     NextPlayer,

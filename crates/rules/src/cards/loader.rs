@@ -58,10 +58,16 @@ impl CardDefLoader {
                 name: "Blast".to_string(),
                 kind: CardDefKind::Spell(SpellCardDef {}),
                 mana_cost: 3,
-                on_play_effect: EffectSequence(vec![Effect::DamageMonster {
-                    targeteer: MonsterTargeteer::All,
-                    damage: 2,
-                }]),
+                on_play_effect: EffectSequence(vec![
+                    Effect::DamageMonster {
+                        targeteer: MonsterTargeteer::All,
+                        damage: 2,
+                    },
+                    Effect::DamagePlayer {
+                        targeteer: PlayerTargeteer::All,
+                        damage: 2,
+                    },
+                ]),
             },
             CardDef {
                 id: FORAGE,

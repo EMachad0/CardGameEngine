@@ -6,9 +6,7 @@
 
 use super::Game;
 use crate::action::Action;
-use crate::cards::definition::{
-    CardDefKind, Effect, MonsterCardDef, MonsterTargeteer, PlayerTargeteer,
-};
+use crate::cards::definition::{Effect, MonsterTargeteer, PlayerTargeteer};
 use crate::game::PlayerInteractionState;
 use crate::game::lookup::LookupError;
 use crate::ids::PlayerId;
@@ -101,36 +99,38 @@ impl Game {
     fn apply_effect(&mut self, caster: PlayerId, effect: Effect) {
         match effect {
             Effect::DamagePlayer { targeteer, damage } => {
-                let target = self.resolve_player_targeteer(caster, targeteer);
-                let player = self.get_player_mut(target);
-                player.health -= damage as i32;
+                let targets = self.resolve_player_targeteer(caster, targeteer);
+                for target in targets.into_iter() {
+                    let player = self.get_player_mut(target);
+                    player.health -= damage as i32;
+                }
             }
             Effect::Draw { targeteer, count } => {
-                let target = self.resolve_player_targeteer(caster, targeteer);
-                self.draw(target, count);
+                let targets = self.resolve_player_targeteer(caster, targeteer);
+                for target in targets.into_iter() {
+                    self.draw(target, count);
+                }
             }
             Effect::RevealToPicker { targeteer, count } => {
-                let target = self.resolve_player_targeteer(caster, targeteer);
-                let player = self.get_player_mut(target);
+                let targets = self.resolve_player_targeteer(caster, targeteer);
+                for target in targets.into_iter() {
+                    let player = self.get_player_mut(target);
 
-                let mut options = Vec::new();
-                for _ in 0..count {
-                    let Some(card) = player.zones.deck.pop_front() else {
-                        break;
-                    };
+                    let mut options = Vec::new();
+                    for _ in 0..count {
+                        let Some(card) = player.zones.deck.pop_front() else {
+                            break;
+                        };
 
-                    options.push(card);
-                }
-                if !options.is_empty() {
-                    player.interaction_state = PlayerInteractionState::Picker { options }
+                        options.push(card);
+                    }
+                    if !options.is_empty() {
+                        player.interaction_state = PlayerInteractionState::Picker { options }
+                    }
                 }
             }
             Effect::DamageMonster { targeteer, damage } => {
-                let targets = self
-                    .resolve_monster_targeteer(caster, targeteer)
-                    .into_iter()
-                    .copied()
-                    .collect::<Vec<_>>();
+                let targets = self.resolve_monster_targeteer(caster, targeteer);
                 for target in targets.into_iter() {
                     if let Some(object) = self.objects.get_mut(target) {
                         object.damage += damage;
@@ -144,11 +144,14 @@ impl Game {
         &mut self,
         caster: PlayerId,
         targeteer: PlayerTargeteer,
-    ) -> PlayerId {
+    ) -> Vec<PlayerId> {
         match targeteer {
-            PlayerTargeteer::Caster => caster,
-            PlayerTargeteer::RandomPlayer => PlayerId::new(self.rng.below(self.players.len())),
-            PlayerTargeteer::NextPlayer => self.turn_order.get_player_after(caster),
+            PlayerTargeteer::All => self.players.iter().map(|p| p.id).collect(),
+            PlayerTargeteer::Caster => vec![caster],
+            PlayerTargeteer::RandomPlayer => {
+                vec![PlayerId::new(self.rng.below(self.players.len()))]
+            }
+            PlayerTargeteer::NextPlayer => vec![self.turn_order.get_player_after(caster)],
         }
     }
 
@@ -156,12 +159,13 @@ impl Game {
         &mut self,
         _caster: PlayerId,
         targeteer: MonsterTargeteer,
-    ) -> Vec<&ObjectId> {
+    ) -> Vec<ObjectId> {
         match targeteer {
             MonsterTargeteer::All => self
                 .players
                 .iter()
                 .flat_map(|player| player.zones.board.as_slice())
+                .copied()
                 .collect(),
         }
     }
