@@ -64,7 +64,7 @@ impl Game {
             .iter()
             .map(|player_id| Player::new(*player_id))
             .collect::<Vec<_>>();
-        for (player, deck_defs) in players.iter_mut().zip(decks.into_iter()) {
+        for (player, deck_defs) in players.iter_mut().zip(decks) {
             let deck = deck_defs
                 .into_iter()
                 .map(|def_id| objects.insert(def_id, player.id))
