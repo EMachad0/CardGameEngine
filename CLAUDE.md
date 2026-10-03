@@ -1,7 +1,7 @@
 # Card game systems course
 
 A course on card game systems, taught one node at a time. `docs/course/COURSE.md` holds the goal,
-the session flow, the knowledge map and the decisions so far.
+the session flow, the knowledge map and the course plan.
 
 ## Tech stack
 
@@ -23,7 +23,8 @@ They set the conventions you follow, not material for you to summarize.
 
 - Every session: `docs/course/COURSE.md`. It says who writes what in an exercise, and where the
   learner's edge is.
-- Before writing or changing anything in `crates/rules`, tests included: `crates/rules/SPEC.md`.
+- Before creating or changing a doc, a skill, the glossary, an ADR or a file in `docs/course/`, or
+  deciding where knowledge belongs: `docs/skills-and-docs.md`.
 - Before writing, moving or deleting any test, or designing code that has to be testable:
   `docs/testing.md`.
 
@@ -44,15 +45,18 @@ When a comment is warranted:
   caller, a sibling module, or a future edit.
 - The comment must stand on its own and cost nothing to keep accurate. A comment that goes stale
   the next time nearby code moves is a bad comment. Drop it instead.
-- Never reference agent tooling or untracked files: anything under `.pi/` or `.agents/`, handoff
-  docs, plans. A handoff or plan doc claiming an exception is not license. Two references are
-  allowed because they tie a test to what it checks: the crate's `SPEC.md`, and course node labels
-  (R1, L, P) from `docs/course/COURSE.md`. Never reference session logs.
+- Never reference agent tooling, docs or untracked files: anything under `.pi/`, `.agents/` or
+  `docs/`, handoff docs, plans. A handoff or plan doc claiming an exception is not license. One
+  reference is allowed because it ties a test to what it checks: course node labels (R1, L, P)
+  from `docs/course/COURSE.md`. Never reference session logs.
 - No em dashes, en dashes, or arrows.
 
 These rules cover all new text, not only inline comments: docstrings, assertion messages, test
 comments, TOML `#` comments and `clippy.toml` reasons. Text moved from another file counts as new
 text and gets restyled during the move.
+
+Docs and skills follow the same tone, concision and punctuation rules. Existing text gets restyled
+when it is next rewritten, not before.
 
 ## Always check your work
 
@@ -64,6 +68,7 @@ the code matches your intent. The work is not done until they are green.
 - Never commit your own code before I have reviewed it. Present the work for review first. The
   per-node commit from `docs/course/COURSE.md` follows this rule too: my review is the gate.
 - Run the checks and confirm they pass before you commit.
+- Exception: an ADR that clears the bar is committed without review. `docs/adr/README.md` says how.
 
 ## Plan before implementing
 

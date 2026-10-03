@@ -15,8 +15,8 @@ The glossary sits at `docs/CONTEXT.md`, not at the repo root where the skills de
 Never create a root `CONTEXT.md`, never add a second glossary elsewhere in the tree, and never split
 this one per directory.
 
-Do not propose writing an ADR upfront. The `domain-modeling` skill writes one when a decision
-resolves and clears its bar. That is rare.
+Do not propose writing an ADR upfront. One is written when a decision resolves and clears the bar
+in `docs/adr/README.md`. That is rare.
 
 ## Course material
 

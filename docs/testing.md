@@ -26,7 +26,7 @@ and a `support.rs`. Don't add another `tests/*.rs` or `tests/*/main.rs`. Cargo b
 a separate binary with its own copy of the support module. Each binary then flags the helpers that
 only the other one calls as dead code.
 
-In `rules` it is `tests/spec/`, with one module per SPEC.md topic, such as `setup`, `cards` and
+In `rules` it is `tests/spec/`, with one module per topic, such as `setup`, `cards` and
 `state_check`. A test goes in the module for the topic it checks. A new topic gets a new module.
 
 ## Helpers
@@ -46,9 +46,9 @@ unit test needs it, the test belongs in that module.
 
 ## Tests follow the code's interface
 
-Before the learner writes an API, tests target the one agreed in SPEC.md and don't compile until
-it exists. Once the code exists, it is the reference. When it differs from SPEC.md in a name or a
-signature, update SPEC.md's API section and the tests to match the code. When it differs in
+Before the learner writes an API, tests target the one agreed in the session and don't compile
+until it exists. Once the code exists, it is the reference. When it differs from the tests in a
+name, a signature or a derived trait, update the tests to match the code. When it differs in
 behavior, ask the learner which one is right.
 
 ## Red tests
@@ -88,7 +88,7 @@ against the current code. Don't disable it.
 
 ## Expected values and randomness
 
-- Write expected values out from SPEC.md, in the test or in an independent model such as
+- Write expected values out by hand, in the test or in an independent model such as
   `tests/spec/model.rs`. Never read them from the crate's card data. A value the test reads from
   the code can't catch a wrong value in the code.
 - Find a card by its identity (`def_id`), not by a property under test. A test that looks for the
@@ -121,5 +121,4 @@ but clippy with `--all-targets` lints them.
 
 ## References
 
-- `crates/rules/SPEC.md`: what the rules crate promises.
 - `docs/course/COURSE.md`: roles in an exercise.

@@ -136,13 +136,22 @@ Repeat this full loop per node — don't front-load all the foundations once at 
 
 If you catch yourself asserting a fact he'd have to take on faith — foundational or not — stop: either motivate it and confirm it lands, or ground it in something already established. Unmotivated, unconfirmed facts don't lock in — that's the whole point.
 
+## Recording what a session settles
+
+`docs/skills-and-docs.md` says where each finding goes. Two kinds are written the moment they settle, not at the end:
+
+- A term: update `docs/CONTEXT.md` right then, as the `domain-modeling` skill says.
+- A decision that clears the bar in `docs/adr/README.md`: write the ADR and commit it right then, as that README says.
+
+Before asking the `researcher` to check a fact, look in `docs/course/verified-facts.md`. Add each fact it confirms there, with its source.
+
 ## Ending a session
 
 A session ends when you and he agree it's finished. Then run the three steps below in order, with no review stop between them.
 
 This close-out overrides the git rules in `CLAUDE.md` for this one commit. Don't wait for his review and don't run the checks. The commit holds only markdown, and his agreement to end the session is the approval.
 
-1. **Make the edits.** Update `docs/course/COURSE.md` as it asks at the end of every session: knowledge map, decisions, open threads, the sessions table, verified facts. If the next session's log doesn't exist yet, create it as an empty file (`docs/course/sessions/NN-topic.md`), because `/md-log` only links an existing file.
+1. **Make the edits.** Update `docs/course/COURSE.md`: the knowledge map, the open threads, the sessions table, and anything else `docs/skills-and-docs.md` puts there. If the next session's log doesn't exist yet, create it as an empty file (`docs/course/sessions/NN-topic.md`), because `/md-log` only links an existing file.
 2. **Write the closing message and commit in the same reply.** The text comes first. Summarize what changed in `COURSE.md`, then show how to start the next session:
 
    ```
@@ -155,9 +164,10 @@ This close-out overrides the git rules in `CLAUDE.md` for this one commit. Don't
    End the text by saying you're committing now. Don't say it's committed, because the commit hasn't run yet. The same reply then makes one bash call:
 
    ```bash
-   git add -- docs/course/COURSE.md <this log> <next log> \
-     && git commit -m "<message>" -- docs/course/COURSE.md <this log> <next log> \
-     && git status --porcelain -- docs/course/COURSE.md <this log> <next log>
+   files="docs/course/COURSE.md docs/course/verified-facts.md docs/CONTEXT.md <this log> <next log>"
+   git add -- $files \
+     && git commit -m "<message>" -- $files \
+     && git status --porcelain -- $files
    ```
 
    md-log appends a reply's text to the session log when the reply ends, and that happens before the reply's tool calls run. So the closing text is already in the log when the commit runs. Follow the message style in `git log`, e.g. `Close session 04: effects as data, targeting draft design; session log; prepare 04a log`.
