@@ -6,8 +6,7 @@ the session flow, the knowledge map and the course plan.
 ## Tech stack
 
 Rust, edition 2024, toolchain pinned in `rust-toolchain.toml`. The root `Cargo.toml` is a virtual
-workspace manifest, with members under `crates/`. Before adding a dependency, check its current
-version on crates.io.
+workspace manifest, with members under `crates/`.
 
 ## Common commands
 
@@ -29,6 +28,8 @@ They set the conventions you follow, not material for you to summarize.
   deciding where knowledge belongs: `docs/conventions/skills-and-docs.md`.
 - Before writing, moving or deleting any test, or designing code that has to be testable:
   `docs/conventions/testing.md`.
+- Before adding, upgrading or removing a dependency, or changing the features a crate enables:
+  `docs/conventions/dependencies.md`.
 
 ## Code comments
 
