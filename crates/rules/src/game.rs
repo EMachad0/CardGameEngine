@@ -105,7 +105,7 @@ impl Game {
 
         let mut actions = Vec::new();
         match &self.get_player(player_id).interaction_state {
-            PlayerInteractionState::Board => {
+            PlayerInteractionState::Idle => {
                 if self.turn_order.get_current_player_id() != player_id {
                     return Vec::new();
                 }
@@ -123,7 +123,7 @@ impl Game {
 
                 actions.push(Action::EndTurn);
             }
-            PlayerInteractionState::Picker { options } => {
+            PlayerInteractionState::PendingPick { options } => {
                 actions.extend(
                     options
                         .iter()
@@ -155,8 +155,8 @@ impl Game {
     /// The cards a pending Forage revealed. Empty if nothing is pending.
     pub fn revealed(&self, player_id: PlayerId) -> &[ObjectId] {
         match &self.get_player(player_id).interaction_state {
-            PlayerInteractionState::Board => &[],
-            PlayerInteractionState::Picker { options } => options,
+            PlayerInteractionState::Idle => &[],
+            PlayerInteractionState::PendingPick { options } => options,
         }
     }
 

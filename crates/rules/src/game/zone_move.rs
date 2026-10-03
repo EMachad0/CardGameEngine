@@ -144,7 +144,7 @@ impl Game {
                 ..
             } = event
             {
-                player.interaction_state = PlayerInteractionState::Picker { options }
+                player.interaction_state = PlayerInteractionState::PendingPick { options }
             } else {
                 unreachable!();
             };
@@ -158,7 +158,7 @@ impl Game {
         obs: &mut impl Observer,
     ) {
         let player = self.get_player_mut(player_id);
-        let PlayerInteractionState::Picker { mut options } =
+        let PlayerInteractionState::PendingPick { mut options } =
             std::mem::take(&mut player.interaction_state)
         else {
             unreachable!();

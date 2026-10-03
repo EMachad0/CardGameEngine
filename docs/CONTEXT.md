@@ -130,6 +130,10 @@ _Avoid_: heal
 **Reveal**:
 Taking cards from the top of a deck for a player to pick from.
 
+**Pending pick**:
+A choice the game waits on from a player in the middle of resolving a card.
+_Avoid_: picker
+
 **Bury**:
 Putting a card on the bottom of its owner's deck.
 
@@ -176,6 +180,3 @@ The part of a card that can be hidden from a player: its definition and cost.
   is a finished game with no winner.
 - **View** and **game state**: a view is what one player may see. The game state is all of it,
   hidden cards included.
-- **Pending pick** and **Picker**: two names for a choice the game waits on in the middle of
-  resolving a card, such as Forage's. The course says pending pick, the code says Picker. No name
-  is picked yet.
