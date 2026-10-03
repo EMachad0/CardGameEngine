@@ -23,7 +23,7 @@ The tests for this spec live in `tests/spec/`. `docs/testing.md` says where each
 | `game.rs` | `Game` with setup, turn start, `legal_actions` and the zone queries |
 | `game/player.rs` | one player's record |
 | `game/resolve.rs` | `apply`, `applied`, `ApplyError`, and what `apply` does once an action is legal |
-| `game/lookup.rs` | `def_id`, `mana_cost`, `attack`, `health`, `hero_health` and `LookupError` |
+| `game/lookup.rs` | `def_id`, `mana_cost`, `attack`, `health` and `hero_health` |
 | `game/view.rs` | `View` and its per-player and per-card parts, and `Game::view` |
 
 Where a type lives inside the crate is yours to change.
@@ -203,9 +203,6 @@ pub struct Views<'g>(/* private */);
 impl Views<'_> {
     pub fn of(&self, viewer: PlayerId) -> View;
 }
-
-#[derive(Debug, PartialEq, Eq, thiserror::Error)]
-pub enum LookupError { ObjectNotFound(ObjectId) }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Outcome { Won(PlayerId), Draw }

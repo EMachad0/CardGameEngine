@@ -25,7 +25,6 @@ use crate::turn::TurnOrder;
 use crate::zones::Deck;
 use crate::{DefId, Event, ObjectId, Observer, Outcome};
 
-pub use lookup::LookupError;
 pub use resolve::ApplyError;
 
 #[derive(Debug, Clone, PartialEq)]

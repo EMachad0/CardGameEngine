@@ -25,7 +25,7 @@ pub use action::{Action, IllegalAction};
 pub use cards::{definition::DefId, object::ObjectId};
 pub use event::{Event, Target};
 pub use game::view::{BoardCard, Face, HandCard, PlayerView, RevealedCard, View};
-pub use game::{ApplyError, Game, LookupError};
+pub use game::{ApplyError, Game};
 pub use ids::PlayerId;
 pub use observer::{Observer, Views};
 pub use outcome::Outcome;

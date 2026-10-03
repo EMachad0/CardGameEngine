@@ -9,12 +9,6 @@ use crate::{
     },
 };
 
-#[derive(Debug, PartialEq, Eq, thiserror::Error)]
-pub enum LookupError {
-    #[error("Object not found")]
-    ObjectNotFound(ObjectId),
-}
-
 impl Game {
     pub fn hero_health(&self, player_id: PlayerId) -> i32 {
         self.get_player(player_id).health
