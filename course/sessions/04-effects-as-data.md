@@ -799,3 +799,21 @@ continue the course
 > [!quote] YOU
 
 commit
+
+
+> [!abstract] PI
+
+Committed as `766b1ce`. The checks passed just before the commit (fmt, clippy, 18 unit + 84 spec tests), and the working tree is clean. This message will still be appended to the session log, so it will show as modified again.
+
+Next session, 04a, starts by settling four decisions before any code:
+- Bolt's and Spark's selector: "each enemy hero", or a reference that assumes two players.
+- Whether the damage amount stays `u8` or becomes `EffectAmount`.
+- Zap's name and cost.
+- What happens to the unused branches.
+
+```
+/new
+/name 04a-effects-reshape
+/md-log course/sessions/04a-effects-reshape.md
+continue the course
+```
