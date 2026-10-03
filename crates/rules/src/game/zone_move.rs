@@ -163,19 +163,21 @@ impl Game {
         else {
             unreachable!();
         };
-        if let Some(idx) = options.iter().position(|id| *id == object_id) {
-            let picked = options.remove(idx);
-            player.zones.hand.add(picked);
+        let idx = options
+            .iter()
+            .position(|id| *id == object_id)
+            .expect("a legal pick should name one of the options");
+        let picked = options.remove(idx);
+        player.zones.hand.add(picked);
 
-            obs.event(&Event::Picked {
-                player_id,
-                object_id,
-            });
+        obs.event(&Event::Picked {
+            player_id,
+            object_id,
+        });
 
-            options
-                .into_iter()
-                .for_each(|id| self.bury(player_id, id, obs));
-        }
+        options
+            .into_iter()
+            .for_each(|id| self.bury(player_id, id, obs));
     }
 
     pub(crate) fn bury(
