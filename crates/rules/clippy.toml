@@ -1,11 +1,11 @@
-# Under R1, the rules core is a function of seed, decks and decisions alone.
+# The rules core is a function of seed, decks and decisions alone.
 # Each item below reads a hidden input, so a replay could diverge.
 # The ban covers this crate only.
 disallowed-types = [
-  { path = "std::collections::HashMap", reason = "R1: iteration order is random per instance. Use BTreeMap or Vec." },
-  { path = "std::collections::HashSet", reason = "R1: iteration order is random per instance. Use BTreeSet or Vec." },
+  { path = "std::collections::HashMap", reason = "Iteration order is random per instance. Use BTreeMap or Vec." },
+  { path = "std::collections::HashSet", reason = "Iteration order is random per instance. Use BTreeSet or Vec." },
 ]
 disallowed-methods = [
-  { path = "std::time::Instant::now", reason = "R1: the clock lives in the shell. Pass time in as an action." },
-  { path = "std::time::SystemTime::now", reason = "R1: the clock lives in the shell. Pass time in as an action." },
+  { path = "std::time::Instant::now", reason = "The clock lives in the shell. Pass time in as an action." },
+  { path = "std::time::SystemTime::now", reason = "The clock lives in the shell. Pass time in as an action." },
 ]

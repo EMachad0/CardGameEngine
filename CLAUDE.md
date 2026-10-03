@@ -48,9 +48,8 @@ When a comment is warranted:
 - The comment must stand on its own and cost nothing to keep accurate. A comment that goes stale
   the next time nearby code moves is a bad comment. Drop it instead.
 - Never reference agent tooling, docs or untracked files: anything under `.pi/`, `.agents/` or
-  `docs/`, handoff docs, plans. A handoff or plan doc claiming an exception is not license. One
-  reference is allowed because it ties a test to what it checks: course node labels (R1, L, P)
-  from `docs/course/COURSE.md`. Never reference session logs.
+  `docs/`, handoff docs, plans. That includes course node labels such as R1. A handoff or plan
+  doc claiming an exception is not license.
 - No em dashes, en dashes, or arrows.
 
 These rules cover all new text, not only inline comments: docstrings, assertion messages, test

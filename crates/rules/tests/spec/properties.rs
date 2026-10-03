@@ -1,4 +1,4 @@
-//! R1, L, P, B, C and D over seeded random playouts.
+//! Invariants over seeded random playouts.
 
 use rules::Game;
 

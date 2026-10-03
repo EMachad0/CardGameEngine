@@ -1,4 +1,4 @@
-//! Attack, health and cost, computed on read from history and printed data (node C).
+//! Attack, health and cost, computed on read from history and printed data.
 
 use crate::{
     DefId, Game, ObjectId, PlayerId,

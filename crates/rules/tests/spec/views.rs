@@ -1,4 +1,4 @@
-//! What `view` shows each player (node D3).
+//! What `view` shows each player.
 
 use rules::cards::{BOLT, CAPTAIN, FORAGE, RECRUIT, SPARK};
 use rules::{BoardCard, DefId, Face, Game, ObjectId, PlayerId, RevealedCard};
