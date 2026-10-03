@@ -81,7 +81,7 @@ probe finds gets a test.
 
   ```rust
   assert_eq!(
-      game.health(recruit).unwrap(),
+      game.health(recruit),
       Some(3),
       "the Captain's buff must hold the Recruit above Blast's damage",
   );
