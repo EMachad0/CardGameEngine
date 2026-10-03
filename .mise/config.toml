@@ -1,0 +1,5 @@
+[settings]
+lockfile = false
+
+[tools]
+gh = "latest"
