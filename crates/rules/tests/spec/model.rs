@@ -1,4 +1,4 @@
-//! An independent model of SPEC.md: printed data, costs in hand, and both
+//! An independent model of the rules: printed data, costs in hand, and both
 //! boards. The playout checks compare the core against it, so a wrong value in
 //! the core can't check itself.
 
@@ -23,7 +23,7 @@ fn printed(def: DefId) -> (u8, Option<Stats>) {
     let (_, cost, stats) = PRINTED
         .iter()
         .find(|(d, _, _)| *d == def)
-        .unwrap_or_else(|| panic!("{def:?} is not in SPEC.md"));
+        .unwrap_or_else(|| panic!("{def:?} is not in the model"));
     (*cost, *stats)
 }
 

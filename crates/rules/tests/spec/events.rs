@@ -5,6 +5,16 @@ use rules::{Action, Event, Game, ObjectId, PlayerId, Target, View};
 
 use crate::support::*;
 
+/// The events of each step, leaving out the steps with none.
+fn event_steps(recorder: &Recorder) -> Vec<Vec<Event>> {
+    recorder
+        .steps
+        .iter()
+        .map(|step| step.events.clone())
+        .filter(|events| !events.is_empty())
+        .collect()
+}
+
 #[test]
 fn ending_the_turn_reports_the_end_then_the_next_turn_start_and_its_draw() {
     let deck = vec![SPARK; 6];
@@ -24,6 +34,28 @@ fn ending_the_turn_reports_the_end_then_the_next_turn_start_and_its_draw() {
                 object_id: top
             },
         ]
+    );
+}
+
+#[test]
+fn a_turn_change_and_its_draw_share_one_step() {
+    let deck = vec![SPARK; 6];
+    let mut game = Game::with_deck_order(0, [deck.clone(), deck]);
+    let [p0, p1] = players(&game);
+    let top = game.deck(p1)[0];
+
+    let recorder = observe(&mut game, p0, Action::EndTurn);
+
+    assert_eq!(
+        event_steps(&recorder),
+        [vec![
+            Event::TurnEnded { player_id: p0 },
+            Event::TurnStarted { player_id: p1 },
+            Event::Drew {
+                player_id: p1,
+                object_id: top
+            },
+        ]]
     );
 }
 
@@ -102,6 +134,27 @@ fn wild_bolt_reports_its_hit_on_the_hero_that_lost_health() {
                 },
             ],
             "seed {seed}"
+        );
+    }
+}
+
+#[test]
+fn a_checkpoint_follows_a_card_leaving_the_hand() {
+    for (def, mana) in [(SPARK, 1), (RECRUIT, 2)] {
+        let mut game = Game::with_deck_order(0, [deck_with_top(&[def]), deck_with_top(&[])]);
+        let [p0, _] = players(&game);
+        turn_with_mana(&mut game, p0, mana);
+        let card = in_hand(&game, p0, def);
+
+        let recorder = observe(&mut game, p0, play(card));
+
+        assert_eq!(
+            event_steps(&recorder).first(),
+            Some(&vec![Event::Played {
+                player_id: p0,
+                object_id: card
+            }]),
+            "{def:?}"
         );
     }
 }
@@ -356,6 +409,32 @@ fn a_pick_reports_the_picked_card_then_buries_the_rest() {
                 object_id: recruit
             },
         ]
+    );
+}
+
+#[test]
+fn a_pick_and_its_burials_share_one_step() {
+    let mut game = forage_over_recruit_and_captain();
+    let [p0, _] = players(&game);
+    play_def(&mut game, p0, FORAGE);
+    let &[recruit, captain] = game.revealed(p0) else {
+        panic!("Forage revealed {:?}", game.revealed(p0));
+    };
+
+    let recorder = observe(&mut game, p0, pick(captain));
+
+    assert_eq!(
+        event_steps(&recorder),
+        [vec![
+            Event::Picked {
+                player_id: p0,
+                object_id: captain
+            },
+            Event::Buried {
+                player_id: p0,
+                object_id: recruit
+            },
+        ]]
     );
 }
 

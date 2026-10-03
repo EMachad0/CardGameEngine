@@ -50,7 +50,7 @@ pub(crate) fn random_playout(seed: u64, picker_seed: u64) -> (Game, Vec<(PlayerI
             return (game, log);
         }
 
-        let (p, a) = options[picker.below(options.len())].clone();
+        let (p, a) = options[picker.below(options.len())];
         let off_board_before = players(&game).map(|q| off_board_count(&game, q));
         let mana_before = game.mana(p);
         let played = match a {
@@ -58,7 +58,7 @@ pub(crate) fn random_playout(seed: u64, picker_seed: u64) -> (Game, Vec<(PlayerI
             _ => None,
         };
 
-        game.apply(p, a.clone(), &mut ())
+        game.apply(p, a, &mut ())
             .unwrap_or_else(|e| panic!("{context}: listed action rejected: {e:?}"));
 
         let mut expected = off_board_before;
@@ -239,11 +239,11 @@ fn assert_listed_accepted_and_deterministic(game: &Game) {
             let mut first = game.clone();
             let mut second = game.clone();
             assert_eq!(
-                first.apply(p, a.clone(), &mut ()),
+                first.apply(p, a, &mut ()),
                 Ok(()),
                 "listed {a:?} for {p:?} was rejected"
             );
-            second.apply(p, a.clone(), &mut ()).unwrap();
+            second.apply(p, a, &mut ()).unwrap();
             assert_eq!(
                 first, second,
                 "same state + same action gave different games: {a:?}"

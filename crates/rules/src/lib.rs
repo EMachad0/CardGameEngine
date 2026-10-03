@@ -1,4 +1,4 @@
-//! Rules core: a deterministic card game state machine. Spec: ../SPEC.md.
+//! Rules core: a deterministic card game state machine.
 //!
 //! The public API is the `pub use` list below. Every other item is
 //! `pub(crate)` or narrower, so changing one can't break a caller.

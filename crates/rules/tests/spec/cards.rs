@@ -1,4 +1,4 @@
-//! Playing a card, and what each card in SPEC.md does.
+//! Playing a card, and what each card does.
 
 use rules::cards::{BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK, WILD_BOLT};
 use rules::{Action, Game};
@@ -40,7 +40,7 @@ fn damage_spells_hit_the_casters_enemy() {
 
 #[test]
 fn every_card_pays_its_printed_cost() {
-    // Written out from SPEC.md, so a wrong cost in the core can't check itself.
+    // Written out by hand, so a wrong cost in the core can't check itself.
     let cases = [
         (SPARK, 1),
         (BOLT, 2),

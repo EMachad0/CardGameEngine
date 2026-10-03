@@ -60,6 +60,12 @@ without the learner's OK. A commit that leaves red tests lists them in its messa
 No `#[test]` with an empty body, and no commented-out tests. Delete a test that can't be written
 against the current code. Don't disable it.
 
+## Reviewing an exercise
+
+Green shows only what the tests pin. Before trusting it, probe each behavior agreed in the session
+that no test pins yet, such as where checkpoints fall, with a throwaway recorder or test. A gap the
+probe finds gets a test.
+
 ## Conventions
 
 - Start every colocated `mod tests` with `use super::*;`.

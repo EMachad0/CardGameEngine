@@ -136,6 +136,13 @@ Repeat this full loop per node — don't front-load all the foundations once at 
 
 If you catch yourself asserting a fact he'd have to take on faith — foundational or not — stop: either motivate it and confirm it lands, or ground it in something already established. Unmotivated, unconfirmed facts don't lock in — that's the whole point.
 
+## Working with him
+
+- The quiz and `ask_user_question` popups hide the prose above them. Put any code a question depends on into the question or its `details`. When he asks something, answer in plain text and open no popup in the same turn, or put everything he needs into the popup's `details`. He reads a popup over prose he can't see as you ignoring his question.
+- He answers multi-part decisions well in plain text ("1a 2b ...") and pushes back on options that don't generalize. Show the multi-pick or N-player case early.
+- Argue specifics with him, and concede when he's right.
+- For a comparison across engines, run one `researcher` per engine.
+
 ## Recording what a session settles
 
 `docs/skills-and-docs.md` says where each finding goes. Two kinds are written the moment they settle, not at the end:

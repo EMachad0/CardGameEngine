@@ -1,13 +1,10 @@
-//! Tests of what SPEC.md promises, through the public interface only.
-//! Spec: ../../SPEC.md.
-
-// SPEC.md promises `Action: Clone`, not `Copy`.
-#![allow(clippy::clone_on_copy)]
+//! Crate tests, through the public interface only.
 
 mod cards;
 mod derived;
 mod events;
 mod legality;
+mod lookups;
 mod model;
 mod playout;
 mod properties;

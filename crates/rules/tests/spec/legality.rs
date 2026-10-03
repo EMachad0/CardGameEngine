@@ -17,7 +17,7 @@ fn acting_on_the_opponents_turn_is_rejected_and_changes_nothing() {
     for a in [Action::EndTurn, play(own_card), play(opponents_card)] {
         let mut g = game.clone();
         assert_eq!(
-            g.apply(p1, a.clone(), &mut ()),
+            g.apply(p1, a, &mut ()),
             Err(ApplyError::IllegalAction(IllegalAction {
                 player_id: p1,
                 action: a

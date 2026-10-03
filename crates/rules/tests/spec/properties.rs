@@ -37,7 +37,7 @@ fn replaying_seed_plus_decisions_reproduces_the_game() {
         let mut replay = Game::new(seed, [sample_deck(), sample_deck()]);
         for (p, a) in log {
             replay
-                .apply(p, a.clone(), &mut ())
+                .apply(p, a, &mut ())
                 .unwrap_or_else(|e| panic!("seed {seed}: replayed action rejected: {e:?}"));
         }
         assert_eq!(replay, original, "seed {seed}: replay diverged");
@@ -76,7 +76,7 @@ fn the_same_game_and_action_report_the_same_steps() {
         let (_, log) = random_playout(seed, seed ^ 0xD15C);
         let mut game = Game::new(seed, [sample_deck(), sample_deck()]);
         for (step, (p, a)) in log.into_iter().enumerate() {
-            let first = observe(&mut game.clone(), p, a.clone());
+            let first = observe(&mut game.clone(), p, a);
             let second = observe(&mut game, p, a);
             assert_eq!(first, second, "seed {seed}, step {step}");
         }

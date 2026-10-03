@@ -6,7 +6,7 @@ the session flow, the knowledge map and the course plan.
 ## Tech stack
 
 Rust, edition 2024. The root `Cargo.toml` is a virtual workspace manifest, with members under
-`crates/`.
+`crates/`. Before adding a dependency, check its current version on crates.io.
 
 ## Common commands
 

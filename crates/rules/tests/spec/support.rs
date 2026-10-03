@@ -10,7 +10,7 @@ use rules::{
 };
 
 /// The game's players, in `Game::players` order. The tests assume the player at index `i`
-/// got `decks[i]`, which SPEC.md doesn't promise.
+/// got `decks[i]`.
 pub(crate) fn players(game: &Game) -> [PlayerId; 2] {
     game.players().try_into().expect("a game has two players")
 }
@@ -146,7 +146,7 @@ impl Recorder {
 /// Applies `a` for `p` with a `Recorder` and returns what it recorded.
 pub(crate) fn observe(game: &mut Game, p: PlayerId, a: Action) -> Recorder {
     let mut recorder = Recorder::new(game);
-    game.apply(p, a.clone(), &mut recorder)
+    game.apply(p, a, &mut recorder)
         .unwrap_or_else(|e| panic!("{a:?} for {p:?}: {e:?}"));
     recorder
 }
@@ -234,10 +234,10 @@ pub(crate) fn assert_unlisted_rejected_with(game: &Game, extra: &BTreeSet<Object
                 continue;
             }
             assert_eq!(
-                g.apply(p, a.clone(), &mut ()),
+                g.apply(p, *a, &mut ()),
                 Err(ApplyError::IllegalAction(IllegalAction {
                     player_id: p,
-                    action: a.clone()
+                    action: *a
                 })),
                 "unlisted {a:?} for {p:?} was not rejected"
             );
