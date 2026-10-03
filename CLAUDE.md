@@ -26,9 +26,9 @@ They set the conventions you follow, not material for you to summarize.
 - Every session: `docs/course/COURSE.md`. It says who writes what in an exercise, and where the
   learner's edge is.
 - Before creating or changing a doc, a skill, the glossary, an ADR or a file in `docs/course/`, or
-  deciding where knowledge belongs: `docs/skills-and-docs.md`.
+  deciding where knowledge belongs: `docs/conventions/skills-and-docs.md`.
 - Before writing, moving or deleting any test, or designing code that has to be testable:
-  `docs/testing.md`.
+  `docs/conventions/testing.md`.
 
 ## Code comments
 

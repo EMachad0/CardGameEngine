@@ -145,7 +145,7 @@ If you catch yourself asserting a fact he'd have to take on faith — foundation
 
 ## Recording what a session settles
 
-`docs/skills-and-docs.md` says where each finding goes. Two kinds are written the moment they settle, not at the end:
+`docs/conventions/skills-and-docs.md` says where each finding goes. Two kinds are written the moment they settle, not at the end:
 
 - A term: update `docs/CONTEXT.md` right then, as the `domain-modeling` skill says.
 - A decision that clears the bar in `docs/adr/README.md`: write the ADR and commit it right then, as that README says.
@@ -158,7 +158,7 @@ A session ends when you and he agree it's finished. Then run the three steps bel
 
 This close-out overrides the git rules in `CLAUDE.md` for this one commit. Don't wait for his review and don't run the checks. The commit holds only markdown, and his agreement to end the session is the approval.
 
-1. **Make the edits.** Update `docs/course/COURSE.md`: the knowledge map, the open threads, the sessions table, and anything else `docs/skills-and-docs.md` puts there. If the next session's log doesn't exist yet, create it as an empty file (`docs/course/sessions/NN-topic.md`), because `/md-log` only links an existing file.
+1. **Make the edits.** Update `docs/course/COURSE.md`: the knowledge map, the open threads, the sessions table, and anything else `docs/conventions/skills-and-docs.md` puts there. If the next session's log doesn't exist yet, create it as an empty file (`docs/course/sessions/NN-topic.md`), because `/md-log` only links an existing file.
 2. **Write the closing message and commit in the same reply.** The text comes first. Summarize what changed in `COURSE.md`, then show how to start the next session:
 
    ```
