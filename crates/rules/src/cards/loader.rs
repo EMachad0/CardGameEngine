@@ -1,8 +1,8 @@
 use crate::{
     cards::{
         definition::{
-            CardDef, CardDefKind, DefId, Effect, EffectSequence, MinionCardDef, MinionTargeteer,
-            PlayerTargeteer, SpellCardDef,
+            CardDef, CardDefKind, DefId, Effect, EffectSequence, MinionCardDef, MinionSelector,
+            PlayerSelector, SpellCardDef,
         },
         modifier::{EffectAmount, ModifierEffect},
     },
@@ -59,7 +59,7 @@ impl CardDefLoader {
                 kind: CardDefKind::Spell(SpellCardDef {}),
                 mana_cost: 1,
                 on_play_effect: EffectSequence(vec![Effect::DamagePlayer {
-                    targeteer: PlayerTargeteer::NextPlayer,
+                    selector: PlayerSelector::NextPlayer,
                     damage: 1,
                 }]),
                 ..Default::default()
@@ -70,7 +70,7 @@ impl CardDefLoader {
                 kind: CardDefKind::Spell(SpellCardDef {}),
                 mana_cost: 2,
                 on_play_effect: EffectSequence(vec![Effect::DamagePlayer {
-                    targeteer: PlayerTargeteer::NextPlayer,
+                    selector: PlayerSelector::NextPlayer,
                     damage: 2,
                 }]),
                 ..Default::default()
@@ -81,7 +81,7 @@ impl CardDefLoader {
                 kind: CardDefKind::Spell(SpellCardDef {}),
                 mana_cost: 1,
                 on_play_effect: EffectSequence(vec![Effect::DamagePlayer {
-                    targeteer: PlayerTargeteer::RandomPlayer,
+                    selector: PlayerSelector::RandomPlayer,
                     damage: 3,
                 }]),
                 ..Default::default()
@@ -93,11 +93,11 @@ impl CardDefLoader {
                 mana_cost: 3,
                 on_play_effect: EffectSequence(vec![
                     Effect::DamageMinion {
-                        targeteer: MinionTargeteer::All,
+                        selector: MinionSelector::All,
                         damage: 2,
                     },
                     Effect::DamagePlayer {
-                        targeteer: PlayerTargeteer::All,
+                        selector: PlayerSelector::All,
                         damage: 2,
                     },
                 ]),
@@ -109,7 +109,7 @@ impl CardDefLoader {
                 kind: CardDefKind::Spell(SpellCardDef {}),
                 mana_cost: 1,
                 on_play_effect: EffectSequence(vec![Effect::Reveal {
-                    targeteer: PlayerTargeteer::Caster,
+                    selector: PlayerSelector::Caster,
                     count: 2,
                 }]),
                 ..Default::default()

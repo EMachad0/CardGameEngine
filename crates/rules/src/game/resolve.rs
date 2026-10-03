@@ -6,7 +6,7 @@
 
 use super::Game;
 use crate::action::Action;
-use crate::cards::definition::{Effect, MinionTargeteer, PlayerTargeteer};
+use crate::cards::definition::{Effect, MinionSelector, PlayerSelector};
 use crate::cards::modifier::{EffectAmount, Modifier};
 use crate::history::{HistoryKind, HistoryQuery, HistoryQueryKind, PlayerFilter};
 use crate::ids::PlayerId;
@@ -77,8 +77,8 @@ impl Game {
         obs: &mut impl Observer,
     ) {
         match effect {
-            Effect::DamagePlayer { targeteer, damage } => {
-                let targets = self.resolve_player_targeteer(caster, targeteer);
+            Effect::DamagePlayer { selector, damage } => {
+                let targets = self.resolve_player_selector(caster, selector);
                 for target in targets.into_iter() {
                     let player = self.get_player_mut(target);
                     player.health -= damage as i32;
@@ -89,20 +89,20 @@ impl Game {
                     });
                 }
             }
-            Effect::Draw { targeteer, count } => {
-                let targets = self.resolve_player_targeteer(caster, targeteer);
+            Effect::Draw { selector, count } => {
+                let targets = self.resolve_player_selector(caster, selector);
                 for target in targets.into_iter() {
                     self.draw(target, count, obs);
                 }
             }
-            Effect::Reveal { targeteer, count } => {
-                let targets = self.resolve_player_targeteer(caster, targeteer);
+            Effect::Reveal { selector, count } => {
+                let targets = self.resolve_player_selector(caster, selector);
                 for target in targets.into_iter() {
                     self.reveal(target, count, obs);
                 }
             }
-            Effect::DamageMinion { targeteer, damage } => {
-                let targets = self.resolve_minion_targeteer(caster, object_id, targeteer);
+            Effect::DamageMinion { selector, damage } => {
+                let targets = self.resolve_minion_selector(caster, object_id, selector);
                 for target in targets.into_iter() {
                     let object = self.objects.get_mut(target);
                     object.damage += damage;
@@ -113,8 +113,8 @@ impl Game {
                     });
                 }
             }
-            Effect::AddFriendlyAura { targeteer, effect } => {
-                let targets = self.resolve_minion_targeteer(caster, object_id, targeteer);
+            Effect::AddFriendlyAura { selector, effect } => {
+                let targets = self.resolve_minion_selector(caster, object_id, selector);
                 for target in targets.into_iter() {
                     let object = self.objects.get_mut(target);
                     object.friendly_aura.add(Modifier {
@@ -174,35 +174,35 @@ impl Game {
         }
     }
 
-    fn resolve_player_targeteer(
+    fn resolve_player_selector(
         &mut self,
         caster: PlayerId,
-        targeteer: PlayerTargeteer,
+        selector: PlayerSelector,
     ) -> Vec<PlayerId> {
-        match targeteer {
-            PlayerTargeteer::All => self.players.iter().map(|p| p.id).collect(),
-            PlayerTargeteer::Caster => vec![caster],
-            PlayerTargeteer::RandomPlayer => {
+        match selector {
+            PlayerSelector::All => self.players.iter().map(|p| p.id).collect(),
+            PlayerSelector::Caster => vec![caster],
+            PlayerSelector::RandomPlayer => {
                 vec![PlayerId::new(self.rng.below(self.players.len()))]
             }
-            PlayerTargeteer::NextPlayer => vec![self.turn_order.get_player_after(caster)],
+            PlayerSelector::NextPlayer => vec![self.turn_order.get_player_after(caster)],
         }
     }
 
-    fn resolve_minion_targeteer(
+    fn resolve_minion_selector(
         &mut self,
         _caster: PlayerId,
         object_id: ObjectId,
-        targeteer: MinionTargeteer,
+        selector: MinionSelector,
     ) -> Vec<ObjectId> {
-        match targeteer {
-            MinionTargeteer::All => self
+        match selector {
+            MinionSelector::All => self
                 .players
                 .iter()
                 .flat_map(|player| player.zones.board.as_slice())
                 .copied()
                 .collect(),
-            MinionTargeteer::Itself => vec![object_id],
+            MinionSelector::Itself => vec![object_id],
         }
     }
 }

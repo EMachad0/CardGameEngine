@@ -78,29 +78,29 @@ impl EffectSequence {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Effect {
     DamagePlayer {
-        targeteer: PlayerTargeteer,
+        selector: PlayerSelector,
         damage: u8,
     },
     DamageMinion {
-        targeteer: MinionTargeteer,
+        selector: MinionSelector,
         damage: u8,
     },
     Draw {
-        targeteer: PlayerTargeteer,
+        selector: PlayerSelector,
         count: usize,
     },
     Reveal {
-        targeteer: PlayerTargeteer,
+        selector: PlayerSelector,
         count: usize,
     },
     AddFriendlyAura {
-        targeteer: MinionTargeteer,
+        selector: MinionSelector,
         effect: ModifierEffect,
     },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PlayerTargeteer {
+pub enum PlayerSelector {
     All,
     Caster,
     RandomPlayer,
@@ -108,7 +108,7 @@ pub enum PlayerTargeteer {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MinionTargeteer {
+pub enum MinionSelector {
     All,
     Itself,
 }
