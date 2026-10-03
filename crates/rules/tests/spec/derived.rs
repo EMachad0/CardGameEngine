@@ -7,7 +7,7 @@ use crate::support::*;
 
 /// `(attack, health)`.
 fn stats(game: &Game, minion: ObjectId) -> (Option<i32>, Option<i32>) {
-    (game.attack(minion).unwrap(), game.health(minion).unwrap())
+    (game.attack(minion), game.health(minion))
 }
 
 #[test]
@@ -53,7 +53,7 @@ fn cards_in_hand_have_a_cost_and_no_stats() {
     let game = Game::with_deck_order(0, [deck_with_top(&[RECRUIT]), deck_with_top(&[])]);
     let recruit = in_hand(&game, P0, RECRUIT);
 
-    assert_eq!(game.mana_cost(recruit).unwrap(), Some(2));
+    assert_eq!(game.mana_cost(recruit), Some(2));
     assert_eq!(stats(&game, recruit), (None, None));
 }
 
@@ -64,7 +64,7 @@ fn a_minion_on_the_board_has_no_cost() {
 
     let recruit = summon(&mut game, P0, RECRUIT);
 
-    assert_eq!(game.mana_cost(recruit).unwrap(), None);
+    assert_eq!(game.mana_cost(recruit), None);
 }
 
 /// Player 0's board: a Recruit, a Captain, then a second Recruit.
@@ -180,15 +180,15 @@ fn giant_costs_one_less_per_spell_its_holder_has_cast() {
     let deck0 = deck_with_top(&[GIANT, SPARK, SPARK, SPARK]);
     let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
     let giant = in_hand(&game, P0, GIANT);
-    assert_eq!(game.mana_cost(giant).unwrap(), Some(8));
+    assert_eq!(game.mana_cost(giant), Some(8));
 
     play_def(&mut game, P0, SPARK);
-    assert_eq!(game.mana_cost(giant).unwrap(), Some(7));
+    assert_eq!(game.mana_cost(giant), Some(7));
 
     turn_with_mana(&mut game, P0, 2);
     play_def(&mut game, P0, SPARK);
     play_def(&mut game, P0, SPARK);
-    assert_eq!(game.mana_cost(giant).unwrap(), Some(5));
+    assert_eq!(game.mana_cost(giant), Some(5));
 }
 
 #[test]
@@ -200,7 +200,7 @@ fn opponents_spells_do_not_lower_a_giants_cost() {
 
     play_def(&mut game, P1, SPARK);
 
-    assert_eq!(game.mana_cost(giant).unwrap(), Some(8));
+    assert_eq!(game.mana_cost(giant), Some(8));
 }
 
 #[test]
@@ -212,7 +212,7 @@ fn minions_do_not_lower_a_giants_cost() {
 
     play_def(&mut game, P0, RECRUIT);
 
-    assert_eq!(game.mana_cost(giant).unwrap(), Some(8));
+    assert_eq!(game.mana_cost(giant), Some(8));
 }
 
 #[test]
@@ -230,7 +230,7 @@ fn a_giant_drawn_later_counts_spells_cast_before_it_arrived() {
 
     turn_with_mana(&mut game, P0, 3);
 
-    assert_eq!(game.mana_cost(in_hand(&game, P0, GIANT)).unwrap(), Some(5));
+    assert_eq!(game.mana_cost(in_hand(&game, P0, GIANT)), Some(5));
 }
 
 /// Player 0 holds a Giant, and the rest of the deck is Sparks.
@@ -264,7 +264,7 @@ fn a_giants_cost_never_drops_below_zero() {
     cast_sparks(&mut game, 9, |_, _| {});
 
     assert_eq!(
-        game.mana_cost(giant).unwrap(),
+        game.mana_cost(giant),
         Some(0),
         "nine spells against a cost of 8"
     );

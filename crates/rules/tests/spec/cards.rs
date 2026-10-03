@@ -52,7 +52,7 @@ fn every_card_pays_its_printed_cost() {
         let mut game = Game::with_deck_order(0, [deck_with_top(&[def]), deck_with_top(&[])]);
         turn_with_mana(&mut game, P0, cost);
         let card = in_hand(&game, P0, def);
-        assert_eq!(game.mana_cost(card).unwrap(), Some(cost), "{def:?}");
+        assert_eq!(game.mana_cost(card), Some(cost), "{def:?}");
 
         let before = game.mana(P0);
         game.apply(P0, play(card), &mut ()).unwrap();
@@ -92,8 +92,8 @@ fn blast_deals_two_damage_to_every_character() {
 
     assert_eq!(game.hero_health(P0), 8);
     assert_eq!(game.hero_health(P1), 8);
-    assert_eq!(game.health(mine).unwrap(), Some(3));
-    assert_eq!(game.health(theirs).unwrap(), Some(3));
+    assert_eq!(game.health(mine), Some(3));
+    assert_eq!(game.health(theirs), Some(3));
 }
 
 /// Player 0 casts Forage with a Recruit and a Captain on top of the deck and a Bolt under them.

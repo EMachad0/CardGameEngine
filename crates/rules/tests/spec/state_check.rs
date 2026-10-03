@@ -21,11 +21,7 @@ fn blast_removes_every_minion_it_brings_to_zero_health() {
         assert!(game.board(p).is_empty(), "left {:?}", board_defs(&game, p));
     }
     for minion in [mine, theirs] {
-        assert_eq!(
-            game.health(minion).unwrap(),
-            None,
-            "a removed minion has no health"
-        );
+        assert_eq!(game.health(minion), None, "a removed minion has no health");
     }
 }
 
@@ -42,7 +38,7 @@ fn the_check_repeats_until_a_pass_removes_nothing() {
     summon(&mut game, P0, CAPTAIN);
     turn_with_mana(&mut game, P0, 3);
     assert_eq!(
-        game.health(recruit).unwrap(),
+        game.health(recruit),
         Some(3),
         "the Captain's buff must hold the Recruit above Blast's damage"
     );
@@ -54,7 +50,7 @@ fn the_check_repeats_until_a_pass_removes_nothing() {
         "left {:?}",
         board_defs(&game, P0)
     );
-    assert_eq!(game.health(recruit).unwrap(), None);
+    assert_eq!(game.health(recruit), None);
 }
 
 #[test]

@@ -3,7 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use rules::cards::{BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK, WILD_BOLT};
-use rules::{Action, DefId, Game, LookupError, ObjectId, Outcome, PlayerId, Rng};
+use rules::{Action, DefId, Game, ObjectId, Outcome, PlayerId, Rng};
 
 use crate::model::{BoardModel, expected_cost, is_spell};
 use crate::support::*;
@@ -53,7 +53,7 @@ pub(crate) fn random_playout(seed: u64, picker_seed: u64) -> (Game, Vec<(PlayerI
         let off_board_before = PLAYERS.map(|q| off_board_count(&game, q));
         let mana_before = game.mana(p);
         let played = match a {
-            Action::Play { object_id } => Some(game.def_id(object_id).unwrap()),
+            Action::Play { object_id } => Some(game.def_id(object_id)),
             _ => None,
         };
 
@@ -156,9 +156,7 @@ fn assert_ids(game: &Game, history: &mut History, context: &str) {
 
     for &id in &ids {
         assert!(!history.gone.contains(&id), "{context}: {id:?} came back");
-        let def = game
-            .def_id(id)
-            .unwrap_or_else(|e| panic!("{context}: def_id({id:?}): {e:?}"));
+        let def = game.def_id(id);
         let first = *history.defs.entry(id).or_insert(def);
         assert_eq!(def, first, "{context}: {id:?} changed its definition");
     }
@@ -173,33 +171,29 @@ fn assert_ids(game: &Game, history: &mut History, context: &str) {
 fn assert_accessors(game: &Game, history: &History, context: &str) {
     for p in PLAYERS {
         for &id in game.hand(p) {
-            let def = game.def_id(id).unwrap();
+            let def = game.def_id(id);
             let cost = expected_cost(def, history.spells_cast[p.idx()]);
-            assert_eq!(
-                game.mana_cost(id),
-                Ok(Some(cost)),
-                "{context}: cost of {def:?}"
-            );
+            assert_eq!(game.mana_cost(id), Some(cost), "{context}: cost of {def:?}");
             assert_eq!(
                 (game.attack(id), game.health(id)),
-                (Ok(None), Ok(None)),
+                (None, None),
                 "{context}"
             );
         }
         let deck = game.deck(p);
         for &id in deck.iter().chain(game.revealed(p)) {
-            assert_eq!(game.mana_cost(id), Ok(None), "{context}");
+            assert_eq!(game.mana_cost(id), None, "{context}");
             assert_eq!(
                 (game.attack(id), game.health(id)),
-                (Ok(None), Ok(None)),
+                (None, None),
                 "{context}"
             );
         }
         for &id in game.board(p) {
-            assert_eq!(game.mana_cost(id), Ok(None), "{context}");
+            assert_eq!(game.mana_cost(id), None, "{context}");
             let health = game.health(id);
             assert!(
-                matches!(health, Ok(Some(h)) if h > 0),
+                matches!(health, Some(h) if h > 0),
                 "{context}: a minion at {health:?} health is on the board"
             );
         }
@@ -208,11 +202,7 @@ fn assert_accessors(game: &Game, history: &History, context: &str) {
 
 /// C. Both boards hold the model's minions, in order, with the model's attack and health.
 fn assert_boards_match(game: &Game, model: &BoardModel, context: &str) {
-    type Row = (
-        Result<DefId, LookupError>,
-        Result<Option<i32>, LookupError>,
-        Result<Option<i32>, LookupError>,
-    );
+    type Row = (DefId, Option<i32>, Option<i32>);
     for p in PLAYERS {
         let actual: Vec<Row> = game
             .board(p)
@@ -222,7 +212,7 @@ fn assert_boards_match(game: &Game, model: &BoardModel, context: &str) {
         let expected: Vec<Row> = model
             .minions(p)
             .into_iter()
-            .map(|(def, (attack, health))| (Ok(def), Ok(Some(attack)), Ok(Some(health))))
+            .map(|(def, (attack, health))| (def, Some(attack), Some(health)))
             .collect();
         assert_eq!(
             actual, expected,

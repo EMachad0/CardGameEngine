@@ -98,11 +98,10 @@ impl Game {
 
     fn hand_card(&self, viewer: PlayerId, player_id: PlayerId, object_id: ObjectId) -> HandCard {
         let face = (player_id == viewer).then(|| Face {
-            def_id: self.def_id(object_id).expect("unexpected lookup error"),
+            def_id: self.def_id(object_id),
             mana_cost: self
                 .mana_cost(object_id)
-                .expect("unexpected lookup error")
-                .expect("card in hand without mana cost"),
+                .expect("hand objects always have mana cost"),
         });
 
         HandCard { object_id, face }
@@ -111,15 +110,13 @@ impl Game {
     fn board_card(&self, _viewer: PlayerId, object_id: ObjectId) -> BoardCard {
         BoardCard {
             object_id,
-            def_id: self.def_id(object_id).expect("unexpected lookup error"),
+            def_id: self.def_id(object_id),
             attack: self
                 .attack(object_id)
-                .expect("unexpected lookup error")
-                .expect("board card without attack"),
+                .expect("board objects always have attack"),
             health: self
                 .health(object_id)
-                .expect("unexpected lookup error")
-                .expect("board card without health"),
+                .expect("board objects always have health"),
         }
     }
 
@@ -135,8 +132,7 @@ impl Game {
                 .iter()
                 .map(|&object_id| RevealedCard {
                     object_id,
-                    def_id: (player_id == viewer)
-                        .then(|| self.def_id(object_id).expect("unexpected lookup error")),
+                    def_id: (player_id == viewer).then(|| self.def_id(object_id)),
                 })
                 .collect(),
         }

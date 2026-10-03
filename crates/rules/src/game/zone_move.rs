@@ -36,27 +36,24 @@ impl Game {
             .zones
             .hand
             .remove(object_id)
-            .expect("object not in hand");
+            .expect("legal actions guarantee playable cards are in hand");
 
-        if let Some(object) = self.objects.get(object_id) {
-            self.history.entries.push(HistoryEntry::new(
-                player_id,
-                HistoryKind::CardPlayed {
-                    object: object.clone(),
-                },
-                self.turn_order.turn_count(),
-            ));
-        }
+        let object = self.objects.get(object_id);
+        self.history.entries.push(HistoryEntry::new(
+            player_id,
+            HistoryKind::CardPlayed {
+                object: object.clone(),
+            },
+            self.turn_order.turn_count(),
+        ));
         obs.event(&Event::Played {
             player_id,
             object_id,
         });
         obs.checkpoint(Views::new(self));
-        if let Ok(effects) = self.on_play(object_id) {
-            self.apply_effects(player_id, object_id, effects, obs);
-        }
+        self.apply_effects(player_id, object_id, self.on_play(object_id), obs);
 
-        let def_id = self.def_id(object_id).expect("unexpected lookup error");
+        let def_id = self.def_id(object_id);
         if self.binder.has_board_presence(def_id) {
             self.spawn(player_id, object_id, obs);
         }
@@ -73,9 +70,7 @@ impl Game {
             player_id,
             object_id,
         });
-        if let Ok(effects) = self.on_board_enter(object_id) {
-            self.apply_effects(player_id, object_id, effects, obs);
-        }
+        self.apply_effects(player_id, object_id, self.on_board_enter(object_id), obs);
     }
 
     pub(crate) fn kill(
@@ -84,20 +79,17 @@ impl Game {
         object_id: ObjectId,
         obs: &mut impl Observer,
     ) {
-        if let Some(object) = self.objects.get(object_id) {
-            self.history.entries.push(HistoryEntry::new(
-                player_id,
-                HistoryKind::MonsterDied {
-                    object: object.clone(),
-                },
-                self.turn_order.turn_count(),
-            ));
-        }
+        let object = self.objects.get(object_id);
+        self.history.entries.push(HistoryEntry::new(
+            player_id,
+            HistoryKind::MonsterDied {
+                object: object.clone(),
+            },
+            self.turn_order.turn_count(),
+        ));
         obs.event(&Event::Died { object_id });
         self.destroy(player_id, object_id, obs);
-        if let Ok(effects) = self.on_death(object_id) {
-            self.apply_effects(player_id, object_id, effects, obs);
-        }
+        self.apply_effects(player_id, object_id, self.on_death(object_id), obs);
     }
 
     pub(crate) fn destroy(
@@ -106,17 +98,14 @@ impl Game {
         object_id: ObjectId,
         obs: &mut impl Observer,
     ) {
-        if let Ok(effects) = self.on_board_leave(object_id) {
-            self.apply_effects(player_id, object_id, effects, obs);
-        }
+        self.apply_effects(player_id, object_id, self.on_board_leave(object_id), obs);
         self.get_player_mut(player_id)
             .zones
             .board
             .remove(object_id)
             .expect("object not in board");
 
-        let def_id = self.def_id(object_id).expect("unexpected lookup error");
-        if self.binder.has_deck_presence(def_id) {
+        if self.binder.has_deck_presence(self.def_id(object_id)) {
             self.emtomb(player_id, object_id, obs);
         }
     }

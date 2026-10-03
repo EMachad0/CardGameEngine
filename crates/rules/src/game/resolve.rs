@@ -54,8 +54,7 @@ impl Game {
             Action::Play { object_id } => {
                 let mana_cost = self
                     .mana_cost(object_id)
-                    .expect("unexpected lookup error")
-                    .expect("attempt to play card without cost");
+                    .expect("[legal_actions] guarantees a play action object_id has mana");
                 self.get_player_mut(player_id).mana -= mana_cost;
                 self.play(player_id, object_id, obs);
             }
@@ -105,25 +104,23 @@ impl Game {
             Effect::DamageMonster { targeteer, damage } => {
                 let targets = self.resolve_monster_targeteer(caster, object_id, targeteer);
                 for target in targets.into_iter() {
-                    if let Some(object) = self.objects.get_mut(target) {
-                        object.damage += damage;
-                        obs.event(&Event::Damaged {
-                            target: Target::Monster(target),
-                            amount: damage,
-                            source: object_id,
-                        });
-                    }
+                    let object = self.objects.get_mut(target);
+                    object.damage += damage;
+                    obs.event(&Event::Damaged {
+                        target: Target::Monster(target),
+                        amount: damage,
+                        source: object_id,
+                    });
                 }
             }
             Effect::AddFriendlyAura { targeteer, effect } => {
                 let targets = self.resolve_monster_targeteer(caster, object_id, targeteer);
                 for target in targets.into_iter() {
-                    if let Some(object) = self.objects.get_mut(target) {
-                        object.friendly_aura.add(Modifier {
-                            source: object_id,
-                            effect,
-                        });
-                    }
+                    let object = self.objects.get_mut(target);
+                    object.friendly_aura.add(Modifier {
+                        source: object_id,
+                        effect,
+                    });
                 }
             }
         }

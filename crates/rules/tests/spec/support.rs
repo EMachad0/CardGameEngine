@@ -33,12 +33,7 @@ pub(crate) fn deck_with_top(top: &[DefId]) -> Vec<DefId> {
 }
 
 pub(crate) fn defs(game: &Game, ids: &[ObjectId]) -> Vec<DefId> {
-    ids.iter()
-        .map(|&id| {
-            game.def_id(id)
-                .unwrap_or_else(|e| panic!("def_id({id:?}): {e:?}"))
-        })
-        .collect()
+    ids.iter().map(|&id| game.def_id(id)).collect()
 }
 
 pub(crate) fn hand_defs(game: &Game, p: PlayerId) -> Vec<DefId> {
@@ -58,7 +53,7 @@ pub(crate) fn board_defs(game: &Game, p: PlayerId) -> Vec<DefId> {
 }
 
 pub(crate) fn has_in_hand(game: &Game, p: PlayerId, def: DefId) -> bool {
-    game.hand(p).iter().any(|&id| game.def_id(id) == Ok(def))
+    game.hand(p).iter().any(|&id| game.def_id(id) == def)
 }
 
 /// The first card in `p`'s hand with definition `def`.
@@ -66,7 +61,7 @@ pub(crate) fn in_hand(game: &Game, p: PlayerId, def: DefId) -> ObjectId {
     game.hand(p)
         .iter()
         .copied()
-        .find(|&id| game.def_id(id) == Ok(def))
+        .find(|&id| game.def_id(id) == def)
         .unwrap_or_else(|| panic!("no {def:?} in {p:?}'s hand"))
 }
 

@@ -115,13 +115,15 @@ pub(crate) struct Zones {
 
 #[cfg(test)]
 mod tests {
+    use crate::cards::SPARK;
     use crate::cards::object::ObjectBag;
+    use crate::ids::PlayerId;
 
     use super::*;
 
     fn ids<const N: usize>() -> [ObjectId; N] {
         let mut bag = ObjectBag::default();
-        std::array::from_fn(|_| bag.next_id())
+        std::array::from_fn(|_| bag.insert(SPARK, PlayerId::new(0)))
     }
 
     fn hand_of(cards: &[ObjectId]) -> Hand {

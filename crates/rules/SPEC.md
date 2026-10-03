@@ -229,15 +229,15 @@ impl Game {
     pub fn deck(&self, player_id: PlayerId) -> Vec<ObjectId>;   // top first
     pub fn revealed(&self, player_id: PlayerId) -> &[ObjectId]; // pending Forage, in reveal order; empty if none
     pub fn board(&self, player_id: PlayerId) -> &[ObjectId];    // left to right
-    pub fn def_id(&self, object_id: ObjectId) -> Result<DefId, LookupError>;
-    pub fn mana_cost(&self, object_id: ObjectId) -> Result<Option<u8>, LookupError>; // Some iff in a hand
-    pub fn attack(&self, object_id: ObjectId) -> Result<Option<i32>, LookupError>;   // Some iff on a board
-    pub fn health(&self, object_id: ObjectId) -> Result<Option<i32>, LookupError>;   // Some iff on a board
+    pub fn def_id(&self, object_id: ObjectId) -> DefId;
+    pub fn mana_cost(&self, object_id: ObjectId) -> Option<u8>; // Some iff in a hand
+    pub fn attack(&self, object_id: ObjectId) -> Option<i32>;   // Some iff on a board
+    pub fn health(&self, object_id: ObjectId) -> Option<i32>;   // Some iff on a board
     pub fn view(&self, viewer: PlayerId) -> View;
 }
 ```
 
-A lookup returns `Err(LookupError::ObjectNotFound(id))` only for an id the game never made. An object that has left every zone is still found. `def_id` returns its card, and `mana_cost`, `attack` and `health` return `Ok(None)`.
+A lookup panics for an id the game never made. An object that has left every zone is still found. `def_id` returns its card, and `mana_cost`, `attack` and `health` return `None`.
 
 Whether an object keeps its `ObjectId` when it moves from hand to board is yours to decide. The tests accept either.
 

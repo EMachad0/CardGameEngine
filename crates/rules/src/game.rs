@@ -16,7 +16,7 @@ mod zone_move;
 use crate::action::Action;
 use crate::cards::CardDefLoader;
 use crate::cards::binder::Binder;
-use crate::cards::object::{Object, ObjectBag};
+use crate::cards::object::ObjectBag;
 use crate::game::player::{Player, PlayerInteractionState};
 use crate::history::History;
 use crate::ids::PlayerId;
@@ -66,12 +66,11 @@ impl Game {
             .map(|player_id| Player::new(*player_id))
             .collect::<Vec<_>>();
         for (player, deck_defs) in players.iter_mut().zip(decks.into_iter()) {
-            let deck_objs = deck_defs
+            let deck = deck_defs
                 .into_iter()
-                .map(|def_id| Object::new(objects.next_id(), def_id, player.id))
+                .map(|def_id| objects.insert(def_id, player.id))
                 .collect::<Vec<_>>();
-            let deck = Deck::new(objects.insert_all(deck_objs));
-            player.zones.deck = deck;
+            player.zones.deck = Deck::new(deck);
         }
         let turn_order = TurnOrder::new(player_ids.clone());
         let history = History::default();
@@ -115,9 +114,10 @@ impl Game {
                 let mana = self.mana(player_id);
                 let hand = self.hand(player_id);
                 for object_id in hand.iter().cloned() {
-                    if let Ok(Some(mana_cost)) = self.mana_cost(object_id)
-                        && mana_cost <= mana
-                    {
+                    let mana_cost = self
+                        .mana_cost(object_id)
+                        .expect("objects in hand always have mana cost");
+                    if mana_cost <= mana {
                         actions.push(Action::Play { object_id });
                     }
                 }

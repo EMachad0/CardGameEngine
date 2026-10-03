@@ -10,9 +10,10 @@ impl Game {
     fn find_dead(&self) -> Option<ObjectId> {
         for player_id in self.players().into_iter() {
             for object_id in self.board(player_id).iter().copied() {
-                if let Ok(Some(health)) = self.health(object_id)
-                    && health <= 0
-                {
+                let health = self
+                    .health(object_id)
+                    .expect("board objects always have health");
+                if health <= 0 {
                     return Some(object_id);
                 }
             }
@@ -22,11 +23,7 @@ impl Game {
 
     fn update_deaths(&mut self, obs: &mut impl Observer) {
         while let Some(object_id) = self.find_dead() {
-            self.kill(
-                self.objects.get(object_id).unwrap().player_id,
-                object_id,
-                obs,
-            );
+            self.kill(self.objects.get(object_id).player_id, object_id, obs);
             obs.checkpoint(Views::new(self));
         }
     }
