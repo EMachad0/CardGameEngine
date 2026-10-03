@@ -10,7 +10,7 @@ use crate::cards::definition::{Effect, MonsterTargeteer, PlayerTargeteer};
 use crate::cards::modifier::{EffectAmount, Modifier};
 use crate::history::{HistoryKind, HistoryQuery, HistoryQueryKind, PlayerFilter};
 use crate::ids::PlayerId;
-use crate::{IllegalAction, ObjectId, Observer};
+use crate::{Event, IllegalAction, ObjectId, Observer, Target, Views};
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum ApplyError {
@@ -31,20 +31,25 @@ impl Game {
         &mut self,
         player_id: PlayerId,
         action: Action,
-        _obs: &mut impl Observer,
+        obs: &mut impl Observer,
     ) -> Result<(), ApplyError> {
         if !self.legal_actions(player_id).contains(&action) {
             Err(ApplyError::IllegalAction(IllegalAction::new(
                 player_id, action,
             )))
         } else {
-            self.apply_action(player_id, action);
-            self.update();
+            self.apply_action(player_id, action, obs);
+            self.update(obs);
             Ok(())
         }
     }
 
-    pub(super) fn apply_action(&mut self, player_id: PlayerId, action: Action) {
+    pub(super) fn apply_action(
+        &mut self,
+        player_id: PlayerId,
+        action: Action,
+        obs: &mut impl Observer,
+    ) {
         match action {
             Action::Play { object_id } => {
                 let mana_cost = self
@@ -52,37 +57,49 @@ impl Game {
                     .expect("unexpected lookup error")
                     .expect("attempt to play card without cost");
                 self.get_player_mut(player_id).mana -= mana_cost;
-                self.play(player_id, object_id);
+                self.play(player_id, object_id, obs);
             }
             Action::Pick { object_id } => {
-                self.pick(player_id, object_id);
+                self.pick(player_id, object_id, obs);
             }
             Action::EndTurn => {
-                self.turn_order.end_turn();
-                self.start_turn();
+                self.end_turn(obs);
+                self.start_turn(obs);
             }
         };
+        obs.checkpoint(Views::new(self));
     }
 
-    pub(crate) fn apply_effect(&mut self, caster: PlayerId, object_id: ObjectId, effect: Effect) {
+    pub(crate) fn apply_effect(
+        &mut self,
+        caster: PlayerId,
+        object_id: ObjectId,
+        effect: Effect,
+        obs: &mut impl Observer,
+    ) {
         match effect {
             Effect::DamagePlayer { targeteer, damage } => {
                 let targets = self.resolve_player_targeteer(caster, targeteer);
                 for target in targets.into_iter() {
                     let player = self.get_player_mut(target);
                     player.health -= damage as i32;
+                    obs.event(&Event::Damaged {
+                        target: Target::Hero(target),
+                        amount: damage,
+                        source: object_id,
+                    });
                 }
             }
             Effect::Draw { targeteer, count } => {
                 let targets = self.resolve_player_targeteer(caster, targeteer);
                 for target in targets.into_iter() {
-                    self.draw(target, count);
+                    self.draw(target, count, obs);
                 }
             }
             Effect::Reveal { targeteer, count } => {
                 let targets = self.resolve_player_targeteer(caster, targeteer);
                 for target in targets.into_iter() {
-                    self.reveal(target, count);
+                    self.reveal(target, count, obs);
                 }
             }
             Effect::DamageMonster { targeteer, damage } => {
@@ -90,6 +107,11 @@ impl Game {
                 for target in targets.into_iter() {
                     if let Some(object) = self.objects.get_mut(target) {
                         object.damage += damage;
+                        obs.event(&Event::Damaged {
+                            target: Target::Monster(target),
+                            amount: damage,
+                            source: object_id,
+                        });
                     }
                 }
             }
@@ -112,9 +134,10 @@ impl Game {
         player_id: PlayerId,
         object_id: ObjectId,
         effects: Vec<Effect>,
+        obs: &mut impl Observer,
     ) {
         effects.into_iter().for_each(|e| {
-            self.apply_effect(player_id, object_id, e);
+            self.apply_effect(player_id, object_id, e, obs);
         });
     }
 

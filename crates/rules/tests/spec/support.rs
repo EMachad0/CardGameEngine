@@ -1,10 +1,13 @@
-//! Helpers shared by the spec tests: action builders, card lookups, turn helpers and the
-//! legality assertions.
+//! Helpers shared by the spec tests: action builders, card lookups, turn helpers, the
+//! legality assertions and an observer that records what `apply` reports.
 
 use std::collections::BTreeSet;
 
 use rules::cards::BOLT;
-use rules::{Action, ApplyError, DefId, Game, IllegalAction, ObjectId, PlayerId};
+use rules::{
+    Action, ApplyError, DefId, Event, Game, IllegalAction, ObjectId, Observer, PlayerId, View,
+    Views,
+};
 
 pub(crate) const P0: PlayerId = PlayerId::new(0);
 pub(crate) const P1: PlayerId = PlayerId::new(1);
@@ -72,6 +75,54 @@ pub(crate) fn play_def(game: &mut Game, p: PlayerId, def: DefId) {
     let action = play(in_hand(game, p, def));
     game.apply(p, action, &mut ())
         .unwrap_or_else(|e| panic!("playing {def:?}: {e:?}"));
+}
+
+/// One checkpoint: the events since the previous one, then each player's view.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Step {
+    pub(crate) events: Vec<Event>,
+    pub(crate) views: [View; 2],
+}
+
+/// Records what `apply` reports, one `Step` per checkpoint.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub(crate) struct Recorder {
+    pub(crate) steps: Vec<Step>,
+    /// Events reported after the last checkpoint.
+    pub(crate) trailing: Vec<Event>,
+}
+
+impl Observer for Recorder {
+    fn event(&mut self, e: &Event) {
+        self.trailing.push(e.clone());
+    }
+
+    fn checkpoint(&mut self, views: Views<'_>) {
+        self.steps.push(Step {
+            events: std::mem::take(&mut self.trailing),
+            views: PLAYERS.map(|p| views.of(p)),
+        });
+    }
+}
+
+impl Recorder {
+    /// Every event, in order, with the checkpoints left out.
+    pub(crate) fn events(&self) -> Vec<Event> {
+        self.steps
+            .iter()
+            .flat_map(|step| step.events.iter())
+            .chain(&self.trailing)
+            .cloned()
+            .collect()
+    }
+}
+
+/// Applies `a` for `p` with a `Recorder` and returns what it recorded.
+pub(crate) fn observe(game: &mut Game, p: PlayerId, a: Action) -> Recorder {
+    let mut recorder = Recorder::default();
+    game.apply(p, a.clone(), &mut recorder)
+        .unwrap_or_else(|e| panic!("{a:?} for {p:?}: {e:?}"));
+    recorder
 }
 
 /// Plays minion `def` from `p`'s hand and returns its board id.

@@ -32,6 +32,10 @@ impl Deck {
     pub(crate) fn push_back(&mut self, card: ObjectId) {
         self.0.push_back(card);
     }
+
+    pub(crate) fn len(&self) -> usize {
+        self.0.len()
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]

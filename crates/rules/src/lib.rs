@@ -4,10 +4,10 @@
 //! `pub(crate)` or narrower, so changing one can't break a caller.
 //!
 //! Layout:
-//! - `ids`, `action`, `cards`, `event`, `view`: public data types.
+//! - `ids`, `action`, `cards`, `event`: public data types.
 //! - `observer`: the `Observer` trait and the `Views` handle it receives.
 //! - `rng`, `turn`, `zones`: types whose fields are private to their module.
-//! - `game`: `Game` and its methods. Its child modules can read `Game`'s private fields.
+//! - `game`: `Game` and its methods, and `View`. Its child modules can read `Game`'s private fields.
 
 mod action;
 pub mod cards;
@@ -19,15 +19,14 @@ mod observer;
 mod outcome;
 mod rng;
 mod turn;
-mod view;
 mod zones;
 
 pub use action::{Action, IllegalAction};
 pub use cards::{definition::DefId, object::ObjectId};
 pub use event::{Event, Target};
+pub use game::view::{BoardCard, Face, HandCard, PlayerView, RevealedCard, View};
 pub use game::{ApplyError, Game, LookupError};
 pub use ids::PlayerId;
 pub use observer::{Observer, Views};
 pub use outcome::Outcome;
 pub use rng::Rng;
-pub use view::{BoardCard, Face, HandCard, PlayerView, RevealedCard, View};

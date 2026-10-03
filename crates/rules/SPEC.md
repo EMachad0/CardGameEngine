@@ -1,4 +1,4 @@
-# Session 02 game: spec
+# Session 03 game: spec
 
 The tests for this spec live in `tests/spec/`. `docs/testing.md` says where each test goes.
 
@@ -11,6 +11,8 @@ The tests for this spec live in `tests/spec/`. `docs/testing.md` says where each
 | `ids.rs` | `PlayerId` |
 | `action.rs` | `Action`, `IllegalAction` |
 | `outcome.rs` | `Outcome` |
+| `event.rs` | `Event`, `Target` |
+| `observer.rs` | `Observer`, `Views` |
 | `cards/definition.rs` | `DefId`, `CardDef`, `Effect` |
 | `cards/loader.rs` | the printed card table, the `cards` constants and the table's validation |
 | `cards/binder.rs` | printed values by `DefId` |
@@ -22,6 +24,7 @@ The tests for this spec live in `tests/spec/`. `docs/testing.md` says where each
 | `game/player.rs` | one player's record |
 | `game/resolve.rs` | `apply`, `applied`, `ApplyError`, and what `apply` does once an action is legal |
 | `game/lookup.rs` | `def_id`, `mana_cost`, `attack`, `health`, `hero_health` and `LookupError` |
+| `game/view.rs` | `View` and its per-player and per-card parts, and `Game::view` |
 
 Where a type lives inside the crate is yours to change.
 
@@ -76,6 +79,37 @@ Where a type lives inside the crate is yours to change.
 - If `apply` returns `Err`, it's `Err(ApplyError::IllegalAction(IllegalAction { player_id: p, action: a }))`, and the game is unchanged.
 - Everything that affects the future lives in `Game` (node S). The core never reads a clock, OS randomness, or a std `HashMap`'s iteration order (node R1). This crate's `clippy.toml` bans `HashMap`, `HashSet`, `Instant::now` and `SystemTime::now`, and the workspace lints make any use of them a clippy error.
 
+## Events and views (node D)
+
+`apply(p, a, obs)` reports to `obs` while it resolves: `obs.event(&event)` for each thing that happens, in order, and `obs.checkpoint(views)` at each checkpoint, where `views.of(v)` is `view(v)` at that moment.
+
+- A rejected action makes no call to `obs`.
+- Setup isn't observed. The shell reads `view(v)` after `Game::new`.
+- The observer can't change the game: any observer leaves the same `Game` as `&mut ()`.
+- The same game and action make the same calls in the same order (R1).
+- Checkpoints come after each zone move (a draw, a card leaving the hand to be played, a minion entering the board, a reveal, a pick, the bury), after each effect, and after each death pass that removes a minion. The last call of every accepted `apply` is a checkpoint, so its views are the ones `view` returns once `apply` is done.
+
+Events name objects by `ObjectId` only. A card's identity and current values reach a viewer through its `View`.
+
+| When | Events, in order |
+|---|---|
+| `EndTurn` by `p` | `TurnEnded { p }`, then the next player's turn start |
+| Turn start for `q` | `TurnStarted { q }`, then `Drew { q, card }`, or `FatigueDamaged { amount: 1, q }` if `q`'s deck is empty |
+| Playing a card | `Played { p, card }`, then its effects. A minion then `BoardEntered { p, card }`. |
+| A hit | `Damaged { target, amount, source: the card }` for each character hit, `amount` as printed |
+| Forage | `Revealed { p, cards in reveal order }`. If nothing is revealed, no event. |
+| A pick | `Picked { p, card }`, then `Buried { p, card }` for each other revealed card, in the order they go to the bottom |
+| A death pass | `Died { minion }` for each minion it removes |
+| The game ends | `GameEnded { outcome }`, once, in the `apply` that ends it |
+
+`view(v)` is everything `v` may see, and nothing else (node D3):
+
+- `viewer` is `v`, `active_player` is whose turn it is, `players[i]` is `PlayerId::new(i)`'s, and `outcome` is `outcome()`.
+- Public, to every viewer: hero health, mana, max mana, deck size, the board in order with each minion's `DefId`, attack and health, and the `ObjectId` of every card in a hand or pending Forage.
+- A hand card's `face` (its `DefId` and current cost) is `Some` only in its owner's view.
+- A pending Forage's options show their `DefId` only to the player choosing.
+- A deck's cards are never listed, only counted.
+
 ## API
 
 ```rust
@@ -114,6 +148,64 @@ pub struct IllegalAction { pub player_id: PlayerId, pub action: Action }
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum ApplyError { IllegalAction(IllegalAction) }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Event {
+    TurnStarted { player_id: PlayerId },
+    TurnEnded { player_id: PlayerId },
+    Drew { player_id: PlayerId, object_id: ObjectId },
+    Played { player_id: PlayerId, object_id: ObjectId },
+    Damaged { target: Target, amount: u8, source: ObjectId },
+    Revealed { player_id: PlayerId, object_ids: Vec<ObjectId> },
+    Picked { player_id: PlayerId, object_id: ObjectId },
+    Buried { player_id: PlayerId, object_id: ObjectId },
+    BoardEntered { player_id: PlayerId, object_id: ObjectId },
+    FatigueDamaged { amount: u8, player_id: PlayerId },
+    Died { object_id: ObjectId },
+    GameEnded { outcome: Outcome },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Target { Hero(PlayerId), Monster(ObjectId) }
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct View { pub viewer: PlayerId, pub active_player: PlayerId, pub players: Vec<PlayerView>, pub outcome: Option<Outcome> }
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PlayerView {
+    pub player_id: PlayerId,
+    pub hero_health: i32,
+    pub mana: u8,
+    pub max_mana: u8,
+    pub hand: Vec<HandCard>,         // oldest first
+    pub deck_size: usize,
+    pub board: Vec<BoardCard>,       // left to right
+    pub revealed: Vec<RevealedCard>, // pending Forage, in reveal order; empty if none
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HandCard { pub object_id: ObjectId, pub face: Option<Face> }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Face { pub def_id: DefId, pub mana_cost: u8 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RevealedCard { pub object_id: ObjectId, pub def_id: Option<DefId> }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BoardCard { pub object_id: ObjectId, pub def_id: DefId, pub attack: i32, pub health: i32 }
+
+pub trait Observer {
+    fn event(&mut self, event: &Event);
+    fn checkpoint(&mut self, views: Views<'_>);
+}
+impl Observer for () {} // ignores both
+
+/// What a checkpoint can read. Holds the game privately.
+pub struct Views<'g>(/* private */);
+impl Views<'_> {
+    pub fn of(&self, viewer: PlayerId) -> View;
+}
+
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum LookupError { ObjectNotFound(ObjectId) }
 
@@ -127,7 +219,7 @@ impl Game {
     pub fn new(seed: u64, decks: [Vec<DefId>; 2]) -> Game;             // shuffles
     pub fn with_deck_order(seed: u64, decks: [Vec<DefId>; 2]) -> Game; // index 0 = top
     pub fn legal_actions(&self, player_id: PlayerId) -> Vec<Action>;
-    pub fn apply(&mut self, player_id: PlayerId, action: Action) -> Result<(), ApplyError>;
+    pub fn apply(&mut self, player_id: PlayerId, action: Action, obs: &mut impl Observer) -> Result<(), ApplyError>;
     pub fn applied(&self, player_id: PlayerId, action: Action) -> Result<Game, ApplyError>;
     pub fn outcome(&self) -> Option<Outcome>;                   // None while the game goes on
     pub fn hero_health(&self, player_id: PlayerId) -> i32;
@@ -140,6 +232,7 @@ impl Game {
     pub fn mana_cost(&self, object_id: ObjectId) -> Result<Option<u8>, LookupError>; // Some iff in a hand
     pub fn attack(&self, object_id: ObjectId) -> Result<Option<i32>, LookupError>;   // Some iff on a board
     pub fn health(&self, object_id: ObjectId) -> Result<Option<i32>, LookupError>;   // Some iff on a board
+    pub fn view(&self, viewer: PlayerId) -> View;
 }
 ```
 

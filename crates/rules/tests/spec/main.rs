@@ -6,6 +6,7 @@
 
 mod cards;
 mod derived;
+mod events;
 mod legality;
 mod model;
 mod playout;
@@ -14,3 +15,4 @@ mod setup;
 mod state_check;
 mod support;
 mod turns;
+mod views;

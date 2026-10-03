@@ -10,6 +10,7 @@ mod lookup;
 mod player;
 mod resolve;
 mod update;
+pub(crate) mod view;
 mod zone_move;
 
 use crate::action::Action;
@@ -22,7 +23,7 @@ use crate::ids::PlayerId;
 use crate::rng::Rng;
 use crate::turn::TurnOrder;
 use crate::zones::Deck;
-use crate::{DefId, ObjectId, Outcome, View};
+use crate::{DefId, Event, ObjectId, Observer, Outcome};
 
 pub use lookup::LookupError;
 pub use resolve::ApplyError;
@@ -92,10 +93,10 @@ impl Game {
         }
 
         for player_id in player_ids {
-            game.draw(player_id, 3);
+            game.draw(player_id, 3, &mut ());
         }
 
-        game.start_turn();
+        game.start_turn(&mut ());
         game
     }
 
@@ -164,12 +165,23 @@ impl Game {
         self.outcome
     }
 
-    fn start_turn(&mut self) {
+    fn end_turn(&mut self, obs: &mut impl Observer) {
         let current_player_id = self.turn_order.get_current_player_id();
+        obs.event(&Event::TurnEnded {
+            player_id: current_player_id,
+        });
+        self.turn_order.end_turn();
+    }
+
+    fn start_turn(&mut self, obs: &mut impl Observer) {
+        let current_player_id = self.turn_order.get_current_player_id();
+        obs.event(&Event::TurnStarted {
+            player_id: current_player_id,
+        });
         let player = self.get_player_mut(current_player_id);
         player.max_mana = (player.max_mana + 1).min(10);
         player.mana = player.max_mana;
-        self.draw(current_player_id, 1);
+        self.draw(current_player_id, 1, obs);
     }
 
     fn get_player(&self, player_id: PlayerId) -> &Player {
@@ -182,9 +194,5 @@ impl Game {
 
     pub fn players(&self) -> Vec<PlayerId> {
         self.players.iter().map(|p| p.id).collect()
-    }
-
-    pub fn view(&self, _viewer: PlayerId) -> View {
-        todo!()
     }
 }
