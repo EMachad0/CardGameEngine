@@ -1,17 +1,15 @@
 //! Identity newtypes.
 
-/// A player's identity, separate from seat order. Deck `i` belongs to
-/// `PlayerId::new(i)` no matter who goes first.
+/// A player's identity, separate from seat order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PlayerId(usize);
 
 impl PlayerId {
-    /// `const`, so callers can write `const P0: PlayerId = PlayerId::new(0);`.
-    pub const fn new(idx: usize) -> Self {
+    pub(super) const fn new(idx: usize) -> Self {
         Self(idx)
     }
 
-    pub fn idx(&self) -> usize {
+    pub(super) fn idx(&self) -> usize {
         self.0
     }
 }

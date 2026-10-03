@@ -9,18 +9,21 @@ use crate::support::*;
 fn playing_a_card_keeps_the_rest_of_the_hand_in_order() {
     let deck = vec![BOLT, SPARK, RECRUIT, CAPTAIN, BLAST];
     let mut game = Game::with_deck_order(0, [deck.clone(), deck]);
+    let [p0, _] = players(&game);
 
-    play_def(&mut game, P0, SPARK);
+    play_def(&mut game, p0, SPARK);
 
-    assert_eq!(hand_defs(&game, P0), [BOLT, RECRUIT, CAPTAIN]);
+    assert_eq!(hand_defs(&game, p0), [BOLT, RECRUIT, CAPTAIN]);
 }
 
 #[test]
 fn damage_spells_hit_the_casters_enemy() {
     for (spell, damage) in [(SPARK, 1), (BOLT, 2)] {
-        for (caster, enemy) in [(P0, P1), (P1, P0)] {
+        for (caster, enemy) in [(0, 1), (1, 0)] {
             let deck = deck_with_top(&[spell]);
             let mut game = Game::with_deck_order(0, [deck.clone(), deck]);
+            let ids = players(&game);
+            let (caster, enemy) = (ids[caster], ids[enemy]);
             turn_with_mana(&mut game, caster, 2);
 
             play_def(&mut game, caster, spell);
@@ -50,13 +53,14 @@ fn every_card_pays_its_printed_cost() {
     ];
     for (def, cost) in cases {
         let mut game = Game::with_deck_order(0, [deck_with_top(&[def]), deck_with_top(&[])]);
-        turn_with_mana(&mut game, P0, cost);
-        let card = in_hand(&game, P0, def);
+        let [p0, _] = players(&game);
+        turn_with_mana(&mut game, p0, cost);
+        let card = in_hand(&game, p0, def);
         assert_eq!(game.mana_cost(card), Some(cost), "{def:?}");
 
-        let before = game.mana(P0);
-        game.apply(P0, play(card), &mut ()).unwrap();
-        assert_eq!(game.mana(P0), before - cost, "{def:?}");
+        let before = game.mana(p0);
+        game.apply(p0, play(card), &mut ()).unwrap();
+        assert_eq!(game.mana(p0), before - cost, "{def:?}");
     }
 }
 
@@ -64,16 +68,17 @@ fn every_card_pays_its_printed_cost() {
 fn minions_enter_at_the_right_end_of_their_owners_board() {
     let deck0 = deck_with_top(&[RECRUIT, CAPTAIN, RECRUIT]);
     let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
-    turn_with_mana(&mut game, P0, 2);
-    play_def(&mut game, P0, RECRUIT);
-    turn_with_mana(&mut game, P0, 3);
-    play_def(&mut game, P0, CAPTAIN);
-    turn_with_mana(&mut game, P0, 2);
-    play_def(&mut game, P0, RECRUIT);
+    let [p0, p1] = players(&game);
+    turn_with_mana(&mut game, p0, 2);
+    play_def(&mut game, p0, RECRUIT);
+    turn_with_mana(&mut game, p0, 3);
+    play_def(&mut game, p0, CAPTAIN);
+    turn_with_mana(&mut game, p0, 2);
+    play_def(&mut game, p0, RECRUIT);
 
-    assert_eq!(board_defs(&game, P0), [RECRUIT, CAPTAIN, RECRUIT]);
+    assert_eq!(board_defs(&game, p0), [RECRUIT, CAPTAIN, RECRUIT]);
     assert!(
-        game.board(P1).is_empty(),
+        game.board(p1).is_empty(),
         "a minion enters its owner's board only"
     );
 }
@@ -82,16 +87,17 @@ fn minions_enter_at_the_right_end_of_their_owners_board() {
 fn blast_deals_two_damage_to_every_character() {
     let deck0 = deck_with_top(&[GIANT, BLAST]);
     let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[GIANT])]);
-    turn_with_mana(&mut game, P0, 8);
-    let mine = summon(&mut game, P0, GIANT);
-    turn_with_mana(&mut game, P1, 8);
-    let theirs = summon(&mut game, P1, GIANT);
-    turn_with_mana(&mut game, P0, 3);
+    let [p0, p1] = players(&game);
+    turn_with_mana(&mut game, p0, 8);
+    let mine = summon(&mut game, p0, GIANT);
+    turn_with_mana(&mut game, p1, 8);
+    let theirs = summon(&mut game, p1, GIANT);
+    turn_with_mana(&mut game, p0, 3);
 
-    play_def(&mut game, P0, BLAST);
+    play_def(&mut game, p0, BLAST);
 
-    assert_eq!(game.hero_health(P0), 8);
-    assert_eq!(game.hero_health(P1), 8);
+    assert_eq!(game.hero_health(p0), 8);
+    assert_eq!(game.hero_health(p1), 8);
     assert_eq!(game.health(mine), Some(3));
     assert_eq!(game.health(theirs), Some(3));
 }
@@ -100,88 +106,97 @@ fn blast_deals_two_damage_to_every_character() {
 fn forage_revealing_recruit_and_captain() -> Game {
     let deck0 = vec![FORAGE, SPARK, SPARK, SPARK, RECRUIT, CAPTAIN, BOLT];
     let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
-    play_def(&mut game, P0, FORAGE);
+    let [p0, _] = players(&game);
+    play_def(&mut game, p0, FORAGE);
     game
 }
 
 #[test]
 fn forage_reveals_the_top_two_cards_of_the_deck() {
     let game = forage_revealing_recruit_and_captain();
+    let [p0, _] = players(&game);
 
-    assert_eq!(revealed_defs(&game, P0), [RECRUIT, CAPTAIN]);
-    assert_eq!(deck_defs(&game, P0), [BOLT]);
+    assert_eq!(revealed_defs(&game, p0), [RECRUIT, CAPTAIN]);
+    assert_eq!(deck_defs(&game, p0), [BOLT]);
 }
 
 #[test]
 fn a_pending_forage_offers_nothing_but_picks() {
     let game = forage_revealing_recruit_and_captain();
+    let [p0, p1] = players(&game);
 
-    let revealed = game.revealed(P0);
-    assert_actions(&game, P0, &[pick(revealed[0]), pick(revealed[1])]);
-    assert_actions(&game, P1, &[]);
+    let revealed = game.revealed(p0);
+    assert_actions(&game, p0, &[pick(revealed[0]), pick(revealed[1])]);
+    assert_actions(&game, p1, &[]);
 }
 
 #[test]
 fn the_picked_card_goes_to_the_end_of_the_hand() {
     let mut game = forage_revealing_recruit_and_captain();
+    let [p0, _] = players(&game);
 
-    let captain = game.revealed(P0)[1];
-    game.apply(P0, pick(captain), &mut ()).unwrap();
+    let captain = game.revealed(p0)[1];
+    game.apply(p0, pick(captain), &mut ()).unwrap();
 
-    assert_eq!(hand_defs(&game, P0), [SPARK, SPARK, SPARK, CAPTAIN]);
+    assert_eq!(hand_defs(&game, p0), [SPARK, SPARK, SPARK, CAPTAIN]);
 }
 
 #[test]
 fn the_unpicked_card_goes_to_the_bottom_of_the_deck() {
     let mut game = forage_revealing_recruit_and_captain();
+    let [p0, _] = players(&game);
 
-    let captain = game.revealed(P0)[1];
-    game.apply(P0, pick(captain), &mut ()).unwrap();
+    let captain = game.revealed(p0)[1];
+    game.apply(p0, pick(captain), &mut ()).unwrap();
 
-    assert_eq!(deck_defs(&game, P0), [BOLT, RECRUIT]);
+    assert_eq!(deck_defs(&game, p0), [BOLT, RECRUIT]);
 }
 
 #[test]
 fn picking_ends_the_pending_forage() {
     let mut game = forage_revealing_recruit_and_captain();
+    let [p0, _] = players(&game);
 
-    let captain = game.revealed(P0)[1];
-    game.apply(P0, pick(captain), &mut ()).unwrap();
+    let captain = game.revealed(p0)[1];
+    game.apply(p0, pick(captain), &mut ()).unwrap();
 
-    assert!(game.revealed(P0).is_empty());
+    assert!(game.revealed(p0).is_empty());
     // Forage spent player 0's only mana, so ending the turn is all that is left.
-    assert_actions(&game, P0, &[Action::EndTurn]);
+    assert_actions(&game, p0, &[Action::EndTurn]);
 }
 
 #[test]
 fn forage_with_one_card_left_still_asks_for_the_pick() {
     let deck0 = vec![FORAGE, SPARK, SPARK, SPARK, RECRUIT];
     let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
+    let [p0, _] = players(&game);
 
-    play_def(&mut game, P0, FORAGE);
+    play_def(&mut game, p0, FORAGE);
 
-    assert_eq!(revealed_defs(&game, P0), [RECRUIT]);
-    let revealed = game.revealed(P0);
-    assert_actions(&game, P0, &[pick(revealed[0])]);
+    assert_eq!(revealed_defs(&game, p0), [RECRUIT]);
+    let revealed = game.revealed(p0);
+    assert_actions(&game, p0, &[pick(revealed[0])]);
 }
 
 #[test]
 fn forage_on_an_empty_deck_does_nothing() {
     let deck0 = vec![FORAGE, SPARK, SPARK, SPARK];
     let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
+    let [p0, _] = players(&game);
 
-    play_def(&mut game, P0, FORAGE);
+    play_def(&mut game, p0, FORAGE);
 
-    assert!(game.revealed(P0).is_empty());
-    assert_eq!(hand_defs(&game, P0), [SPARK, SPARK, SPARK]);
-    assert_actions(&game, P0, &[Action::EndTurn]);
+    assert!(game.revealed(p0).is_empty());
+    assert_eq!(hand_defs(&game, p0), [SPARK, SPARK, SPARK]);
+    assert_actions(&game, p0, &[Action::EndTurn]);
 }
 
 /// Health lost by (caster, enemy) after player 0 casts Wild Bolt in a game seeded with `seed`.
 fn cast_wild_bolt(seed: u64) -> (i32, i32) {
     let mut game = Game::with_deck_order(seed, [vec![WILD_BOLT; 6], vec![SPARK; 6]]);
-    play_def(&mut game, P0, WILD_BOLT);
-    (10 - game.hero_health(P0), 10 - game.hero_health(P1))
+    let [p0, p1] = players(&game);
+    play_def(&mut game, p0, WILD_BOLT);
+    (10 - game.hero_health(p0), 10 - game.hero_health(p1))
 }
 
 #[test]

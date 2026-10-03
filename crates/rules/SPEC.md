@@ -30,8 +30,8 @@ Where a type lives inside the crate is yours to change.
 
 ## Rules
 
-- Two players, `PlayerId::new(0)` and `PlayerId::new(1)`. Heroes start at 10 health.
-- A player's identity (`PlayerId`) is separate from turn order. Deck `i` belongs to `PlayerId::new(i)` no matter who goes first.
+- Two players. Heroes start at 10 health.
+- A player's identity (`PlayerId`) is separate from turn order. Below, player `i` is `players()[i]`. Today player `i` gets `decks[i]`. The tests rely on that, but it isn't an invariant.
 - Every card in the game is an object with an `ObjectId`. No two objects share one, copies of the same card included. An `ObjectId` that has left every zone is never used again.
 - Setup:
   1. `Game::new` seeds the game's `Rng` with `seed`, shuffles player 0's deck, then player 1's deck.
@@ -105,7 +105,7 @@ Events name objects by `ObjectId` only. A card's identity and current values rea
 
 `view(v)` is everything `v` may see, and nothing else (node D3):
 
-- `viewer` is `v`, `active_player` is whose turn it is, `players[i]` is `PlayerId::new(i)`'s, and `outcome` is `outcome()`.
+- `viewer` is `v`, `active_player` is whose turn it is, `players` has one entry per player, and `outcome` is `outcome()`.
 - Public, to every viewer: hero health, mana, max mana, deck size, the board in order with each minion's `DefId`, attack and health, and the `ObjectId` of every card in a hand or pending Forage.
 - A hand card's `face` (its `DefId` and current cost) is `Some` only in its owner's view.
 - A pending Forage's options show their `DefId` only to the player choosing.
@@ -114,12 +114,9 @@ Events name objects by `ObjectId` only. A card's identity and current values rea
 ## API
 
 ```rust
+/// One player in a game. Tests get one only from `Game::players`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct PlayerId(/* private */ usize);
-impl PlayerId {
-    pub const fn new(idx: usize) -> PlayerId; // const, so callers can write `const P0: PlayerId = ...`
-    pub fn idx(&self) -> usize;
-}
+pub struct PlayerId(/* private */);
 
 /// Which printed card. Tests get one only from the `cards` constants and `Game::def_id`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -219,6 +216,7 @@ pub struct Game { /* yours */ }
 impl Game {
     pub fn new(seed: u64, decks: [Vec<DefId>; 2]) -> Game;             // shuffles
     pub fn with_deck_order(seed: u64, decks: [Vec<DefId>; 2]) -> Game; // index 0 = top
+    pub fn players(&self) -> Vec<PlayerId>;
     pub fn legal_actions(&self, player_id: PlayerId) -> Vec<Action>;
     pub fn apply(&mut self, player_id: PlayerId, action: Action, obs: &mut impl Observer) -> Result<(), ApplyError>;
     pub fn applied(&self, player_id: PlayerId, action: Action) -> Result<Game, ApplyError>;

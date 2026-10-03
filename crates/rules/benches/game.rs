@@ -7,7 +7,6 @@ use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use rules::cards::{BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK, WILD_BOLT};
 use rules::{Action, DefId, Game, PlayerId, Rng};
 
-const PLAYERS: [PlayerId; 2] = [PlayerId::new(0), PlayerId::new(1)];
 const MAX_STEPS: usize = 5_000;
 const STAGE_SEED: u64 = 0;
 const PLAYOUT_SEEDS: Range<u64> = 0..10;
@@ -29,9 +28,10 @@ fn play_out(seed: u64, mut visit: impl FnMut(&Game)) -> Game {
     let mut game = new_game(seed);
     let mut picker = Rng::new(seed);
     for _ in 0..MAX_STEPS {
-        let mut options: Vec<(PlayerId, Action)> = PLAYERS
-            .iter()
-            .flat_map(|&p| game.legal_actions(p).into_iter().map(move |a| (p, a)))
+        let mut options: Vec<(PlayerId, Action)> = game
+            .players()
+            .into_iter()
+            .flat_map(|p| game.legal_actions(p).into_iter().map(move |a| (p, a)))
             .collect();
         if options.is_empty() {
             return game;
@@ -56,7 +56,7 @@ fn stages() -> [(&'static str, Game); 3] {
 }
 
 fn decider(game: &Game) -> PlayerId {
-    PLAYERS
+    game.players()
         .into_iter()
         .find(|&p| !game.legal_actions(p).is_empty())
         .expect("every stage has a decision")

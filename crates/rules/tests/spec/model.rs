@@ -2,8 +2,8 @@
 //! boards. The playout checks compare the core against it, so a wrong value in
 //! the core can't check itself.
 
+use rules::DefId;
 use rules::cards::{BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK, WILD_BOLT};
-use rules::{DefId, PlayerId};
 
 /// Attack and health.
 pub(crate) type Stats = (i32, i32);
@@ -41,7 +41,8 @@ pub(crate) fn expected_cost(def: DefId, spells_cast: u8) -> u8 {
     }
 }
 
-/// Each board's minions, left to right, with the damage marked on each.
+/// Each board's minions, left to right, with the damage marked on each. A board is
+/// named by its owner's index in `Game::players`.
 #[derive(Default)]
 pub(crate) struct BoardModel {
     boards: [Vec<(DefId, i32)>; 2],
@@ -49,8 +50,8 @@ pub(crate) struct BoardModel {
 
 impl BoardModel {
     /// `owner`'s minions, left to right, with their current attack and health.
-    pub(crate) fn minions(&self, owner: PlayerId) -> Vec<(DefId, Stats)> {
-        let board = &self.boards[owner.idx()];
+    pub(crate) fn minions(&self, owner: usize) -> Vec<(DefId, Stats)> {
+        let board = &self.boards[owner];
         (0..board.len())
             .map(|i| (board[i].0, Self::stats(board, i)))
             .collect()
@@ -67,9 +68,9 @@ impl BoardModel {
         (attack + captains, health + captains - damage)
     }
 
-    pub(crate) fn played(&mut self, owner: PlayerId, def: DefId) {
+    pub(crate) fn played(&mut self, owner: usize, def: DefId) {
         if !is_spell(def) {
-            self.boards[owner.idx()].push((def, 0));
+            self.boards[owner].push((def, 0));
         }
         if def == BLAST {
             for minion in self.boards.iter_mut().flatten() {

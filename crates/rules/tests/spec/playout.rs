@@ -24,6 +24,7 @@ struct History {
     defs: BTreeMap<ObjectId, DefId>,
     /// Ids that were in a zone once and are in none now.
     gone: BTreeSet<ObjectId>,
+    /// By index in `Game::players`.
     spells_cast: [u8; 2],
     boards: BoardModel,
 }
@@ -41,7 +42,7 @@ pub(crate) fn random_playout(seed: u64, picker_seed: u64) -> (Game, Vec<(PlayerI
         let context = format!("seed {seed}, step {step}");
         assert_invariants(&game, &mut history, &context);
 
-        let options: Vec<(PlayerId, Action)> = PLAYERS
+        let options: Vec<(PlayerId, Action)> = players(&game)
             .iter()
             .flat_map(|&p| game.legal_actions(p).into_iter().map(move |a| (p, a)))
             .collect();
@@ -50,7 +51,7 @@ pub(crate) fn random_playout(seed: u64, picker_seed: u64) -> (Game, Vec<(PlayerI
         }
 
         let (p, a) = options[picker.below(options.len())].clone();
-        let off_board_before = PLAYERS.map(|q| off_board_count(&game, q));
+        let off_board_before = players(&game).map(|q| off_board_count(&game, q));
         let mana_before = game.mana(p);
         let played = match a {
             Action::Play { object_id } => Some(game.def_id(object_id)),
@@ -61,22 +62,23 @@ pub(crate) fn random_playout(seed: u64, picker_seed: u64) -> (Game, Vec<(PlayerI
             .unwrap_or_else(|e| panic!("{context}: listed action rejected: {e:?}"));
 
         let mut expected = off_board_before;
+        let i = index_of(&game, p);
         if let Some(def) = played {
-            expected[p.idx()] -= 1;
-            let cost = expected_cost(def, history.spells_cast[p.idx()]);
+            expected[i] -= 1;
+            let cost = expected_cost(def, history.spells_cast[i]);
             assert_eq!(
                 game.mana(p),
                 mana_before - cost,
                 "{context}: playing {def:?} didn't pay {cost}"
             );
             if is_spell(def) {
-                history.spells_cast[p.idx()] += 1;
+                history.spells_cast[i] += 1;
             }
-            history.boards.played(p, def);
+            history.boards.played(i, def);
         }
         history.boards.check();
         assert_eq!(
-            PLAYERS.map(|q| off_board_count(&game, q)),
+            players(&game).map(|q| off_board_count(&game, q)),
             expected,
             "{context}: a card appeared or vanished off the board after {p:?} {a:?}"
         );
@@ -86,12 +88,20 @@ pub(crate) fn random_playout(seed: u64, picker_seed: u64) -> (Game, Vec<(PlayerI
     panic!("seed {seed}: game did not end within {MAX_STEPS} steps");
 }
 
+/// `p`'s index in `Game::players`.
+fn index_of(game: &Game, p: PlayerId) -> usize {
+    players(game)
+        .iter()
+        .position(|&q| q == p)
+        .unwrap_or_else(|| panic!("{p:?} is not in this game"))
+}
+
 fn off_board_count(game: &Game, p: PlayerId) -> usize {
     game.hand(p).len() + game.deck(p).len() + game.revealed(p).len()
 }
 
 fn assert_invariants(game: &Game, history: &mut History, context: &str) {
-    for p in PLAYERS {
+    for p in players(game) {
         let legal = game.legal_actions(p);
         for (i, a) in legal.iter().enumerate() {
             assert!(
@@ -110,7 +120,7 @@ fn assert_invariants(game: &Game, history: &mut History, context: &str) {
 }
 
 fn assert_outcome_consistent(game: &Game, context: &str) {
-    let deciders = PLAYERS
+    let deciders = players(game)
         .iter()
         .filter(|&&p| !game.legal_actions(p).is_empty())
         .count();
@@ -118,14 +128,14 @@ fn assert_outcome_consistent(game: &Game, context: &str) {
         Some(Outcome::Won(w)) => {
             assert_eq!(deciders, 0, "{context}: over, but someone has actions");
             assert!(
-                game.hero_health(other(w)) <= 0,
+                game.hero_health(other(game, w)) <= 0,
                 "{context}: loser has health left"
             );
             assert!(game.hero_health(w) > 0, "{context}: winner is dead");
         }
         Some(Outcome::Draw) => {
             assert_eq!(deciders, 0, "{context}: over, but someone has actions");
-            for p in PLAYERS {
+            for p in players(game) {
                 assert!(
                     game.hero_health(p) <= 0,
                     "{context}: draw, but {p:?} is alive"
@@ -134,7 +144,7 @@ fn assert_outcome_consistent(game: &Game, context: &str) {
         }
         None => {
             assert_eq!(deciders, 1, "{context}: exactly one player decides");
-            for p in PLAYERS {
+            for p in players(game) {
                 assert!(
                     game.hero_health(p) > 0,
                     "{context}: {p:?} is dead, game goes on"
@@ -169,10 +179,10 @@ fn assert_ids(game: &Game, history: &mut History, context: &str) {
 
 /// Each accessor answers only for its own zone, and a hand card costs what the model says.
 fn assert_accessors(game: &Game, history: &History, context: &str) {
-    for p in PLAYERS {
+    for p in players(game) {
         for &id in game.hand(p) {
             let def = game.def_id(id);
-            let cost = expected_cost(def, history.spells_cast[p.idx()]);
+            let cost = expected_cost(def, history.spells_cast[index_of(game, p)]);
             assert_eq!(game.mana_cost(id), Some(cost), "{context}: cost of {def:?}");
             assert_eq!(
                 (game.attack(id), game.health(id)),
@@ -203,14 +213,14 @@ fn assert_accessors(game: &Game, history: &History, context: &str) {
 /// C. Both boards hold the model's minions, in order, with the model's attack and health.
 fn assert_boards_match(game: &Game, model: &BoardModel, context: &str) {
     type Row = (DefId, Option<i32>, Option<i32>);
-    for p in PLAYERS {
+    for p in players(game) {
         let actual: Vec<Row> = game
             .board(p)
             .iter()
             .map(|&id| (game.def_id(id), game.attack(id), game.health(id)))
             .collect();
         let expected: Vec<Row> = model
-            .minions(p)
+            .minions(index_of(game, p))
             .into_iter()
             .map(|(def, (attack, health))| (def, Some(attack), Some(health)))
             .collect();
@@ -224,7 +234,7 @@ fn assert_boards_match(game: &Game, model: &BoardModel, context: &str) {
 /// P for listed actions, plus R1. `apply` accepts each one, and two clones given
 /// the same action stay equal, which a hidden input like OS randomness would break.
 fn assert_listed_accepted_and_deterministic(game: &Game) {
-    for p in PLAYERS {
+    for p in players(game) {
         for a in game.legal_actions(p) {
             let mut first = game.clone();
             let mut second = game.clone();

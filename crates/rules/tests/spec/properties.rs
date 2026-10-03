@@ -3,7 +3,7 @@
 use rules::Game;
 
 use crate::playout::{random_playout, sample_deck};
-use crate::support::{PLAYERS, Recorder, observe};
+use crate::support::{Recorder, observe, players};
 
 #[test]
 fn new_is_a_function_of_seed_and_decks() {
@@ -95,7 +95,7 @@ fn every_apply_ends_with_a_checkpoint_showing_the_game_it_leaves() {
             .steps
             .last()
             .unwrap_or_else(|| panic!("{context}: no checkpoint"));
-        assert_eq!(last.views, PLAYERS.map(|p| game.view(p)), "{context}");
+        assert_eq!(last.views, players(game).map(|p| game.view(p)), "{context}");
     });
 }
 

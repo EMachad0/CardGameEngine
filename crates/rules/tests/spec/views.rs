@@ -19,13 +19,17 @@ fn face(def_id: DefId, mana_cost: u8) -> Option<Face> {
 #[test]
 fn a_view_names_its_viewer_whose_turn_it_is_and_each_player_by_id() {
     let game = opening();
+    let [p0, _] = players(&game);
 
-    for viewer in PLAYERS {
+    for viewer in players(&game) {
         let view = game.view(viewer);
         assert_eq!(view.viewer, viewer);
-        assert_eq!(view.active_player, P0, "{viewer:?}");
+        assert_eq!(view.active_player, p0, "{viewer:?}");
         let ids: Vec<PlayerId> = view.players.iter().map(|p| p.player_id).collect();
-        assert_eq!(ids, PLAYERS, "{viewer:?}");
+        assert_eq!(ids.len(), 2, "{viewer:?}");
+        for p in players(&game) {
+            assert!(ids.contains(&p), "{viewer:?} sees no entry for {p:?}");
+        }
         assert_eq!(view.outcome, None, "{viewer:?}");
     }
 }
@@ -33,11 +37,13 @@ fn a_view_names_its_viewer_whose_turn_it_is_and_each_player_by_id() {
 #[test]
 fn a_player_sees_their_own_hand_with_each_cards_definition_and_cost() {
     let game = opening();
+    let [p0, _] = players(&game);
 
-    let hand = &game.view(P0).players[P0.idx()].hand;
+    let view = game.view(p0);
+    let hand = &player_view(&view, p0).hand;
 
     let ids: Vec<ObjectId> = hand.iter().map(|card| card.object_id).collect();
-    assert_eq!(ids, game.hand(P0));
+    assert_eq!(ids, game.hand(p0));
     let faces: Vec<Option<Face>> = hand.iter().map(|card| card.face).collect();
     assert_eq!(
         faces,
@@ -53,11 +59,13 @@ fn a_player_sees_their_own_hand_with_each_cards_definition_and_cost() {
 #[test]
 fn a_player_sees_only_the_ids_of_the_opponents_hand() {
     let game = opening();
+    let [p0, p1] = players(&game);
 
-    let hand = &game.view(P1).players[P0.idx()].hand;
+    let view = game.view(p1);
+    let hand = &player_view(&view, p0).hand;
 
     let ids: Vec<ObjectId> = hand.iter().map(|card| card.object_id).collect();
-    assert_eq!(ids, game.hand(P0));
+    assert_eq!(ids, game.hand(p0));
     assert!(
         hand.iter().all(|card| card.face.is_none()),
         "player 1 sees a face in player 0's hand: {hand:?}"
@@ -68,11 +76,11 @@ fn a_player_sees_only_the_ids_of_the_opponents_hand() {
 fn heroes_mana_and_deck_sizes_are_public() {
     let game = opening();
 
-    for viewer in PLAYERS {
-        let rows: Vec<(i32, u8, u8, usize)> = game
-            .view(viewer)
-            .players
+    for viewer in players(&game) {
+        let view = game.view(viewer);
+        let rows: Vec<(i32, u8, u8, usize)> = players(&game)
             .iter()
+            .map(|&p| player_view(&view, p))
             .map(|p| (p.hero_health, p.mana, p.max_mana, p.deck_size))
             .collect();
         assert_eq!(
@@ -87,14 +95,15 @@ fn heroes_mana_and_deck_sizes_are_public() {
 fn both_players_see_each_minions_definition_and_current_stats() {
     let deck0 = deck_with_top(&[RECRUIT, CAPTAIN]);
     let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
-    turn_with_mana(&mut game, P0, 2);
-    let recruit = summon(&mut game, P0, RECRUIT);
-    turn_with_mana(&mut game, P0, 3);
-    let captain = summon(&mut game, P0, CAPTAIN);
+    let [p0, _] = players(&game);
+    turn_with_mana(&mut game, p0, 2);
+    let recruit = summon(&mut game, p0, RECRUIT);
+    turn_with_mana(&mut game, p0, 3);
+    let captain = summon(&mut game, p0, CAPTAIN);
 
-    for viewer in PLAYERS {
+    for viewer in players(&game) {
         assert_eq!(
-            game.view(viewer).players[P0.idx()].board,
+            player_view(&game.view(viewer), p0).board,
             [
                 BoardCard {
                     object_id: recruit,
@@ -118,15 +127,16 @@ fn both_players_see_each_minions_definition_and_current_stats() {
 fn only_the_player_choosing_sees_a_pending_forages_options() {
     let deck0 = vec![FORAGE, SPARK, SPARK, SPARK, RECRUIT, CAPTAIN, BOLT];
     let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
-    play_def(&mut game, P0, FORAGE);
-    let &[recruit, captain] = game.revealed(P0) else {
-        panic!("Forage revealed {:?}", game.revealed(P0));
+    let [p0, p1] = players(&game);
+    play_def(&mut game, p0, FORAGE);
+    let &[recruit, captain] = game.revealed(p0) else {
+        panic!("Forage revealed {:?}", game.revealed(p0));
     };
 
-    let shown = |viewer: PlayerId| game.view(viewer).players[P0.idx()].revealed.clone();
+    let shown = |viewer: PlayerId| player_view(&game.view(viewer), p0).revealed.clone();
 
     assert_eq!(
-        shown(P0),
+        shown(p0),
         [
             RevealedCard {
                 object_id: recruit,
@@ -139,7 +149,7 @@ fn only_the_player_choosing_sees_a_pending_forages_options() {
         ]
     );
     assert_eq!(
-        shown(P1),
+        shown(p1),
         [
             RevealedCard {
                 object_id: recruit,
@@ -159,7 +169,7 @@ fn a_view_reports_the_outcome_once_the_game_is_over() {
 
     end_turns_until_over(&mut game);
 
-    for viewer in PLAYERS {
+    for viewer in players(&game) {
         assert_eq!(game.view(viewer).outcome, game.outcome(), "{viewer:?}");
     }
 }

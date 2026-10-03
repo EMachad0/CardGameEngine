@@ -20,42 +20,45 @@ fn opening() -> Game {
 #[test]
 fn setup_deals_three_cards_each_from_the_top() {
     let game = opening();
+    let [p0, p1] = players(&game);
 
-    assert_eq!(hand_defs(&game, P1), [SPARK, SPARK, SPARK]);
-    assert_eq!(deck_defs(&game, P1), [BOLT, BOLT]);
+    assert_eq!(hand_defs(&game, p1), [SPARK, SPARK, SPARK]);
+    assert_eq!(deck_defs(&game, p1), [BOLT, BOLT]);
     assert_eq!(
-        hand_defs(&game, P0),
+        hand_defs(&game, p0),
         [SPARK, BOLT, RECRUIT, CAPTAIN],
         "three dealt, then player 0's first turn draws the fourth"
     );
-    assert_eq!(deck_defs(&game, P0), [BLAST]);
+    assert_eq!(deck_defs(&game, p0), [BLAST]);
 }
 
 #[test]
 fn setup_starts_player_0s_turn() {
     let game = opening();
+    let [p0, p1] = players(&game);
 
     assert_eq!(game.outcome(), None);
-    assert_eq!(game.mana(P0), 1, "player 0's first turn start gives 1 mana");
-    assert_eq!(game.mana(P1), 0, "player 1's first turn hasn't started");
-    let spark = in_hand(&game, P0, SPARK);
-    assert_actions(&game, P0, &[play(spark), Action::EndTurn]);
-    assert_actions(&game, P1, &[]);
+    assert_eq!(game.mana(p0), 1, "player 0's first turn start gives 1 mana");
+    assert_eq!(game.mana(p1), 0, "player 1's first turn hasn't started");
+    let spark = in_hand(&game, p0, SPARK);
+    assert_actions(&game, p0, &[play(spark), Action::EndTurn]);
+    assert_actions(&game, p1, &[]);
 }
 
 #[test]
 fn heroes_start_at_ten_health() {
     let game = opening();
+    let [p0, p1] = players(&game);
 
-    assert_eq!(game.hero_health(P0), 10);
-    assert_eq!(game.hero_health(P1), 10);
+    assert_eq!(game.hero_health(p0), 10);
+    assert_eq!(game.hero_health(p1), 10);
 }
 
 #[test]
 fn a_new_game_has_empty_boards_and_nothing_revealed() {
     let game = opening();
 
-    for p in PLAYERS {
+    for p in players(&game) {
         assert!(game.board(p).is_empty(), "{p:?}'s board");
         assert!(game.revealed(p).is_empty(), "{p:?}'s reveal");
     }
@@ -66,7 +69,7 @@ fn copies_of_one_card_are_distinct_objects() {
     let deck = vec![RECRUIT; 8];
     let game = Game::with_deck_order(0, [deck.clone(), deck]);
 
-    let mut ids: Vec<ObjectId> = PLAYERS
+    let mut ids: Vec<ObjectId> = players(&game)
         .into_iter()
         .flat_map(|p| [game.hand(p), &game.deck(p)].concat())
         .collect();
@@ -80,21 +83,24 @@ fn copies_of_one_card_are_distinct_objects() {
 fn each_copy_in_hand_is_its_own_play_action() {
     let deck = vec![RECRUIT; 8];
     let mut game = Game::with_deck_order(0, [deck.clone(), deck]);
-    turn_with_mana(&mut game, P0, 2);
+    let [p0, _] = players(&game);
+    turn_with_mana(&mut game, p0, 2);
 
-    let mut expected: Vec<Action> = game.hand(P0).iter().map(|&o| play(o)).collect();
+    let mut expected: Vec<Action> = game.hand(p0).iter().map(|&o| play(o)).collect();
     assert_eq!(expected.len(), 5, "three dealt plus two turn draws");
     expected.push(Action::EndTurn);
-    assert_actions(&game, P0, &expected);
+    assert_actions(&game, p0, &expected);
 }
 
 #[test]
 fn new_shuffles_the_decks() {
     let unshuffled = Game::with_deck_order(0, [sample_deck(), sample_deck()]);
+    let [p0, _] = players(&unshuffled);
     let differs = (0..20).any(|seed| {
         let g = Game::new(seed, [sample_deck(), sample_deck()]);
-        hand_defs(&g, P0) != hand_defs(&unshuffled, P0)
-            || deck_defs(&g, P0) != deck_defs(&unshuffled, P0)
+        let [g0, _] = players(&g);
+        hand_defs(&g, g0) != hand_defs(&unshuffled, p0)
+            || deck_defs(&g, g0) != deck_defs(&unshuffled, p0)
     });
     assert!(differs, "20 seeds and never a different deck order");
 }

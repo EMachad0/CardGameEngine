@@ -9,7 +9,6 @@ use crate::{
 pub struct View {
     pub viewer: PlayerId,
     pub active_player: PlayerId,
-    /// Indexed by `PlayerId::idx`.
     pub players: Vec<PlayerView>,
     pub outcome: Option<Outcome>,
 }
