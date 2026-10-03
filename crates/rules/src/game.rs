@@ -9,7 +9,7 @@
 mod lookup;
 mod player;
 mod resolve;
-mod update;
+mod state_check;
 pub(crate) mod view;
 mod zone_move;
 

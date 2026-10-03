@@ -1,9 +1,9 @@
 use crate::{Event, Game, ObjectId, Observer, Outcome, Views};
 
 impl Game {
-    pub(crate) fn update(&mut self, obs: &mut impl Observer) {
-        self.update_deaths(obs);
-        self.update_outcome(obs);
+    pub(crate) fn check_state(&mut self, obs: &mut impl Observer) {
+        self.remove_dead(obs);
+        self.decide_outcome(obs);
         obs.checkpoint(Views::new(self));
     }
 
@@ -21,14 +21,14 @@ impl Game {
         None
     }
 
-    fn update_deaths(&mut self, obs: &mut impl Observer) {
+    fn remove_dead(&mut self, obs: &mut impl Observer) {
         while let Some(object_id) = self.find_dead() {
             self.kill(self.objects.get(object_id).player_id, object_id, obs);
             obs.checkpoint(Views::new(self));
         }
     }
 
-    fn update_outcome(&mut self, obs: &mut impl Observer) {
+    fn decide_outcome(&mut self, obs: &mut impl Observer) {
         if self.outcome.is_some() {
             return;
         }

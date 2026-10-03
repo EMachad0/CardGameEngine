@@ -39,7 +39,7 @@ impl Game {
             )))
         } else {
             self.apply_action(player_id, action, obs);
-            self.update(obs);
+            self.check_state(obs);
             Ok(())
         }
     }
