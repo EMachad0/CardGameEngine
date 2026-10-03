@@ -1,4 +1,4 @@
-//! What `apply` reports to its observer (node D).
+//! What `apply` reports to its observer.
 
 use rules::cards::{BLAST, BOLT, CAPTAIN, FORAGE, RECRUIT, SPARK, WILD_BOLT};
 use rules::{Action, Event, Game, ObjectId, PlayerId, Target, View};

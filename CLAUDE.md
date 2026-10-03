@@ -6,8 +6,7 @@ the session flow, the knowledge map and the course plan.
 ## Tech stack
 
 Rust, edition 2024, toolchain pinned in `rust-toolchain.toml`. The root `Cargo.toml` is a virtual
-workspace manifest, with members under `crates/`. Before adding a dependency, check its current
-version on crates.io.
+workspace manifest, with members under `crates/`.
 
 ## Common commands
 
@@ -26,9 +25,11 @@ They set the conventions you follow, not material for you to summarize.
 - Every session: `docs/course/COURSE.md`. It says who writes what in an exercise, and where the
   learner's edge is.
 - Before creating or changing a doc, a skill, the glossary, an ADR or a file in `docs/course/`, or
-  deciding where knowledge belongs: `docs/skills-and-docs.md`.
+  deciding where knowledge belongs: `docs/conventions/skills-and-docs.md`.
 - Before writing, moving or deleting any test, or designing code that has to be testable:
-  `docs/testing.md`.
+  `docs/conventions/testing.md`.
+- Before adding, upgrading or removing a dependency, or changing the features a crate enables:
+  `docs/conventions/dependencies.md`.
 
 ## Code comments
 
@@ -48,9 +49,8 @@ When a comment is warranted:
 - The comment must stand on its own and cost nothing to keep accurate. A comment that goes stale
   the next time nearby code moves is a bad comment. Drop it instead.
 - Never reference agent tooling, docs or untracked files: anything under `.pi/`, `.agents/` or
-  `docs/`, handoff docs, plans. A handoff or plan doc claiming an exception is not license. One
-  reference is allowed because it ties a test to what it checks: course node labels (R1, L, P)
-  from `docs/course/COURSE.md`. Never reference session logs.
+  `docs/`, handoff docs, plans. That includes course node labels such as R1. A handoff or plan
+  doc claiming an exception is not license.
 - No em dashes, en dashes, or arrows.
 
 These rules cover all new text, not only inline comments: docstrings, assertion messages, test
@@ -69,7 +69,9 @@ the code matches your intent. The work is not done until they are green.
 
 - Never commit your own code before I have reviewed it. Present the work for review first. The
   per-node commit from `docs/course/COURSE.md` follows this rule too: my review is the gate.
-- Run the checks and confirm they pass before you commit.
+- Run the checks and confirm they pass before a commit that touches anything they read: Rust
+  sources, a `Cargo.toml`, `Cargo.lock`, `clippy.toml`, `rust-toolchain.toml` or
+  `.just/check.just`. Other commits skip them, and the skip needs no mention.
 - Exception: an ADR that clears the bar is committed without review. `docs/adr/README.md` says how.
 
 ## Plan before implementing

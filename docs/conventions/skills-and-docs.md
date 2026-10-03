@@ -15,12 +15,12 @@ Each kind has one home, and nothing is written in two places.
 
 The source of truth for what the code does. There is no spec document. A rule no test checks is not
 a promise. To keep one, write the test. Don't restate a rule in prose, in a doc or in a test
-comment. The test code is the statement. `docs/testing.md` governs the tests.
+comment. The test code is the statement. `docs/conventions/testing.md` governs the tests.
 
-### Docs (`docs/`)
+### Docs (`docs/conventions/`)
 
-Conventions to follow while working, such as `docs/testing.md` and this doc. CLAUDE.md says when to
-read each one.
+Conventions to follow while working, such as `docs/conventions/testing.md` and this doc. CLAUDE.md
+says when to read each one.
 
 ### Skills (`.agents/skills/` and `~/.agents/skills/`)
 

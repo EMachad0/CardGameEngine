@@ -1,4 +1,4 @@
-//! The state check at the end of every `apply` (node C).
+//! The state check at the end of every `apply`.
 
 use rules::cards::{BLAST, CAPTAIN, RECRUIT};
 use rules::{Game, Outcome};

@@ -1,4 +1,4 @@
-//! Attack, health and cost, derived on read (node C).
+//! Attack, health and cost, derived on read.
 
 use rules::cards::{BLAST, CAPTAIN, GIANT, RECRUIT, SPARK};
 use rules::{Game, ObjectId};

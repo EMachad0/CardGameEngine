@@ -14,5 +14,5 @@ status to `superseded by ADR-NNNN`. Never rewrite an old record to match the pre
 
 When a decision clears the bar, the agent writes the record and commits it on its own, without
 asking first or waiting for review. This overrides the git rules in `CLAUDE.md` for that commit.
-The commit holds only markdown, so the checks don't run for it. It stages the new record and, when
-the record supersedes one, the old record's status change. Nothing else.
+It stages the new record and, when the record supersedes one, the old record's status change.
+Nothing else.

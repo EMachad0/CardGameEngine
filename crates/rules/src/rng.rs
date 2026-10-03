@@ -1,7 +1,7 @@
 //! SplitMix64, a tiny deterministic PRNG.
 //!
 //! Same seed, same sequence, on every machine and every run, so a replay from
-//! the same seed reproduces every random outcome (node R1).
+//! the same seed reproduces every random outcome.
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Rng {

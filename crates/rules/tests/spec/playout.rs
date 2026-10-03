@@ -30,8 +30,8 @@ struct History {
 }
 
 /// Plays a random game and returns it with its decision log. A separate `Rng`
-/// picks each step's action from both players' lists. R1 allows an RNG outside
-/// the core here, because its picks are the decisions.
+/// picks each step's action from both players' lists. It can live outside the
+/// core because its picks are the decisions, an input to the game.
 pub(crate) fn random_playout(seed: u64, picker_seed: u64) -> (Game, Vec<(PlayerId, Action)>) {
     let mut game = Game::new(seed, [sample_deck(), sample_deck()]);
     let mut picker = Rng::new(picker_seed);
@@ -154,7 +154,7 @@ fn assert_outcome_consistent(game: &Game, context: &str) {
     }
 }
 
-/// B. Each id is in one zone, keeps its definition, and never comes back once gone.
+/// Each id is in one zone, keeps its definition, and never comes back once gone.
 fn assert_ids(game: &Game, history: &mut History, context: &str) {
     let ids = zone_ids(game);
     let unique: BTreeSet<ObjectId> = ids.iter().copied().collect();
@@ -210,7 +210,7 @@ fn assert_accessors(game: &Game, history: &History, context: &str) {
     }
 }
 
-/// C. Both boards hold the model's minions, in order, with the model's attack and health.
+/// Both boards hold the model's minions, in order, with the model's attack and health.
 fn assert_boards_match(game: &Game, model: &BoardModel, context: &str) {
     type Row = (DefId, Option<i32>, Option<i32>);
     for p in players(game) {
@@ -231,8 +231,8 @@ fn assert_boards_match(game: &Game, model: &BoardModel, context: &str) {
     }
 }
 
-/// P for listed actions, plus R1. `apply` accepts each one, and two clones given
-/// the same action stay equal, which a hidden input like OS randomness would break.
+/// `apply` accepts each listed action, and two clones given the same action stay
+/// equal, which a hidden input like OS randomness would break.
 fn assert_listed_accepted_and_deterministic(game: &Game) {
     for p in players(game) {
         for a in game.legal_actions(p) {
