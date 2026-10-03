@@ -1,5 +1,19 @@
+min_version = "2025.1.0"
+
 [settings]
-lockfile = false
+experimental = true
+lockfile = true
 
 [tools]
+# Rust comes from rust-toolchain.toml through rustup, not mise, so bare `cargo` and CI share one
+# toolchain.
+just = "latest"
 gh = "latest"
+worktrunk = "latest"
+# Not in mise's registry.
+"cargo:bacon" = "latest"
+
+[hooks]
+enter = [
+    "mise install --locked --quiet",
+]
