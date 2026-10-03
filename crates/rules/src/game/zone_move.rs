@@ -69,13 +69,13 @@ impl Game {
         obs: &mut impl Observer,
     ) {
         self.get_player_mut(player_id).zones.board.add(object_id);
-        if let Ok(effects) = self.on_board_enter(object_id) {
-            self.apply_effects(player_id, object_id, effects, obs);
-        }
         obs.event(&Event::BoardEntered {
             player_id,
             object_id,
         });
+        if let Ok(effects) = self.on_board_enter(object_id) {
+            self.apply_effects(player_id, object_id, effects, obs);
+        }
     }
 
     pub(crate) fn kill(
@@ -84,9 +84,6 @@ impl Game {
         object_id: ObjectId,
         obs: &mut impl Observer,
     ) {
-        if let Ok(effects) = self.on_death(object_id) {
-            self.apply_effects(player_id, object_id, effects, obs);
-        }
         if let Some(object) = self.objects.get(object_id) {
             self.history.entries.push(HistoryEntry::new(
                 player_id,
@@ -98,6 +95,9 @@ impl Game {
         }
         obs.event(&Event::Died { object_id });
         self.destroy(player_id, object_id, obs);
+        if let Ok(effects) = self.on_death(object_id) {
+            self.apply_effects(player_id, object_id, effects, obs);
+        }
     }
 
     pub(crate) fn destroy(

@@ -87,7 +87,8 @@ Where a type lives inside the crate is yours to change.
 - Setup isn't observed. The shell reads `view(v)` after `Game::new`.
 - The observer can't change the game: any observer leaves the same `Game` as `&mut ()`.
 - The same game and action make the same calls in the same order (R1).
-- Checkpoints come after each zone move (a draw, a card leaving the hand to be played, a minion entering the board, a reveal, a pick, the bury), after each effect, and after each death pass that removes a minion. The last call of every accepted `apply` is a checkpoint, so its views are the ones `view` returns once `apply` is done.
+- Checkpoints come after a card leaves the hand to be played, after the action has resolved (all of a card's effects and a minion's entry, a pick with its bury, or a turn change with its draw), and after each death pass that removes a minion. The last call of every accepted `apply` is a checkpoint, so its views are the ones `view` returns once `apply` is done.
+- Events between two checkpoints happened together. Blast's hits on every character share one step.
 
 Events name objects by `ObjectId` only. A card's identity and current values reach a viewer through its `View`.
 

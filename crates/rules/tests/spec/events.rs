@@ -178,6 +178,31 @@ fn blast_reports_its_play_then_a_hit_on_every_character() {
 }
 
 #[test]
+fn blasts_hits_land_together_in_one_step() {
+    let (mut game, _, _) = recruit_and_captain_facing_blast();
+    let blast = in_hand(&game, P0, BLAST);
+
+    let recorder = observe(&mut game, P0, play(blast));
+
+    let hits_per_step: Vec<usize> = recorder
+        .steps
+        .iter()
+        .map(|step| {
+            step.events
+                .iter()
+                .filter(|e| matches!(e, Event::Damaged { .. }))
+                .count()
+        })
+        .filter(|&hits| hits > 0)
+        .collect();
+    assert_eq!(
+        hits_per_step,
+        [4],
+        "one sentence of card text, so no checkpoint between its hits"
+    );
+}
+
+#[test]
 fn blast_reports_every_hit_before_any_death() {
     let (mut game, _, _) = recruit_and_captain_facing_blast();
     let blast = in_hand(&game, P0, BLAST);

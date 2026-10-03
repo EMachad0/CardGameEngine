@@ -32,6 +32,10 @@ impl Game {
     }
 
     fn update_outcome(&mut self, obs: &mut impl Observer) {
+        if self.outcome.is_some() {
+            return;
+        }
+
         let mut alive = self
             .players()
             .into_iter()
