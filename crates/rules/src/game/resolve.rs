@@ -6,7 +6,7 @@
 
 use super::Game;
 use crate::action::Action;
-use crate::cards::definition::{Effect, MonsterTargeteer, PlayerTargeteer};
+use crate::cards::definition::{Effect, MinionTargeteer, PlayerTargeteer};
 use crate::cards::modifier::{EffectAmount, Modifier};
 use crate::history::{HistoryKind, HistoryQuery, HistoryQueryKind, PlayerFilter};
 use crate::ids::PlayerId;
@@ -101,20 +101,20 @@ impl Game {
                     self.reveal(target, count, obs);
                 }
             }
-            Effect::DamageMonster { targeteer, damage } => {
-                let targets = self.resolve_monster_targeteer(caster, object_id, targeteer);
+            Effect::DamageMinion { targeteer, damage } => {
+                let targets = self.resolve_minion_targeteer(caster, object_id, targeteer);
                 for target in targets.into_iter() {
                     let object = self.objects.get_mut(target);
                     object.damage += damage;
                     obs.event(&Event::Damaged {
-                        target: Target::Monster(target),
+                        target: Target::Minion(target),
                         amount: damage,
                         source: object_id,
                     });
                 }
             }
             Effect::AddFriendlyAura { targeteer, effect } => {
-                let targets = self.resolve_monster_targeteer(caster, object_id, targeteer);
+                let targets = self.resolve_minion_targeteer(caster, object_id, targeteer);
                 for target in targets.into_iter() {
                     let object = self.objects.get_mut(target);
                     object.friendly_aura.add(Modifier {
@@ -168,8 +168,8 @@ impl Game {
                     )
                 })
                 .count() as i32,
-            HistoryQueryKind::MonsterDied => entries
-                .filter(|entry| matches!(&entry.kind, HistoryKind::MonsterDied { .. }))
+            HistoryQueryKind::MinionDied => entries
+                .filter(|entry| matches!(&entry.kind, HistoryKind::MinionDied { .. }))
                 .count() as i32,
         }
     }
@@ -189,20 +189,20 @@ impl Game {
         }
     }
 
-    fn resolve_monster_targeteer(
+    fn resolve_minion_targeteer(
         &mut self,
         _caster: PlayerId,
         object_id: ObjectId,
-        targeteer: MonsterTargeteer,
+        targeteer: MinionTargeteer,
     ) -> Vec<ObjectId> {
         match targeteer {
-            MonsterTargeteer::All => self
+            MinionTargeteer::All => self
                 .players
                 .iter()
                 .flat_map(|player| player.zones.board.as_slice())
                 .copied()
                 .collect(),
-            MonsterTargeteer::Itself => vec![object_id],
+            MinionTargeteer::Itself => vec![object_id],
         }
     }
 }

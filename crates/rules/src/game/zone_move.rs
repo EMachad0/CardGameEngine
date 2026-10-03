@@ -82,7 +82,7 @@ impl Game {
         let object = self.objects.get(object_id);
         self.history.entries.push(HistoryEntry::new(
             player_id,
-            HistoryKind::MonsterDied {
+            HistoryKind::MinionDied {
                 object: object.clone(),
             },
             self.turn_order.turn_count(),

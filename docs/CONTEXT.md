@@ -40,6 +40,10 @@ _Avoid_: template, prototype
 One card in one game. Two copies of the same card are two objects.
 _Avoid_: instance, entity
 
+**Minion**:
+A card that stays on its owner's board once played.
+_Avoid_: monster, creature
+
 **Spell**:
 A card that resolves when played and is then gone.
 
@@ -168,8 +172,6 @@ The part of a card that can be hidden from a player: its definition and cost.
   is a finished game with no winner.
 - **View** and **game state**: a view is what one player may see. The game state is all of it,
   hidden cards included.
-- **Minion** and **Monster**: two names for a card that stays on its owner's board once played. The
-  course says minion, the code says Monster. No name is picked yet.
 - **Selector** and **targeteer**: two names for the part of an effect that says what it acts on.
   The course says selector, the code says targeteer. No name is picked yet.
 - **Pending pick** and **Picker**: two names for a choice the game waits on in the middle of

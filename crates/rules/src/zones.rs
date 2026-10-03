@@ -67,31 +67,30 @@ impl Hand {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(crate) struct Board {
-    monsters: Vec<ObjectId>,
+    minions: Vec<ObjectId>,
 }
 
 impl Board {
     /// Appends to the end.
     pub(crate) fn add(&mut self, object_id: ObjectId) {
-        self.monsters.push(object_id);
+        self.minions.push(object_id);
     }
 
     /// Removes one card. The others keep their order.
     pub(crate) fn remove(&mut self, object_id: ObjectId) -> Option<ObjectId> {
-        self.position(object_id)
-            .map(|idx| self.monsters.remove(idx))
+        self.position(object_id).map(|idx| self.minions.remove(idx))
     }
 
     pub(crate) fn as_slice(&self) -> &[ObjectId] {
-        self.monsters.as_slice()
+        self.minions.as_slice()
     }
 
     pub(crate) fn contains(&self, object_id: &ObjectId) -> bool {
-        self.monsters.contains(object_id)
+        self.minions.contains(object_id)
     }
 
     fn position(&self, object_id: ObjectId) -> Option<usize> {
-        self.monsters.iter().position(|o| *o == object_id)
+        self.minions.iter().position(|o| *o == object_id)
     }
 }
 

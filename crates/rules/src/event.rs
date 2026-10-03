@@ -58,5 +58,5 @@ pub enum Event {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Target {
     Hero(PlayerId),
-    Monster(ObjectId),
+    Minion(ObjectId),
 }

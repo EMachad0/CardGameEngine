@@ -27,7 +27,7 @@ impl Default for CardDef {
         Self {
             id: PLACEHOLDER,
             name: Default::default(),
-            kind: CardDefKind::Monster(MonsterCardDef::new(1, 1)),
+            kind: CardDefKind::Minion(MinionCardDef::new(1, 1)),
             mana_cost: Default::default(),
             modifier_effects: Default::default(),
             on_play_effect: Default::default(),
@@ -40,19 +40,19 @@ impl Default for CardDef {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CardDefKind {
-    Monster(MonsterCardDef),
+    Minion(MinionCardDef),
     Spell(SpellCardDef),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MonsterCardDef {
+pub struct MinionCardDef {
     pub attack: i32,
     pub health: i32,
     pub friendly_aura_effects: Vec<ModifierEffect>,
     pub hostile_aura_effects: Vec<ModifierEffect>,
 }
 
-impl MonsterCardDef {
+impl MinionCardDef {
     pub fn new(attack: i32, health: i32) -> Self {
         Self {
             attack,
@@ -81,8 +81,8 @@ pub enum Effect {
         targeteer: PlayerTargeteer,
         damage: u8,
     },
-    DamageMonster {
-        targeteer: MonsterTargeteer,
+    DamageMinion {
+        targeteer: MinionTargeteer,
         damage: u8,
     },
     Draw {
@@ -94,7 +94,7 @@ pub enum Effect {
         count: usize,
     },
     AddFriendlyAura {
-        targeteer: MonsterTargeteer,
+        targeteer: MinionTargeteer,
         effect: ModifierEffect,
     },
 }
@@ -108,7 +108,7 @@ pub enum PlayerTargeteer {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MonsterTargeteer {
+pub enum MinionTargeteer {
     All,
     Itself,
 }
