@@ -817,3 +817,62 @@ Next session, 04a, starts by settling four decisions before any code:
 /md-log course/sessions/04a-effects-reshape.md
 continue the course
 ```
+
+
+> [!quote] YOU
+
+continue the course, actually I just want to change the order 4c should be before 4a because it impacts how blast selects
+
+
+> [!quote] YOU
+
+you are not 4c you are the continuation of 4, give me instructions on how to stard 4c
+
+
+> [!abstract] PI
+
+I reordered the sessions in `COURSE.md` and created the empty log file for 04c. Nothing is committed yet.
+
+**`COURSE.md` changes (8 lines changed):**
+- **Sessions table:** the order is now 04c, 04a, 04b. 04c is marked "next", and its row says it opens with the retrieval quiz on E1 to E5.
+- **Session 04 design:** I recorded your reason for the reorder. Blast's "every character" hits both heroes and minions. If heroes are objects first, 04a's selectors only ever return `ObjectId`s. Otherwise 04a builds a mixed player-or-object target set that has to be reworked later.
+- **Open threads:**
+  - The 04a decisions now wait for 04c. 04c may settle Bolt's and Spark's selector.
+  - The "Deal 1 damage to a minion. Then deal 1 damage to a hero." card moves from 04c to 04b, because it needs the targeting draft.
+  - The note on 04b's pick action now says every target is an `ObjectId` by then, heroes included.
+
+**Files:**
+- New: `course/sessions/04c-heroes-players-tokens.md`, empty. `/md-log` needs the file to exist.
+- Deleted: `course/sessions/04a-effects-reshape.md` is deleted in your working tree. I left that alone. You'll need the file again when 04a starts, so either restore it (`git restore course/sessions/04a-effects-reshape.md`) or I'll create it at the end of 04c.
+
+**Proposed commit:** `COURSE.md` and the 04c log file, message *"Move 04c before 04a: heroes as objects first, so effect selectors resolve to ObjectIds; prepare 04c log"*. Do you want to review the diff first (`git diff COURSE.md`), or shall I commit?
+
+To start 04c:
+```
+/new
+/name 04c-heroes-players-tokens
+/md-log course/sessions/04c-heroes-players-tokens.md
+continue the course
+```
+
+
+> [!quote] YOU
+
+commit
+
+
+> [!abstract] PI
+
+I committed `COURSE.md` and the empty `course/sessions/04c-heroes-players-tokens.md` as `3400eec`. Format and clippy came back clean, and all 102 tests passed (18 unit, 84 spec) before the commit.
+
+Two changes are still in your working tree and aren't in the commit:
+- `course/sessions/04-effects-as-data.md` is modified, because this conversation keeps being appended to it.
+- `course/sessions/04a-effects-reshape.md` is still deleted.
+
+To start 04c:
+```
+/new
+/name 04c-heroes-players-tokens
+/md-log course/sessions/04c-heroes-players-tokens.md
+continue the course
+```
