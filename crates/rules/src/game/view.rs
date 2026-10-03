@@ -60,7 +60,7 @@ impl Game {
     pub fn view(&self, viewer: PlayerId) -> View {
         View {
             viewer,
-            active_player: self.turn_order.get_current_player_id(),
+            active_player: self.turn_order.get_active_player_id(),
             players: self
                 .players
                 .iter()

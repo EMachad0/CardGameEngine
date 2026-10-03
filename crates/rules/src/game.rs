@@ -106,7 +106,7 @@ impl Game {
         let mut actions = Vec::new();
         match &self.get_player(player_id).interaction_state {
             PlayerInteractionState::Idle => {
-                if self.turn_order.get_current_player_id() != player_id {
+                if self.turn_order.get_active_player_id() != player_id {
                     return Vec::new();
                 }
 
@@ -165,22 +165,22 @@ impl Game {
     }
 
     fn end_turn(&mut self, obs: &mut impl Observer) {
-        let current_player_id = self.turn_order.get_current_player_id();
+        let active_player_id = self.turn_order.get_active_player_id();
         obs.event(&Event::TurnEnded {
-            player_id: current_player_id,
+            player_id: active_player_id,
         });
         self.turn_order.end_turn();
     }
 
     fn start_turn(&mut self, obs: &mut impl Observer) {
-        let current_player_id = self.turn_order.get_current_player_id();
+        let active_player_id = self.turn_order.get_active_player_id();
         obs.event(&Event::TurnStarted {
-            player_id: current_player_id,
+            player_id: active_player_id,
         });
-        let player = self.get_player_mut(current_player_id);
+        let player = self.get_player_mut(active_player_id);
         player.max_mana = (player.max_mana + 1).min(10);
         player.mana = player.max_mana;
-        self.draw(current_player_id, 1, obs);
+        self.draw(active_player_id, 1, obs);
     }
 
     fn get_player(&self, player_id: PlayerId) -> &Player {

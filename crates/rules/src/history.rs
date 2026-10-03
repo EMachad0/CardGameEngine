@@ -25,7 +25,7 @@ impl HistoryEntry {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlayerFilter {
-    Current,
+    Active,
     All,
     Owner,
 }

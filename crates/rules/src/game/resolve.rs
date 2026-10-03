@@ -150,7 +150,7 @@ impl Game {
         let targets = match query.scope {
             PlayerFilter::All => self.players.iter().map(|p| p.id).collect(),
             PlayerFilter::Owner => vec![player_id],
-            PlayerFilter::Current => vec![self.turn_order.get_current_player_id()],
+            PlayerFilter::Active => vec![self.turn_order.get_active_player_id()],
         };
         match query.kind {
             HistoryQueryKind::SpellsPlayed => entries
