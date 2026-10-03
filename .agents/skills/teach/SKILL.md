@@ -156,7 +156,7 @@ Before asking the `researcher` to check a fact, look in `docs/course/verified-fa
 
 A session ends when you and he agree it's finished. Then run the three steps below in order, with no review stop between them.
 
-This close-out overrides the git rules in `CLAUDE.md` for this one commit. Don't wait for his review and don't run the checks. The commit holds only markdown, and his agreement to end the session is the approval.
+This close-out overrides the git rules in `CLAUDE.md` for this one commit. Don't wait for his review. His agreement to end the session is the approval.
 
 1. **Make the edits.** Update `docs/course/COURSE.md`: the knowledge map, the open threads, the sessions table, and anything else `docs/conventions/skills-and-docs.md` puts there. If the next session's log doesn't exist yet, create it as an empty file (`docs/course/sessions/NN-topic.md`), because `/md-log` only links an existing file.
 2. **Write the closing message and commit in the same reply.** The text comes first. Summarize what changed in `COURSE.md`, then show how to start the next session:

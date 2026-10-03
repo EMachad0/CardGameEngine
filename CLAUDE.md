@@ -69,7 +69,9 @@ the code matches your intent. The work is not done until they are green.
 
 - Never commit your own code before I have reviewed it. Present the work for review first. The
   per-node commit from `docs/course/COURSE.md` follows this rule too: my review is the gate.
-- Run the checks and confirm they pass before you commit.
+- Run the checks and confirm they pass before a commit that touches anything they read: Rust
+  sources, a `Cargo.toml`, `Cargo.lock`, `clippy.toml`, `rust-toolchain.toml` or
+  `.just/check.just`. Other commits skip them, and the skip needs no mention.
 - Exception: an ADR that clears the bar is committed without review. `docs/adr/README.md` says how.
 
 ## Plan before implementing
