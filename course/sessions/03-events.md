@@ -1144,3 +1144,38 @@ I am not sure the checkpoints are correct but it is easy to add more later. 3 bu
 > [!abstract] PI
 
 The new test pins the rule. It fails against my per-effect reference implementation (`[2, 2]`), passes on your code, and the checks are all green (19 unit + 84 spec). Committing:
+
+
+> [!abstract] PI
+
+Session 03 is closed and everything is committed. The working tree is clean, and the checks passed before each commit (19 unit + 84 spec tests at the end).
+
+**Commits:**
+- `2d6307e`: your skeleton, the History rename, and the test and bench call sites updated to `&mut ()`.
+- `a2f8ec7`: your implementation, the `SPEC.md` section on events and views, and the tests.
+- `89b6131`: your review fixes, plus the checkpoint rule you chose, with a test that pins it. The test fails against my per-`Effect` reference, so it really does check the rule.
+- `1eee359`: `COURSE.md` and the session log. The log file will still get this last message appended, so it'll show as modified again, as it did after session 02.
+
+**What session 03 covered (node D):**
+- **D1:** events are output. $E = f(s, a)$, so they aren't state and can be recomputed, and `apply` returns them. A trace replay and an event-stream replay each do something the other can't (command sourcing vs event sourcing).
+- **D2:** a step is what happened plus the visible values at that point. The core finds changed values by diffing at checkpoints, the same way the death check scans.
+- **D3:** `view(game, viewer)` is the one place that decides visibility. What a player knows is state, and events only announce it.
+- **D4:** one event does three jobs: the rules record, trigger input, and shell output. We compared six engines.
+
+**You were right three times and I changed course:**
+- blocks were premature;
+- a checkpoint per `Effect` leaks the data encoding;
+- fatigue gets its own event.
+
+**Recorded in `COURSE.md`:** the per-game-release question for session H (with the four test cases), the ID-allocation leak, matching triggers at event time (session 05), and a process note: the question popup hides the prose above it.
+
+**Session 04 (R3, E, effects as data)** starts from your checkpoint decision: Blast's two `Effect`s form one step, while "Deal 2. Then draw a card." is two. Where in the data does that difference live?
+
+To start:
+```
+/new
+/name 04-effects-as-data
+/md-log course/sessions/04-effects-as-data.md
+continue the course
+```
+`/md-log` needs the file to exist first.
