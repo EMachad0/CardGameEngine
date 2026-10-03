@@ -10,8 +10,8 @@ use crate::zones::Zones;
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(super) enum PlayerInteractionState {
     #[default]
-    Board,
-    Picker {
+    Idle,
+    PendingPick {
         options: Vec<ObjectId>,
     },
 }

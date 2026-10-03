@@ -217,8 +217,8 @@ fn blast_reports_its_play_then_a_hit_on_every_character() {
         .filter(|e| matches!(e, Event::Damaged { .. }))
         .collect();
     let targets = [
-        Target::Monster(recruit),
-        Target::Monster(captain),
+        Target::Minion(recruit),
+        Target::Minion(captain),
         Target::Hero(p0),
         Target::Hero(p1),
     ];

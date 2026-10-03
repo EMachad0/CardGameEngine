@@ -4,7 +4,7 @@ use crate::ids::PlayerId;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TurnOrder {
-    current_idx: usize,
+    active_idx: usize,
     turn_count: u32,
     players: Vec<PlayerId>,
 }
@@ -12,18 +12,18 @@ pub(crate) struct TurnOrder {
 impl TurnOrder {
     pub(crate) fn new(players: Vec<PlayerId>) -> Self {
         Self {
-            current_idx: 0,
+            active_idx: 0,
             turn_count: 0,
             players,
         }
     }
 
-    pub(crate) fn get_current_player_id(&self) -> PlayerId {
-        self.players[self.current_idx]
+    pub(crate) fn get_active_player_id(&self) -> PlayerId {
+        self.players[self.active_idx]
     }
 
     pub(crate) fn end_turn(&mut self) {
-        self.current_idx = self.get_next_player_idx();
+        self.active_idx = self.get_next_player_idx();
         self.turn_count += 1;
     }
 
@@ -41,7 +41,7 @@ impl TurnOrder {
     }
 
     fn get_next_player_idx(&self) -> usize {
-        (self.current_idx + 1) % self.players.len()
+        (self.active_idx + 1) % self.players.len()
     }
 }
 
@@ -56,7 +56,7 @@ mod tests {
     #[test]
     fn seat_zero_goes_first() {
         assert_eq!(
-            TurnOrder::new(vec![P1, P0]).get_current_player_id(),
+            TurnOrder::new(vec![P1, P0]).get_active_player_id(),
             P1,
             "seat order decides who starts, not the player id"
         );
@@ -67,7 +67,7 @@ mod tests {
         let mut order = TurnOrder::new(vec![P0, P1, P2]);
         let mut seen = Vec::new();
         for _ in 0..4 {
-            seen.push(order.get_current_player_id());
+            seen.push(order.get_active_player_id());
             order.end_turn();
         }
         assert_eq!(seen, [P0, P1, P2, P0]);

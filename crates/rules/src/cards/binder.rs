@@ -29,14 +29,14 @@ impl Binder {
 
     pub(crate) fn health(&self, def_id: DefId) -> Option<i32> {
         match &self.get(def_id).kind {
-            CardDefKind::Monster(monster_card_def) => Some(monster_card_def.health),
+            CardDefKind::Minion(minion_card_def) => Some(minion_card_def.health),
             CardDefKind::Spell(_spell_card_def) => None,
         }
     }
 
     pub(crate) fn attack(&self, def_id: DefId) -> Option<i32> {
         match &self.get(def_id).kind {
-            CardDefKind::Monster(monster_card_def) => Some(monster_card_def.attack),
+            CardDefKind::Minion(minion_card_def) => Some(minion_card_def.attack),
             CardDefKind::Spell(_spell_card_def) => None,
         }
     }
@@ -47,14 +47,14 @@ impl Binder {
 
     pub(crate) fn has_board_presence(&self, def_id: DefId) -> bool {
         match self.get(def_id).kind {
-            CardDefKind::Monster(_) => true,
+            CardDefKind::Minion(_) => true,
             CardDefKind::Spell(_) => false,
         }
     }
 
     pub(crate) fn has_deck_presence(&self, def_id: DefId) -> bool {
         match self.get(def_id).kind {
-            CardDefKind::Monster(_) => true,
+            CardDefKind::Minion(_) => true,
             CardDefKind::Spell(_) => true,
         }
     }
@@ -81,14 +81,14 @@ impl Binder {
 
     pub(crate) fn friendly_aura_effects(&self, def_id: DefId) -> &[ModifierEffect] {
         match &self.get(def_id).kind {
-            CardDefKind::Monster(monster_card_def) => &monster_card_def.friendly_aura_effects,
+            CardDefKind::Minion(minion_card_def) => &minion_card_def.friendly_aura_effects,
             CardDefKind::Spell(_spell_card_def) => &[],
         }
     }
 
     pub(crate) fn hostile_aura_effects(&self, def_id: DefId) -> &[ModifierEffect] {
         match &self.get(def_id).kind {
-            CardDefKind::Monster(monster_card_def) => &monster_card_def.hostile_aura_effects,
+            CardDefKind::Minion(minion_card_def) => &minion_card_def.hostile_aura_effects,
             CardDefKind::Spell(_spell_card_def) => &[],
         }
     }

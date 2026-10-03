@@ -60,7 +60,7 @@ impl Game {
     pub fn view(&self, viewer: PlayerId) -> View {
         View {
             viewer,
-            active_player: self.turn_order.get_current_player_id(),
+            active_player: self.turn_order.get_active_player_id(),
             players: self
                 .players
                 .iter()
@@ -126,8 +126,8 @@ impl Game {
         interaction_state: &PlayerInteractionState,
     ) -> Vec<RevealedCard> {
         match interaction_state {
-            PlayerInteractionState::Board => Vec::new(),
-            PlayerInteractionState::Picker { options } => options
+            PlayerInteractionState::Idle => Vec::new(),
+            PlayerInteractionState::PendingPick { options } => options
                 .iter()
                 .map(|&object_id| RevealedCard {
                     object_id,
