@@ -20,9 +20,6 @@ Thumbs.db
 # claude
 .claude/*.local.md
 
-# pi
-.pi/
-
 # mise
 .mise/config.local.toml
 

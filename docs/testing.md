@@ -3,8 +3,8 @@
 ## When to use
 
 Read this before writing, moving or deleting any test, and before designing code that has to be
-testable. Agents write and maintain the tests in this repo. In an exercise, `COURSE.md` decides
-who writes what.
+testable. Agents write and maintain the tests in this repo. In an exercise, `docs/course/COURSE.md`
+decides who writes what.
 
 ## Two layers, kept apart
 
@@ -122,4 +122,4 @@ but clippy with `--all-targets` lints them.
 ## References
 
 - `crates/rules/SPEC.md`: what the rules crate promises.
-- `COURSE.md`: roles in an exercise.
+- `docs/course/COURSE.md`: roles in an exercise.
