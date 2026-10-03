@@ -15,7 +15,7 @@ Understand card game systems well enough to design MTG, Hearthstone, or Yu-Gi-Oh
 - End at a node boundary, not mid-node. Commit once per node.
 - Core track (A to G, T, K) is concept-first with one small exercise per session. Application track (H, I, J) gets one design session each. Implementation there is optional.
 
-## Knowledge map (from the 2025-09-28 probe, updated in session 01)
+## Knowledge map (from the 2025-09-28 probe, updated through session 03)
 
 Session 01 (R1, S, L, P, G all landed on the first node check):
 - Determinism: a seeded RNG in the state, the clock in the shell (timer becomes an `EndTurn` input). Knows `HashMap`, `thread_rng` and `Instant::now` break replay.
@@ -67,6 +67,25 @@ Session 02 exercise review (green: fmt, clippy, 13 unit + 57 spec tests). He mov
 - Red tests written for (2) in `cards/object.rs` and (5) in `cards/loader.rs`, verified red now and green with a reference fix. (1) and (7) are refactors with no public-API test possible.
 - He fixed (1), (2), (4), (5) and (7). `ApplyError` is only `IllegalAction` and `apply_action` is infallible again. `LookupError` is only `ObjectNotFound`. A `def_ids!` macro (with a `count!` helper and an unneeded `#[macro_export]`, both nits) makes the constants and `ALL_DEF_ID`. Codes are versioned (`"base.bolt.v0"`), his append-only design. His own R1 lint caught a `HashSet` in `validate_duplicates`: membership only, never iterated, so a false positive, swapped to `BTreeSet` anyway. `ObjectBag::insert` trusts the caller's id. He kept it on purpose, so changes to `Object` don't ripple into `ObjectBag`.
 
+Session 03 retrieval and probe (R2, B, C all held; every D probe right except one):
+- Retrieval: versioned codes pin old replays (R2), the old/new ID report for a reset object (B), Vulture as a new History query with no new state (C).
+- Probe, all right: the shell's own health numbers are a mirror (aura loss has no event); a push callback fails on the borrow and on R4; `ObjectId`s allocated in deck-list order leak hidden cards; an outbox field breaks `==` and `clone`; mid-resolution values must travel in the stream; value changes are found by diffing the whole view at checkpoints (he linked it to the death check unprompted); triggers read events inside the core.
+- He proposed a log plus a reader cursor instead of draining. Accepted, with the log owned by the shell. He also asked whether triggers could read `History` through a cursor ("from history on resolution"). The Scavenger case (a minion summoned after a death, before the scan, reacts to a death it never saw) landed. He liked pattern 2: match triggers at event time, resolve later.
+- Miss (D3): picked a `Looked { def }` entry addressed to the caster over a stored "P0 has seen X" fact. The reconnect case (a fresh `view` loses the knowledge) landed at once. Same mirror habit, this time with the knowledge held in the client. Re-check (a face-down Secret is hidden by `view` alone) was right.
+- My sink quiz was flawed: `Option` also skips the work, so his answer was defensible and I regraded it. He didn't know `&mut impl Trait` is a generic (thought it was `dyn`), then asked the right follow-ups: `impl` vs `<O>`, and whether a const check can be stripped. He worried that a generic parameter ripples through every function. That instinct is right.
+- He pushes back well and was right three times: brackets/blocks were premature (checkpoints already group a step); a checkpoint per `Effect` entry leaks the data encoding (Blast is one sentence, so one step); fatigue deserves its own event. He disliked a call-scoped `Option` field in `Game` ("mutable temp field") and chose to pass the observer through every function instead.
+- He asked for one researcher per engine and for the reports to be kept (untracked, `course.ignore/research/03-events/`).
+- Process: the `ask_user_question` popup also hides the prose above it, not only the quiz UI. He read it as me ignoring his questions. Answer in plain text and don't open a popup in the same turn, or put everything needed into the popup's `details`.
+- He sees little learning value in typing out data types and asked me to draft `Event` and `View` for him to edit. Design choices and bodies stay his.
+
+Session 03 nodes (all landed): D1 events are output ($E = f(s, a)$, not state, recomputable, returned; trace vs event-stream replay after a patch); D2 a step is what happened plus visible values; D3 `view(game, viewer)` is the one definition of visibility; D4 one event, three jobs (rules record, trigger input, shell output), with the six-engine comparison.
+
+Session 03 exercise (green: 19 unit + 84 spec):
+- His API: `apply(p, a, obs: &mut impl Observer)`, `impl Observer for ()`, `Observer { event, checkpoint(Views) }`, a `Views` handle that only exposes `of(viewer)` (his pick, so the type system enforces D3), `Event` with IDs only, `Game::view` in `game/view.rs`. `History` types renamed to `HistoryEntry`/`HistoryKind`.
+- Checkpoints: after a card leaves the hand, after the action resolves, after each death, at the end of `apply`. His placement, adopted into SPEC over my per-`Effect` rule.
+- Review fixes he made: `BoardEntered` before enter effects, deathrattle after `Died` and removal, `GameEnded` once. Kept by choice: unused `emtomb(_obs)` and `board_card(_viewer)` parameters, `reveal` moving the options through the event to avoid a clone, and `CardPlayed` recorded before effects resolve.
+- My test gap again: no test pinned the checkpoint rule until the review probe. Probe placement with a recorder before trusting "green".
+
 Solid:
 - Card definition (never changes) vs instance with its own ID and modifiers.
 - Non-commuting modifiers ("set to 1" vs "+2") need an ordering rule. Noted himself that 1 vs 3 is a design choice.
@@ -82,7 +101,7 @@ Partial:
 
 Gaps (teach into these):
 - Timing, i.e. *when* things run. Put the death check in a health setter ("every change goes through the setter"). Dislodged by the "can't die this turn" expiry case, but still needs a proper node. Chose the trigger queue for decoupling reasons, not for re-entrancy and timing reasons.
-- Core to shell output. Unsure whether the core should return events or push them.
+- ~~Core to shell output.~~ Closed in session 03 (returned, observer at checkpoints, views per viewer).
 - ~~Determinism sources.~~ Closed in session 01 (`HashMap`, `thread_rng`, `Instant::now`, and seeds as streams).
 - Property-based testing. Sees crashes and rejected legal moves as fuzz findings. Missed invariants you assert yourself (card in two zones, replay divergence).
 
@@ -96,6 +115,7 @@ Rust: knows traits, generics, lifetimes, but they don't come naturally when desi
 - Two IDs: stable card ID and per-zone object ID.
 - Core API (session 01): `legal_actions(&self, player) -> Vec<Action>`, `apply(&mut self, player, action) -> Result<(), Illegal>`, and a pure `applied(&self, …) -> Result<Game, Illegal>` wrapper. There's no `current_player()`: whoever has a non-empty list is being waited on. Crate `rules` in a `crates/` workspace. The seeded SplitMix64 `rules::Rng` lives in `Game`. Hand indices are the card identity until session 02, deliberately. `PlayerId` has a private field, with `const fn new(usize)` and `idx()`. `deck()` returns `Vec<Card>`. Cost payment lives once in the `Play` arm, not per card.
 - Session 02: `DefId(&'static str)` stable codes; `CardDef { code, name, cost, kind }` with `Kind::Spell { effect } | Kind::Minion { attack, health, aura }`; mechanics as enums (`Effect`, `CostRule`) interpreted by code; a `static` table behind one `def(id)` lookup for now. `Outcome { Won(PlayerId), Draw }`. `Action::{Play, Pick}` carry `ObjectId`. Tests accept either hand to board ID policy.
+- Session 03: `apply(p, a, obs: &mut impl Observer)`; `()` is the no-op observer and `applied` uses it. `Observer { event(&Event), checkpoint(Views) }`. `Views` wraps `&Game` privately and only offers `of(viewer) -> View`. Events name objects by `ObjectId` only, never `DefId`; identity reaches a viewer through `view`. Observers live with their consumer (tests, Bevy, CLI, server). In multiplayer only the server runs the core. The shell keeps the event log and its cursors, never `Game`.
 - Tooling wanted: card data files with validation, generated rules text, test tooling (scenario DSL, replays, fuzzer), headless CLI with a machine-readable protocol so bots and LLM agents can playtest, a visual editor, hot reload.
 
 ## Open threads
@@ -106,11 +126,16 @@ Rust: knows traits, generics, lifetimes, but they don't come naturally when desi
 - Explicit targeting: he wants it. Session 04 (effects as data, `TargetSpec`, target choice as a decision).
 - Chance as an input (OpenSpiel style) for testing random effects without seeds. Session 07.
 - Minor: Bolt targets `(caster.idx() + 1) % len`, which treats the identity index as seat order. That contradicts his own identity vs turn-order split. Mention it when targeting comes up.
-- Return vs push for events. (node D)
+- `ObjectId`s are allocated in deck-list order before the shuffle, so an opponent who knows the deck list can name a hidden card from its ID. Fix: allocate after the shuffle. Hidden cards' IDs are visible by policy (Arena and Hearthstone do the same).
+- Cause across steps ("this hit came from that deathrattle, from that Blast"): blocks or brackets, deferred to session 05 when triggers exist.
+- Session 05: match triggers at event time and resolve later (pattern 2), not a `History` cursor (the Scavenger case). Decide how `HistoryEntry` and `Event` relate at the one place they're emitted.
+- Session 04 opener: sequential card text ("Deal 2. Then draw a card.") needs a step boundary between its parts, and Blast needs none. Which effects are simultaneous has to be expressed in the effect data.
+- Knowledge as state: a "look at the top card" effect needs a "P0 has seen X" fact in `Game`, read by `view` (Forge `mayPlayerLook`, XMage `getLookedAt`).
+- If History queries get expensive, cache a query result rebuilt at a checkpoint (an XMage watcher is a patched cache of one query). Measure first.
 - "Costs (1) less per spell cast this turn": his observer design (a -1 modifier on the card) vs a counter in state. Which one handles a copy drawn after the spells? Open session 02 (C) with this.
 - ~~Hand index vs ID~~: done in session 02 (Lure).
-- Session H: versioned definitions in one append-only table (his design) vs a per-game `Arc<CardDb>` snapshot. Hot reload as a recorded input. Load-time validation of card codes referenced in data. Stable codes in files vs runtime index.
-- Session 05 opener: collect-then-commit in his `update_deaths` (kills one at a time, `on_death` inside the loop). Use the Medic card as the red test. Also decide the order of simultaneous deathrattles.
+- Session H: versioned definitions in one append-only table (his design, in the code) vs a per-game snapshot of one data release with unversioned codes. Test cases from session 03: (1) a card that names another card ("Barracks: summon a Recruit") must be re-versioned whenever the named card is patched; (2) one game can mix v0 and v1 Bolts unless a "current only" rule exists; (3) random pools must exclude old versions; (4) his design needs no release number in a replay and allows deliberate version mixing. I lean per-game release, because of (1). He wasn't sure his approach was right. Hot reload as a recorded input. Load-time validation of card codes referenced in data. Stable codes in files vs runtime index.
+- Session 05 opener: collect-then-commit in his `update_deaths` (kills one at a time, `on_death` inside the loop). Since session 03, `kill` reports `Died` and removes the minion before its deathrattle runs, but still one minion per pass. Use the Medic card as the red test. Also decide the order of simultaneous deathrattles.
 - Untested speculative branches in `rules` (`HistoryQueryKind::MonsterDied` ignores scope and turn filters, `PlayerFilter::Current`, `TurnFilter::Current`, `Effect::Draw`, `on_board_leave`, hostile auras, `has_deck_presence`). Cut them or give each a test card when its session comes.
 - Hand to board keeps the `ObjectId` and the bag keeps objects forever, so a "+500 until end of turn" in `obj.modifiers` would survive a bounce. Raise this when bounce arrives (the zone-reset table).
 - Session 02 review (asked or answered): where objects live (per-zone `Vec` vs arena), the hand to board ID policy, counter vs list for spells cast, derived vs committed outcome, hero damage vs health, and the per-field `match` in the old `Card::mana_cost`.
@@ -175,8 +200,8 @@ graph TD
 | 00 | probe | Knowledge probe and plan | done |
 | 01 | R1, A | Game as a state machine, `legal_actions` + `apply` | done (exercise green: 3 rng + 20 contract tests) |
 | 02 | R2, B, C | Definitions, objects, IDs; derived stats and state checks | done (green: 19 unit + 57 spec tests; review fixes applied) |
-| 03 | D | Events out; return vs push | next. Open with his `History`/`EventLog` inside `Game`: rules history (state, read by rules) vs the event stream to the shell (output). Same data or not? |
-| 04 | R3, E | Effects as data | |
+| 03 | D | Events out; return vs push | done (green: 19 unit + 84 spec; observer, views per viewer, six-engine comparison) |
+| 04 | R3, E | Effects as data | next. Open with step boundaries in effect data: Blast's two `Effect`s are one step, "Deal 2. Then draw" is two. Then targeting (`TargetSpec`, target choice as a decision). |
 | 05 | F | Triggers, replacements, statics | |
 | 06 | R4, G | Resolution loop, pending choices, stored half-finished effects | |
 | 07 | R5, T | Scenario DSL, replays, determinism trap, invariant fuzzing | |
@@ -206,4 +231,7 @@ graph TD
 - Forge: `GameAction.checkStaticAbilities()` calls `StaticEffects.clearStaticEffects` (removes every applied static effect) and then reapplies all continuous statics layer by layer (timestamp order, dependencies per 613.8). It runs at the start of every pass of `checkStateEffects`'s SBA loop (`for q < 9`, a capped fixed point) and also inside `changeZone`. Source: Card-Forge GameAction.java, StaticEffects.java.
 - Hearthstone Aura Updates (Advanced rulebook 4a/4b): after the outermost Phase there's an Aura Update (Health/Attack), then the Death Creation Step, then an Aura Update (Other). Both also run whenever a minion is summoned (not played). Auras aren't recalculated mid-Phase, so stats can be stale (the Mana Wyrm and Cone of Cold example).
 - YGO: a monster flipped face-down or leaving the field loses effects previously applied to it (Relay Soul and Junk Synchron rulings). The "treated as a new card" wording is community phrasing. Source: Yugipedia card rulings.
+- Session 03 engine reports, full text kept untracked in `course.ignore/research/03-events/`. Forge: rules read "this turn" fields (`lifeLostThisTurn`, `MagicStack.thisTurnCast`, `leftBattlefieldThisTurn`) reset at cleanup; triggers go through `TriggerHandler.runTrigger` into a waiting list put on the stack when a player would get priority, and `collectTriggerForWaiting()` snapshots matching triggers at event time; UI gets `GameEvent`s on a Guava `EventBus` ("sent to UI, log and sound system") plus `TrackableObject` views, with `CardView.canBeShownTo(viewer)` deciding visibility; the AI simulates on a `GameCopier` copy with no GUI subscribers. XMage: Watchers see every `GameEvent` before triggers (`GameState.handleEvent`) and reset at end of turn; replacement effects see the event first (`replaceEvent` then mutate then `fireEvent`); the client gets full per-player `GameView` snapshots plus log text, no animation events; old replays stored `GameState` copies ("outdated and not used"); AI copies set a `simulation` flag that skips notifications. SabberStone: tag counters plus `PlayHistory`; triggers are C# delegates queuing tasks; `PowerHistory` off by default in `Clone()`. Hearthstone protocol: `TAG_CHANGE` diffs grouped in nested `BLOCK_START/END` (PLAY, ATTACK, TRIGGER, DEATHS, FATIGUE, ...), `META_DATA` guides animations, hidden cards have no card ID until `SHOW_ENTITY`, a per-player dispatcher holds back packets (HearthSim). HSReplay is XML of that stream. Metastone/Spellsource: one `GameEvent` feeds triggers and UI; Spellsource sends each event with a redacted snapshot (`ModelConversions`, "Censor the opponent hand and deck entities") and stores replays as a `Trace` of seed, decks, mulligans and action indices, re-simulated to view. Arena GRE: `Full` then `Diff` `GameStateMessage`s with `annotations` (`DamageDealt`, `ZoneTransfer` with a category, `ObjectIdChanged`), zones with `Visibility` and `viewers`, hidden cards sent as IDs with no object; draws and shuffles reissue IDs (reason undocumented).
+- Bevy 0.17 split buffered events into messages (`Message`, `MessageWriter`, `MessageReader`, `Messages<M>`), and `Event` now means observer events (`commands.trigger`). Latest stable 0.19.1, 0.20.0-rc.2 out (crates.io, 2026-09-28). Source: bevy.org 0.17 release notes and migration guide.
+- Fowler, Event Sourcing: "Capture all changes to an application state as a sequence of events." Command sourcing (store the inputs, rerun the decisions) is a named pattern in Akka's persistence docs. Source: martinfowler.com/eaaDev/EventSourcing.html, doc.akka.io.
 - Toolchain on this machine: rustc/cargo 1.92. Check crate versions (bevy, rand, ron, proptest, insta) when adding them. Bevy was at 0.20 RC in the index at probe time.
