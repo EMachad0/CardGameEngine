@@ -6,7 +6,10 @@
 
 use super::Game;
 use crate::action::Action;
-use crate::cards::definition::{Effect, MinionSelector, PlayerSelector};
+use crate::cards::definition::{
+    CharacterKindFilter, CharacterSelector, CharacterSelectorFilter, CharacterSideFilter, Effect,
+    PlayerSelector,
+};
 use crate::cards::modifier::{EffectAmount, Modifier};
 use crate::history::{HistoryKind, HistoryQuery, HistoryQueryKind, PlayerFilter};
 use crate::ids::PlayerId;
@@ -77,45 +80,35 @@ impl Game {
         obs: &mut impl Observer,
     ) {
         match effect {
-            Effect::DamagePlayer { selector, damage } => {
+            Effect::Draw { selector, amount } => {
+                let amount = self.effect_amount(amount, owner);
                 let targets = self.resolve_player_selector(owner, selector);
                 for target in targets.into_iter() {
-                    let hero_id = self.hero_id(target);
-                    let object = self.objects.get_mut(hero_id);
-                    object.damage += damage;
-                    obs.event(&Event::Damaged {
-                        target: hero_id,
-                        amount: damage,
-                        source,
-                    });
+                    self.draw(target, amount, obs);
                 }
             }
-            Effect::Draw { selector, count } => {
+            Effect::Reveal { selector, amount } => {
+                let amount = self.effect_amount(amount, owner);
                 let targets = self.resolve_player_selector(owner, selector);
                 for target in targets.into_iter() {
-                    self.draw(target, count, obs);
+                    self.reveal(target, amount, obs);
                 }
             }
-            Effect::Reveal { selector, count } => {
-                let targets = self.resolve_player_selector(owner, selector);
-                for target in targets.into_iter() {
-                    self.reveal(target, count, obs);
-                }
-            }
-            Effect::DamageMinion { selector, damage } => {
-                let targets = self.resolve_minion_selector(owner, source, selector);
+            Effect::Damage { selector, amount } => {
+                let amount = self.effect_amount(amount, owner);
+                let targets = self.resolve_character_selector(owner, source, selector);
                 for target in targets.into_iter() {
                     let object = self.objects.get_mut(target);
-                    object.damage += damage;
+                    object.damage += amount;
                     obs.event(&Event::Damaged {
                         target,
-                        amount: damage,
+                        amount,
                         source,
                     });
                 }
             }
             Effect::AddFriendlyAura { selector, effect } => {
-                let targets = self.resolve_minion_selector(owner, source, selector);
+                let targets = self.resolve_character_selector(owner, source, selector);
                 for target in targets.into_iter() {
                     let object = self.objects.get_mut(target);
                     object.friendly_aura.add(Modifier { source, effect });
@@ -143,14 +136,14 @@ impl Game {
         });
     }
 
-    pub(crate) fn effect_amount(&self, amount: EffectAmount, player_id: PlayerId) -> i32 {
+    pub(crate) fn effect_amount(&self, amount: EffectAmount, player_id: PlayerId) -> u8 {
         match amount {
             EffectAmount::Static(value) => value,
             EffectAmount::History(query) => self.history_query(query, player_id),
         }
     }
 
-    pub(crate) fn history_query(&self, query: HistoryQuery, player_id: PlayerId) -> i32 {
+    pub fn history_query(&self, query: HistoryQuery, player_id: PlayerId) -> u8 {
         let entries = self.history.entries.iter();
         let targets = match query.scope {
             PlayerFilter::All => self.players.iter().map(|p| p.id).collect(),
@@ -172,7 +165,7 @@ impl Game {
                         HistoryKind::CardPlayed { object } if self.binder.is_spell(object.def_id)
                     )
                 })
-                .count() as i32,
+                .count() as u8,
             HistoryQueryKind::MinionDied => entries
                 .filter(|entry| targets.contains(&entry.player_id))
                 .filter(|entry| match query.turn {
@@ -182,7 +175,7 @@ impl Game {
                     crate::history::TurnFilter::All => true,
                 })
                 .filter(|entry| matches!(&entry.kind, HistoryKind::CharacterDied { object } if self.binder.is_minion(object.def_id)))
-                .count() as i32,
+                .count() as u8,
         }
     }
 
@@ -194,27 +187,62 @@ impl Game {
         match selector {
             PlayerSelector::All => self.players.iter().map(|p| p.id).collect(),
             PlayerSelector::Owner => vec![owner],
-            PlayerSelector::RandomPlayer => {
+            PlayerSelector::Random => {
                 vec![PlayerId::new(self.rng.below(self.players.len()))]
             }
-            PlayerSelector::NextPlayer => vec![self.turn_order.get_player_after(owner)],
+            PlayerSelector::Enemy => self
+                .players
+                .iter()
+                .map(|p| p.id)
+                .filter(|&id| id != owner)
+                .collect(),
         }
     }
 
-    fn resolve_minion_selector(
+    fn resolve_character_selector(
         &mut self,
-        _caster: PlayerId,
+        owner: PlayerId,
         object_id: ObjectId,
-        selector: MinionSelector,
+        selector: CharacterSelector,
     ) -> Vec<ObjectId> {
+        let all = |CharacterSelectorFilter { kind, side }| {
+            let kind_filter = |id: PlayerId| {
+                (side.contains(CharacterSideFilter::Enemy) && id != owner)
+                    || (side.contains(CharacterSideFilter::Friendly) && id == owner)
+            };
+
+            let mut characters = Vec::new();
+            if kind.contains(CharacterKindFilter::Minions) {
+                characters.extend(
+                    self.players
+                        .iter()
+                        .filter(|player| kind_filter(player.id))
+                        .flat_map(|player| player.zones.board.as_slice()),
+                );
+            }
+            if kind.contains(CharacterKindFilter::Heroes) {
+                characters.extend(
+                    self.players
+                        .iter()
+                        .filter(|player| kind_filter(player.id))
+                        .map(|player| player.zones.hero),
+                );
+            }
+            characters
+        };
         match selector {
-            MinionSelector::All => self
-                .players
-                .iter()
-                .flat_map(|player| player.zones.board.as_slice())
-                .copied()
-                .collect(),
-            MinionSelector::Itself => vec![object_id],
+            CharacterSelector::All(filter) => all(filter),
+            CharacterSelector::Itself => vec![object_id],
+            CharacterSelector::OwnerHero => vec![self.hero_id(owner)],
+            CharacterSelector::Random(filter) => {
+                let possible = all(filter);
+                if !possible.is_empty() {
+                    let idx = self.rng.below(possible.len());
+                    vec![possible[idx]]
+                } else {
+                    Vec::new()
+                }
+            }
         }
     }
 }

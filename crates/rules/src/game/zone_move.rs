@@ -7,7 +7,7 @@ use crate::{
 impl Game {
     /// Moves the top card to the end of the hand, `count` times.
     /// Each draw from an empty deck costs 1 health instead.
-    pub(crate) fn draw(&mut self, player_id: PlayerId, count: usize, obs: &mut impl Observer) {
+    pub(crate) fn draw(&mut self, player_id: PlayerId, count: u8, obs: &mut impl Observer) {
         for _ in 0..count {
             let player = self.get_player_mut(player_id);
             let card = player.zones.deck.pop_front();
@@ -129,7 +129,7 @@ impl Game {
             .add(object_id);
     }
 
-    pub(crate) fn reveal(&mut self, player_id: PlayerId, count: usize, obs: &mut impl Observer) {
+    pub(crate) fn reveal(&mut self, player_id: PlayerId, count: u8, obs: &mut impl Observer) {
         let player = self.get_player_mut(player_id);
 
         let mut options = Vec::new();

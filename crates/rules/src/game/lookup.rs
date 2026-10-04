@@ -36,7 +36,7 @@ impl Game {
                     .iter()
                     .filter_map(|m| match m.effect {
                         ModifierEffect::ReduceManaCost { amount } => {
-                            Some(-self.effect_amount(amount, obj.player_id))
+                            Some(-(self.effect_amount(amount, obj.player_id) as i32))
                         }
                         _ => None,
                     })
@@ -77,7 +77,7 @@ impl Game {
                     ModifierEffect::BuffHealth { amount } => Some(amount),
                     _ => None,
                 })
-                .map(|a| self.effect_amount(a, obj.player_id))
+                .map(|a| self.effect_amount(a, obj.player_id) as i32)
                 .sum::<i32>();
             let damage = obj.damage as i32;
             def + modifiers - damage
@@ -103,7 +103,7 @@ impl Game {
                         ModifierEffect::BuffAtk { amount } => Some(amount),
                         _ => None,
                     })
-                    .map(|a| self.effect_amount(a, obj.player_id))
+                    .map(|a| self.effect_amount(a, obj.player_id) as i32)
                     .sum::<i32>();
                 def + modifiers
             })

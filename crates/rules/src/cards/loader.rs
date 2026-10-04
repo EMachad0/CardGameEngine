@@ -1,8 +1,11 @@
+use enumset::EnumSet;
+
 use crate::{
     cards::{
         definition::{
-            CardDef, CardDefKind, DefId, Effect, EffectSequence, HeroCardDef, MinionCardDef,
-            MinionSelector, PlayerSelector, SpellCardDef,
+            CardDef, CardDefKind, CharacterKindFilter, CharacterSelector, CharacterSelectorFilter,
+            CharacterSideFilter, DefId, Effect, EffectSequence, HeroCardDef, MinionCardDef,
+            PlayerSelector, SpellCardDef,
         },
         modifier::{EffectAmount, ModifierEffect},
     },
@@ -52,6 +55,7 @@ def_ids!(
     HERO = "base.hero.v0",
     SQUIRE = "base.squire.v0",
     BARRACKS = "base.barracks.v0",
+    ZAP = "base.zap.v0",
 );
 
 // TODO: loading cards from disk into the engine should be shells job
@@ -66,9 +70,12 @@ impl CardDefLoader {
                 name: "Spark".to_string(),
                 kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 1,
-                on_play_effect: EffectSequence(vec![Effect::DamagePlayer {
-                    selector: PlayerSelector::NextPlayer,
-                    damage: 1,
+                on_play_effect: EffectSequence(vec![Effect::Damage {
+                    selector: CharacterSelector::All(CharacterSelectorFilter {
+                        kind: EnumSet::only(CharacterKindFilter::Heroes),
+                        side: EnumSet::only(CharacterSideFilter::Enemy),
+                    }),
+                    amount: 1.into(),
                 }]),
                 ..Default::default()
             },
@@ -77,9 +84,12 @@ impl CardDefLoader {
                 name: "Bolt".to_string(),
                 kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 2,
-                on_play_effect: EffectSequence(vec![Effect::DamagePlayer {
-                    selector: PlayerSelector::NextPlayer,
-                    damage: 2,
+                on_play_effect: EffectSequence(vec![Effect::Damage {
+                    selector: CharacterSelector::All(CharacterSelectorFilter {
+                        kind: EnumSet::only(CharacterKindFilter::Heroes),
+                        side: EnumSet::only(CharacterSideFilter::Enemy),
+                    }),
+                    amount: 2.into(),
                 }]),
                 ..Default::default()
             },
@@ -88,9 +98,12 @@ impl CardDefLoader {
                 name: "Wild Bolt".to_string(),
                 kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 1,
-                on_play_effect: EffectSequence(vec![Effect::DamagePlayer {
-                    selector: PlayerSelector::RandomPlayer,
-                    damage: 3,
+                on_play_effect: EffectSequence(vec![Effect::Damage {
+                    selector: CharacterSelector::Random(CharacterSelectorFilter {
+                        kind: EnumSet::only(CharacterKindFilter::Heroes),
+                        side: EnumSet::all(),
+                    }),
+                    amount: 3.into(),
                 }]),
                 ..Default::default()
             },
@@ -99,16 +112,10 @@ impl CardDefLoader {
                 name: "Blast".to_string(),
                 kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 3,
-                on_play_effect: EffectSequence(vec![
-                    Effect::DamageMinion {
-                        selector: MinionSelector::All,
-                        damage: 2,
-                    },
-                    Effect::DamagePlayer {
-                        selector: PlayerSelector::All,
-                        damage: 2,
-                    },
-                ]),
+                on_play_effect: EffectSequence(vec![Effect::Damage {
+                    selector: CharacterSelector::All(CharacterSelectorFilter::all()),
+                    amount: 2.into(),
+                }]),
                 ..Default::default()
             },
             CardDef {
@@ -118,7 +125,7 @@ impl CardDefLoader {
                 mana_cost: 1,
                 on_play_effect: EffectSequence(vec![Effect::Reveal {
                     selector: PlayerSelector::Owner,
-                    count: 2,
+                    amount: 2.into(),
                 }]),
                 ..Default::default()
             },
@@ -180,6 +187,26 @@ impl CardDefLoader {
                     selector: PlayerSelector::Owner,
                     def_id: SQUIRE,
                 }]),
+                ..Default::default()
+            },
+            CardDef {
+                id: ZAP,
+                name: "Zap".to_string(),
+                kind: CardDefKind::Spell(SpellCardDef),
+                mana_cost: 2,
+                on_play_effect: EffectSequence(vec![
+                    Effect::Damage {
+                        selector: CharacterSelector::All(CharacterSelectorFilter {
+                            kind: EnumSet::only(CharacterKindFilter::Heroes),
+                            side: EnumSet::only(CharacterSideFilter::Enemy),
+                        }),
+                        amount: 1.into(),
+                    },
+                    Effect::Draw {
+                        selector: PlayerSelector::Owner,
+                        amount: 1.into(),
+                    },
+                ]),
                 ..Default::default()
             },
         ]
