@@ -12,7 +12,7 @@ Understand card game systems well enough to design MTG, Hearthstone, or Yu-Gi-Oh
 - Roles in exercises. First we agree on the design in discussion. The learner writes the design-bearing code (types, traits, key function signatures and bodies). The agent writes scaffolding and tests against that API, then reviews. Tests come before the implementation. He sees little learning value in typing out plain data types, so the agent drafts those, such as `Event` and `View`, for him to edit. Design choices and bodies stay his.
 - End at a node boundary, not mid-node. Commit once per node.
 
-## Knowledge map (from the 2026-09-28 probe, updated through session 04)
+## Knowledge map (from the 2026-09-28 probe, updated through session 04c)
 
 Session 01 (R1, S, L, P, G all landed on the first node check):
 - Determinism: a seeded RNG in the state, the clock in the shell (timer becomes an `EndTurn` input). Knows `HashMap`, `thread_rng` and `Instant::now` break replay.
@@ -96,6 +96,23 @@ Session 04 design (his calls):
 - He raised dependent sequencing ("the second effect only happens if the first succeeds", for deny games). It's a second axis beside together/then.
 - He split the 04 exercise in three and ordered the parts himself (see the course plan).
 
+Session 04c probe (no retrieval quiz, at his request: session 04 had ended hours before; every hero question right, tokens the one gap):
+- Which object is P's hero is a zone fact, stored once. He picked the slot over a bag scan, a board entry and a slot plus a back-pointer on the object (the mirror). His note: "maybe even inside the zones", which became the design.
+- Hero is a kind on the definition, while being P's hero is a zone fact (his note: a hero in hand and one in play are both heroes).
+- A replacement is a new object, and the card's data says what carries over. His note gave flexibility as the reason, not identity.
+- Summon is not play (Barracks and the Squire; "squire was never played"). Unify where the rules unify: SabberStone's `Hero : Character` vs Forge's `GameEntity` and XMage's shared UUIDs, decided by whether damage to a player behaves like damage to a piece. A "damage your hero took this game" query keys by `PlayerId` across replacements.
+- He saw at once that a hero left in its zone at 0 makes the removal loop run forever (a fixed-point pass must change what the next pass finds).
+
+Session 04c nodes:
+- Tokens: answered "I don't know". He proposed a `TokenCardDef` kind, and a piece decoupled from its card where vanishing is a limit of the types. Taught the rule "a fact that can differ between two copies of one definition belongs on the object" with Cackling Counterpart, and the per-game leave rules (MTG state check, YGO replacement, Hearthstone none). He pushed back: in Hearthstone a token is an uncollectible card. Conceded: two meanings, Hearthstone's uncollectible (definition) and MTG's created by an effect (object), each placed by the same rule. Node check right. His note: the "created by an effect" fact isn't stored today, and won't be until a rule reads it. `collectible` is out of scope, his call.
+- Barracks names the Squire: Barracks v0 keeps summoning Squire v0 under ADR 0003 (right). I dropped the planned reference check: `def_ids!` constants plus `validate_not_found` already guarantee it until codes come from files.
+
+Session 04c exercise (his design, ADR 0008; green: 18 unit + 106 spec):
+- Decisions: `Zones.hero: ObjectId`; one static `base.hero.v0`; `Player.health` removed; `hero_id(p)`, plus `hero_health(p)`, which he first dropped and then kept; heroes have no attack value (`None`; `Some(0)` stays a distinct later value); `Damaged { target: ObjectId }`; `FatigueDamaged` carries the hero's `object_id`; a dead hero stays in its zone and is reported `Died`; `Summon { selector, def_id }` reported by `BoardEntered` alone; `HeroCard` in the view. He renamed `spawn` to `summon` and moved the card constants to `rules::static_card_definition`.
+- Review probes found: a hero death recorded as `MinionDied` (fixed: `CharacterDied`, and the minion query filters minions); a hero card played from hand landing on the board (fixed: no board presence; he briefly added hero replacement on play, then dropped it); hero health skipping buffs instead of scoping the aura (fixed: one health path, auras reach minions by kind); a duplicate trailing checkpoint (fixed after one inverted flag).
+- Kept by choice: `Player.playing`, a committed elimination with a re-check after a hero's death effect. No test can reach it while `Game::new` takes two decks.
+- He made eight interface calls quickly and well, and the mirror habit didn't show (he rejected the back-pointer). What showed instead is structure for cases no test reaches: `playing`, hero replacement on play, the minion query's new filters.
+
 Solid:
 - Card definition (never changes) vs object with its own ID and modifiers.
 - Non-commuting modifiers ("set to 1" vs "+2") need an ordering rule. Noted himself that 1 vs 3 is a design choice.
@@ -105,6 +122,7 @@ Solid:
 - Expression problem: enum makes new operations cheap, new variants touch every `match`. Knows `_` arms hide the checklist.
 - Core returns a pending choice instead of blocking.
 - Effects as data (session 04): inspectability, interpreters as the readers of one source, verb + selector + amount, simultaneity in the target set. The open edge is designing the shape without prompting.
+- Player vs piece (session 04c): the player decides, the hero is an object in a zone of one, hero is a kind while P's hero is a zone fact, unify where the rules unify, summon is not play. Token meanings (Hearthstone uncollectible on the definition, MTG created on the object) landed after an "I don't know".
 
 Partial:
 - Pending choice: has the idea. Session 01 update: solid for simple drafts (Discover picks, attacker drafts, and Forage in the exercise are all state in `Game`). Session 04: targeting becomes a draft in state (04b). Not yet tested on a half-finished effect *mid-resolution* ("deal 3, then if it died draw" paused for a target, or his token case). That's session 06.
@@ -123,15 +141,19 @@ Rust: knows traits, generics, lifetimes, but they don't come naturally when desi
 - Core track (A to G, T, K) is concept-first with one small exercise per session. Application track (H, I, J) gets one design session each. Implementation there is optional.
 - Final exam (K): add a Yu-Gi-Oh style chain without rewriting the core. He knows YGO best.
 - The tooling the course works toward: card data files with validation, generated rules text, test tooling (scenario DSL, replays, fuzzer), a headless CLI with a machine-readable protocol so bots and LLM agents can playtest, a visual editor, and hot reload.
-- Session 04's exercise is three sessions, his split: 04a effect reshape, 04b targeting draft, 04c heroes, players and tokens as objects, all before 05. He moved 04c first. Blast's "every character" selects heroes and minions, so with heroes as objects 04a's selectors resolve to `ObjectId`s only, instead of a mixed player-or-object target set reworked later.
+- Session 04's exercise is three sessions, his split: 04a effect reshape, 04b targeting draft, 04c heroes, players and tokens as objects, all before 05. He moved 04c first, and it is done. Blast's "every character" selects heroes and minions, so with heroes as objects 04a's selectors resolve to `ObjectId`s only.
 
 ## Open threads
 
 - Where does a half-finished effect live between `apply` calls? (node 06-G)
 - Outside a pending pick, only the active player has legal actions, so an opponent's response is never offered. Sessions 06 and 08.
-- 04a open decisions (after 04c): Bolt's and Spark's selector (today `NextPlayer`, the next seat, which the text doesn't say; "each enemy hero" or a reference that assumes two players; 04c may settle it), damage amount as `u8` or `EffectAmount`, Zap's name and cost, and the unused branches (`Effect::AddFriendlyAura`, `MinionSelector::Itself`, `PlayerSelector::All`). Zap gives `Effect::Draw` its first test card.
+- 04a open decisions: Bolt's and Spark's selector (today `NextPlayer`, the next seat, which the text doesn't say; with heroes as objects, "each enemy hero" is a filter over hero objects, or a reference that assumes two players), merging `DamagePlayer` (which now marks the selected players' heroes) and `DamageMinion` into one `Damage` over characters, damage amount as `u8` or `EffectAmount`, Zap's name and cost, and the unused branches (`Effect::AddFriendlyAura`, `MinionSelector::Itself`, `PlayerSelector::All`). Zap gives `Effect::Draw` its first test card. `Summon` takes a `PlayerSelector` and only `Caster` is tested.
 - 04b opener: "What happens when an already targeted minion is clicked again?" Then decide "two different minions" vs "a minion. Then a minion." (a distinctness rule in the data, and the can-finish check needs two minions), a new pick action vs reusing `Pick { object_id }` (every target is an `ObjectId` by 04b, heroes included), and whether `Play` keeps its name now that it only opens a cast.
-- 04c: heroes, players and tokens as objects. Research: `docs/course/research/04-effects/conjunctions-and-heroes.md`. The "Deal 1 damage to a minion. Then deal 1 damage to a hero." card needs the targeting draft, so it moves to 04b.
+- The "Deal 1 damage to a minion. Then deal 1 damage to a hero." card needs the targeting draft, so it belongs to 04b.
+- Hero replacement (concept in 04c, not built): a new object, with the card's data saying whether damage carries over (Hearthstone hero cards keep it, Jaraxxus sets 15). Queries about "your hero" key by `PlayerId`. No event reports a swap yet.
+- N-player elimination: `Player.playing` is his committed record, kept by choice. Test it when setup takes more than two decks.
+- Glossary terms he deferred until used more: token (Hearthstone's uncollectible vs MTG's created by an effect, a flagged pair when it lands), summon (the code now says `summon`), graveyard (and the `emtomb` spelling). Character was added in 04c.
+- `lib.rs`'s docstring still lists `cards` among the public data types, but the module is private now.
 - Dependent sequencing (sessions 06 and 08): "if A succeeded, B" is a second axis beside together/then. Each verb reports what it did, a later effect's condition reads the report, and the report lives only while the card resolves (06's half-finished effect). Open 08 with the YGO conjunction table. What "succeeded" means differs per game, as MTG 118.12 in the verified facts shows, so it belongs in the data.
 - Restore as its own verb (E2) has no card yet. Build it with the first card that restores.
 - "Chosen" will split into chosen while casting (a target) and chosen during resolution (a pending pick), like MTG "target" vs "choose". Session 06.
@@ -142,9 +164,9 @@ Rust: knows traits, generics, lifetimes, but they don't come naturally when desi
 - Session 05: match triggers at event time and resolve later (pattern 2), not a `History` cursor (the Scavenger case). Decide how `HistoryEntry` and `Event` relate at the one place they're emitted.
 - Knowledge as state: a "look at the top card" effect needs a "P0 has seen X" fact in `Game`, read by `view` (Forge `mayPlayerLook`, XMage `getLookedAt`).
 - If History queries get expensive, cache a query result rebuilt at a checkpoint (an XMage watcher is a patched cache of one query). Measure first.
-- Session H: versioned definitions in one append-only table (his design, ADR 0003) vs a per-game snapshot of one data release with unversioned codes. Test cases from session 03: (1) a card that names another card ("Barracks: summon a Recruit") must be re-versioned whenever the named card is patched; (2) one game can mix v0 and v1 Bolts unless a "current only" rule exists; (3) random pools must exclude old versions; (4) his design needs no release number in a replay and allows deliberate version mixing. I lean per-game release, because of (1). He wasn't sure his approach was right. Hot reload as a recorded input. Load-time validation of card codes referenced in data. Stable codes in files vs runtime index.
-- Session 05 opener: collect-then-commit in his `remove_dead` (kills one at a time, `on_death` inside the loop). Since session 03, `kill` reports `Died` and removes the minion before its deathrattle runs, but still one minion per pass. Use the Medic card ("Deathrattle: give your other minions +2 health") as the red test. Also decide the order of simultaneous deathrattles.
-- Untested speculative branches in `rules` (`HistoryQueryKind::MinionDied` ignores scope and turn filters, `PlayerFilter::Active`, `TurnFilter::Current`, `Effect::Draw`, `on_board_leave`, hostile auras, `has_deck_presence`). Cut them or give each a test card when its session comes.
+- Session H: versioned definitions in one append-only table (his design, ADR 0003) vs a per-game snapshot of one data release with unversioned codes. Test cases from session 03: (1) a card that names another card ("Barracks: summon a Recruit") must be re-versioned whenever the named card is patched; (2) one game can mix v0 and v1 Bolts unless a "current only" rule exists; (3) random pools must exclude old versions; (4) his design needs no release number in a replay and allows deliberate version mixing. I lean per-game release, because of (1). He wasn't sure his approach was right. Hot reload as a recorded input. Load-time validation of card codes referenced in data: today `def_ids!` constants plus `validate_not_found` guarantee it, and it needs its own pass once codes come from files. Stable codes in files vs runtime index. Barracks v0 naming `base.squire.v0` is the first real instance of case (1).
+- Session 05 opener: collect-then-commit in his `remove_dead` (kills one at a time, `on_death` inside the loop). Since session 03, `kill` reports `Died` and removes the minion before its deathrattle runs, but still one minion per pass. Use the Medic card ("Deathrattle: give your other minions +2 health") as the red test. Also decide the order of simultaneous deathrattles. Since 04c, dead heroes are checked once after the minion loop and before the outcome; the order between two heroes dying together isn't pinned. A "whenever your hero takes damage" trigger must read `FatigueDamaged` as well as `Damaged`.
+- Untested speculative branches in `rules` (`HistoryQueryKind::MinionDied`, whose scope and turn filters no card reads, `PlayerFilter::Active`, `TurnFilter::Current`, `Effect::Draw`, `on_board_leave`, hostile auras, `has_deck_presence`, `Player.playing`, `Summon` selectors other than `Caster`). Cut them or give each a test card when its session comes.
 - Hand to board keeps the `ObjectId` and the bag keeps objects forever, so a "+500 until end of turn" in `obj.modifiers` would survive a bounce. Raise this when bounce arrives (the zone-reset table).
 
 ## Dependency map
@@ -209,8 +231,8 @@ graph TD
 | 02 | R2, B, C | Definitions, objects, IDs; derived stats and state checks | done (green: 19 unit + 57 spec tests; review fixes applied) |
 | 03 | D | Events out; return vs push | done (green: 19 unit + 84 spec; observer, views per viewer, six-engine comparison) |
 | 04 | R3, E | Effects as data | done (concept only: E1 to E5; targeting draft designed) |
-| 04c | B | Heroes, players and tokens as objects | next (moved before 04a). Research saved. Opens with the retrieval quiz on E1 to E5. |
-| 04a | E | Exercise: effect reshape | After 04c. Verb + selector + amount (reference, all, random; no chosen yet; all and random share one filter, kind, and friendly or enemy relative to the caster), Blast as one `Damage` over every character, Zap ("Deal 1 damage to the enemy hero. Then draw a card.") in two steps, a checkpoint after each effect. Settle the 04a open decisions first. I draft the types for him to edit, tests first, he writes the bodies. |
+| 04c | B | Heroes, players and tokens as objects | done (green: 18 unit + 106 spec; ADR 0008; Barracks summons a Squire; PR #4) |
+| 04a | E | Exercise: effect reshape | next. Opens with the retrieval quiz on 04c (tokens first). Verb + selector + amount (reference, all, random; no chosen yet; all and random share one filter, kind, and friendly or enemy relative to the caster), Blast as one `Damage` over every character, Zap ("Deal 1 damage to the enemy hero. Then draw a card.") in two steps, a checkpoint after each effect. Settle the 04a open decisions first. I draft the types for him to edit, tests first, he writes the bodies. |
 | 04b | E, G | Exercise: targeting draft | `Chosen(filter)`, `Play` opens a cast, a pick per decision, `Commit`, `Cancel`. Ping, a two-minion card, and the minion-and-hero card. Opener: re-clicking a targeted minion. |
 | 05 | F | Triggers, replacements, statics | |
 | 06 | R4, G | Resolution loop, pending choices, stored half-finished effects | |
