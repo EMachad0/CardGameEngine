@@ -7,7 +7,7 @@ use crate::{
 impl Game {
     /// Moves the top card to the end of the hand, `count` times.
     /// Each draw from an empty deck costs 1 health instead.
-    pub(crate) fn draw(&mut self, player_id: PlayerId, count: usize, obs: &mut impl Observer) {
+    pub(crate) fn draw(&mut self, player_id: PlayerId, count: u8, obs: &mut impl Observer) {
         for _ in 0..count {
             let player = self.get_player_mut(player_id);
             let card = player.zones.deck.pop_front();
@@ -56,11 +56,12 @@ impl Game {
             object_id,
         });
         obs.checkpoint(Views::new(self));
-        self.apply_effects(player_id, object_id, self.on_play(object_id), obs);
+        self.apply_effects(object_id, self.on_play(object_id), obs);
 
         let def_id = self.def_id(object_id);
         if self.binder.has_board_presence(def_id) {
             self.summon(player_id, object_id, obs);
+            obs.checkpoint(Views::new(self));
         }
     }
 
@@ -75,7 +76,7 @@ impl Game {
             player_id,
             object_id,
         });
-        self.apply_effects(player_id, object_id, self.on_board_enter(object_id), obs);
+        self.apply_effects(object_id, self.on_board_enter(object_id), obs);
     }
 
     pub(crate) fn kill(
@@ -96,7 +97,7 @@ impl Game {
         if !self.binder.is_hero(object.def_id) {
             self.destroy(player_id, object_id, obs);
         }
-        self.apply_effects(player_id, object_id, self.on_death(object_id), obs);
+        self.apply_effects(object_id, self.on_death(object_id), obs);
     }
 
     pub(crate) fn destroy(
@@ -105,7 +106,7 @@ impl Game {
         object_id: ObjectId,
         obs: &mut impl Observer,
     ) {
-        self.apply_effects(player_id, object_id, self.on_board_leave(object_id), obs);
+        self.apply_effects(object_id, self.on_board_leave(object_id), obs);
         self.get_player_mut(player_id)
             .zones
             .board
@@ -129,7 +130,7 @@ impl Game {
             .add(object_id);
     }
 
-    pub(crate) fn reveal(&mut self, player_id: PlayerId, count: usize, obs: &mut impl Observer) {
+    pub(crate) fn reveal(&mut self, player_id: PlayerId, count: u8, obs: &mut impl Observer) {
         let player = self.get_player_mut(player_id);
 
         let mut options = Vec::new();

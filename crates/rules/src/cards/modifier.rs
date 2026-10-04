@@ -29,12 +29,12 @@ pub(crate) struct Modifier {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EffectAmount {
-    Static(i32),
+    Static(u8),
     History(HistoryQuery),
 }
 
-impl From<i32> for EffectAmount {
-    fn from(value: i32) -> Self {
+impl From<u8> for EffectAmount {
+    fn from(value: u8) -> Self {
         Self::Static(value)
     }
 }

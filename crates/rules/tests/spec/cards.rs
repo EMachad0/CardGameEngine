@@ -3,9 +3,10 @@
 use std::collections::BTreeSet;
 
 use rules::static_card_definition::{
-    BARRACKS, BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK, SQUIRE, WILD_BOLT,
+    BARRACKS, BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK, SQUIRE, STRAY_SHOT, WILD_BOLT,
+    ZAP,
 };
-use rules::{Action, Game, ObjectId};
+use rules::{Action, Event, Game, ObjectId};
 
 use crate::support::*;
 
@@ -22,7 +23,7 @@ fn playing_a_card_keeps_the_rest_of_the_hand_in_order() {
 
 #[test]
 fn damage_spells_hit_the_casters_enemy() {
-    for (spell, damage) in [(SPARK, 1), (BOLT, 2)] {
+    for (spell, damage) in [(SPARK, 1), (BOLT, 2), (ZAP, 1)] {
         for (caster, enemy) in [(0, 1), (1, 0)] {
             let deck = deck_with_top(&[spell]);
             let mut game = Game::with_deck_order(0, [deck.clone(), deck]);
@@ -43,6 +44,26 @@ fn damage_spells_hit_the_casters_enemy() {
 }
 
 #[test]
+fn zap_draws_the_top_card_of_its_casters_deck() {
+    let mut game = Game::with_deck_order(0, [deck_with_top(&[ZAP]), deck_with_top(&[])]);
+    let [p0, _] = players(&game);
+    turn_with_mana(&mut game, p0, 2);
+    let zap = in_hand(&game, p0, ZAP);
+    let top = game.deck(p0)[0];
+    let mut expected: Vec<ObjectId> = game
+        .hand(p0)
+        .iter()
+        .copied()
+        .filter(|&id| id != zap)
+        .collect();
+    expected.push(top);
+
+    game.apply(p0, play(zap), &mut ()).unwrap();
+
+    assert_eq!(game.hand(p0), expected);
+}
+
+#[test]
 fn every_card_pays_its_printed_cost() {
     // Written out by hand, so a wrong cost in the core can't check itself.
     let cases = [
@@ -56,6 +77,8 @@ fn every_card_pays_its_printed_cost() {
         (GIANT, 8),
         (BARRACKS, 2),
         (SQUIRE, 1),
+        (ZAP, 2),
+        (STRAY_SHOT, 1),
     ];
     for (def, cost) in cases {
         let mut game = Game::with_deck_order(0, [deck_with_top(&[def]), deck_with_top(&[])]);
@@ -282,5 +305,100 @@ fn wild_bolt_can_hit_either_hero() {
     assert!(
         outcomes.contains(&(0, 3)),
         "never hit the enemy in 100 seeds"
+    );
+}
+
+/// Player 0 has one Recruit on the board and player 1 has two, and player 0 can cast the Stray
+/// Shot in hand. Returns the game and player 1's Recruits, left to right.
+fn stray_shot_facing_two_recruits(seed: u64) -> (Game, [ObjectId; 2]) {
+    let deck0 = deck_with_top(&[RECRUIT, STRAY_SHOT]);
+    let deck1 = deck_with_top(&[RECRUIT, RECRUIT]);
+    let mut game = Game::with_deck_order(seed, [deck0, deck1]);
+    let [p0, p1] = players(&game);
+    turn_with_mana(&mut game, p0, 2);
+    summon(&mut game, p0, RECRUIT);
+    turn_with_mana(&mut game, p1, 2);
+    let first = summon(&mut game, p1, RECRUIT);
+    turn_with_mana(&mut game, p1, 2);
+    let second = summon(&mut game, p1, RECRUIT);
+    turn_with_mana(&mut game, p0, 1);
+    (game, [first, second])
+}
+
+/// Which of player 1's two Recruits Stray Shot killed, in a game seeded with `seed`.
+fn cast_stray_shot(seed: u64) -> ObjectId {
+    let (mut game, enemy_recruits) = stray_shot_facing_two_recruits(seed);
+    let [p0, p1] = players(&game);
+    let mine = game.board(p0)[0];
+
+    play_def(&mut game, p0, STRAY_SHOT);
+
+    let &[survivor] = game.board(p1) else {
+        panic!(
+            "seed {seed}: player 1's board after Stray Shot: {:?}",
+            board_defs(&game, p1)
+        );
+    };
+    assert_eq!(game.health(mine), Some(2), "seed {seed}: friendly Recruit");
+    assert_eq!(game.hero_health(p0), 10, "seed {seed}: caster's hero");
+    assert_eq!(game.hero_health(p1), 10, "seed {seed}: enemy hero");
+    let [first, second] = enemy_recruits;
+    if survivor == first { second } else { first }
+}
+
+#[test]
+fn stray_shot_hits_one_enemy_minion_only() {
+    for seed in 0..50 {
+        cast_stray_shot(seed);
+    }
+}
+
+#[test]
+fn stray_shot_can_hit_either_enemy_minion() {
+    let killed: BTreeSet<ObjectId> = (0..50).map(cast_stray_shot).collect();
+    assert_eq!(
+        killed.len(),
+        2,
+        "the same Recruit died in all 50 seeds: {killed:?}"
+    );
+}
+
+/// Player 0 has a Recruit on the board, player 1 has none, and player 0 can cast the Stray Shot
+/// in hand.
+fn stray_shot_facing_an_empty_board() -> Game {
+    let deck0 = deck_with_top(&[RECRUIT, STRAY_SHOT]);
+    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
+    let [p0, _] = players(&game);
+    turn_with_mana(&mut game, p0, 2);
+    summon(&mut game, p0, RECRUIT);
+    turn_with_mana(&mut game, p0, 1);
+    game
+}
+
+#[test]
+fn stray_shot_is_playable_with_no_enemy_minion() {
+    let game = stray_shot_facing_an_empty_board();
+    let [p0, _] = players(&game);
+
+    let stray_shot = in_hand(&game, p0, STRAY_SHOT);
+
+    assert!(game.legal_actions(p0).contains(&play(stray_shot)));
+}
+
+#[test]
+fn stray_shot_with_no_enemy_minion_does_nothing() {
+    let mut game = stray_shot_facing_an_empty_board();
+    let [p0, _] = players(&game);
+    let stray_shot = in_hand(&game, p0, STRAY_SHOT);
+
+    let events = observe(&mut game, p0, play(stray_shot)).events();
+
+    assert_eq!(
+        events,
+        [Event::Played {
+            player_id: p0,
+            object_id: stray_shot
+        }],
+        "the friendly Recruit and both heroes are not candidates"
     );
 }

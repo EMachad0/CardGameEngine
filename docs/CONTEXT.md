@@ -9,7 +9,7 @@ events it reports.
 
 **Player**:
 Someone taking part in a game, with an identity that stays the same all game.
-_Avoid_: controller, side
+_Avoid_: controller
 
 **Seat**:
 A place in the turn order.
@@ -25,6 +25,18 @@ _Avoid_: other player
 
 **Caster**:
 The player who played the card being resolved.
+
+**Owner**:
+The player an object belongs to.
+
+**Side**:
+Whether a player or object is friendly or enemy, from one player's point of view.
+
+**Friendly**:
+The player whose point of view is taken, or an object that player owns.
+
+**Enemy**:
+An opponent, or an object an opponent owns.
 
 **Hero**:
 The piece that represents a player in the game.
@@ -171,6 +183,8 @@ The part of a card that can be hidden from a player: its definition and cost.
 
 - **Player** and **Seat**: a player is who plays, a seat is a place in the turn order. A player's
   identity doesn't change with their seat.
+- **Player** and **Side**: a side is friendly or enemy, from one player's point of view. It is
+  never another word for a player.
 - **Player** and **Hero**: a player makes decisions, a hero is the piece that represents them and
   takes damage.
 - **Card definition** and **Object**: the definition is the printed card, shared by every copy. An

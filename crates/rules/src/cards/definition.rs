@@ -1,4 +1,9 @@
-use crate::cards::{loader::PLACEHOLDER, modifier::ModifierEffect};
+use enumset::EnumSet;
+
+use crate::cards::{
+    loader::PLACEHOLDER,
+    modifier::{EffectAmount, ModifierEffect},
+};
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct DefId(&'static str);
@@ -72,6 +77,30 @@ pub struct HeroCardDef {
     pub health: i32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Effect {
+    Draw {
+        selector: PlayerSelector,
+        amount: EffectAmount,
+    },
+    Reveal {
+        selector: PlayerSelector,
+        amount: EffectAmount,
+    },
+    Damage {
+        selector: CharacterSelector,
+        amount: EffectAmount,
+    },
+    AddFriendlyAura {
+        selector: CharacterSelector,
+        effect: ModifierEffect,
+    },
+    Summon {
+        selector: PlayerSelector,
+        def_id: DefId,
+    },
+}
+
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct EffectSequence(pub Vec<Effect>);
 
@@ -82,43 +111,56 @@ impl EffectSequence {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Effect {
-    DamagePlayer {
-        selector: PlayerSelector,
-        damage: u8,
-    },
-    DamageMinion {
-        selector: MinionSelector,
-        damage: u8,
-    },
-    Draw {
-        selector: PlayerSelector,
-        count: usize,
-    },
-    Reveal {
-        selector: PlayerSelector,
-        count: usize,
-    },
-    AddFriendlyAura {
-        selector: MinionSelector,
-        effect: ModifierEffect,
-    },
-    Summon {
-        selector: PlayerSelector,
-        def_id: DefId,
-    },
+pub struct PlayerSelectorFilter {
+    pub side: EnumSet<CharacterSideFilter>,
+}
+
+impl PlayerSelectorFilter {
+    pub fn all() -> Self {
+        Self {
+            side: EnumSet::all(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlayerSelector {
-    All,
-    Caster,
-    RandomPlayer,
-    NextPlayer,
+    All(PlayerSelectorFilter),
+    Owner,
+    Random(PlayerSelectorFilter),
+}
+
+#[derive(Debug, enumset::EnumSetType)]
+pub enum CharacterKindFilter {
+    Heroes,
+    Minions,
+}
+
+#[derive(Debug, enumset::EnumSetType)]
+pub enum CharacterSideFilter {
+    Friendly,
+    Enemy,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MinionSelector {
-    All,
+pub struct CharacterSelectorFilter {
+    pub kind: EnumSet<CharacterKindFilter>,
+    pub side: EnumSet<CharacterSideFilter>,
+}
+
+impl CharacterSelectorFilter {
+    pub fn all() -> Self {
+        Self {
+            kind: EnumSet::all(),
+            side: EnumSet::all(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CharacterSelector {
+    All(CharacterSelectorFilter),
     Itself,
+    OwnerHero,
+    Random(CharacterSelectorFilter),
 }

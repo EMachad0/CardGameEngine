@@ -1,7 +1,7 @@
 //! What `apply` reports to its observer.
 
 use rules::static_card_definition::{
-    BARRACKS, BLAST, BOLT, CAPTAIN, FORAGE, RECRUIT, SPARK, WILD_BOLT,
+    BARRACKS, BLAST, BOLT, CAPTAIN, FORAGE, RECRUIT, SPARK, WILD_BOLT, ZAP,
 };
 use rules::{Action, Event, Game, ObjectId, Outcome, PlayerId, View};
 
@@ -107,6 +107,67 @@ fn spark_reports_its_play_then_its_hit_on_the_enemy_hero_id() {
                 source: spark
             },
         ]
+    );
+}
+
+#[test]
+fn zap_reports_its_hit_on_the_enemy_hero_then_its_draw() {
+    let mut game = Game::with_deck_order(0, [deck_with_top(&[ZAP]), deck_with_top(&[])]);
+    let [p0, p1] = players(&game);
+    turn_with_mana(&mut game, p0, 2);
+    let zap = in_hand(&game, p0, ZAP);
+    let top = game.deck(p0)[0];
+
+    let events = observe(&mut game, p0, play(zap)).events();
+
+    assert_eq!(
+        events,
+        [
+            Event::Played {
+                player_id: p0,
+                object_id: zap
+            },
+            Event::Damaged {
+                target: game.hero_id(p1),
+                amount: 1,
+                source: zap
+            },
+            Event::Drew {
+                player_id: p0,
+                object_id: top
+            },
+        ]
+    );
+}
+
+#[test]
+fn zaps_hit_and_draw_are_separate_steps() {
+    let mut game = Game::with_deck_order(0, [deck_with_top(&[ZAP]), deck_with_top(&[])]);
+    let [p0, p1] = players(&game);
+    turn_with_mana(&mut game, p0, 2);
+    let zap = in_hand(&game, p0, ZAP);
+    let top = game.deck(p0)[0];
+
+    let recorder = observe(&mut game, p0, play(zap));
+
+    assert_eq!(
+        event_steps(&recorder),
+        [
+            vec![Event::Played {
+                player_id: p0,
+                object_id: zap
+            }],
+            vec![Event::Damaged {
+                target: game.hero_id(p1),
+                amount: 1,
+                source: zap
+            }],
+            vec![Event::Drew {
+                player_id: p0,
+                object_id: top
+            }],
+        ],
+        "two sentences of card text, so a checkpoint between them"
     );
 }
 
@@ -233,6 +294,29 @@ fn blast_reports_its_play_then_a_hit_on_every_character() {
         };
         assert!(hits.contains(&&hit), "missing {hit:?} in {events:?}");
     }
+}
+
+#[test]
+fn blast_hits_the_heroes_before_any_minion() {
+    let (mut game, _, _) = recruit_and_captain_facing_blast();
+    let [p0, p1] = players(&game);
+    let blast = in_hand(&game, p0, BLAST);
+
+    let events = observe(&mut game, p0, play(blast)).events();
+
+    let targets: Vec<ObjectId> = events
+        .iter()
+        .filter_map(|e| match e {
+            Event::Damaged { target, .. } => Some(*target),
+            _ => None,
+        })
+        .collect();
+    let heroes = [game.hero_id(p0), game.hero_id(p1)];
+    assert_eq!(targets.len(), 4, "{events:?}");
+    assert!(
+        targets[..2].iter().all(|t| heroes.contains(t)),
+        "heroes come first: {targets:?}"
+    );
 }
 
 #[test]

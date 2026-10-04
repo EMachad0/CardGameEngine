@@ -27,15 +27,6 @@ impl TurnOrder {
         self.turn_count += 1;
     }
 
-    pub(crate) fn get_player_after(&self, player_id: PlayerId) -> PlayerId {
-        let idx = self
-            .players
-            .iter()
-            .position(|id| *id == player_id)
-            .expect("invalid player id");
-        self.players[(idx + 1) % self.players.len()]
-    }
-
     pub(crate) fn turn_count(&self) -> u32 {
         self.turn_count
     }
@@ -71,12 +62,5 @@ mod tests {
             order.end_turn();
         }
         assert_eq!(seen, [P0, P1, P2, P0]);
-    }
-
-    #[test]
-    fn the_player_after_the_last_seat_is_the_first() {
-        let order = TurnOrder::new(vec![P1, P0]);
-        assert_eq!(order.get_player_after(P1), P0);
-        assert_eq!(order.get_player_after(P0), P1);
     }
 }

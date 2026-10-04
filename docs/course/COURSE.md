@@ -12,7 +12,7 @@ Understand card game systems well enough to design MTG, Hearthstone, or Yu-Gi-Oh
 - Roles in exercises. First we agree on the design in discussion. The learner writes the design-bearing code (types, traits, key function signatures and bodies). The agent writes scaffolding and tests against that API, then reviews. Tests come before the implementation. He sees little learning value in typing out plain data types, so the agent drafts those, such as `Event` and `View`, for him to edit. Design choices and bodies stay his.
 - End at a node boundary, not mid-node. Commit once per node.
 
-## Knowledge map (from the 2026-09-28 probe, updated through session 04c)
+## Knowledge map (from the 2026-09-28 probe, updated through session 04a)
 
 Session 01 (R1, S, L, P, G all landed on the first node check):
 - Determinism: a seeded RNG in the state, the clock in the shell (timer becomes an `EndTurn` input). Knows `HashMap`, `thread_rng` and `Instant::now` break replay.
@@ -113,6 +113,19 @@ Session 04c exercise (his design, ADR 0008; green: 18 unit + 106 spec):
 - Kept by choice: `Player.playing`, a committed elimination with a re-check after a hero's death effect. No test can reach it while `Game::new` takes two decks.
 - He made eight interface calls quickly and well, and the mirror habit didn't show (he rejected the back-pointer). What showed instead is structure for cases no test reaches: `playing`, hero replacement on play, the minion query's new filters.
 
+Session 04a probe (no retrieval quiz, at his request):
+- Frame for friendly and enemy: right. The Squire's deathrattle measures "enemy" from its owner. My question mixed "what the rules say" with "what the code does". He answered the code reading and noted "bug", so I regraded it right. He had already renamed `caster` to `owner` in a commit.
+- Rust miss: thought `-2i32 as u8` panics in a debug build. Taught: an integer `as` keeps the low bits (254), and the overflow checks sit on arithmetic, never on casts. The follow-up (10 + 254 panics on the `+=`) was right. He then applied it unprompted: `EffectAmount::Static(u8)`, so a negative damage can't be written, `u8::try_from(count).unwrap_or(u8::MAX)` in `history_query`, and `saturating_sub` for the mana cost.
+- Checkpoints: traced the duplicate trailing step that per-effect checkpoints add to Barracks. Right.
+
+Session 04a exercise (green: 17 unit + 114 spec; his commits `1614884`, `9dd3360`, then `c4aef7c`):
+- Asked to sketch the shape, he wrote it in code, and it held. The filter is independent axes, with an `EnumSet` per axis (`kind`: heroes, minions; `side`: friendly, enemy). Selectors are `All(filter)`, `Random(filter)` and references. One `Damage` over characters, and one amount type for every verb. Random over an empty set draws no number and does nothing, which matches Hearthstone, Metastone and SabberStone, unprompted. Spark, Bolt and Zap hit every enemy hero, so nothing assumes a seat.
+- The one gap was applying the split to one side only. `PlayerSelector { All, Owner, Random, Enemy }` mixed who picks with side, so "a random opponent" had no variant. Shown that case, he mirrored the character shape (`All(sides)`, `Owner`, `Random(sides)`). This was the `DamagePlayer`/`DamageMinion` multiplication one level down.
+- Wrote a generic `select_random<T: Clone>` shared by both selectors, unprompted. `apply_effects` now reads the owner from the source, so no caller can pass the wrong frame.
+- He wrote the bodies before the tests. The existing 106 tests pinned the refactor, and the new behaviors got tests afterwards.
+- His calls: keep the untested branches (`CharacterSelector::Itself`, `OwnerHero`, `AddFriendlyAura`, player `All` and `Random`); allow an empty filter (no load check); Stray Shot stays playable into an empty board and does nothing (may change in 04b); a checkpoint after each effect and after the card's own board entry, none trailing after `Play`, and empty steps from effects that do nothing are accepted until a UI cares; `side` stays the term (glossary: Owner, Side, Friendly, Enemy); `history_query` back to `pub(crate)`.
+- `9dd3360` doesn't build alone: the member `Cargo.toml` uses `enumset` before the workspace entry, which landed in `c4aef7c`.
+
 Solid:
 - Card definition (never changes) vs object with its own ID and modifiers.
 - Non-commuting modifiers ("set to 1" vs "+2") need an ordering rule. Noted himself that 1 vs 3 is a design choice.
@@ -121,7 +134,7 @@ Solid:
 - Stable card ID vs object ID that changes on zone change (MTG 400.7).
 - Expression problem: enum makes new operations cheap, new variants touch every `match`. Knows `_` arms hide the checklist.
 - Core returns a pending choice instead of blocking.
-- Effects as data (session 04): inspectability, interpreters as the readers of one source, verb + selector + amount, simultaneity in the target set. The open edge is designing the shape without prompting.
+- Effects as data (session 04): inspectability, interpreters as the readers of one source, verb + selector + amount, simultaneity in the target set. Session 04a: he designed the shape without prompting (independent axes, a set per axis). The slip was applying the split to one side only (players), and one forcing case fixed it.
 - Player vs piece (session 04c): the player decides, the hero is an object in a zone of one, hero is a kind while P's hero is a zone fact, unify where the rules unify, summon is not play. Token meanings (Hearthstone uncollectible on the definition, MTG created on the object) landed after an "I don't know".
 
 Partial:
@@ -133,7 +146,7 @@ Gaps (teach into these):
 - ~~Determinism sources.~~ Closed in session 01 (`HashMap`, `thread_rng`, `Instant::now`, and seeds as streams).
 - Property-based testing. Sees crashes and rejected legal moves as fuzz findings. Missed invariants you assert yourself (card in two zones, replay divergence).
 
-Rust: knows traits, generics, lifetimes, but they don't come naturally when designing. Explain *why* each trait, generic, or ownership choice is the one to make. Session 04: thought fn pointers aren't `Clone` (they're `Copy`).
+Rust: knows traits, generics, lifetimes, but they don't come naturally when designing. Explain *why* each trait, generic, or ownership choice is the one to make. Session 04: thought fn pointers aren't `Clone` (they're `Copy`). Session 04a: thought an integer `as` narrowing panics in debug (it keeps the low bits, and the overflow checks are on arithmetic). He then wrote a generic helper (`select_random<T>`) unprompted.
 
 ## Course plan
 
@@ -141,18 +154,23 @@ Rust: knows traits, generics, lifetimes, but they don't come naturally when desi
 - Core track (A to G, T, K) is concept-first with one small exercise per session. Application track (H, I, J) gets one design session each. Implementation there is optional.
 - Final exam (K): add a Yu-Gi-Oh style chain without rewriting the core. He knows YGO best.
 - The tooling the course works toward: card data files with validation, generated rules text, test tooling (scenario DSL, replays, fuzzer), a headless CLI with a machine-readable protocol so bots and LLM agents can playtest, a visual editor, and hot reload.
-- Session 04's exercise is three sessions, his split: 04a effect reshape, 04b targeting draft, 04c heroes, players and tokens as objects, all before 05. He moved 04c first, and it is done. Blast's "every character" selects heroes and minions, so with heroes as objects 04a's selectors resolve to `ObjectId`s only.
+- Session 04's exercise is three sessions, his split: 04a effect reshape, 04b targeting draft, 04c heroes, players and tokens as objects, all before 05. He moved 04c first. 04c and 04a are done, and 04b is next.
 
 ## Open threads
 
 - Where does a half-finished effect live between `apply` calls? (node 06-G)
 - Outside a pending pick, only the active player has legal actions, so an opponent's response is never offered. Sessions 06 and 08.
-- 04a open decisions: Bolt's and Spark's selector (today `NextPlayer`, the next seat, which the text doesn't say; with heroes as objects, "each enemy hero" is a filter over hero objects, or a reference that assumes two players), merging `DamagePlayer` (which now marks the selected players' heroes) and `DamageMinion` into one `Damage` over characters, damage amount as `u8` or `EffectAmount`, Zap's name and cost, and the unused branches (`Effect::AddFriendlyAura`, `MinionSelector::Itself`, `PlayerSelector::All`). Zap gives `Effect::Draw` its first test card. `Summon` takes a `PlayerSelector` and only `Caster` is tested.
-- 04b opener: "What happens when an already targeted minion is clicked again?" Then decide "two different minions" vs "a minion. Then a minion." (a distinctness rule in the data, and the can-finish check needs two minions), a new pick action vs reusing `Pick { object_id }` (every target is an `ObjectId` by 04b, heroes included), and whether `Play` keeps its name now that it only opens a cast.
+- Signed modifiers: `ModifierEffect` amounts are `u8` since 04a, so "-2 Attack" or "costs (1) more" needs its own verb (the sign in the verb, like restore). He didn't say whether that's intended. Settle it with the first debuff or cost-increase card.
+- Random with no candidates: Stray Shot is playable into an empty board and does nothing (Bomb Lobber). The alternative is Deadly Shot's `REQ_MINIMUM_ENEMY_MINIONS`. Decide in 04b, once `legal_actions` reads effects for the draft.
+- Hearthstone's random damage skips minions already at 0 health (the Advanced rulebook's "mortally wounded"). Our filters read the board, so a random pick after an earlier hit in the same card can land on a minion at 0. No card does that yet. Session 05 or 06.
+- An empty filter (`EnumSet::empty()`) matches nothing, and he chose no load check. Revisit with session H's validation.
+- A minion with an enter effect would get `BoardEntered` and its first enter effect in one step, and `play`'s checkpoint after the summon would add an empty step. Accepted under his empty-step rule. No card has an enter effect.
+- `CharacterSideFilter` is also the side type of `PlayerSelectorFilter`, so the name says less than it covers. `mana_cost` sums discounts with `.sum::<u8>()`, which panics in debug past 255 (unreachable).
+- 04b: `Chosen(filter)` takes the same `CharacterSelectorFilter` as `All` and `Random`. Opener: "What happens when an already targeted minion is clicked again?" Then decide "two different minions" vs "a minion. Then a minion." (a distinctness rule in the data, and the can-finish check needs two minions), a new pick action vs reusing `Pick { object_id }` (every target is an `ObjectId` by 04b, heroes included), and whether `Play` keeps its name now that it only opens a cast.
 - The "Deal 1 damage to a minion. Then deal 1 damage to a hero." card needs the targeting draft, so it belongs to 04b.
 - Hero replacement (concept in 04c, not built): a new object, with the card's data saying whether damage carries over (Hearthstone hero cards keep it, Jaraxxus sets 15). Queries about "your hero" key by `PlayerId`. No event reports a swap yet.
 - N-player elimination: `Player.playing` is his committed record, kept by choice. Test it when setup takes more than two decks.
-- Glossary terms he deferred until used more: token (Hearthstone's uncollectible vs MTG's created by an effect, a flagged pair when it lands), summon (the code now says `summon`), graveyard (and the `emtomb` spelling). Character was added in 04c.
+- Glossary terms he deferred until used more (Owner, Side, Friendly and Enemy went in during 04a): token (Hearthstone's uncollectible vs MTG's created by an effect, a flagged pair when it lands), summon (the code now says `summon`), graveyard (and the `emtomb` spelling). Character was added in 04c.
 - `lib.rs`'s docstring still lists `cards` among the public data types, but the module is private now.
 - Dependent sequencing (sessions 06 and 08): "if A succeeded, B" is a second axis beside together/then. Each verb reports what it did, a later effect's condition reads the report, and the report lives only while the card resolves (06's half-finished effect). Open 08 with the YGO conjunction table. What "succeeded" means differs per game, as MTG 118.12 in the verified facts shows, so it belongs in the data.
 - Restore as its own verb (E2) has no card yet. Build it with the first card that restores.
@@ -166,7 +184,7 @@ Rust: knows traits, generics, lifetimes, but they don't come naturally when desi
 - If History queries get expensive, cache a query result rebuilt at a checkpoint (an XMage watcher is a patched cache of one query). Measure first.
 - Session H: versioned definitions in one append-only table (his design, ADR 0003) vs a per-game snapshot of one data release with unversioned codes. Test cases from session 03: (1) a card that names another card ("Barracks: summon a Recruit") must be re-versioned whenever the named card is patched; (2) one game can mix v0 and v1 Bolts unless a "current only" rule exists; (3) random pools must exclude old versions; (4) his design needs no release number in a replay and allows deliberate version mixing. I lean per-game release, because of (1). He wasn't sure his approach was right. Hot reload as a recorded input. Load-time validation of card codes referenced in data: today `def_ids!` constants plus `validate_not_found` guarantee it, and it needs its own pass once codes come from files. Stable codes in files vs runtime index. Barracks v0 naming `base.squire.v0` is the first real instance of case (1).
 - Session 05 opener: collect-then-commit in his `remove_dead` (kills one at a time, `on_death` inside the loop). Since session 03, `kill` reports `Died` and removes the minion before its deathrattle runs, but still one minion per pass. Use the Medic card ("Deathrattle: give your other minions +2 health") as the red test. Also decide the order of simultaneous deathrattles. Since 04c, dead heroes are checked once after the minion loop and before the outcome; the order between two heroes dying together isn't pinned. A "whenever your hero takes damage" trigger must read `FatigueDamaged` as well as `Damaged`.
-- Untested speculative branches in `rules` (`HistoryQueryKind::MinionDied`, whose scope and turn filters no card reads, `PlayerFilter::Active`, `TurnFilter::Current`, `Effect::Draw`, `on_board_leave`, hostile auras, `has_deck_presence`, `Player.playing`, `Summon` selectors other than `Caster`). Cut them or give each a test card when its session comes.
+- Untested speculative branches in `rules` (`HistoryQueryKind::MinionDied`, whose scope and turn filters no card reads, `PlayerFilter::Active`, `TurnFilter::Current`, `on_board_leave`, hostile auras, `has_deck_presence`, `Player.playing`, `PlayerSelector::All` and `Random`, `CharacterSelector::Itself` and `OwnerHero`, `Effect::AddFriendlyAura`). The 04a ones are kept by his choice. Cut them or give each a test card when its session comes.
 - Hand to board keeps the `ObjectId` and the bag keeps objects forever, so a "+500 until end of turn" in `obj.modifiers` would survive a bounce. Raise this when bounce arrives (the zone-reset table).
 
 ## Dependency map
@@ -232,8 +250,8 @@ graph TD
 | 03 | D | Events out; return vs push | done (green: 19 unit + 84 spec; observer, views per viewer, six-engine comparison) |
 | 04 | R3, E | Effects as data | done (concept only: E1 to E5; targeting draft designed) |
 | 04c | B | Heroes, players and tokens as objects | done (green: 18 unit + 106 spec; ADR 0008; Barracks summons a Squire; PR #4) |
-| 04a | E | Exercise: effect reshape | next. Opens with the retrieval quiz on 04c (tokens first). Verb + selector + amount (reference, all, random; no chosen yet; all and random share one filter, kind, and friendly or enemy relative to the caster), Blast as one `Damage` over every character, Zap ("Deal 1 damage to the enemy hero. Then draw a card.") in two steps, a checkpoint after each effect. Settle the 04a open decisions first. I draft the types for him to edit, tests first, he writes the bodies. |
-| 04b | E, G | Exercise: targeting draft | `Chosen(filter)`, `Play` opens a cast, a pick per decision, `Commit`, `Cancel`. Ping, a two-minion card, and the minion-and-hero card. Opener: re-clicking a targeted minion. |
+| 04a | E | Exercise: effect reshape | done (green: 17 unit + 114 spec; kind and side filters as sets, one `Damage`, Zap and Stray Shot, a checkpoint per effect; `c4aef7c`) |
+| 04b | E, G | Exercise: targeting draft | next. Opens with the retrieval quiz on 04a (the `as` cast, the player-side axis split). `Chosen(filter)`, `Play` opens a cast, a pick per decision, `Commit`, `Cancel`. Ping, a two-minion card, and the minion-and-hero card. Opener: re-clicking a targeted minion. |
 | 05 | F | Triggers, replacements, statics | |
 | 06 | R4, G | Resolution loop, pending choices, stored half-finished effects | |
 | 07 | R5, T | Scenario DSL, replays, determinism trap, invariant fuzzing | |
