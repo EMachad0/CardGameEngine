@@ -1,7 +1,9 @@
 //! What `apply` reports to its observer.
 
-use rules::cards::{BLAST, BOLT, CAPTAIN, FORAGE, RECRUIT, SPARK, WILD_BOLT};
-use rules::{Action, Event, Game, ObjectId, PlayerId, Target, View};
+use rules::static_card_definition::{
+    BARRACKS, BLAST, BOLT, CAPTAIN, FORAGE, RECRUIT, SPARK, WILD_BOLT,
+};
+use rules::{Action, Event, Game, ObjectId, Outcome, PlayerId, View};
 
 use crate::support::*;
 
@@ -77,14 +79,15 @@ fn a_draw_from_an_empty_deck_reports_fatigue_damage_instead() {
             Event::TurnStarted { player_id: p1 },
             Event::FatigueDamaged {
                 amount: 1,
-                player_id: p1
+                player_id: p1,
+                object_id: game.hero_id(p1),
             },
         ]
     );
 }
 
 #[test]
-fn spark_reports_its_play_then_its_hit_on_the_enemy_hero() {
+fn spark_reports_its_play_then_its_hit_on_the_enemy_hero_id() {
     let mut game = Game::with_deck_order(0, [vec![SPARK; 6], vec![SPARK; 6]]);
     let [p0, p1] = players(&game);
     let spark = in_hand(&game, p0, SPARK);
@@ -99,7 +102,7 @@ fn spark_reports_its_play_then_its_hit_on_the_enemy_hero() {
                 object_id: spark
             },
             Event::Damaged {
-                target: Target::Hero(p1),
+                target: game.hero_id(p1),
                 amount: 1,
                 source: spark
             },
@@ -128,7 +131,7 @@ fn wild_bolt_reports_its_hit_on_the_hero_that_lost_health() {
                     object_id: wild_bolt
                 },
                 Event::Damaged {
-                    target: Target::Hero(hit),
+                    target: game.hero_id(hit),
                     amount: 3,
                     source: wild_bolt
                 },
@@ -216,12 +219,7 @@ fn blast_reports_its_play_then_a_hit_on_every_character() {
         .iter()
         .filter(|e| matches!(e, Event::Damaged { .. }))
         .collect();
-    let targets = [
-        Target::Minion(recruit),
-        Target::Minion(captain),
-        Target::Hero(p0),
-        Target::Hero(p1),
-    ];
+    let targets = [recruit, captain, game.hero_id(p0), game.hero_id(p1)];
     assert_eq!(
         hits.len(),
         targets.len(),
@@ -305,6 +303,123 @@ fn the_captain_is_reported_dead_before_the_recruit_it_held_up() {
         ],
         "the Recruit survives the first pass and dies in the second, once the buff is gone"
     );
+}
+
+#[test]
+fn barracks_reports_its_play_then_the_squire_entering_the_board() {
+    let mut game = Game::with_deck_order(0, [deck_with_top(&[BARRACKS]), deck_with_top(&[])]);
+    let [p0, _] = players(&game);
+    turn_with_mana(&mut game, p0, 2);
+    let barracks = in_hand(&game, p0, BARRACKS);
+
+    let events = observe(&mut game, p0, play(barracks)).events();
+
+    let &[squire] = game.board(p0) else {
+        panic!("Barracks left {:?}", board_defs(&game, p0));
+    };
+    assert_eq!(
+        events,
+        [
+            Event::Played {
+                player_id: p0,
+                object_id: barracks
+            },
+            Event::BoardEntered {
+                player_id: p0,
+                object_id: squire
+            },
+        ],
+        "a summoned Squire enters the board without being played"
+    );
+}
+
+/// Player 0's deck runs out at its first draw, so each later turn start costs its hero 1.
+/// Player 0 summons a Recruit on its second turn and waits until its ninth, when its hero is
+/// at 2 and it can cast the Blast in hand. Returns the game and the Recruit.
+fn recruit_and_low_hero_facing_blast() -> (Game, ObjectId) {
+    let deck0 = vec![RECRUIT, BLAST, BLAST, BLAST];
+    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
+    let [p0, _] = players(&game);
+    turn_with_mana(&mut game, p0, 2);
+    let recruit = summon(&mut game, p0, RECRUIT);
+    turn_with_mana(&mut game, p0, 9);
+    assert_eq!(game.hero_health(p0), 2, "fatigue left player 0 at 2");
+    (game, recruit)
+}
+
+#[test]
+fn a_hero_brought_to_zero_is_reported_dead_once_before_the_game_ends() {
+    let (mut game, _) = recruit_and_low_hero_facing_blast();
+    let [p0, p1] = players(&game);
+    let hero = game.hero_id(p0);
+    let blast = in_hand(&game, p0, BLAST);
+
+    let events = observe(&mut game, p0, play(blast)).events();
+
+    let hero_deaths: Vec<usize> = events
+        .iter()
+        .enumerate()
+        .filter(|(_, e)| **e == Event::Died { object_id: hero })
+        .map(|(i, _)| i)
+        .collect();
+    assert_eq!(hero_deaths.len(), 1, "one Died for the hero: {events:?}");
+    assert_eq!(
+        &events[hero_deaths[0] + 1..],
+        [Event::GameEnded {
+            outcome: Outcome::Won(p1)
+        }],
+        "the game ends right after the hero's death"
+    );
+}
+
+#[test]
+fn a_minion_dying_with_a_hero_is_reported_dead_first() {
+    let (mut game, recruit) = recruit_and_low_hero_facing_blast();
+    let [p0, _] = players(&game);
+    let hero = game.hero_id(p0);
+    let blast = in_hand(&game, p0, BLAST);
+
+    let events = observe(&mut game, p0, play(blast)).events();
+
+    let deaths: Vec<Event> = events
+        .into_iter()
+        .filter(|e| matches!(e, Event::Died { .. }))
+        .collect();
+    assert_eq!(
+        deaths,
+        [
+            Event::Died { object_id: recruit },
+            Event::Died { object_id: hero },
+        ],
+        "dead minions leave the board before the outcome is decided"
+    );
+}
+
+#[test]
+fn heroes_brought_to_zero_together_are_each_reported_dead_before_the_draw() {
+    let mut game = Game::with_deck_order(0, [vec![BLAST; 4], vec![BLAST; 3]]);
+    let [p0, p1] = players(&game);
+    turn_with_mana(&mut game, p0, 9);
+    let heroes = [game.hero_id(p0), game.hero_id(p1)];
+    let blast = in_hand(&game, p0, BLAST);
+
+    let events = observe(&mut game, p0, play(blast)).events();
+
+    let Some((Event::GameEnded { outcome }, before)) = events.split_last() else {
+        panic!("the last event is not GameEnded: {events:?}");
+    };
+    assert_eq!(*outcome, Outcome::Draw);
+    let deaths: Vec<&Event> = before
+        .iter()
+        .filter(|e| matches!(e, Event::Died { .. }))
+        .collect();
+    assert_eq!(deaths.len(), 2, "one Died per hero: {events:?}");
+    for object_id in heroes {
+        assert!(
+            deaths.contains(&&Event::Died { object_id }),
+            "no Died for {object_id:?}: {events:?}"
+        );
+    }
 }
 
 /// The health `view` shows for minion `id` on `p`'s board, or `None` if it isn't there.

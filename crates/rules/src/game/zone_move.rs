@@ -8,20 +8,25 @@ impl Game {
     /// Moves the top card to the end of the hand, `count` times.
     /// Each draw from an empty deck costs 1 health instead.
     pub(crate) fn draw(&mut self, player_id: PlayerId, count: usize, obs: &mut impl Observer) {
-        let player = self.get_player_mut(player_id);
         for _ in 0..count {
-            if let Some(object_id) = player.zones.deck.pop_front() {
+            let player = self.get_player_mut(player_id);
+            let card = player.zones.deck.pop_front();
+            if let Some(object_id) = card {
                 obs.event(&Event::Drew {
                     player_id,
                     object_id,
                 });
                 player.zones.hand.add(object_id);
             } else {
+                let hero_id = player.zones.hero;
+                let damage = 1;
                 obs.event(&Event::FatigueDamaged {
-                    amount: 1,
+                    amount: damage,
                     player_id,
+                    object_id: hero_id,
                 });
-                player.health -= 1;
+                let object = self.objects.get_mut(hero_id);
+                object.damage += damage;
             };
         }
     }
@@ -55,11 +60,11 @@ impl Game {
 
         let def_id = self.def_id(object_id);
         if self.binder.has_board_presence(def_id) {
-            self.spawn(player_id, object_id, obs);
+            self.summon(player_id, object_id, obs);
         }
     }
 
-    pub(crate) fn spawn(
+    pub(crate) fn summon(
         &mut self,
         player_id: PlayerId,
         object_id: ObjectId,
@@ -82,13 +87,15 @@ impl Game {
         let object = self.objects.get(object_id);
         self.history.entries.push(HistoryEntry::new(
             player_id,
-            HistoryKind::MinionDied {
+            HistoryKind::CharacterDied {
                 object: object.clone(),
             },
             self.turn_order.turn_count(),
         ));
         obs.event(&Event::Died { object_id });
-        self.destroy(player_id, object_id, obs);
+        if !self.binder.is_hero(object.def_id) {
+            self.destroy(player_id, object_id, obs);
+        }
         self.apply_effects(player_id, object_id, self.on_death(object_id), obs);
     }
 

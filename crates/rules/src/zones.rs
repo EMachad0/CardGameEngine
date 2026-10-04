@@ -104,19 +104,32 @@ impl Graveyard {
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Zones {
+    pub hero: ObjectId,
     pub hand: Hand,
     pub deck: Deck,
     pub board: Board,
     pub graveyard: Graveyard,
 }
 
+impl Zones {
+    pub(crate) fn new(hero: ObjectId) -> Self {
+        Self {
+            hero,
+            hand: Default::default(),
+            deck: Default::default(),
+            board: Default::default(),
+            graveyard: Default::default(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::cards::SPARK;
     use crate::cards::object::ObjectBag;
     use crate::ids::PlayerId;
+    use crate::static_card_definition::SPARK;
 
     use super::*;
 

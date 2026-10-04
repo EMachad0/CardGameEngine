@@ -21,20 +21,20 @@ pub(super) struct Player {
     pub(super) id: PlayerId,
     pub(super) mana: u8,
     pub(super) max_mana: u8,
-    pub(super) health: i32,
     pub(super) interaction_state: PlayerInteractionState,
     pub(super) zones: Zones,
+    pub(super) playing: bool,
 }
 
 impl Player {
-    pub(super) fn new(id: PlayerId) -> Self {
+    pub(super) fn new(id: PlayerId, hero: ObjectId) -> Self {
         Self {
             id,
             mana: 0,
             max_mana: 0,
-            health: 10,
             interaction_state: PlayerInteractionState::default(),
-            zones: Zones::default(),
+            zones: Zones::new(hero),
+            playing: true,
         }
     }
 }

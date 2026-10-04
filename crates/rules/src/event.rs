@@ -21,7 +21,7 @@ pub enum Event {
         object_id: ObjectId,
     },
     Damaged {
-        target: Target,
+        target: ObjectId,
         amount: u8,
         source: ObjectId,
     },
@@ -46,6 +46,7 @@ pub enum Event {
     FatigueDamaged {
         amount: u8,
         player_id: PlayerId,
+        object_id: ObjectId,
     },
     Died {
         object_id: ObjectId,
@@ -53,10 +54,4 @@ pub enum Event {
     GameEnded {
         outcome: Outcome,
     },
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Target {
-    Hero(PlayerId),
-    Minion(ObjectId),
 }

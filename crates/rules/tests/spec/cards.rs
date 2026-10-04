@@ -1,7 +1,11 @@
 //! Playing a card, and what each card does.
 
-use rules::cards::{BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK, WILD_BOLT};
-use rules::{Action, Game};
+use std::collections::BTreeSet;
+
+use rules::static_card_definition::{
+    BARRACKS, BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK, SQUIRE, WILD_BOLT,
+};
+use rules::{Action, Game, ObjectId};
 
 use crate::support::*;
 
@@ -50,6 +54,8 @@ fn every_card_pays_its_printed_cost() {
         (RECRUIT, 2),
         (CAPTAIN, 3),
         (GIANT, 8),
+        (BARRACKS, 2),
+        (SQUIRE, 1),
     ];
     for (def, cost) in cases {
         let mut game = Game::with_deck_order(0, [deck_with_top(&[def]), deck_with_top(&[])]);
@@ -100,6 +106,62 @@ fn blast_deals_two_damage_to_every_character() {
     assert_eq!(game.hero_health(p1), 8);
     assert_eq!(game.health(mine), Some(3));
     assert_eq!(game.health(theirs), Some(3));
+}
+
+#[test]
+fn barracks_summons_a_squire_at_the_right_end_of_its_casters_board() {
+    let deck0 = deck_with_top(&[RECRUIT, BARRACKS]);
+    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
+    let [p0, p1] = players(&game);
+    turn_with_mana(&mut game, p0, 2);
+    play_def(&mut game, p0, RECRUIT);
+    turn_with_mana(&mut game, p0, 2);
+
+    play_def(&mut game, p0, BARRACKS);
+
+    assert_eq!(board_defs(&game, p0), [RECRUIT, SQUIRE]);
+    assert!(
+        game.board(p1).is_empty(),
+        "the Squire enters its caster's board only"
+    );
+}
+
+#[test]
+fn a_summoned_squire_has_its_printed_stats() {
+    let mut game = Game::with_deck_order(0, [deck_with_top(&[BARRACKS]), deck_with_top(&[])]);
+    let [p0, _] = players(&game);
+    turn_with_mana(&mut game, p0, 2);
+
+    play_def(&mut game, p0, BARRACKS);
+
+    let squire = game.board(p0)[0];
+    assert_eq!(
+        (game.attack(squire), game.health(squire)),
+        (Some(1), Some(1))
+    );
+}
+
+#[test]
+fn each_barracks_summons_a_new_object() {
+    let deck0 = deck_with_top(&[BARRACKS, BARRACKS]);
+    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
+    let [p0, _] = players(&game);
+    turn_with_mana(&mut game, p0, 4);
+    let before: BTreeSet<ObjectId> = zone_ids(&game).into_iter().collect();
+
+    play_def(&mut game, p0, BARRACKS);
+    play_def(&mut game, p0, BARRACKS);
+
+    let &[first, second] = game.board(p0) else {
+        panic!("two Barracks left {:?}", board_defs(&game, p0));
+    };
+    assert_ne!(first, second);
+    for squire in [first, second] {
+        assert!(
+            !before.contains(&squire),
+            "{squire:?} was already in a zone before the summon"
+        );
+    }
 }
 
 /// Player 0 casts Forage with a Recruit and a Captain on top of the deck and a Bolt under them.

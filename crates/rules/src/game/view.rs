@@ -16,7 +16,7 @@ pub struct View {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlayerView {
     pub player_id: PlayerId,
-    pub hero_health: i32,
+    pub hero: HeroCard,
     pub mana: u8,
     pub max_mana: u8,
     /// Oldest first.
@@ -26,6 +26,13 @@ pub struct PlayerView {
     pub board: Vec<BoardCard>,
     /// A pending Forage's options, in reveal order. Empty if none is pending.
     pub revealed: Vec<RevealedCard>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HeroCard {
+    pub object_id: ObjectId,
+    pub def_id: DefId,
+    pub health: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -73,7 +80,7 @@ impl Game {
     fn player_view(&self, viewer: PlayerId, player: &Player) -> PlayerView {
         PlayerView {
             player_id: player.id,
-            hero_health: player.health,
+            hero: self.hero_card(viewer, player.id),
             mana: player.mana,
             max_mana: player.max_mana,
             hand: player
@@ -134,6 +141,15 @@ impl Game {
                     def_id: (player_id == viewer).then(|| self.def_id(object_id)),
                 })
                 .collect(),
+        }
+    }
+
+    fn hero_card(&self, _viewer: PlayerId, player_id: PlayerId) -> HeroCard {
+        let object_id = self.hero_id(player_id);
+        HeroCard {
+            object_id,
+            def_id: self.def_id(object_id),
+            health: self.hero_health(player_id),
         }
     }
 }

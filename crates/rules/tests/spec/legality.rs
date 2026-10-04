@@ -1,7 +1,7 @@
 //! P on exact positions. An unlisted action returns the exact `IllegalAction` and
 //! leaves the game unchanged.
 
-use rules::cards::{BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK};
+use rules::static_card_definition::{BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK};
 use rules::{Action, ApplyError, Game, IllegalAction, Outcome};
 
 use crate::support::*;

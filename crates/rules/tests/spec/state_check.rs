@@ -1,6 +1,6 @@
 //! The state check at the end of every `apply`.
 
-use rules::cards::{BLAST, CAPTAIN, RECRUIT};
+use rules::static_card_definition::{BLAST, CAPTAIN, RECRUIT};
 use rules::{Game, Outcome};
 
 use crate::support::*;
@@ -93,4 +93,17 @@ fn a_blast_that_drops_only_its_casters_hero_to_zero_loses_the_game() {
     assert_eq!(game.outcome(), Some(Outcome::Won(p1)));
     assert_actions(&game, p0, &[]);
     assert_actions(&game, p1, &[]);
+}
+
+#[test]
+fn a_hero_brought_to_zero_stays_in_its_zone() {
+    let mut game = Game::with_deck_order(0, [vec![BLAST; 4], deck_with_top(&[])]);
+    let [p0, _] = players(&game);
+    turn_with_mana(&mut game, p0, 9);
+    let hero = game.hero_id(p0);
+
+    play_def(&mut game, p0, BLAST);
+
+    assert_eq!(game.hero_id(p0), hero);
+    assert_eq!(game.health(hero), Some(0));
 }

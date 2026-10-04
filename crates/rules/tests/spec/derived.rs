@@ -1,6 +1,6 @@
 //! Attack, health and cost, derived on read.
 
-use rules::cards::{BLAST, CAPTAIN, GIANT, RECRUIT, SPARK};
+use rules::static_card_definition::{BLAST, CAPTAIN, GIANT, RECRUIT, SPARK};
 use rules::{Game, ObjectId};
 
 use crate::support::*;
@@ -58,6 +58,31 @@ fn cards_in_hand_have_a_cost_and_no_stats() {
 
     assert_eq!(game.mana_cost(recruit), Some(2));
     assert_eq!(stats(&game, recruit), (None, None));
+}
+
+#[test]
+fn a_hero_has_health_and_no_attack_or_cost() {
+    let game = Game::with_deck_order(0, [deck_with_top(&[]), deck_with_top(&[])]);
+    let [p0, _] = players(&game);
+    let hero = game.hero_id(p0);
+
+    assert_eq!(game.mana_cost(hero), None);
+    assert_eq!(stats(&game, hero), (None, Some(10)));
+}
+
+#[test]
+fn a_captain_does_not_buff_its_owners_hero() {
+    let mut game = Game::with_deck_order(0, [deck_with_top(&[CAPTAIN]), deck_with_top(&[])]);
+    let [p0, _] = players(&game);
+    turn_with_mana(&mut game, p0, 3);
+
+    summon(&mut game, p0, CAPTAIN);
+
+    assert_eq!(
+        stats(&game, game.hero_id(p0)),
+        (None, Some(10)),
+        "the Captain buffs minions only"
+    );
 }
 
 #[test]

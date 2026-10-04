@@ -10,7 +10,7 @@ use crate::cards::definition::{Effect, MinionSelector, PlayerSelector};
 use crate::cards::modifier::{EffectAmount, Modifier};
 use crate::history::{HistoryKind, HistoryQuery, HistoryQueryKind, PlayerFilter};
 use crate::ids::PlayerId;
-use crate::{Event, IllegalAction, ObjectId, Observer, Target, Views};
+use crate::{Event, IllegalAction, ObjectId, Observer, Views};
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum ApplyError {
@@ -80,10 +80,11 @@ impl Game {
             Effect::DamagePlayer { selector, damage } => {
                 let targets = self.resolve_player_selector(caster, selector);
                 for target in targets.into_iter() {
-                    let player = self.get_player_mut(target);
-                    player.health -= damage as i32;
+                    let hero_id = self.hero_id(target);
+                    let object = self.objects.get_mut(hero_id);
+                    object.damage += damage;
                     obs.event(&Event::Damaged {
-                        target: Target::Hero(target),
+                        target: hero_id,
                         amount: damage,
                         source: object_id,
                     });
@@ -107,7 +108,7 @@ impl Game {
                     let object = self.objects.get_mut(target);
                     object.damage += damage;
                     obs.event(&Event::Damaged {
-                        target: Target::Minion(target),
+                        target,
                         amount: damage,
                         source: object_id,
                     });
@@ -121,6 +122,13 @@ impl Game {
                         source: object_id,
                         effect,
                     });
+                }
+            }
+            Effect::Summon { selector, def_id } => {
+                let targets = self.resolve_player_selector(caster, selector);
+                for player_id in targets.into_iter() {
+                    let object_id = self.objects.insert(def_id, player_id);
+                    self.summon(player_id, object_id, obs);
                 }
             }
         }
@@ -169,7 +177,14 @@ impl Game {
                 })
                 .count() as i32,
             HistoryQueryKind::MinionDied => entries
-                .filter(|entry| matches!(&entry.kind, HistoryKind::MinionDied { .. }))
+                .filter(|entry| targets.contains(&entry.player_id))
+                .filter(|entry| match query.turn {
+                    crate::history::TurnFilter::Current => {
+                        entry.turn == self.turn_order.turn_count()
+                    }
+                    crate::history::TurnFilter::All => true,
+                })
+                .filter(|entry| matches!(&entry.kind, HistoryKind::CharacterDied { object } if self.binder.is_minion(object.def_id)))
                 .count() as i32,
         }
     }

@@ -1,6 +1,8 @@
 //! Setup: the shuffle, the opening deal and the first turn.
 
-use rules::cards::{BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK, WILD_BOLT};
+use rules::static_card_definition::{
+    BLAST, BOLT, CAPTAIN, FORAGE, GIANT, HERO, RECRUIT, SPARK, WILD_BOLT,
+};
 use rules::{Action, DefId, Game, ObjectId};
 
 use crate::support::*;
@@ -43,6 +45,33 @@ fn setup_starts_player_0s_turn() {
     let spark = in_hand(&game, p0, SPARK);
     assert_actions(&game, p0, &[play(spark), Action::EndTurn]);
     assert_actions(&game, p1, &[]);
+}
+
+#[test]
+fn each_player_starts_with_a_hero() {
+    let game = opening();
+
+    for p in players(&game) {
+        assert_eq!(game.def_id(game.hero_id(p)), HERO, "{p:?}");
+    }
+}
+
+#[test]
+fn each_hero_is_an_object_apart_from_every_card() {
+    let game = opening();
+    let [p0, p1] = players(&game);
+
+    let cards: Vec<ObjectId> = [p0, p1]
+        .into_iter()
+        .flat_map(|p| [game.hand(p), &game.deck(p)].concat())
+        .collect();
+    assert_ne!(game.hero_id(p0), game.hero_id(p1));
+    for p in [p0, p1] {
+        assert!(
+            !cards.contains(&game.hero_id(p)),
+            "{p:?}'s hero shares an id with a card"
+        );
+    }
 }
 
 #[test]
