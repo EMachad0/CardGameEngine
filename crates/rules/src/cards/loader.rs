@@ -56,6 +56,7 @@ def_ids!(
     SQUIRE = "base.squire.v0",
     BARRACKS = "base.barracks.v0",
     ZAP = "base.zap.v0",
+    STRAY_SHOT = "base.stray_shot.v0",
 );
 
 // TODO: loading cards from disk into the engine should be shells job
@@ -207,6 +208,20 @@ impl CardDefLoader {
                         amount: 1.into(),
                     },
                 ]),
+                ..Default::default()
+            },
+            CardDef {
+                id: STRAY_SHOT,
+                name: "Stray Shot".to_string(),
+                kind: CardDefKind::Spell(SpellCardDef),
+                mana_cost: 1,
+                on_play_effect: EffectSequence(vec![Effect::Damage {
+                    selector: CharacterSelector::Random(CharacterSelectorFilter {
+                        kind: EnumSet::only(CharacterKindFilter::Minions),
+                        side: EnumSet::only(CharacterSideFilter::Enemy),
+                    }),
+                    amount: 2.into(),
+                }]),
                 ..Default::default()
             },
         ]

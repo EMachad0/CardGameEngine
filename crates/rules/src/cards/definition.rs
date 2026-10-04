@@ -111,11 +111,23 @@ impl EffectSequence {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PlayerSelectorFilter {
+    pub side: EnumSet<CharacterSideFilter>,
+}
+
+impl PlayerSelectorFilter {
+    pub fn all() -> Self {
+        Self {
+            side: EnumSet::all(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlayerSelector {
-    All,
+    All(PlayerSelectorFilter),
     Owner,
-    Random,
-    Enemy,
+    Random(PlayerSelectorFilter),
 }
 
 #[derive(Debug, enumset::EnumSetType)]

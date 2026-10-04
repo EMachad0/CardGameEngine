@@ -29,19 +29,18 @@ impl Game {
             .hand
             .contains(&object_id)
             .then(|| {
-                let def = self.binder.mana_cost(obj.def_id) as i32;
-                let modifiers = self
+                let def = self.binder.mana_cost(obj.def_id);
+                let neg_modifiers = self
                     .modifiers(object_id)
                     .as_slice()
                     .iter()
                     .filter_map(|m| match m.effect {
-                        ModifierEffect::ReduceManaCost { amount } => {
-                            Some(-(self.effect_amount(amount, obj.player_id) as i32))
-                        }
+                        ModifierEffect::ReduceManaCost { amount } => Some(amount),
                         _ => None,
                     })
-                    .sum::<i32>();
-                (def + modifiers).max(0) as u8
+                    .map(|a| self.effect_amount(a, obj.player_id))
+                    .sum::<u8>();
+                def.saturating_sub(neg_modifiers)
             })
     }
 

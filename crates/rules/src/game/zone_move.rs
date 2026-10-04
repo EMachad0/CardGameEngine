@@ -61,6 +61,7 @@ impl Game {
         let def_id = self.def_id(object_id);
         if self.binder.has_board_presence(def_id) {
             self.summon(player_id, object_id, obs);
+            obs.checkpoint(Views::new(self));
         }
     }
 
