@@ -71,14 +71,14 @@ impl Game {
 
     pub(crate) fn apply_effect(
         &mut self,
-        caster: PlayerId,
-        object_id: ObjectId,
+        owner: PlayerId,
+        source: ObjectId,
         effect: Effect,
         obs: &mut impl Observer,
     ) {
         match effect {
             Effect::DamagePlayer { selector, damage } => {
-                let targets = self.resolve_player_selector(caster, selector);
+                let targets = self.resolve_player_selector(owner, selector);
                 for target in targets.into_iter() {
                     let hero_id = self.hero_id(target);
                     let object = self.objects.get_mut(hero_id);
@@ -86,46 +86,43 @@ impl Game {
                     obs.event(&Event::Damaged {
                         target: hero_id,
                         amount: damage,
-                        source: object_id,
+                        source,
                     });
                 }
             }
             Effect::Draw { selector, count } => {
-                let targets = self.resolve_player_selector(caster, selector);
+                let targets = self.resolve_player_selector(owner, selector);
                 for target in targets.into_iter() {
                     self.draw(target, count, obs);
                 }
             }
             Effect::Reveal { selector, count } => {
-                let targets = self.resolve_player_selector(caster, selector);
+                let targets = self.resolve_player_selector(owner, selector);
                 for target in targets.into_iter() {
                     self.reveal(target, count, obs);
                 }
             }
             Effect::DamageMinion { selector, damage } => {
-                let targets = self.resolve_minion_selector(caster, object_id, selector);
+                let targets = self.resolve_minion_selector(owner, source, selector);
                 for target in targets.into_iter() {
                     let object = self.objects.get_mut(target);
                     object.damage += damage;
                     obs.event(&Event::Damaged {
                         target,
                         amount: damage,
-                        source: object_id,
+                        source,
                     });
                 }
             }
             Effect::AddFriendlyAura { selector, effect } => {
-                let targets = self.resolve_minion_selector(caster, object_id, selector);
+                let targets = self.resolve_minion_selector(owner, source, selector);
                 for target in targets.into_iter() {
                     let object = self.objects.get_mut(target);
-                    object.friendly_aura.add(Modifier {
-                        source: object_id,
-                        effect,
-                    });
+                    object.friendly_aura.add(Modifier { source, effect });
                 }
             }
             Effect::Summon { selector, def_id } => {
-                let targets = self.resolve_player_selector(caster, selector);
+                let targets = self.resolve_player_selector(owner, selector);
                 for player_id in targets.into_iter() {
                     let object_id = self.objects.insert(def_id, player_id);
                     self.summon(player_id, object_id, obs);
@@ -136,13 +133,13 @@ impl Game {
 
     pub(crate) fn apply_effects(
         &mut self,
-        player_id: PlayerId,
-        object_id: ObjectId,
+        source: ObjectId,
         effects: Vec<Effect>,
         obs: &mut impl Observer,
     ) {
+        let owner = self.objects.get(source).player_id;
         effects.into_iter().for_each(|e| {
-            self.apply_effect(player_id, object_id, e, obs);
+            self.apply_effect(owner, source, e, obs);
         });
     }
 
@@ -191,16 +188,16 @@ impl Game {
 
     fn resolve_player_selector(
         &mut self,
-        caster: PlayerId,
+        owner: PlayerId,
         selector: PlayerSelector,
     ) -> Vec<PlayerId> {
         match selector {
             PlayerSelector::All => self.players.iter().map(|p| p.id).collect(),
-            PlayerSelector::Caster => vec![caster],
+            PlayerSelector::Owner => vec![owner],
             PlayerSelector::RandomPlayer => {
                 vec![PlayerId::new(self.rng.below(self.players.len()))]
             }
-            PlayerSelector::NextPlayer => vec![self.turn_order.get_player_after(caster)],
+            PlayerSelector::NextPlayer => vec![self.turn_order.get_player_after(owner)],
         }
     }
 

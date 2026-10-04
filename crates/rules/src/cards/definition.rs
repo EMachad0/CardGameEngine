@@ -112,7 +112,7 @@ pub enum Effect {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlayerSelector {
     All,
-    Caster,
+    Owner,
     RandomPlayer,
     NextPlayer,
 }

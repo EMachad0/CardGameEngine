@@ -117,7 +117,7 @@ impl CardDefLoader {
                 kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 1,
                 on_play_effect: EffectSequence(vec![Effect::Reveal {
-                    selector: PlayerSelector::Caster,
+                    selector: PlayerSelector::Owner,
                     count: 2,
                 }]),
                 ..Default::default()
@@ -177,7 +177,7 @@ impl CardDefLoader {
                 kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 2,
                 on_play_effect: EffectSequence(vec![Effect::Summon {
-                    selector: PlayerSelector::Caster,
+                    selector: PlayerSelector::Owner,
                     def_id: SQUIRE,
                 }]),
                 ..Default::default()
