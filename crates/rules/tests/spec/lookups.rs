@@ -2,7 +2,7 @@
 
 use std::collections::BTreeSet;
 
-use rules::cards::{BLAST, RECRUIT, SPARK};
+use rules::static_card_definition::{BLAST, RECRUIT, SPARK};
 use rules::{Game, ObjectId};
 
 use crate::support::*;

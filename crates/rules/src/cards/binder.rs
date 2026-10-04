@@ -29,15 +29,17 @@ impl Binder {
 
     pub(crate) fn health(&self, def_id: DefId) -> Option<i32> {
         match &self.get(def_id).kind {
-            CardDefKind::Minion(minion_card_def) => Some(minion_card_def.health),
             CardDefKind::Spell(_spell_card_def) => None,
+            CardDefKind::Minion(minion_card_def) => Some(minion_card_def.health),
+            CardDefKind::Hero(hero_card_def) => Some(hero_card_def.health),
         }
     }
 
     pub(crate) fn attack(&self, def_id: DefId) -> Option<i32> {
         match &self.get(def_id).kind {
-            CardDefKind::Minion(minion_card_def) => Some(minion_card_def.attack),
             CardDefKind::Spell(_spell_card_def) => None,
+            CardDefKind::Minion(minion_card_def) => Some(minion_card_def.attack),
+            CardDefKind::Hero(_hero_card_def) => None,
         }
     }
 
@@ -45,10 +47,19 @@ impl Binder {
         matches!(self.get(def_id).kind, CardDefKind::Spell(_))
     }
 
+    pub(crate) fn is_minion(&self, def_id: DefId) -> bool {
+        matches!(self.get(def_id).kind, CardDefKind::Minion(_))
+    }
+
+    pub(crate) fn is_hero(&self, def_id: DefId) -> bool {
+        matches!(self.get(def_id).kind, CardDefKind::Hero(_))
+    }
+
     pub(crate) fn has_board_presence(&self, def_id: DefId) -> bool {
         match self.get(def_id).kind {
-            CardDefKind::Minion(_) => true,
             CardDefKind::Spell(_) => false,
+            CardDefKind::Minion(_) => true,
+            CardDefKind::Hero(_) => false,
         }
     }
 
@@ -56,6 +67,7 @@ impl Binder {
         match self.get(def_id).kind {
             CardDefKind::Minion(_) => true,
             CardDefKind::Spell(_) => true,
+            CardDefKind::Hero(_) => false,
         }
     }
 
@@ -81,15 +93,17 @@ impl Binder {
 
     pub(crate) fn friendly_aura_effects(&self, def_id: DefId) -> &[ModifierEffect] {
         match &self.get(def_id).kind {
-            CardDefKind::Minion(minion_card_def) => &minion_card_def.friendly_aura_effects,
             CardDefKind::Spell(_spell_card_def) => &[],
+            CardDefKind::Minion(minion_card_def) => &minion_card_def.friendly_aura_effects,
+            CardDefKind::Hero(_hero_card_def) => &[],
         }
     }
 
     pub(crate) fn hostile_aura_effects(&self, def_id: DefId) -> &[ModifierEffect] {
         match &self.get(def_id).kind {
-            CardDefKind::Minion(minion_card_def) => &minion_card_def.hostile_aura_effects,
             CardDefKind::Spell(_spell_card_def) => &[],
+            CardDefKind::Minion(minion_card_def) => &minion_card_def.hostile_aura_effects,
+            CardDefKind::Hero(_hero_card_def) => &[],
         }
     }
 

@@ -40,8 +40,9 @@ impl Default for CardDef {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CardDefKind {
-    Minion(MinionCardDef),
     Spell(SpellCardDef),
+    Minion(MinionCardDef),
+    Hero(HeroCardDef),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -64,7 +65,12 @@ impl MinionCardDef {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SpellCardDef {}
+pub struct SpellCardDef;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HeroCardDef {
+    pub health: i32,
+}
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct EffectSequence(pub Vec<Effect>);
@@ -96,6 +102,10 @@ pub enum Effect {
     AddFriendlyAura {
         selector: MinionSelector,
         effect: ModifierEffect,
+    },
+    Summon {
+        selector: PlayerSelector,
+        def_id: DefId,
     },
 }
 

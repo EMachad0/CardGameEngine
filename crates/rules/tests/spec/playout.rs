@@ -2,7 +2,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use rules::cards::{BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK, WILD_BOLT};
+use rules::static_card_definition::{
+    BARRACKS, BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK, WILD_BOLT,
+};
 use rules::{Action, DefId, Game, ObjectId, Outcome, PlayerId, Rng};
 
 use crate::model::{BoardModel, expected_cost, is_spell};
@@ -13,7 +15,7 @@ const MAX_STEPS: usize = 5_000;
 pub(crate) fn sample_deck() -> Vec<DefId> {
     vec![
         SPARK, BOLT, WILD_BOLT, FORAGE, BLAST, RECRUIT, CAPTAIN, GIANT, RECRUIT, CAPTAIN, SPARK,
-        FORAGE, BLAST, RECRUIT, CAPTAIN, BOLT,
+        FORAGE, BLAST, RECRUIT, CAPTAIN, BOLT, BARRACKS, BARRACKS,
     ]
 }
 
@@ -180,6 +182,12 @@ fn assert_ids(game: &Game, history: &mut History, context: &str) {
 /// Each accessor answers only for its own zone, and a hand card costs what the model says.
 fn assert_accessors(game: &Game, history: &History, context: &str) {
     for p in players(game) {
+        let hero = game.hero_id(p);
+        assert_eq!(
+            (game.mana_cost(hero), game.attack(hero)),
+            (None, None),
+            "{context}: {p:?}'s hero"
+        );
         for &id in game.hand(p) {
             let def = game.def_id(id);
             let cost = expected_cost(def, history.spells_cast[index_of(game, p)]);

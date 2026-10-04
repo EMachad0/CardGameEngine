@@ -3,12 +3,14 @@
 //! the core can't check itself.
 
 use rules::DefId;
-use rules::cards::{BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK, WILD_BOLT};
+use rules::static_card_definition::{
+    BARRACKS, BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK, SQUIRE, WILD_BOLT,
+};
 
 /// Attack and health.
 pub(crate) type Stats = (i32, i32);
 
-const PRINTED: [(DefId, u8, Option<Stats>); 8] = [
+const PRINTED: [(DefId, u8, Option<Stats>); 10] = [
     (SPARK, 1, None),
     (BOLT, 2, None),
     (WILD_BOLT, 1, None),
@@ -17,6 +19,8 @@ const PRINTED: [(DefId, u8, Option<Stats>); 8] = [
     (RECRUIT, 2, Some((2, 2))),
     (CAPTAIN, 3, Some((1, 1))),
     (GIANT, 8, Some((5, 5))),
+    (BARRACKS, 2, None),
+    (SQUIRE, 1, Some((1, 1))),
 ];
 
 fn printed(def: DefId) -> (u8, Option<Stats>) {
@@ -71,6 +75,9 @@ impl BoardModel {
     pub(crate) fn played(&mut self, owner: usize, def: DefId) {
         if !is_spell(def) {
             self.boards[owner].push((def, 0));
+        }
+        if def == BARRACKS {
+            self.boards[owner].push((SQUIRE, 0));
         }
         if def == BLAST {
             for minion in self.boards.iter_mut().flatten() {

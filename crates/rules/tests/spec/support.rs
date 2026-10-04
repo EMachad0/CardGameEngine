@@ -3,7 +3,7 @@
 
 use std::collections::BTreeSet;
 
-use rules::cards::BOLT;
+use rules::static_card_definition::BOLT;
 use rules::{
     Action, ApplyError, DefId, Event, Game, IllegalAction, ObjectId, Observer, PlayerId,
     PlayerView, View, Views,
@@ -157,11 +157,20 @@ pub(crate) fn summon(game: &mut Game, p: PlayerId, def: DefId) -> ObjectId {
     *game.board(p).last().expect("the minion entered the board")
 }
 
-/// Every id in a zone: hand, deck, revealed and board, for each player.
+/// Every id in a zone: hand, deck, revealed, board and hero, for each player.
 pub(crate) fn zone_ids(game: &Game) -> Vec<ObjectId> {
     players(game)
         .iter()
-        .flat_map(|&p| [game.hand(p), &game.deck(p), game.revealed(p), game.board(p)].concat())
+        .flat_map(|&p| {
+            [
+                game.hand(p),
+                &game.deck(p),
+                game.revealed(p),
+                game.board(p),
+                &[game.hero_id(p)],
+            ]
+            .concat()
+        })
         .collect()
 }
 

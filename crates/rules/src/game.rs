@@ -14,13 +14,12 @@ pub(crate) mod view;
 mod zone_move;
 
 use crate::action::Action;
-use crate::cards::CardDefLoader;
-use crate::cards::binder::Binder;
-use crate::cards::object::ObjectBag;
+use crate::cards::{binder::Binder, loader::CardDefLoader, object::ObjectBag};
 use crate::game::player::{Player, PlayerInteractionState};
 use crate::history::History;
 use crate::ids::PlayerId;
 use crate::rng::Rng;
+use crate::static_card_definition::HERO;
 use crate::turn::TurnOrder;
 use crate::zones::Deck;
 use crate::{DefId, Event, ObjectId, Observer, Outcome};
@@ -62,7 +61,10 @@ impl Game {
         let player_ids = (0..player_count).map(PlayerId::new).collect::<Vec<_>>();
         let mut players = player_ids
             .iter()
-            .map(|player_id| Player::new(*player_id))
+            .map(|&player_id| {
+                let hero_id = objects.insert(HERO, player_id);
+                Player::new(player_id, hero_id)
+            })
             .collect::<Vec<_>>();
         for (player, deck_defs) in players.iter_mut().zip(decks) {
             let deck = deck_defs

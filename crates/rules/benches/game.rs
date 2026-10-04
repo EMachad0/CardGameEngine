@@ -4,7 +4,9 @@ use std::hint::black_box;
 use std::ops::Range;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use rules::cards::{BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK, WILD_BOLT};
+use rules::static_card_definition::{
+    BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK, WILD_BOLT,
+};
 use rules::{Action, DefId, Game, PlayerId, Rng};
 
 const MAX_STEPS: usize = 5_000;

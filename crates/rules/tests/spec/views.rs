@@ -1,7 +1,7 @@
 //! What `view` shows each player.
 
-use rules::cards::{BOLT, CAPTAIN, FORAGE, RECRUIT, SPARK};
-use rules::{BoardCard, DefId, Face, Game, ObjectId, PlayerId, RevealedCard};
+use rules::static_card_definition::{BOLT, CAPTAIN, FORAGE, HERO, RECRUIT, SPARK};
+use rules::{BoardCard, DefId, Face, Game, HeroCard, ObjectId, PlayerId, RevealedCard};
 
 use crate::support::*;
 
@@ -81,13 +81,35 @@ fn heroes_mana_and_deck_sizes_are_public() {
         let rows: Vec<(i32, u8, u8, usize)> = players(&game)
             .iter()
             .map(|&p| player_view(&view, p))
-            .map(|p| (p.hero_health, p.mana, p.max_mana, p.deck_size))
+            .map(|p| (p.hero.health, p.mana, p.max_mana, p.deck_size))
             .collect();
         assert_eq!(
             rows,
             [(10, 1, 1, 19), (10, 0, 0, 20)],
             "(health, mana, max mana, deck size) as {viewer:?} sees them"
         );
+    }
+}
+
+#[test]
+fn both_players_see_each_hero_with_its_definition_and_current_health() {
+    let mut game = Game::with_deck_order(0, [deck_with_top(&[SPARK]), deck_with_top(&[])]);
+    let [p0, p1] = players(&game);
+    play_def(&mut game, p0, SPARK);
+
+    for viewer in players(&game) {
+        let view = game.view(viewer);
+        for (p, health) in [(p0, 10), (p1, 9)] {
+            assert_eq!(
+                player_view(&view, p).hero,
+                HeroCard {
+                    object_id: game.hero_id(p),
+                    def_id: HERO,
+                    health
+                },
+                "{p:?}'s hero as {viewer:?} sees it"
+            );
+        }
     }
 }
 

@@ -47,6 +47,9 @@ _Avoid_: monster, creature
 **Spell**:
 A card that resolves when played and is then gone.
 
+**Character**:
+A minion or a hero.
+
 **Cost**:
 The mana a card in hand takes to play right now, which can differ from its printed cost.
 _Avoid_: price

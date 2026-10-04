@@ -3,7 +3,7 @@ use crate::{PlayerId, cards::object::Object};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum HistoryKind {
     CardPlayed { object: Object },
-    MinionDied { object: Object },
+    CharacterDied { object: Object },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

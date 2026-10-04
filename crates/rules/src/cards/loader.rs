@@ -1,12 +1,13 @@
 use crate::{
     cards::{
         definition::{
-            CardDef, CardDefKind, DefId, Effect, EffectSequence, MinionCardDef, MinionSelector,
-            PlayerSelector, SpellCardDef,
+            CardDef, CardDefKind, DefId, Effect, EffectSequence, HeroCardDef, MinionCardDef,
+            MinionSelector, PlayerSelector, SpellCardDef,
         },
         modifier::{EffectAmount, ModifierEffect},
     },
     history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter},
+    static_card_definition::*,
 };
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
@@ -23,15 +24,19 @@ pub(crate) const PLACEHOLDER: DefId = DefId::new("placeholder");
 
 macro_rules! def_ids {
     ($($name:ident = $id:literal),* $(,)?) => {
-        $(
-            pub const $name: DefId = DefId::new($id);
-        )*
+        pub mod static_card_definition {
+            use crate::cards::definition::DefId;
 
-        const ALL_DEF_ID: &[DefId] = &[
-        $(
-            $name,
-        )*
-        ];
+            $(
+                pub const $name: DefId = DefId::new($id);
+            )*
+
+            pub(super) const ALL_DEF_ID: &[DefId] = &[
+            $(
+                $name,
+            )*
+            ];
+        }
     };
 }
 
@@ -44,6 +49,9 @@ def_ids!(
     BOLT = "base.bolt.v0",
     FORAGE = "base.forage.v0",
     WILD_BOLT = "base.wild_bolt.v0",
+    HERO = "base.hero.v0",
+    SQUIRE = "base.squire.v0",
+    BARRACKS = "base.barracks.v0",
 );
 
 // TODO: loading cards from disk into the engine should be shells job
@@ -56,7 +64,7 @@ impl CardDefLoader {
             CardDef {
                 id: SPARK,
                 name: "Spark".to_string(),
-                kind: CardDefKind::Spell(SpellCardDef {}),
+                kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 1,
                 on_play_effect: EffectSequence(vec![Effect::DamagePlayer {
                     selector: PlayerSelector::NextPlayer,
@@ -67,7 +75,7 @@ impl CardDefLoader {
             CardDef {
                 id: BOLT,
                 name: "Bolt".to_string(),
-                kind: CardDefKind::Spell(SpellCardDef {}),
+                kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 2,
                 on_play_effect: EffectSequence(vec![Effect::DamagePlayer {
                     selector: PlayerSelector::NextPlayer,
@@ -78,7 +86,7 @@ impl CardDefLoader {
             CardDef {
                 id: WILD_BOLT,
                 name: "Wild Bolt".to_string(),
-                kind: CardDefKind::Spell(SpellCardDef {}),
+                kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 1,
                 on_play_effect: EffectSequence(vec![Effect::DamagePlayer {
                     selector: PlayerSelector::RandomPlayer,
@@ -89,7 +97,7 @@ impl CardDefLoader {
             CardDef {
                 id: BLAST,
                 name: "Blast".to_string(),
-                kind: CardDefKind::Spell(SpellCardDef {}),
+                kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 3,
                 on_play_effect: EffectSequence(vec![
                     Effect::DamageMinion {
@@ -106,7 +114,7 @@ impl CardDefLoader {
             CardDef {
                 id: FORAGE,
                 name: "Forage".to_string(),
-                kind: CardDefKind::Spell(SpellCardDef {}),
+                kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 1,
                 on_play_effect: EffectSequence(vec![Effect::Reveal {
                     selector: PlayerSelector::Caster,
@@ -148,6 +156,30 @@ impl CardDefLoader {
                         turn: TurnFilter::All,
                     }),
                 }],
+                ..Default::default()
+            },
+            CardDef {
+                id: HERO,
+                name: "Hero".to_string(),
+                kind: CardDefKind::Hero(HeroCardDef { health: 10 }),
+                ..Default::default()
+            },
+            CardDef {
+                id: SQUIRE,
+                name: "Squire".to_string(),
+                kind: CardDefKind::Minion(MinionCardDef::new(1, 1)),
+                mana_cost: 1,
+                ..Default::default()
+            },
+            CardDef {
+                id: BARRACKS,
+                name: "Barracks".to_string(),
+                kind: CardDefKind::Spell(SpellCardDef),
+                mana_cost: 2,
+                on_play_effect: EffectSequence(vec![Effect::Summon {
+                    selector: PlayerSelector::Caster,
+                    def_id: SQUIRE,
+                }]),
                 ..Default::default()
             },
         ]

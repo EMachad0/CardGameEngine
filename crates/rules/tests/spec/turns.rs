@@ -1,6 +1,6 @@
 //! Turn start: mana, the draw and fatigue.
 
-use rules::cards::{BOLT, RECRUIT, SPARK};
+use rules::static_card_definition::{BOLT, RECRUIT, SPARK};
 use rules::{Action, Game, Outcome};
 
 use crate::support::*;

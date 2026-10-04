@@ -10,16 +10,16 @@ use crate::{
 };
 
 impl Game {
-    pub fn hero_health(&self, player_id: PlayerId) -> i32 {
-        self.get_player(player_id).health
-    }
-
     fn object(&self, object_id: ObjectId) -> &Object {
         self.objects.get(object_id)
     }
 
     pub fn def_id(&self, object_id: ObjectId) -> DefId {
         self.object(object_id).def_id
+    }
+
+    pub fn hero_id(&self, player_id: PlayerId) -> ObjectId {
+        self.get_player(player_id).zones.hero
     }
 
     pub fn mana_cost(&self, object_id: ObjectId) -> Option<u8> {
@@ -45,30 +45,43 @@ impl Game {
             })
     }
 
+    pub fn hero_health(&self, player_id: PlayerId) -> i32 {
+        self.health(self.hero_id(player_id))
+            .expect("in play heroes always have health")
+    }
+
     pub fn health(&self, object_id: ObjectId) -> Option<i32> {
         let obj = self.object(object_id);
-        self.get_player(obj.player_id)
-            .zones
-            .board
-            .contains(&object_id)
-            .then(|| {
-                let def = self
-                    .binder
-                    .health(obj.def_id)
-                    .expect("board objects always have health");
-                let modifiers = self
-                    .modifiers(object_id)
-                    .as_slice()
-                    .iter()
-                    .filter_map(|m| match m.effect {
-                        ModifierEffect::BuffHealth { amount } => Some(amount),
-                        _ => None,
-                    })
-                    .map(|a| self.effect_amount(a, obj.player_id))
-                    .sum::<i32>();
-                let damage = obj.damage as i32;
-                def + modifiers - damage
-            })
+
+        let is_in_play_hero =
+            self.binder.is_hero(obj.def_id) && self.hero_id(obj.player_id) == object_id;
+        let is_in_play_minion = self.binder.is_minion(obj.def_id)
+            && self
+                .get_player(obj.player_id)
+                .zones
+                .board
+                .contains(&object_id);
+
+        let is_in_play = is_in_play_hero || is_in_play_minion;
+
+        is_in_play.then(|| {
+            let def = self
+                .binder
+                .health(obj.def_id)
+                .expect("in play objects always have health");
+            let modifiers = self
+                .modifiers(object_id)
+                .as_slice()
+                .iter()
+                .filter_map(|m| match m.effect {
+                    ModifierEffect::BuffHealth { amount } => Some(amount),
+                    _ => None,
+                })
+                .map(|a| self.effect_amount(a, obj.player_id))
+                .sum::<i32>();
+            let damage = obj.damage as i32;
+            def + modifiers - damage
+        })
     }
 
     pub fn attack(&self, object_id: ObjectId) -> Option<i32> {
@@ -110,18 +123,20 @@ impl Game {
         let mut modifiers = Modifiers::new(modifiers);
         modifiers.extend(obj.modifiers.clone());
 
-        for other_player_id in self.players().into_iter() {
-            for other_object_id in self.board(other_player_id).iter().copied() {
-                if object_id == other_object_id {
-                    continue;
-                }
+        if self.binder.is_minion(obj.def_id) {
+            for other_player_id in self.players().into_iter() {
+                for other_object_id in self.board(other_player_id).iter().copied() {
+                    if object_id == other_object_id {
+                        continue;
+                    }
 
-                let other_modifiers = if obj.player_id == other_player_id {
-                    self.friendly_aura(other_object_id)
-                } else {
-                    self.hostile_aura(other_object_id)
-                };
-                modifiers.extend(other_modifiers);
+                    let other_modifiers = if obj.player_id == other_player_id {
+                        self.friendly_aura(other_object_id)
+                    } else {
+                        self.hostile_aura(other_object_id)
+                    };
+                    modifiers.extend(other_modifiers);
+                }
             }
         }
 
@@ -176,5 +191,9 @@ impl Game {
             })
             .collect::<Vec<_>>();
         Modifiers::new(modifiers)
+    }
+
+    pub(crate) fn playing(&self, player_id: PlayerId) -> bool {
+        self.get_player(player_id).playing
     }
 }
