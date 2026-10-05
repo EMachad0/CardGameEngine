@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use crate::cards::{
-    definition::{CardDef, CardDefKind, DefId, Effect, Precondition},
+    definition::{CardDef, CardDefKind, DefId, Effect},
     modifier::ModifierEffect,
 };
 use crate::choice::{CharacterChoice, ChoiceId};
@@ -116,7 +116,7 @@ impl Binder {
         self.get(def_id).choices.iter().find(|c| c.id == choice_id)
     }
 
-    pub(crate) fn preconditions(&self, def_id: DefId) -> &[Precondition] {
-        &self.get(def_id).preconditions
+    pub(crate) fn choices(&self, def_id: DefId) -> &[CharacterChoice] {
+        &self.get(def_id).choices
     }
 }

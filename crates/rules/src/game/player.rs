@@ -4,7 +4,6 @@
 //! `game` can see them.
 
 use crate::ObjectId;
-use crate::choice::ChoiceId;
 use crate::ids::PlayerId;
 use crate::zones::Zones;
 
@@ -14,13 +13,6 @@ pub(super) enum PlayerInteractionState {
     Idle,
     PendingPick {
         options: Vec<ObjectId>,
-    },
-    /// Choosing a card mid play
-    /// Lacks way to pause/resume card resolving
-    #[allow(dead_code)]
-    Choosing {
-        object_id: ObjectId,
-        choice_id: ChoiceId,
     },
     Draft {
         of_object_id: ObjectId,

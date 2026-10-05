@@ -80,10 +80,11 @@ impl Game {
                 }
             }
             Action::Choose {
-                object_id,
+                chooser_id,
                 choice_id,
+                object_id,
             } => {
-                let targets = &mut self.objects.get_mut(object_id).choice_targets;
+                let targets = &mut self.objects.get_mut(chooser_id).choice_targets;
 
                 let idx = match targets.iter().position(|t| t.choice_id == choice_id) {
                     Some(i) => i,
@@ -101,6 +102,7 @@ impl Game {
                 else {
                     unreachable!();
                 };
+                player.interaction_state = PlayerInteractionState::default();
                 self.objects
                     .get_mut(of_object_id)
                     .choice_targets

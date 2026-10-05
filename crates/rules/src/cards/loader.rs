@@ -5,7 +5,7 @@ use crate::{
         definition::{
             CardDef, CardDefKind, CharacterKindFilter, CharacterSelector, CharacterSelectorFilter,
             CharacterSideFilter, DefId, Effect, EffectSequence, HeroCardDef, MinionCardDef,
-            PlayerSelector, Precondition, SpellCardDef,
+            PlayerSelector, SpellCardDef,
         },
         modifier::ModifierEffect,
     },
@@ -245,7 +245,6 @@ impl CardDefLoader {
                     bound: AmountBound::Exactly,
                     unique: true,
                 }],
-                preconditions: vec![Precondition::Chosen(ChoiceId(0))],
                 ..Default::default()
             },
         ]

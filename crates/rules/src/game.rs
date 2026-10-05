@@ -14,7 +14,7 @@ pub(crate) mod view;
 mod zone_move;
 
 use crate::action::Action;
-use crate::cards::definition::{CharacterSelectorFilter, Precondition};
+use crate::cards::definition::CharacterSelectorFilter;
 use crate::cards::{binder::Binder, loader::CardDefLoader, object::ObjectBag};
 use crate::choice::ChoiceId;
 use crate::game::player::{Player, PlayerInteractionState};
@@ -126,7 +126,7 @@ impl Game {
                     }
 
                     let def_id = self.def_id(object_id);
-                    match self.binder.preconditions(def_id).is_empty() {
+                    match self.binder.choices(def_id).is_empty() {
                         true => {
                             actions.push(Action::Play { object_id });
                         }
@@ -150,27 +150,25 @@ impl Game {
             }
             PlayerInteractionState::Draft { of_object_id } => {
                 let def_id = self.def_id(*of_object_id);
-                for precondition in self.binder.preconditions(def_id) {
-                    if self.precondition_fulfilled(*of_object_id, precondition) {
-                        continue;
-                    }
-
-                    match precondition {
-                        Precondition::Chosen(choice_id) => {
-                            self.scan_for_valid_choices(*of_object_id, *choice_id)
-                                .iter()
-                                .for_each(|&object_id| {
-                                    // TODO: Check if by choosing this one we can still fill
-                                    // preconditions
-                                    actions.push(Action::Choose {
-                                        choice_id: *choice_id,
-                                        object_id,
-                                    })
-                                });
-                        }
-                    }
+                for choice in self.binder.choices(def_id) {
+                    self.scan_for_valid_choices(*of_object_id, choice.id)
+                        .iter()
+                        .for_each(|&object_id| {
+                            // TODO: Check if by choosing this one we can still fill
+                            // preconditions
+                            actions.push(Action::Choose {
+                                chooser_id: *of_object_id,
+                                choice_id: choice.id,
+                                object_id,
+                            })
+                        });
                 }
-                if actions.is_empty() {
+                let all_choices_fulfilled = self
+                    .binder
+                    .choices(def_id)
+                    .iter()
+                    .all(|c| self.choice_fulfilled(*of_object_id, c.id));
+                if all_choices_fulfilled {
                     actions.push(Action::Play {
                         object_id: *of_object_id,
                     });
@@ -178,19 +176,6 @@ impl Game {
                 actions.push(Action::Cancel {
                     object_id: *of_object_id,
                 });
-            }
-            PlayerInteractionState::Choosing {
-                object_id,
-                choice_id,
-            } => {
-                self.scan_for_valid_choices(*object_id, *choice_id)
-                    .iter()
-                    .for_each(|&object_id| {
-                        actions.push(Action::Choose {
-                            choice_id: *choice_id,
-                            object_id,
-                        })
-                    });
             }
         }
         actions
@@ -246,12 +231,6 @@ impl Game {
             }
         }
         valid_choices
-    }
-
-    fn precondition_fulfilled(&self, object_id: ObjectId, precondition: &Precondition) -> bool {
-        match precondition {
-            Precondition::Chosen(choice_id) => self.choice_fulfilled(object_id, *choice_id),
-        }
     }
 
     fn choice_fulfilled(&self, object_id: ObjectId, choice_id: ChoiceId) -> bool {
@@ -321,7 +300,7 @@ impl Game {
     ) -> bool {
         let obj = self.objects.get(object_id);
         fulfill_chacter_side_filter(side, obj.player_id, player_id)
-            || self.fulfill_chacter_kind_filter(kind, obj.def_id)
+            && self.fulfill_chacter_kind_filter(kind, obj.def_id)
     }
 
     fn end_turn(&mut self, obs: &mut impl Observer) {
