@@ -6,6 +6,7 @@
 //! - `resolve`: the mutation half of `apply`.
 //! - `lookup`: attack, health and cost, computed on read.
 
+mod condition;
 mod lookup;
 mod player;
 mod resolve;
@@ -14,11 +15,8 @@ pub(crate) mod view;
 mod zone_move;
 
 use crate::action::Action;
-use crate::cards::definition::CharacterSelectorFilter;
 use crate::cards::{binder::Binder, loader::CardDefLoader, object::ObjectBag};
-use crate::choice::ChoiceId;
 use crate::game::player::{Player, PlayerInteractionState};
-use crate::game::resolve::fulfill_chacter_side_filter;
 use crate::history::History;
 use crate::ids::PlayerId;
 use crate::rng::Rng;
@@ -208,99 +206,6 @@ impl Game {
 
     pub fn outcome(&self) -> Option<Outcome> {
         self.outcome
-    }
-
-    fn can_fill_preconditions(&self, _object_id: ObjectId) -> bool {
-        true
-    }
-
-    fn scan_for_valid_choices(&self, chooser_id: ObjectId, choice_id: ChoiceId) -> Vec<ObjectId> {
-        let mut valid_choices = Vec::new();
-        for object_id in self
-            .players
-            .iter()
-            .flat_map(|p| p.zones.board.as_slice().iter().copied())
-        {
-            if self.is_valid_choice(chooser_id, choice_id, object_id) {
-                valid_choices.push(object_id);
-            }
-        }
-        for object_id in self.players.iter().map(|p| p.zones.hero) {
-            if self.is_valid_choice(chooser_id, choice_id, object_id) {
-                valid_choices.push(object_id);
-            }
-        }
-        valid_choices
-    }
-
-    fn choice_fulfilled(&self, object_id: ObjectId, choice_id: ChoiceId) -> bool {
-        let obj = self.objects.get(object_id);
-        let choice = self.binder.choice(obj.def_id, choice_id).unwrap();
-        let Some(targets) = obj
-            .choice_targets
-            .iter()
-            .find(|c| c.choice_id == choice_id)
-            .map(|c| &c.targets)
-        else {
-            return false;
-        };
-
-        let count = self.effect_amount(choice.count, obj.player_id);
-        let chosen_count = targets.len() as u8;
-        let fulfill_count = choice.bound.is_satisfied(chosen_count, count);
-
-        // TODO: Not needed
-        let fulfill_unique = !choice.unique || {
-            targets
-                .iter()
-                .enumerate()
-                .all(|(i, x)| !targets[i + 1..].contains(x))
-        };
-
-        // TODO: Not needed
-        let fulfill_filter = targets
-            .iter()
-            .copied()
-            .all(|t| self.fulfill_character_selection_filter(t, obj.player_id, choice.filter));
-
-        fulfill_count && fulfill_unique && fulfill_filter
-    }
-
-    fn is_valid_choice(
-        &self,
-        chooser_id: ObjectId,
-        choice_id: ChoiceId,
-        object_id: ObjectId,
-    ) -> bool {
-        let obj = self.objects.get(chooser_id);
-        let choice = self.binder.choice(obj.def_id, choice_id).unwrap();
-        let targets = obj
-            .choice_targets
-            .iter()
-            .find(|c| c.choice_id == choice_id)
-            .map(|c| c.targets.clone())
-            .unwrap_or_default();
-
-        let count = self.effect_amount(choice.count, obj.player_id);
-        let chosen_count = targets.len() as u8;
-        let fulfill_count =
-            (chosen_count + 1) <= choice.bound.upper_bound(count).unwrap_or(u8::MAX);
-        let fulfill_unique = !targets.contains(&object_id);
-        let fulfill_filter =
-            self.fulfill_character_selection_filter(object_id, obj.player_id, choice.filter);
-
-        fulfill_count && fulfill_unique && fulfill_filter
-    }
-
-    fn fulfill_character_selection_filter(
-        &self,
-        object_id: ObjectId,
-        player_id: PlayerId,
-        CharacterSelectorFilter { kind, side }: CharacterSelectorFilter,
-    ) -> bool {
-        let obj = self.objects.get(object_id);
-        fulfill_chacter_side_filter(side, obj.player_id, player_id)
-            && self.fulfill_chacter_kind_filter(kind, obj.def_id)
     }
 
     fn end_turn(&mut self, obs: &mut impl Observer) {

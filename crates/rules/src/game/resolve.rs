@@ -4,20 +4,16 @@
 //! Every action that reaches this module is already in `legal_actions`, so
 //! nothing here re-checks legality.
 
-use enumset::EnumSet;
-
 use super::Game;
 use crate::action::Action;
-use crate::cards::definition::{
-    CharacterKindFilter, CharacterSelector, CharacterSelectorFilter, CharacterSideFilter, Effect,
-    PlayerSelector, PlayerSelectorFilter,
-};
+use crate::cards::definition::{CharacterSelector, Effect, PlayerSelector, PlayerSelectorFilter};
 use crate::cards::modifier::Modifier;
 use crate::choice::{ChoiceTarget, EffectAmount};
 use crate::game::PlayerInteractionState;
+use crate::game::condition::fulfill_character_side_filter;
 use crate::history::{HistoryKind, HistoryQuery, HistoryQueryKind, PlayerFilter};
 use crate::ids::PlayerId;
-use crate::{DefId, Event, IllegalAction, ObjectId, Observer, Views};
+use crate::{Event, IllegalAction, ObjectId, Observer, Views};
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum ApplyError {
@@ -230,7 +226,7 @@ impl Game {
             self.players
                 .iter()
                 .map(|p| p.id)
-                .filter(|&player_id| fulfill_chacter_side_filter(side, owner, player_id))
+                .filter(|&player_id| fulfill_character_side_filter(side, owner, player_id))
                 .collect()
         };
         match selector {
@@ -249,34 +245,16 @@ impl Game {
         object_id: ObjectId,
         selector: CharacterSelector,
     ) -> Vec<ObjectId> {
-        let all = |CharacterSelectorFilter { kind, side }| {
-            let mut characters = Vec::new();
-            if kind.contains(CharacterKindFilter::Heroes) {
-                characters.extend(
-                    self.players
-                        .iter()
-                        .filter(|player| fulfill_chacter_side_filter(side, owner, player.id))
-                        .map(|player| player.zones.hero),
-                );
-            }
-            if kind.contains(CharacterKindFilter::Minions) {
-                characters.extend(
-                    self.players
-                        .iter()
-                        .filter(|player| fulfill_chacter_side_filter(side, owner, player.id))
-                        .flat_map(|player| player.zones.board.as_slice()),
-                );
-            }
-            characters
-        };
         match selector {
-            CharacterSelector::All(filter) => all(filter),
+            CharacterSelector::All(filter) => self.scan_characters_with_filter(owner, filter),
             CharacterSelector::Itself => vec![object_id],
             CharacterSelector::OwnerHero => vec![self.hero_id(owner)],
-            CharacterSelector::Random(filter) => match self.select_random(&all(filter)) {
-                Some(v) => vec![v],
-                None => Vec::new(),
-            },
+            CharacterSelector::Random(filter) => {
+                match self.select_random(&self.scan_characters_with_filter(owner, filter)) {
+                    Some(v) => vec![v],
+                    None => Vec::new(),
+                }
+            }
             CharacterSelector::Chosen(choice_id) => self
                 .objects
                 .get(object_id)
@@ -295,22 +273,4 @@ impl Game {
             values[idx].clone()
         })
     }
-
-    pub(crate) fn fulfill_chacter_kind_filter(
-        &self,
-        kind: EnumSet<CharacterKindFilter>,
-        def_id: DefId,
-    ) -> bool {
-        self.binder.is_hero(def_id) && kind.contains(CharacterKindFilter::Heroes)
-            || self.binder.is_minion(def_id) && kind.contains(CharacterKindFilter::Minions)
-    }
-}
-
-pub(crate) fn fulfill_chacter_side_filter(
-    side: EnumSet<CharacterSideFilter>,
-    owner: PlayerId,
-    player_id: PlayerId,
-) -> bool {
-    (side.contains(CharacterSideFilter::Enemy) && player_id != owner)
-        || (side.contains(CharacterSideFilter::Friendly) && player_id == owner)
 }
