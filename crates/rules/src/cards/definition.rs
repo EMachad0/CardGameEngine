@@ -1,8 +1,8 @@
 use enumset::EnumSet;
 
-use crate::cards::{
-    loader::PLACEHOLDER,
-    modifier::{EffectAmount, ModifierEffect},
+use crate::{
+    cards::{loader::PLACEHOLDER, modifier::ModifierEffect},
+    choice::{CharacterChoice, ChoiceId, EffectAmount},
 };
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -25,6 +25,8 @@ pub struct CardDef {
     pub on_board_enter: EffectSequence,
     pub on_board_leave: EffectSequence,
     pub on_death: EffectSequence,
+    pub choices: Vec<CharacterChoice>,
+    pub preconditions: Vec<Precondition>,
 }
 
 impl Default for CardDef {
@@ -39,6 +41,8 @@ impl Default for CardDef {
             on_board_enter: Default::default(),
             on_board_leave: Default::default(),
             on_death: Default::default(),
+            choices: Default::default(),
+            preconditions: Default::default(),
         }
     }
 }
@@ -163,4 +167,10 @@ pub enum CharacterSelector {
     Itself,
     OwnerHero,
     Random(CharacterSelectorFilter),
+    Chosen(ChoiceId),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Precondition {
+    Chosen(ChoiceId),
 }

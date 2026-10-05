@@ -11,6 +11,7 @@
 
 mod action;
 mod cards;
+mod choice;
 mod event;
 mod game;
 mod history;

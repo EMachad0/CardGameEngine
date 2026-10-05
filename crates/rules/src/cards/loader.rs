@@ -5,10 +5,11 @@ use crate::{
         definition::{
             CardDef, CardDefKind, CharacterKindFilter, CharacterSelector, CharacterSelectorFilter,
             CharacterSideFilter, DefId, Effect, EffectSequence, HeroCardDef, MinionCardDef,
-            PlayerSelector, SpellCardDef,
+            PlayerSelector, Precondition, SpellCardDef,
         },
-        modifier::{EffectAmount, ModifierEffect},
+        modifier::ModifierEffect,
     },
+    choice::{AmountBound, CharacterChoice, ChoiceId, EffectAmount},
     history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter},
     static_card_definition::*,
 };
@@ -57,6 +58,7 @@ def_ids!(
     BARRACKS = "base.barracks.v0",
     ZAP = "base.zap.v0",
     STRAY_SHOT = "base.stray_shot.v0",
+    PING = "base.ping.v0",
 );
 
 // TODO: loading cards from disk into the engine should be shells job
@@ -222,6 +224,28 @@ impl CardDefLoader {
                     }),
                     amount: 2.into(),
                 }]),
+                ..Default::default()
+            },
+            CardDef {
+                id: PING,
+                name: "Ping".to_string(),
+                kind: CardDefKind::Spell(SpellCardDef),
+                mana_cost: 1,
+                on_play_effect: EffectSequence(vec![Effect::Damage {
+                    selector: CharacterSelector::Chosen(ChoiceId(0)),
+                    amount: 2.into(),
+                }]),
+                choices: vec![CharacterChoice {
+                    id: ChoiceId(0),
+                    filter: CharacterSelectorFilter {
+                        kind: EnumSet::only(CharacterKindFilter::Minions),
+                        side: EnumSet::only(CharacterSideFilter::Enemy),
+                    },
+                    count: 1.into(),
+                    bound: AmountBound::Exactly,
+                    unique: true,
+                }],
+                preconditions: vec![Precondition::Chosen(ChoiceId(0))],
                 ..Default::default()
             },
         ]

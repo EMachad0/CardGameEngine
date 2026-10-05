@@ -133,7 +133,6 @@ impl Game {
         interaction_state: &PlayerInteractionState,
     ) -> Vec<RevealedCard> {
         match interaction_state {
-            PlayerInteractionState::Idle => Vec::new(),
             PlayerInteractionState::PendingPick { options } => options
                 .iter()
                 .map(|&object_id| RevealedCard {
@@ -141,6 +140,7 @@ impl Game {
                     def_id: (player_id == viewer).then(|| self.def_id(object_id)),
                 })
                 .collect(),
+            _ => Vec::new(),
         }
     }
 

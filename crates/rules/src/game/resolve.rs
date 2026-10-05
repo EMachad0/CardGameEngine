@@ -12,10 +12,12 @@ use crate::cards::definition::{
     CharacterKindFilter, CharacterSelector, CharacterSelectorFilter, CharacterSideFilter, Effect,
     PlayerSelector, PlayerSelectorFilter,
 };
-use crate::cards::modifier::{EffectAmount, Modifier};
+use crate::cards::modifier::Modifier;
+use crate::choice::{ChoiceTarget, EffectAmount};
+use crate::game::PlayerInteractionState;
 use crate::history::{HistoryKind, HistoryQuery, HistoryQueryKind, PlayerFilter};
 use crate::ids::PlayerId;
-use crate::{Event, IllegalAction, ObjectId, Observer, Views};
+use crate::{DefId, Event, IllegalAction, ObjectId, Observer, Views};
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum ApplyError {
@@ -71,6 +73,39 @@ impl Game {
                 self.end_turn(obs);
                 self.start_turn(obs);
                 obs.checkpoint(Views::new(self));
+            }
+            Action::Draft { object_id } => {
+                self.get_player_mut(player_id).interaction_state = PlayerInteractionState::Draft {
+                    of_object_id: object_id,
+                }
+            }
+            Action::Choose {
+                object_id,
+                choice_id,
+            } => {
+                let targets = &mut self.objects.get_mut(object_id).choice_targets;
+
+                let idx = match targets.iter().position(|t| t.choice_id == choice_id) {
+                    Some(i) => i,
+                    None => {
+                        targets.push(ChoiceTarget::new(choice_id));
+                        targets.len() - 1
+                    }
+                };
+
+                targets[idx].targets.push(object_id);
+            }
+            Action::Cancel { .. } => {
+                let player = self.get_player_mut(player_id);
+                let PlayerInteractionState::Draft { of_object_id } = player.interaction_state
+                else {
+                    unreachable!();
+                };
+                self.objects
+                    .get_mut(of_object_id)
+                    .choice_targets
+                    .iter_mut()
+                    .for_each(|t| t.targets.clear());
             }
         };
     }
@@ -193,7 +228,7 @@ impl Game {
             self.players
                 .iter()
                 .map(|p| p.id)
-                .filter(|&player_id| resolve_side_filter(side, owner, player_id))
+                .filter(|&player_id| fulfill_chacter_side_filter(side, owner, player_id))
                 .collect()
         };
         match selector {
@@ -218,7 +253,7 @@ impl Game {
                 characters.extend(
                     self.players
                         .iter()
-                        .filter(|player| resolve_side_filter(side, owner, player.id))
+                        .filter(|player| fulfill_chacter_side_filter(side, owner, player.id))
                         .map(|player| player.zones.hero),
                 );
             }
@@ -226,7 +261,7 @@ impl Game {
                 characters.extend(
                     self.players
                         .iter()
-                        .filter(|player| resolve_side_filter(side, owner, player.id))
+                        .filter(|player| fulfill_chacter_side_filter(side, owner, player.id))
                         .flat_map(|player| player.zones.board.as_slice()),
                 );
             }
@@ -240,6 +275,15 @@ impl Game {
                 Some(v) => vec![v],
                 None => Vec::new(),
             },
+            CharacterSelector::Chosen(choice_id) => self
+                .objects
+                .get(object_id)
+                .choice_targets
+                .iter()
+                .find(|c| c.choice_id == choice_id)
+                .expect("Choice not fulfilled")
+                .targets
+                .clone(),
         }
     }
 
@@ -249,9 +293,18 @@ impl Game {
             values[idx].clone()
         })
     }
+
+    pub(crate) fn fulfill_chacter_kind_filter(
+        &self,
+        kind: EnumSet<CharacterKindFilter>,
+        def_id: DefId,
+    ) -> bool {
+        self.binder.is_hero(def_id) && kind.contains(CharacterKindFilter::Heroes)
+            || self.binder.is_minion(def_id) && kind.contains(CharacterKindFilter::Minions)
+    }
 }
 
-fn resolve_side_filter(
+pub(crate) fn fulfill_chacter_side_filter(
     side: EnumSet<CharacterSideFilter>,
     owner: PlayerId,
     player_id: PlayerId,
