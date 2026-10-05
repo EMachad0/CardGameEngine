@@ -81,7 +81,8 @@ impl Game {
                             choice_id,
                             targets: chosen
                                 .iter()
-                                .filter_map(|(o, c)| (*c == choice_id).then(|| *o))
+                                .filter(|(_, c)| *c == choice_id)
+                                .map(|(o, _)| *o)
                                 .collect(),
                         });
                     }

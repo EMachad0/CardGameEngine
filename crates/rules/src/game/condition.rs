@@ -1,37 +1,27 @@
 use enumset::EnumSet;
 
 use crate::{
-    DefId, Game, ObjectId, PlayerId,
+    Game, ObjectId, PlayerId,
     cards::definition::{CharacterKindFilter, CharacterSelectorFilter, CharacterSideFilter},
-    choice::ChoiceId,
+    choice::{CharacterChoice, ChoiceId},
 };
 
 impl Game {
-    pub(crate) fn can_fill_preconditions(&self, _object_id: ObjectId) -> bool {
-        true
-    }
-
     pub(crate) fn scan_for_valid_choices(
         &self,
         chooser_id: ObjectId,
-        choice_id: ChoiceId,
+        choice: &CharacterChoice,
+        chosen: &[ObjectId],
     ) -> Vec<ObjectId> {
-        let mut valid_choices = Vec::new();
-        for object_id in self
-            .players
-            .iter()
-            .flat_map(|p| p.zones.board.as_slice().iter().copied())
-        {
-            if self.is_valid_choice(chooser_id, choice_id, object_id) {
-                valid_choices.push(object_id);
-            }
+        if self.check_choice_count_fulfilled(chooser_id, choice.id, chosen.len() as u8) {
+            return Vec::new();
         }
-        for object_id in self.players.iter().map(|p| p.zones.hero) {
-            if self.is_valid_choice(chooser_id, choice_id, object_id) {
-                valid_choices.push(object_id);
-            }
-        }
-        valid_choices
+
+        let obj = self.objects.get(chooser_id);
+        self.scan_characters_with_filter(obj.player_id, choice.filter)
+            .into_iter()
+            .filter(|o| !chosen.contains(o))
+            .collect()
     }
 
     pub(crate) fn check_choice_count_fulfilled(
@@ -44,43 +34,6 @@ impl Game {
         let choice = self.binder.choice(obj.def_id, choice_id).unwrap();
         let count = self.effect_amount(choice.count, obj.player_id);
         choice.bound.is_satisfied(chosen_count, count)
-    }
-
-    fn is_valid_choice(
-        &self,
-        chooser_id: ObjectId,
-        choice_id: ChoiceId,
-        object_id: ObjectId,
-    ) -> bool {
-        let obj = self.objects.get(chooser_id);
-        let choice = self.binder.choice(obj.def_id, choice_id).unwrap();
-        let targets = obj
-            .choice_targets
-            .iter()
-            .find(|c| c.choice_id == choice_id)
-            .map(|c| c.targets.clone())
-            .unwrap_or_default();
-
-        let count = self.effect_amount(choice.count, obj.player_id);
-        let chosen_count = targets.len() as u8;
-        let fulfill_count =
-            (chosen_count + 1) <= choice.bound.upper_bound(count).unwrap_or(u8::MAX);
-        let fulfill_unique = !targets.contains(&object_id);
-        let fulfill_filter =
-            self.fulfill_character_selection_filter(object_id, obj.player_id, choice.filter);
-
-        fulfill_count && fulfill_unique && fulfill_filter
-    }
-
-    fn fulfill_character_selection_filter(
-        &self,
-        object_id: ObjectId,
-        asking: PlayerId,
-        CharacterSelectorFilter { kind, side }: CharacterSelectorFilter,
-    ) -> bool {
-        let obj = self.objects.get(object_id);
-        self.fulfill_character_kind_filter(kind, obj.def_id)
-            && fulfill_character_side_filter(side, obj.player_id, asking)
     }
 
     pub(crate) fn scan_characters_with_filter(
@@ -108,13 +61,36 @@ impl Game {
         characters
     }
 
-    pub(crate) fn fulfill_character_kind_filter(
+    pub(super) fn can_finish_choices(
         &self,
-        kind: EnumSet<CharacterKindFilter>,
-        def_id: DefId,
+        object_id: ObjectId,
+        chosen: &mut Vec<(ObjectId, ChoiceId)>,
     ) -> bool {
-        self.binder.is_hero(def_id) && kind.contains(CharacterKindFilter::Heroes)
-            || self.binder.is_minion(def_id) && kind.contains(CharacterKindFilter::Minions)
+        let mut any_unfulfiled = false;
+        for choice in self.binder.choices(self.def_id(object_id)) {
+            let chosen_for_choice = chosen
+                .iter()
+                .filter(|(_, choice_id)| choice.id == *choice_id)
+                .map(|(o, _)| *o)
+                .collect::<Vec<_>>();
+            if !self.check_choice_count_fulfilled(
+                object_id,
+                choice.id,
+                chosen_for_choice.len() as u8,
+            ) {
+                let candidates = self.scan_for_valid_choices(object_id, choice, &chosen_for_choice);
+                for candidate in candidates.into_iter() {
+                    chosen.push((candidate, choice.id));
+                    let can_finish = self.can_finish_choices(object_id, chosen);
+                    if can_finish {
+                        return true;
+                    }
+                    chosen.pop();
+                }
+                any_unfulfiled = true;
+            }
+        }
+        !any_unfulfiled
     }
 }
 

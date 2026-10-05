@@ -129,7 +129,7 @@ impl Game {
                             actions.push(Action::Play { object_id });
                         }
                         false => {
-                            if self.can_fill_preconditions(object_id) {
+                            if self.can_finish_choices(object_id, &mut Vec::new()) {
                                 actions.push(Action::Draft { object_id });
                             }
                         }
@@ -150,29 +150,38 @@ impl Game {
                 of_object_id,
                 chosen,
             } => {
+                let mut chosen = chosen.clone();
                 let def_id = self.def_id(*of_object_id);
+                let mut all_choices_fulfilled = true;
                 for choice in self.binder.choices(def_id) {
-                    self.scan_for_valid_choices(*of_object_id, choice.id)
+                    let chosen_for_choice = chosen
                         .iter()
-                        .for_each(|&object_id| {
-                            // TODO: Check if by choosing this one we can still fill
-                            // preconditions
+                        .filter(|(_, choice_id)| choice.id == *choice_id)
+                        .map(|(o, _)| *o)
+                        .collect::<Vec<_>>();
+                    if self.check_choice_count_fulfilled(
+                        *of_object_id,
+                        choice.id,
+                        chosen_for_choice.len() as u8,
+                    ) {
+                        continue;
+                    }
+
+                    let candidates =
+                        self.scan_for_valid_choices(*of_object_id, choice, &chosen_for_choice);
+                    for candidate in candidates.into_iter() {
+                        chosen.push((candidate, choice.id));
+                        if self.can_finish_choices(candidate, &mut chosen) {
                             actions.push(Action::Choose {
                                 choice_id: choice.id,
-                                object_id,
+                                object_id: candidate,
                             })
-                        });
+                        }
+                        chosen.pop();
+                    }
+                    all_choices_fulfilled = false;
+                    break;
                 }
-                let all_choices_fulfilled = self.binder.choices(def_id).iter().all(|c| {
-                    self.check_choice_count_fulfilled(
-                        *of_object_id,
-                        c.id,
-                        chosen
-                            .iter()
-                            .filter(|(_, choice_id)| c.id == *choice_id)
-                            .count() as u8,
-                    )
-                });
                 if all_choices_fulfilled {
                     actions.push(Action::Play {
                         object_id: *of_object_id,

@@ -15,23 +15,20 @@ impl From<u8> for EffectAmount {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AmountBound {
     Exactly,
-    AtMost,
-    AtLeast,
+    // AtMost,
+    // AtLeast,
 }
 
 impl AmountBound {
     pub fn is_satisfied<T: PartialOrd>(&self, chosen: T, target: T) -> bool {
         match self {
             Self::Exactly => chosen == target,
-            Self::AtMost => chosen <= target,
-            Self::AtLeast => chosen >= target,
         }
     }
 
     pub fn upper_bound<T>(&self, target: T) -> Option<T> {
         match self {
-            Self::Exactly | Self::AtMost => Some(target),
-            Self::AtLeast => None,
+            Self::Exactly => Some(target),
         }
     }
 }

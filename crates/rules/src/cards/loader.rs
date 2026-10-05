@@ -239,7 +239,7 @@ impl CardDefLoader {
                     id: ChoiceId(0),
                     filter: CharacterSelectorFilter {
                         kind: EnumSet::only(CharacterKindFilter::Minions),
-                        side: EnumSet::only(CharacterSideFilter::Enemy),
+                        side: EnumSet::all(),
                     },
                     count: 1.into(),
                     bound: AmountBound::Exactly,
