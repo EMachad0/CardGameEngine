@@ -243,7 +243,6 @@ impl CardDefLoader {
                     },
                     count: 1.into(),
                     bound: AmountBound::Exactly,
-                    unique: true,
                 }],
                 ..Default::default()
             },
