@@ -14,7 +14,6 @@ pub enum Action {
         object_id: ObjectId,
     },
     Choose {
-        chooser_id: ObjectId,
         choice_id: ChoiceId,
         object_id: ObjectId,
     },

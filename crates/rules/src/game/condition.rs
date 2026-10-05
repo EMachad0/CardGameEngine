@@ -11,7 +11,11 @@ impl Game {
         true
     }
 
-    pub(crate) fn scan_for_valid_choices(&self, chooser_id: ObjectId, choice_id: ChoiceId) -> Vec<ObjectId> {
+    pub(crate) fn scan_for_valid_choices(
+        &self,
+        chooser_id: ObjectId,
+        choice_id: ChoiceId,
+    ) -> Vec<ObjectId> {
         let mut valid_choices = Vec::new();
         for object_id in self
             .players
@@ -30,20 +34,15 @@ impl Game {
         valid_choices
     }
 
-    pub(crate) fn choice_fulfilled(&self, object_id: ObjectId, choice_id: ChoiceId) -> bool {
+    pub(crate) fn check_choice_count_fulfilled(
+        &self,
+        object_id: ObjectId,
+        choice_id: ChoiceId,
+        chosen_count: u8,
+    ) -> bool {
         let obj = self.objects.get(object_id);
         let choice = self.binder.choice(obj.def_id, choice_id).unwrap();
-        let Some(targets) = obj
-            .choice_targets
-            .iter()
-            .find(|c| c.choice_id == choice_id)
-            .map(|c| &c.targets)
-        else {
-            return false;
-        };
-
         let count = self.effect_amount(choice.count, obj.player_id);
-        let chosen_count = targets.len() as u8;
         choice.bound.is_satisfied(chosen_count, count)
     }
 
@@ -80,7 +79,7 @@ impl Game {
         CharacterSelectorFilter { kind, side }: CharacterSelectorFilter,
     ) -> bool {
         let obj = self.objects.get(object_id);
-        self.fulfill_chacter_kind_filter(kind, obj.def_id)
+        self.fulfill_character_kind_filter(kind, obj.def_id)
             && fulfill_character_side_filter(side, obj.player_id, asking)
     }
 
@@ -109,7 +108,7 @@ impl Game {
         characters
     }
 
-    pub(crate) fn fulfill_chacter_kind_filter(
+    pub(crate) fn fulfill_character_kind_filter(
         &self,
         kind: EnumSet<CharacterKindFilter>,
         def_id: DefId,

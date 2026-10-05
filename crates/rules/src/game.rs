@@ -146,7 +146,10 @@ impl Game {
                         .map(|object_id| Action::Pick { object_id }),
                 );
             }
-            PlayerInteractionState::Draft { of_object_id } => {
+            PlayerInteractionState::Draft {
+                of_object_id,
+                chosen,
+            } => {
                 let def_id = self.def_id(*of_object_id);
                 for choice in self.binder.choices(def_id) {
                     self.scan_for_valid_choices(*of_object_id, choice.id)
@@ -155,17 +158,21 @@ impl Game {
                             // TODO: Check if by choosing this one we can still fill
                             // preconditions
                             actions.push(Action::Choose {
-                                chooser_id: *of_object_id,
                                 choice_id: choice.id,
                                 object_id,
                             })
                         });
                 }
-                let all_choices_fulfilled = self
-                    .binder
-                    .choices(def_id)
-                    .iter()
-                    .all(|c| self.choice_fulfilled(*of_object_id, c.id));
+                let all_choices_fulfilled = self.binder.choices(def_id).iter().all(|c| {
+                    self.check_choice_count_fulfilled(
+                        *of_object_id,
+                        c.id,
+                        chosen
+                            .iter()
+                            .filter(|(_, choice_id)| c.id == *choice_id)
+                            .count() as u8,
+                    )
+                });
                 if all_choices_fulfilled {
                     actions.push(Action::Play {
                         object_id: *of_object_id,

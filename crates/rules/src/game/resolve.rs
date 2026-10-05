@@ -55,6 +55,38 @@ impl Game {
     ) {
         match action {
             Action::Play { object_id } => {
+                let from_draft = matches!(
+                    self.get_player(player_id).interaction_state,
+                    PlayerInteractionState::Draft { .. }
+                );
+                if from_draft {
+                    let PlayerInteractionState::Draft {
+                        of_object_id,
+                        chosen,
+                    } = std::mem::take(&mut self.get_player_mut(player_id).interaction_state)
+                    else {
+                        unreachable!();
+                    };
+                    let def_id = self.def_id(of_object_id);
+                    let choice_ids = self
+                        .binder
+                        .choices(def_id)
+                        .iter()
+                        .map(|c| c.id)
+                        .collect::<Vec<_>>();
+
+                    let obj = self.objects.get_mut(of_object_id);
+                    for choice_id in choice_ids {
+                        obj.choice_targets.push(ChoiceTarget {
+                            choice_id,
+                            targets: chosen
+                                .iter()
+                                .filter_map(|(o, c)| (*c == choice_id).then(|| *o))
+                                .collect(),
+                        });
+                    }
+                }
+
                 let mana_cost = self
                     .mana_cost(object_id)
                     .expect("[legal_actions] guarantees a play action object_id has mana");
@@ -73,37 +105,23 @@ impl Game {
             Action::Draft { object_id } => {
                 self.get_player_mut(player_id).interaction_state = PlayerInteractionState::Draft {
                     of_object_id: object_id,
+                    chosen: Vec::new(),
                 }
             }
             Action::Choose {
-                chooser_id,
                 choice_id,
                 object_id,
             } => {
-                let targets = &mut self.objects.get_mut(chooser_id).choice_targets;
-
-                let idx = match targets.iter().position(|t| t.choice_id == choice_id) {
-                    Some(i) => i,
-                    None => {
-                        targets.push(ChoiceTarget::new(choice_id));
-                        targets.len() - 1
-                    }
-                };
-
-                targets[idx].targets.push(object_id);
-            }
-            Action::Cancel { .. } => {
                 let player = self.get_player_mut(player_id);
-                let PlayerInteractionState::Draft { of_object_id } = player.interaction_state
+                let PlayerInteractionState::Draft { chosen, .. } = &mut player.interaction_state
                 else {
                     unreachable!();
                 };
+                chosen.push((object_id, choice_id));
+            }
+            Action::Cancel { .. } => {
+                let player = self.get_player_mut(player_id);
                 player.interaction_state = PlayerInteractionState::default();
-                self.objects
-                    .get_mut(of_object_id)
-                    .choice_targets
-                    .iter_mut()
-                    .for_each(|t| t.targets.clear());
             }
         };
     }

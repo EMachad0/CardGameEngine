@@ -4,6 +4,7 @@
 //! `game` can see them.
 
 use crate::ObjectId;
+use crate::choice::ChoiceId;
 use crate::ids::PlayerId;
 use crate::zones::Zones;
 
@@ -16,6 +17,7 @@ pub(super) enum PlayerInteractionState {
     },
     Draft {
         of_object_id: ObjectId,
+        chosen: Vec<(ObjectId, ChoiceId)>,
     },
 }
 

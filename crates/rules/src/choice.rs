@@ -52,12 +52,3 @@ pub(crate) struct ChoiceTarget {
     pub choice_id: ChoiceId,
     pub targets: Vec<ObjectId>,
 }
-
-impl ChoiceTarget {
-    pub(crate) fn new(choice_id: ChoiceId) -> Self {
-        Self {
-            choice_id,
-            targets: Default::default(),
-        }
-    }
-}
