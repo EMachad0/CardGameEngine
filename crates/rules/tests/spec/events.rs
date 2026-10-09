@@ -1,7 +1,7 @@
 //! What `apply` reports to its observer.
 
 use rules::static_card_definition::{
-    BARRACKS, BLAST, BOLT, CAPTAIN, FORAGE, RECRUIT, SPARK, WILD_BOLT, ZAP,
+    BARRACKS, BLAST, BOLT, CAPTAIN, FORAGE, PING, RECRUIT, SPARK, TWIN_SHOT, WILD_BOLT, ZAP,
 };
 use rules::{Action, Event, Game, ObjectId, Outcome, PlayerId, View};
 
@@ -692,4 +692,50 @@ fn an_apply_ends_with_a_checkpoint_showing_the_game_it_leaves() {
     );
     let last = recorder.steps.last().expect("at least one checkpoint");
     assert_eq!(last.views, players(&game).map(|p| game.view(p)));
+}
+
+#[test]
+fn draft_choose_and_cancel_each_report_one_checkpoint_and_no_event() {
+    let mut t = table(&[PING], 0, 1);
+    let ping = in_hand(&t.game, t.p0, PING);
+
+    for a in [draft(ping), choose(0, t.enemy[0]), cancel(ping)] {
+        let recorder = observe(&mut t.game, t.p0, a);
+        assert_eq!(recorder.steps.len(), 1, "{a:?}");
+        assert_eq!(recorder.events(), [], "{a:?}");
+    }
+}
+
+#[test]
+fn a_drafted_card_reports_played_then_hits_its_chosen_targets() {
+    let mut t = table(&[TWIN_SHOT], 0, 2);
+    let twin_shot = in_hand(&t.game, t.p0, TWIN_SHOT);
+    apply_all(
+        &mut t.game,
+        t.p0,
+        &[
+            draft(twin_shot),
+            choose(0, t.enemy[1]),
+            choose(0, t.enemy[0]),
+        ],
+    );
+
+    let recorder = observe(&mut t.game, t.p0, play(twin_shot));
+
+    let hit = |target| Event::Damaged {
+        target,
+        amount: 1,
+        source: twin_shot,
+    };
+    assert_eq!(
+        event_steps(&recorder),
+        [
+            vec![Event::Played {
+                player_id: t.p0,
+                object_id: twin_shot
+            }],
+            vec![hit(t.enemy[1]), hit(t.enemy[0])],
+        ],
+        "one effect over a set of targets is one step, in the order they were chosen"
+    );
 }

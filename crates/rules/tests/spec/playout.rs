@@ -3,11 +3,12 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use rules::static_card_definition::{
-    BARRACKS, BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK, WILD_BOLT,
+    BARRACKS, BLAST, BOLT, CAPTAIN, CROSSFIRE, FORAGE, GIANT, PING, RECRUIT, SHOVE, SPARK,
+    TWIN_SHOT, WILD_BOLT,
 };
 use rules::{Action, DefId, Game, ObjectId, Outcome, PlayerId, Rng};
 
-use crate::model::{BoardModel, expected_cost, is_spell};
+use crate::model::{BoardModel, damage_per_chosen_target, expected_cost, is_spell};
 use crate::support::*;
 
 const MAX_STEPS: usize = 5_000;
@@ -15,7 +16,8 @@ const MAX_STEPS: usize = 5_000;
 pub(crate) fn sample_deck() -> Vec<DefId> {
     vec![
         SPARK, BOLT, WILD_BOLT, FORAGE, BLAST, RECRUIT, CAPTAIN, GIANT, RECRUIT, CAPTAIN, SPARK,
-        FORAGE, BLAST, RECRUIT, CAPTAIN, BOLT, BARRACKS, BARRACKS,
+        FORAGE, BLAST, RECRUIT, CAPTAIN, BOLT, BARRACKS, BARRACKS, PING, TWIN_SHOT, CROSSFIRE,
+        SHOVE,
     ]
 }
 
@@ -29,12 +31,24 @@ struct History {
     /// By index in `Game::players`.
     spells_cast: [u8; 2],
     boards: BoardModel,
+    /// The targets chosen in the open draft, in order.
+    chosen: Vec<ObjectId>,
 }
 
 /// Plays a random game and returns it with its decision log. A separate `Rng`
 /// picks each step's action from both players' lists. It can live outside the
 /// core because its picks are the decisions, an input to the game.
 pub(crate) fn random_playout(seed: u64, picker_seed: u64) -> (Game, Vec<(PlayerId, Action)>) {
+    playout(seed, picker_seed, false)
+}
+
+/// Like `random_playout`, and checks every invariant before each step and the
+/// model after each action.
+pub(crate) fn checked_playout(seed: u64, picker_seed: u64) -> (Game, Vec<(PlayerId, Action)>) {
+    playout(seed, picker_seed, true)
+}
+
+fn playout(seed: u64, picker_seed: u64, checked: bool) -> (Game, Vec<(PlayerId, Action)>) {
     let mut game = Game::new(seed, [sample_deck(), sample_deck()]);
     let mut picker = Rng::new(picker_seed);
     let mut history = History::default();
@@ -42,7 +56,9 @@ pub(crate) fn random_playout(seed: u64, picker_seed: u64) -> (Game, Vec<(PlayerI
 
     for step in 0..MAX_STEPS {
         let context = format!("seed {seed}, step {step}");
-        assert_invariants(&game, &mut history, &context);
+        if checked {
+            assert_invariants(&game, &mut history, &context);
+        }
 
         let options: Vec<(PlayerId, Action)> = players(&game)
             .iter()
@@ -53,41 +69,70 @@ pub(crate) fn random_playout(seed: u64, picker_seed: u64) -> (Game, Vec<(PlayerI
         }
 
         let (p, a) = options[picker.below(options.len())];
-        let off_board_before = players(&game).map(|q| off_board_count(&game, q));
-        let mana_before = game.mana(p);
-        let played = match a {
-            Action::Play { object_id } => Some(game.def_id(object_id)),
-            _ => None,
-        };
-
-        game.apply(p, a, &mut ())
-            .unwrap_or_else(|e| panic!("{context}: listed action rejected: {e:?}"));
-
-        let mut expected = off_board_before;
-        let i = index_of(&game, p);
-        if let Some(def) = played {
-            expected[i] -= 1;
-            let cost = expected_cost(def, history.spells_cast[i]);
-            assert_eq!(
-                game.mana(p),
-                mana_before - cost,
-                "{context}: playing {def:?} didn't pay {cost}"
-            );
-            if is_spell(def) {
-                history.spells_cast[i] += 1;
-            }
-            history.boards.played(i, def);
+        if checked {
+            apply_checked(&mut game, &mut history, p, a, &context);
+        } else {
+            game.apply(p, a, &mut ())
+                .unwrap_or_else(|e| panic!("{context}: listed action rejected: {e:?}"));
         }
-        history.boards.check();
-        assert_eq!(
-            players(&game).map(|q| off_board_count(&game, q)),
-            expected,
-            "{context}: a card appeared or vanished off the board after {p:?} {a:?}"
-        );
-
         log.push((p, a));
     }
     panic!("seed {seed}: game did not end within {MAX_STEPS} steps");
+}
+
+/// Applies a listed action and checks it against the model: the cost paid, the
+/// cards that left the hand, and both boards.
+fn apply_checked(game: &mut Game, history: &mut History, p: PlayerId, a: Action, context: &str) {
+    let off_board_before = players(game).map(|q| off_board_count(game, q));
+    let mana_before = game.mana(p);
+    let played = match a {
+        Action::Play { object_id } => Some(game.def_id(object_id)),
+        _ => None,
+    };
+    let minion_targets: Vec<(usize, usize)> = match a {
+        Action::Play { .. } => history
+            .chosen
+            .iter()
+            .filter_map(|&target| board_position(game, target))
+            .collect(),
+        _ => Vec::new(),
+    };
+    if let Action::Choose { object_id, .. } = a {
+        history.chosen.push(object_id);
+    }
+
+    game.apply(p, a, &mut ())
+        .unwrap_or_else(|e| panic!("{context}: listed action rejected: {e:?}"));
+
+    let mut expected = off_board_before;
+    let i = index_of(game, p);
+    if let Some(def) = played {
+        expected[i] -= 1;
+        let cost = expected_cost(def, history.spells_cast[i]);
+        assert_eq!(
+            game.mana(p),
+            mana_before - cost,
+            "{context}: playing {def:?} didn't pay {cost}"
+        );
+        if is_spell(def) {
+            history.spells_cast[i] += 1;
+        }
+        history.boards.played(i, def);
+        for (owner, position) in minion_targets {
+            history
+                .boards
+                .damaged(owner, position, damage_per_chosen_target(def));
+        }
+    }
+    if matches!(a, Action::Play { .. } | Action::Cancel { .. }) {
+        history.chosen.clear();
+    }
+    history.boards.check();
+    assert_eq!(
+        players(game).map(|q| off_board_count(game, q)),
+        expected,
+        "{context}: a card appeared or vanished off the board after {p:?} {a:?}"
+    );
 }
 
 /// `p`'s index in `Game::players`.
@@ -96,6 +141,16 @@ fn index_of(game: &Game, p: PlayerId) -> usize {
         .iter()
         .position(|&q| q == p)
         .unwrap_or_else(|| panic!("{p:?} is not in this game"))
+}
+
+/// The owner's index and the position from the left of `id`, if it is a minion on a board.
+fn board_position(game: &Game, id: ObjectId) -> Option<(usize, usize)> {
+    players(game).iter().enumerate().find_map(|(owner, &p)| {
+        game.board(p)
+            .iter()
+            .position(|&m| m == id)
+            .map(|position| (owner, position))
+    })
 }
 
 fn off_board_count(game: &Game, p: PlayerId) -> usize {

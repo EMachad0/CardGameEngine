@@ -76,6 +76,7 @@ impl Game {
                         .collect::<Vec<_>>();
 
                     let obj = self.objects.get_mut(of_object_id);
+                    obj.choice_targets.clear();
                     for choice_id in choice_ids {
                         obj.choice_targets.push(ChoiceTarget {
                             choice_id,
@@ -107,7 +108,8 @@ impl Game {
                 self.get_player_mut(player_id).interaction_state = PlayerInteractionState::Draft {
                     of_object_id: object_id,
                     chosen: Vec::new(),
-                }
+                };
+                obs.checkpoint(Views::new(self));
             }
             Action::Choose {
                 choice_id,
@@ -119,10 +121,12 @@ impl Game {
                     unreachable!();
                 };
                 chosen.push((object_id, choice_id));
+                obs.checkpoint(Views::new(self));
             }
             Action::Cancel { .. } => {
                 let player = self.get_player_mut(player_id);
                 player.interaction_state = PlayerInteractionState::default();
+                obs.checkpoint(Views::new(self));
             }
         };
     }

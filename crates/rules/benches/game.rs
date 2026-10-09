@@ -5,7 +5,8 @@ use std::ops::Range;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use rules::static_card_definition::{
-    BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK, WILD_BOLT,
+    BLAST, BOLT, CAPTAIN, CROSSFIRE, FORAGE, GIANT, PING, RECRUIT, SHOVE, SPARK, TWIN_SHOT,
+    WILD_BOLT,
 };
 use rules::{Action, DefId, Game, PlayerId, Rng};
 
@@ -20,14 +21,22 @@ fn sample_deck() -> Vec<DefId> {
     ]
 }
 
-fn new_game(seed: u64) -> Game {
-    Game::new(seed, [sample_deck(), sample_deck()])
+/// `sample_deck` plus one of each card that is played through a draft.
+fn drafting_deck() -> Vec<DefId> {
+    let mut deck = sample_deck();
+    deck.extend([PING, TWIN_SHOT, CROSSFIRE, SHOVE]);
+    deck
 }
 
-/// Plays `seed`'s game to the end, picking uniformly among both players' listed
-/// actions, and calls `visit` on every state that still has a decision.
-fn play_out(seed: u64, mut visit: impl FnMut(&Game)) -> Game {
-    let mut game = new_game(seed);
+fn new_game(deck: fn() -> Vec<DefId>, seed: u64) -> Game {
+    Game::new(seed, [deck(), deck()])
+}
+
+/// Plays `seed`'s game with `deck` for both players to the end, picking uniformly
+/// among both players' listed actions, and calls `visit` on every state that still
+/// has a decision.
+fn play_out(deck: fn() -> Vec<DefId>, seed: u64, mut visit: impl FnMut(&Game)) -> Game {
+    let mut game = new_game(deck, seed);
     let mut picker = Rng::new(seed);
     for _ in 0..MAX_STEPS {
         let mut options: Vec<(PlayerId, Action)> = game
@@ -49,12 +58,40 @@ fn play_out(seed: u64, mut visit: impl FnMut(&Game)) -> Game {
 /// The first, middle and last decision states of one game.
 fn stages() -> [(&'static str, Game); 3] {
     let mut states = Vec::new();
-    play_out(STAGE_SEED, |game| states.push(game.clone()));
+    play_out(sample_deck, STAGE_SEED, |game| states.push(game.clone()));
     [
         ("early", states[0].clone()),
         ("mid", states[states.len() / 2].clone()),
         ("late", states[states.len() - 1].clone()),
     ]
+}
+
+/// Across the drafting deck's playouts, the idle state that offers a `Draft` with the
+/// most minions on the boards, and the open draft that offers the most `Choose`s.
+fn drafting_stages() -> [(&'static str, Game); 2] {
+    let mut idle: Option<(usize, Game)> = None;
+    let mut open: Option<(usize, Game)> = None;
+    for seed in PLAYOUT_SEEDS {
+        play_out(drafting_deck, seed, |game| {
+            let actions = game.legal_actions(decider(game));
+            let minions = game.players().iter().map(|&p| game.board(p).len()).sum();
+            let chooses = actions
+                .iter()
+                .filter(|a| matches!(a, Action::Choose { .. }))
+                .count();
+            if actions.iter().any(|a| matches!(a, Action::Draft { .. }))
+                && idle.as_ref().is_none_or(|(best, _)| minions > *best)
+            {
+                idle = Some((minions, game.clone()));
+            }
+            if chooses > 0 && open.as_ref().is_none_or(|(best, _)| chooses > *best) {
+                open = Some((chooses, game.clone()));
+            }
+        });
+    }
+    let idle = idle.expect("some playout offers a draft").1;
+    let open = open.expect("some playout opens a draft").1;
+    [("idle", idle), ("open", open)]
 }
 
 fn decider(game: &Game) -> PlayerId {
@@ -65,7 +102,9 @@ fn decider(game: &Game) -> PlayerId {
 }
 
 fn bench_new(c: &mut Criterion) {
-    c.bench_function("new", |b| b.iter(|| new_game(black_box(STAGE_SEED))));
+    c.bench_function("new", |b| {
+        b.iter(|| new_game(sample_deck, black_box(STAGE_SEED)))
+    });
 }
 
 fn bench_clone(c: &mut Criterion) {
@@ -100,16 +139,34 @@ fn bench_legal_actions(c: &mut Criterion) {
     group.finish();
 }
 
+fn bench_legal_actions_drafting(c: &mut Criterion) {
+    let mut group = c.benchmark_group("legal_actions_drafting");
+    for (stage, game) in drafting_stages() {
+        let p = decider(&game);
+        group.bench_with_input(BenchmarkId::from_parameter(stage), &game, |b, game| {
+            b.iter(|| black_box(game).legal_actions(black_box(p)))
+        });
+    }
+    group.finish();
+}
+
 fn bench_playout(c: &mut Criterion) {
     let seeds = PLAYOUT_SEEDS;
-    let id = format!("seeds_{}_to_{}", seeds.start, seeds.end - 1);
-    c.benchmark_group("playout").bench_function(id, |b| {
-        b.iter(|| {
-            for seed in seeds.clone() {
-                black_box(play_out(black_box(seed), |_| {}));
-            }
-        })
-    });
+    let mut group = c.benchmark_group("playout");
+    for (prefix, deck) in [
+        ("", sample_deck as fn() -> Vec<DefId>),
+        ("drafting_", drafting_deck),
+    ] {
+        let id = format!("{prefix}seeds_{}_to_{}", seeds.start, seeds.end - 1);
+        group.bench_function(id, |b| {
+            b.iter(|| {
+                for seed in seeds.clone() {
+                    black_box(play_out(deck, black_box(seed), |_| {}));
+                }
+            })
+        });
+    }
+    group.finish();
 }
 
 criterion_group!(
@@ -118,6 +175,7 @@ criterion_group!(
     bench_clone,
     bench_eq,
     bench_legal_actions,
+    bench_legal_actions_drafting,
     bench_playout
 );
 criterion_main!(benches);

@@ -11,16 +11,22 @@ impl Game {
         &self,
         chooser_id: ObjectId,
         choice: &CharacterChoice,
-        chosen: &[ObjectId],
+        chosen: &[(ObjectId, ChoiceId)],
     ) -> Vec<ObjectId> {
-        if self.check_choice_count_fulfilled(chooser_id, choice.id, chosen.len() as u8) {
+        let chosen_for_choice = chosen
+            .iter()
+            .filter(|(_, choice_id)| choice.id == *choice_id)
+            .map(|(o, _)| *o)
+            .collect::<Vec<_>>();
+        if self.check_choice_count_fulfilled(chooser_id, choice.id, chosen_for_choice.len() as u8) {
             return Vec::new();
         }
 
         let obj = self.objects.get(chooser_id);
         self.scan_characters_with_filter(obj.player_id, choice.filter)
             .into_iter()
-            .filter(|o| !chosen.contains(o))
+            .filter(|o| !choice.different || chosen.iter().all(|(o2, _)| o != o2))
+            .filter(|o| !chosen_for_choice.contains(o))
             .collect()
     }
 
@@ -68,17 +74,16 @@ impl Game {
     ) -> bool {
         let mut any_unfulfiled = false;
         for choice in self.binder.choices(self.def_id(object_id)) {
-            let chosen_for_choice = chosen
+            let chosen_for_choice_count = chosen
                 .iter()
                 .filter(|(_, choice_id)| choice.id == *choice_id)
-                .map(|(o, _)| *o)
-                .collect::<Vec<_>>();
+                .count();
             if !self.check_choice_count_fulfilled(
                 object_id,
                 choice.id,
-                chosen_for_choice.len() as u8,
+                chosen_for_choice_count as u8,
             ) {
-                let candidates = self.scan_for_valid_choices(object_id, choice, &chosen_for_choice);
+                let candidates = self.scan_for_valid_choices(object_id, choice, chosen);
                 for candidate in candidates.into_iter() {
                     chosen.push((candidate, choice.id));
                     let can_finish = self.can_finish_choices(object_id, chosen);
@@ -88,6 +93,7 @@ impl Game {
                     chosen.pop();
                 }
                 any_unfulfiled = true;
+                break;
             }
         }
         !any_unfulfiled

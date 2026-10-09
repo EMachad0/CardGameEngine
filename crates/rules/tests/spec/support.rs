@@ -3,9 +3,9 @@
 
 use std::collections::BTreeSet;
 
-use rules::static_card_definition::BOLT;
+use rules::static_card_definition::{BOLT, RECRUIT};
 use rules::{
-    Action, ApplyError, DefId, Event, Game, IllegalAction, ObjectId, Observer, PlayerId,
+    Action, ApplyError, ChoiceId, DefId, Event, Game, IllegalAction, ObjectId, Observer, PlayerId,
     PlayerView, View, Views,
 };
 
@@ -29,6 +29,22 @@ pub(crate) fn play(object_id: ObjectId) -> Action {
 
 pub(crate) fn pick(object_id: ObjectId) -> Action {
     Action::Pick { object_id }
+}
+
+pub(crate) fn draft(object_id: ObjectId) -> Action {
+    Action::Draft { object_id }
+}
+
+/// Chooses `object_id` for the card's choice with id `choice`.
+pub(crate) fn choose(choice: usize, object_id: ObjectId) -> Action {
+    Action::Choose {
+        choice_id: ChoiceId(choice),
+        object_id,
+    }
+}
+
+pub(crate) fn cancel(object_id: ObjectId) -> Action {
+    Action::Cancel { object_id }
 }
 
 pub(crate) fn other(game: &Game, p: PlayerId) -> PlayerId {
@@ -81,6 +97,62 @@ pub(crate) fn play_def(game: &mut Game, p: PlayerId, def: DefId) {
     let action = play(in_hand(game, p, def));
     game.apply(p, action, &mut ())
         .unwrap_or_else(|e| panic!("playing {def:?}: {e:?}"));
+}
+
+/// Applies each of `actions` for `p`, in order.
+pub(crate) fn apply_all(game: &mut Game, p: PlayerId, actions: &[Action]) {
+    for &a in actions {
+        game.apply(p, a, &mut ())
+            .unwrap_or_else(|e| panic!("{a:?} for {p:?}: {e:?}"));
+    }
+}
+
+/// P0's turn with at least 2 mana, built by `table`.
+pub(crate) struct Table {
+    pub(crate) game: Game,
+    pub(crate) p0: PlayerId,
+    pub(crate) p1: PlayerId,
+    /// P0's Recruits, left to right.
+    pub(crate) friendly: Vec<ObjectId>,
+    /// P1's Recruits, left to right.
+    pub(crate) enemy: Vec<ObjectId>,
+}
+
+/// P0 holds `hand` and has `friendly` Recruits on the board, and P1 has `enemy` Recruits.
+/// `friendly` and `hand` together are at most 3 cards, so they fit in P0's opening hand.
+/// `enemy` is at most 3.
+pub(crate) fn table(hand: &[DefId], friendly: usize, enemy: usize) -> Table {
+    let mut top0 = vec![RECRUIT; friendly];
+    top0.extend_from_slice(hand);
+    let mut game = Game::with_deck_order(
+        0,
+        [deck_with_top(&top0), deck_with_top(&vec![RECRUIT; enemy])],
+    );
+    let [p0, p1] = players(&game);
+
+    let mut friendly_ids = Vec::new();
+    if friendly > 0 {
+        turn_with_mana(&mut game, p0, 2 * friendly as u8);
+        for _ in 0..friendly {
+            friendly_ids.push(summon(&mut game, p0, RECRUIT));
+        }
+    }
+    let mut enemy_ids = Vec::new();
+    if enemy > 0 {
+        turn_with_mana(&mut game, p1, 2 * enemy as u8);
+        for _ in 0..enemy {
+            enemy_ids.push(summon(&mut game, p1, RECRUIT));
+        }
+    }
+    turn_with_mana(&mut game, p0, 2);
+
+    Table {
+        game,
+        p0,
+        p1,
+        friendly: friendly_ids,
+        enemy: enemy_ids,
+    }
 }
 
 /// One checkpoint: the events since the previous one, then each player's view.
@@ -222,7 +294,7 @@ pub(crate) fn assert_unlisted_rejected(game: &Game) {
     assert_unlisted_rejected_with(game, &BTreeSet::new());
 }
 
-/// Like `assert_unlisted_rejected`, and also tries `Play` and `Pick` on every id in `extra`.
+/// Like `assert_unlisted_rejected`, and also tries the id-carrying actions on every id in `extra`.
 pub(crate) fn assert_unlisted_rejected_with(game: &Game, extra: &BTreeSet<ObjectId>) {
     let ids: BTreeSet<ObjectId> = zone_ids(game)
         .into_iter()
@@ -232,25 +304,46 @@ pub(crate) fn assert_unlisted_rejected_with(game: &Game, extra: &BTreeSet<Object
     for id in ids {
         candidates.push(play(id));
         candidates.push(pick(id));
+        candidates.push(draft(id));
+        candidates.push(cancel(id));
+        candidates.push(choose(0, id));
+        candidates.push(choose(1, id));
+    }
+    let unlisted: Vec<(PlayerId, Action)> = players(game)
+        .into_iter()
+        .flat_map(|p| {
+            let legal = game.legal_actions(p);
+            candidates
+                .iter()
+                .filter(move |a| !legal.contains(a))
+                .map(move |&a| (p, a))
+        })
+        .collect();
+    let rejection = |p, a| {
+        Err(ApplyError::IllegalAction(IllegalAction {
+            player_id: p,
+            action: a,
+        }))
+    };
+
+    // Every rejection should leave `g` equal to `game`, so one clone and one comparison serve
+    // every candidate.
+    let mut g = game.clone();
+    let all_rejected = unlisted
+        .iter()
+        .all(|&(p, a)| g.apply(p, a, &mut ()) == rejection(p, a));
+    if all_rejected && &g == game {
+        return;
     }
 
-    // Each rejection is asserted to leave `g` equal to `game`, so one clone serves every candidate.
-    let mut g = game.clone();
-    for p in players(game) {
-        let legal = game.legal_actions(p);
-        for a in &candidates {
-            if legal.contains(a) {
-                continue;
-            }
-            assert_eq!(
-                g.apply(p, *a, &mut ()),
-                Err(ApplyError::IllegalAction(IllegalAction {
-                    player_id: p,
-                    action: *a
-                })),
-                "unlisted {a:?} for {p:?} was not rejected"
-            );
-            assert_eq!(&g, game, "rejected {a:?} for {p:?} changed the game");
-        }
+    for (p, a) in unlisted {
+        let mut g = game.clone();
+        assert_eq!(
+            g.apply(p, a, &mut ()),
+            rejection(p, a),
+            "unlisted {a:?} for {p:?} was not rejected"
+        );
+        assert_eq!(&g, game, "rejected {a:?} for {p:?} changed the game");
     }
+    panic!("the unlisted actions, applied in sequence, changed the game");
 }

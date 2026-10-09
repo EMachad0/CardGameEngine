@@ -1,8 +1,10 @@
 //! Invariants over seeded random playouts.
 
+use std::ops::Range;
+
 use rules::Game;
 
-use crate::playout::{random_playout, sample_deck};
+use crate::playout::{checked_playout, random_playout, sample_deck};
 use crate::support::{Recorder, observe, players};
 
 #[test]
@@ -16,8 +18,8 @@ fn new_is_a_function_of_seed_and_decks() {
 
 #[test]
 fn random_playouts_keep_every_invariant_and_terminate() {
-    for seed in 0..200 {
-        let (game, log) = random_playout(seed, seed.wrapping_mul(31).wrapping_add(7));
+    for_each_seed_in_parallel(0..200, |seed| {
+        let (game, log) = checked_playout(seed, seed.wrapping_mul(31).wrapping_add(7));
         assert!(
             game.outcome().is_some(),
             "seed {seed}: ended without an outcome"
@@ -26,7 +28,22 @@ fn random_playouts_keep_every_invariant_and_terminate() {
             !log.is_empty(),
             "seed {seed}: the game ended before any decision"
         );
-    }
+    });
+}
+
+/// Calls `check` once for each seed, spread over the available cores.
+fn for_each_seed_in_parallel(seeds: Range<u64>, check: impl Fn(u64) + Sync) {
+    let threads = std::thread::available_parallelism().map_or(1, |n| n.get() as u64);
+    std::thread::scope(|scope| {
+        for thread in 0..threads {
+            let (seeds, check) = (seeds.clone(), &check);
+            scope.spawn(move || {
+                seeds
+                    .filter(|seed| seed % threads == thread)
+                    .for_each(check)
+            });
+        }
+    });
 }
 
 #[test]

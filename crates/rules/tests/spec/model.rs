@@ -4,13 +4,14 @@
 
 use rules::DefId;
 use rules::static_card_definition::{
-    BARRACKS, BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK, SQUIRE, WILD_BOLT,
+    BARRACKS, BLAST, BOLT, CAPTAIN, CROSSFIRE, FORAGE, GIANT, PING, RECRUIT, SHOVE, SPARK, SQUIRE,
+    TWIN_SHOT, WILD_BOLT,
 };
 
 /// Attack and health.
 pub(crate) type Stats = (i32, i32);
 
-const PRINTED: [(DefId, u8, Option<Stats>); 10] = [
+const PRINTED: [(DefId, u8, Option<Stats>); 14] = [
     (SPARK, 1, None),
     (BOLT, 2, None),
     (WILD_BOLT, 1, None),
@@ -21,6 +22,10 @@ const PRINTED: [(DefId, u8, Option<Stats>); 10] = [
     (GIANT, 8, Some((5, 5))),
     (BARRACKS, 2, None),
     (SQUIRE, 1, Some((1, 1))),
+    (PING, 1, None),
+    (TWIN_SHOT, 2, None),
+    (CROSSFIRE, 2, None),
+    (SHOVE, 1, None),
 ];
 
 fn printed(def: DefId) -> (u8, Option<Stats>) {
@@ -43,6 +48,11 @@ pub(crate) fn expected_cost(def: DefId, spells_cast: u8) -> u8 {
     } else {
         cost
     }
+}
+
+/// The damage a drafted card deals to each target chosen for it.
+pub(crate) fn damage_per_chosen_target(def: DefId) -> i32 {
+    if def == PING { 2 } else { 1 }
 }
 
 /// Each board's minions, left to right, with the damage marked on each. A board is
@@ -84,6 +94,11 @@ impl BoardModel {
                 minion.1 += 2;
             }
         }
+    }
+
+    /// Marks `amount` damage on `owner`'s minion at `position`, counted from the left.
+    pub(crate) fn damaged(&mut self, owner: usize, position: usize, amount: i32) {
+        self.boards[owner][position].1 += amount;
     }
 
     /// Removes every minion at 0 health or less, all at once, until none is left.

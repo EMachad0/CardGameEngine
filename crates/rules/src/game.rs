@@ -150,34 +150,31 @@ impl Game {
                 of_object_id,
                 chosen,
             } => {
-                let mut chosen = chosen.clone();
                 let def_id = self.def_id(*of_object_id);
                 let mut all_choices_fulfilled = true;
                 for choice in self.binder.choices(def_id) {
-                    let chosen_for_choice = chosen
+                    let chosen_for_choice_count = chosen
                         .iter()
                         .filter(|(_, choice_id)| choice.id == *choice_id)
-                        .map(|(o, _)| *o)
-                        .collect::<Vec<_>>();
+                        .count();
                     if self.check_choice_count_fulfilled(
                         *of_object_id,
                         choice.id,
-                        chosen_for_choice.len() as u8,
+                        chosen_for_choice_count as u8,
                     ) {
                         continue;
                     }
 
-                    let candidates =
-                        self.scan_for_valid_choices(*of_object_id, choice, &chosen_for_choice);
+                    let candidates = self.scan_for_valid_choices(*of_object_id, choice, chosen);
                     for candidate in candidates.into_iter() {
+                        let mut chosen = chosen.clone();
                         chosen.push((candidate, choice.id));
-                        if self.can_finish_choices(candidate, &mut chosen) {
+                        if self.can_finish_choices(*of_object_id, &mut chosen) {
                             actions.push(Action::Choose {
                                 choice_id: choice.id,
                                 object_id: candidate,
                             })
                         }
-                        chosen.pop();
                     }
                     all_choices_fulfilled = false;
                     break;

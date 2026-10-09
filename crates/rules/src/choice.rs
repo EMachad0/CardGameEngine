@@ -42,6 +42,7 @@ pub struct CharacterChoice {
     pub filter: CharacterSelectorFilter,
     pub count: EffectAmount,
     pub bound: AmountBound,
+    pub different: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
