@@ -1,8 +1,8 @@
 ---
-status: superseded by ADR-0010
+status: accepted
 ---
 
-# Choices are declared on the card and made one at a time in a draft
+# Choices are declared on the card and made in a draft both players see
 
 A card that needs targets declares its choices as a list on its definition. Each choice has an id,
 a filter, a count, and whether its targets must differ from those of every earlier choice. An effect
@@ -13,12 +13,17 @@ Playing such a card takes several actions. `Draft` opens a draft held in the pla
 drops the draft and leaves the game as it was before `Draft`. `Play` pays the cost and resolves the
 card once every choice is filled. A card with no choices is played with `Play` alone. `Draft`, and
 each `Choose`, is offered only if every remaining choice can still be filled, which a search over
-the choices decides. The draft is hidden from the opponent.
+the choices decides.
 
-This supersedes ADR 0007, which put the rule for each target in the effect that uses it.
+Every player's view shows an open draft: the drafted card's id and the targets chosen so far. The
+card's face stays hidden from the opponent until it is played.
+
+This supersedes ADR 0009, which hid the draft from the opponent.
 
 ## Considered options
 
+- The draft hidden from the opponent until the card is played. The opponent sees nothing until the
+  card resolves.
 - The rule for each target in the effect that uses it. Two effects can't act on one choice, as in
   "Choose a minion. Give it +1/+1. If it's a Pirate, give it Haste."
 - A target rule on the card with one target slot in the play action. It can't express two choices.
@@ -33,3 +38,8 @@ This supersedes ADR 0007, which put the rule for each target in the effect that 
   minion on the board.
 - Offering every draft and letting `Cancel` recover, as MTG reverses a cast that can't be completed.
   `legal_actions` would list actions that lead nowhere.
+
+## Consequences
+
+A cancelled draft tells the opponent that one card in the drafter's hand has choices, and what was
+chosen for it.
