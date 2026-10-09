@@ -127,6 +127,13 @@ _Avoid_: valid move
 **Play**:
 Paying a card's cost, taking it from the hand and resolving it.
 
+**Draft**:
+A card a player has started to play but hasn't played yet, with the choices made so far.
+
+**Choose**:
+To name what an effect will act on while playing the card, before it resolves.
+_Avoid_: pick
+
 **Resolve**:
 To carry out a card's text.
 
@@ -191,6 +198,8 @@ The part of a card that can be hidden from a player: its definition and cost.
   object is one copy in one game.
 - **Action** and **Event**: actions go into the game, events come out of it. A player sends an
   action, and the game reports events while it resolves.
+- **Choose** and **Pick**: a player chooses while playing a card, before it resolves, from what is
+  already in play. A player picks while a card resolves, from the cards it revealed.
 - **Checkpoint** and **State check**: a checkpoint lets observers read views and changes nothing. A
   state check changes the game: it removes dead cards from the board and can end the game.
 - **Draw** a card and a **draw** as an outcome: the first moves a card from deck to hand, the second

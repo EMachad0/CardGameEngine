@@ -1,7 +1,7 @@
 //! What `view` shows each player.
 
-use rules::static_card_definition::{BOLT, CAPTAIN, FORAGE, HERO, RECRUIT, SPARK};
-use rules::{BoardCard, DefId, Face, Game, HeroCard, ObjectId, PlayerId, RevealedCard};
+use rules::static_card_definition::{BOLT, CAPTAIN, FORAGE, HERO, PING, RECRUIT, SPARK, TWIN_SHOT};
+use rules::{BoardCard, DefId, DraftView, Face, Game, HeroCard, ObjectId, PlayerId, RevealedCard};
 
 use crate::support::*;
 
@@ -193,5 +193,82 @@ fn a_view_reports_the_outcome_once_the_game_is_over() {
 
     for viewer in players(&game) {
         assert_eq!(game.view(viewer).outcome, game.outcome(), "{viewer:?}");
+    }
+}
+
+#[test]
+fn both_players_see_the_drafted_card_and_the_targets_chosen_so_far() {
+    let mut t = table(&[TWIN_SHOT], 0, 2);
+    let twin_shot = in_hand(&t.game, t.p0, TWIN_SHOT);
+    apply_all(
+        &mut t.game,
+        t.p0,
+        &[draft(twin_shot), choose(0, t.enemy[1])],
+    );
+
+    for viewer in players(&t.game) {
+        let view = t.game.view(viewer);
+        assert_eq!(
+            player_view(&view, t.p0).draft,
+            Some(DraftView {
+                object_id: twin_shot,
+                chosen: vec![t.enemy[1]],
+            }),
+            "{viewer:?}"
+        );
+        assert_eq!(player_view(&view, t.p1).draft, None, "{viewer:?}");
+    }
+}
+
+#[test]
+fn the_opponent_still_sees_no_face_on_the_drafted_card() {
+    let mut t = table(&[PING], 0, 1);
+    let ping = in_hand(&t.game, t.p0, PING);
+    apply_all(&mut t.game, t.p0, &[draft(ping)]);
+
+    let view = t.game.view(t.p1);
+    let card = player_view(&view, t.p0)
+        .hand
+        .iter()
+        .find(|card| card.object_id == ping)
+        .expect("the drafted card stays in the hand");
+    assert_eq!(card.face, None);
+}
+
+#[test]
+fn a_cancelled_draft_no_longer_shows() {
+    let mut t = table(&[PING], 0, 1);
+    let ping = in_hand(&t.game, t.p0, PING);
+    apply_all(
+        &mut t.game,
+        t.p0,
+        &[draft(ping), choose(0, t.enemy[0]), cancel(ping)],
+    );
+
+    for viewer in players(&t.game) {
+        assert_eq!(
+            player_view(&t.game.view(viewer), t.p0).draft,
+            None,
+            "{viewer:?}"
+        );
+    }
+}
+
+#[test]
+fn a_played_draft_no_longer_shows() {
+    let mut t = table(&[PING], 0, 1);
+    let ping = in_hand(&t.game, t.p0, PING);
+    apply_all(
+        &mut t.game,
+        t.p0,
+        &[draft(ping), choose(0, t.enemy[0]), play(ping)],
+    );
+
+    for viewer in players(&t.game) {
+        assert_eq!(
+            player_view(&t.game.view(viewer), t.p0).draft,
+            None,
+            "{viewer:?}"
+        );
     }
 }

@@ -7,8 +7,9 @@ use crate::{
             CharacterSideFilter, DefId, Effect, EffectSequence, HeroCardDef, MinionCardDef,
             PlayerSelector, SpellCardDef,
         },
-        modifier::{EffectAmount, ModifierEffect},
+        modifier::ModifierEffect,
     },
+    choice::{AmountBound, CharacterChoice, ChoiceId, EffectAmount},
     history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter},
     static_card_definition::*,
 };
@@ -21,6 +22,10 @@ pub enum CardDefError {
     Duplicate(DefId),
     #[error("Placeholder card def present")]
     Placeholder,
+    #[error("Duplicate choice {1:?} on {0:?}")]
+    DuplicateChoice(DefId, ChoiceId),
+    #[error("Choice {1:?} not found on {0:?}")]
+    ChoiceNotFound(DefId, ChoiceId),
 }
 
 pub(crate) const PLACEHOLDER: DefId = DefId::new("placeholder");
@@ -57,6 +62,10 @@ def_ids!(
     BARRACKS = "base.barracks.v0",
     ZAP = "base.zap.v0",
     STRAY_SHOT = "base.stray_shot.v0",
+    PING = "base.ping.v0",
+    SHOVE = "base.shove.v0",
+    TWIN_SHOT = "base.twin_shot.v0",
+    CROSSFIRE = "base.crossfire.v0",
 );
 
 // TODO: loading cards from disk into the engine should be shells job
@@ -224,6 +233,126 @@ impl CardDefLoader {
                 }]),
                 ..Default::default()
             },
+            CardDef {
+                id: PING,
+                name: "Ping".to_string(),
+                kind: CardDefKind::Spell(SpellCardDef),
+                mana_cost: 1,
+                on_play_effect: EffectSequence(vec![Effect::Damage {
+                    selector: CharacterSelector::Chosen(ChoiceId(0)),
+                    amount: 2.into(),
+                }]),
+                choices: vec![CharacterChoice {
+                    id: ChoiceId(0),
+                    filter: CharacterSelectorFilter {
+                        kind: EnumSet::only(CharacterKindFilter::Minions),
+                        side: EnumSet::all(),
+                    },
+                    count: 1.into(),
+                    bound: AmountBound::Exactly,
+                    different: true,
+                }],
+                ..Default::default()
+            },
+            CardDef {
+                id: SHOVE,
+                name: "Shove".to_string(),
+                kind: CardDefKind::Spell(SpellCardDef),
+                mana_cost: 1,
+                on_play_effect: EffectSequence(vec![
+                    Effect::Damage {
+                        selector: CharacterSelector::Chosen(ChoiceId(0)),
+                        amount: 1.into(),
+                    },
+                    Effect::Damage {
+                        selector: CharacterSelector::Chosen(ChoiceId(1)),
+                        amount: 1.into(),
+                    },
+                ]),
+                choices: vec![
+                    CharacterChoice {
+                        id: ChoiceId(0),
+                        filter: CharacterSelectorFilter {
+                            kind: EnumSet::only(CharacterKindFilter::Minions),
+                            side: EnumSet::all(),
+                        },
+                        count: 1.into(),
+                        bound: AmountBound::Exactly,
+                        different: true,
+                    },
+                    CharacterChoice {
+                        id: ChoiceId(1),
+                        filter: CharacterSelectorFilter {
+                            kind: EnumSet::only(CharacterKindFilter::Minions),
+                            side: EnumSet::only(CharacterSideFilter::Friendly),
+                        },
+                        count: 1.into(),
+                        bound: AmountBound::Exactly,
+                        different: true,
+                    },
+                ],
+                ..Default::default()
+            },
+            CardDef {
+                id: TWIN_SHOT,
+                name: "Twin Shot".to_string(),
+                kind: CardDefKind::Spell(SpellCardDef),
+                mana_cost: 2,
+                on_play_effect: EffectSequence(vec![Effect::Damage {
+                    selector: CharacterSelector::Chosen(ChoiceId(0)),
+                    amount: 1.into(),
+                }]),
+                choices: vec![CharacterChoice {
+                    id: ChoiceId(0),
+                    filter: CharacterSelectorFilter {
+                        kind: EnumSet::only(CharacterKindFilter::Minions),
+                        side: EnumSet::all(),
+                    },
+                    count: 2.into(),
+                    bound: AmountBound::Exactly,
+                    different: true,
+                }],
+                ..Default::default()
+            },
+            CardDef {
+                id: CROSSFIRE,
+                name: "Crossfire".to_string(),
+                kind: CardDefKind::Spell(SpellCardDef),
+                mana_cost: 2,
+                on_play_effect: EffectSequence(vec![
+                    Effect::Damage {
+                        selector: CharacterSelector::Chosen(ChoiceId(0)),
+                        amount: 1.into(),
+                    },
+                    Effect::Damage {
+                        selector: CharacterSelector::Chosen(ChoiceId(1)),
+                        amount: 1.into(),
+                    },
+                ]),
+                choices: vec![
+                    CharacterChoice {
+                        id: ChoiceId(0),
+                        filter: CharacterSelectorFilter {
+                            kind: EnumSet::only(CharacterKindFilter::Minions),
+                            side: EnumSet::all(),
+                        },
+                        count: 1.into(),
+                        bound: AmountBound::Exactly,
+                        different: true,
+                    },
+                    CharacterChoice {
+                        id: ChoiceId(1),
+                        filter: CharacterSelectorFilter {
+                            kind: EnumSet::only(CharacterKindFilter::Heroes),
+                            side: EnumSet::all(),
+                        },
+                        count: 1.into(),
+                        bound: AmountBound::Exactly,
+                        different: true,
+                    },
+                ],
+                ..Default::default()
+            },
         ]
     }
 
@@ -239,6 +368,8 @@ fn validate(defs: &[CardDef]) -> Result<(), CardDefError> {
     validate_placeholder(defs)?;
     validate_duplicates(defs)?;
     validate_not_found(defs)?;
+    validate_choice_duplicates(defs)?;
+    validate_choice_not_found(defs)?;
     Ok(())
 }
 
@@ -267,6 +398,50 @@ fn validate_not_found(defs: &[CardDef]) -> Result<(), CardDefError> {
         }
     }
     Ok(())
+}
+
+fn validate_choice_duplicates(defs: &[CardDef]) -> Result<(), CardDefError> {
+    for def in defs {
+        for (index, choice) in def.choices.iter().enumerate() {
+            if def.choices[..index].iter().any(|seen| seen.id == choice.id) {
+                return Err(CardDefError::DuplicateChoice(def.id, choice.id));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_choice_not_found(defs: &[CardDef]) -> Result<(), CardDefError> {
+    for def in defs {
+        let effects = [
+            &def.on_play_effect,
+            &def.on_board_enter,
+            &def.on_board_leave,
+            &def.on_death,
+        ]
+        .into_iter()
+        .flat_map(EffectSequence::as_slice);
+        for choice_id in effects.filter_map(chosen_id) {
+            if !def.choices.iter().any(|choice| choice.id == choice_id) {
+                return Err(CardDefError::ChoiceNotFound(def.id, choice_id));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn chosen_id(effect: &Effect) -> Option<ChoiceId> {
+    let selector = match effect {
+        Effect::Damage { selector, .. } | Effect::AddFriendlyAura { selector, .. } => selector,
+        Effect::Draw { .. } | Effect::Reveal { .. } | Effect::Summon { .. } => return None,
+    };
+    match selector {
+        CharacterSelector::Chosen(choice_id) => Some(*choice_id),
+        CharacterSelector::All(_)
+        | CharacterSelector::Itself
+        | CharacterSelector::OwnerHero
+        | CharacterSelector::Random(_) => None,
+    }
 }
 
 #[cfg(test)]
@@ -304,6 +479,45 @@ mod tests {
             validate(&defs),
             Err(CardDefError::Placeholder),
             "a literal that forgot its id falls back to the placeholder"
+        );
+    }
+
+    #[test]
+    fn two_choices_with_one_id_on_a_card_are_a_duplicate() {
+        let mut defs = CardDefLoader.load_all();
+        let ping = defs.iter_mut().find(|def| def.id == PING).unwrap();
+        ping.choices.push(ping.choices[0]);
+
+        assert_eq!(
+            validate(&defs),
+            Err(CardDefError::DuplicateChoice(PING, ChoiceId(0)))
+        );
+    }
+
+    #[test]
+    fn an_effect_naming_an_undeclared_choice_is_not_found() {
+        let mut defs = CardDefLoader.load_all();
+        let ping = defs.iter_mut().find(|def| def.id == PING).unwrap();
+        ping.choices.clear();
+
+        assert_eq!(
+            validate(&defs),
+            Err(CardDefError::ChoiceNotFound(PING, ChoiceId(0)))
+        );
+    }
+
+    #[test]
+    fn an_on_death_effect_naming_an_undeclared_choice_is_not_found() {
+        let mut defs = CardDefLoader.load_all();
+        let recruit = defs.iter_mut().find(|def| def.id == RECRUIT).unwrap();
+        recruit.on_death = EffectSequence(vec![Effect::Damage {
+            selector: CharacterSelector::Chosen(ChoiceId(0)),
+            amount: 1.into(),
+        }]);
+
+        assert_eq!(
+            validate(&defs),
+            Err(CardDefError::ChoiceNotFound(RECRUIT, ChoiceId(0)))
         );
     }
 }

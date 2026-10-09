@@ -2,6 +2,7 @@
 
 mod cards;
 mod derived;
+mod drafts;
 mod events;
 mod legality;
 mod lookups;

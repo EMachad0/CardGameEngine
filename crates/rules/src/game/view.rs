@@ -26,6 +26,8 @@ pub struct PlayerView {
     pub board: Vec<BoardCard>,
     /// A pending Forage's options, in reveal order. Empty if none is pending.
     pub revealed: Vec<RevealedCard>,
+    /// The card being drafted and its choices so far. `None` if not drafting.
+    pub draft: Option<DraftView>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -61,6 +63,12 @@ pub struct BoardCard {
     pub def_id: DefId,
     pub attack: i32,
     pub health: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DraftView {
+    pub object_id: ObjectId,
+    pub chosen: Vec<ObjectId>,
 }
 
 impl Game {
@@ -99,6 +107,7 @@ impl Game {
                 .map(|o| self.board_card(viewer, *o))
                 .collect(),
             revealed: self.revealed_view(viewer, player.id, &player.interaction_state),
+            draft: self.draft_view(&player.interaction_state),
         }
     }
 
@@ -133,7 +142,6 @@ impl Game {
         interaction_state: &PlayerInteractionState,
     ) -> Vec<RevealedCard> {
         match interaction_state {
-            PlayerInteractionState::Idle => Vec::new(),
             PlayerInteractionState::PendingPick { options } => options
                 .iter()
                 .map(|&object_id| RevealedCard {
@@ -141,6 +149,7 @@ impl Game {
                     def_id: (player_id == viewer).then(|| self.def_id(object_id)),
                 })
                 .collect(),
+            _ => Vec::new(),
         }
     }
 
@@ -150,6 +159,22 @@ impl Game {
             object_id,
             def_id: self.def_id(object_id),
             health: self.hero_health(player_id),
+        }
+    }
+
+    fn draft_view(&self, interaction_state: &PlayerInteractionState) -> Option<DraftView> {
+        match interaction_state {
+            PlayerInteractionState::Draft {
+                of_object_id,
+                chosen,
+            } => {
+                let chosen = chosen.iter().map(|(o, _)| *o).collect();
+                Some(DraftView {
+                    object_id: *of_object_id,
+                    chosen,
+                })
+            }
+            _ => None,
         }
     }
 }

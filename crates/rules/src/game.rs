@@ -6,6 +6,7 @@
 //! - `resolve`: the mutation half of `apply`.
 //! - `lookup`: attack, health and cost, computed on read.
 
+mod condition;
 mod lookup;
 mod player;
 mod resolve;
@@ -114,12 +115,24 @@ impl Game {
 
                 let mana = self.mana(player_id);
                 let hand = self.hand(player_id);
-                for object_id in hand.iter().cloned() {
+                for object_id in hand.iter().copied() {
                     let mana_cost = self
                         .mana_cost(object_id)
                         .expect("objects in hand always have mana cost");
-                    if mana_cost <= mana {
-                        actions.push(Action::Play { object_id });
+                    if mana_cost > mana {
+                        continue;
+                    }
+
+                    let def_id = self.def_id(object_id);
+                    match self.binder.choices(def_id).is_empty() {
+                        true => {
+                            actions.push(Action::Play { object_id });
+                        }
+                        false => {
+                            if self.can_finish_choices(object_id, &mut Vec::new()) {
+                                actions.push(Action::Draft { object_id });
+                            }
+                        }
                     }
                 }
 
@@ -132,6 +145,48 @@ impl Game {
                         .cloned()
                         .map(|object_id| Action::Pick { object_id }),
                 );
+            }
+            PlayerInteractionState::Draft {
+                of_object_id,
+                chosen,
+            } => {
+                let def_id = self.def_id(*of_object_id);
+                let mut all_choices_fulfilled = true;
+                for choice in self.binder.choices(def_id) {
+                    let chosen_for_choice_count = chosen
+                        .iter()
+                        .filter(|(_, choice_id)| choice.id == *choice_id)
+                        .count();
+                    if self.check_choice_count_fulfilled(
+                        *of_object_id,
+                        choice.id,
+                        chosen_for_choice_count as u8,
+                    ) {
+                        continue;
+                    }
+
+                    let candidates = self.scan_for_valid_choices(*of_object_id, choice, chosen);
+                    for candidate in candidates.into_iter() {
+                        let mut chosen = chosen.clone();
+                        chosen.push((candidate, choice.id));
+                        if self.can_finish_choices(*of_object_id, &mut chosen) {
+                            actions.push(Action::Choose {
+                                choice_id: choice.id,
+                                object_id: candidate,
+                            })
+                        }
+                    }
+                    all_choices_fulfilled = false;
+                    break;
+                }
+                if all_choices_fulfilled {
+                    actions.push(Action::Play {
+                        object_id: *of_object_id,
+                    });
+                }
+                actions.push(Action::Cancel {
+                    object_id: *of_object_id,
+                });
             }
         }
         actions
@@ -157,8 +212,8 @@ impl Game {
     /// The cards a pending Forage revealed. Empty if nothing is pending.
     pub fn revealed(&self, player_id: PlayerId) -> &[ObjectId] {
         match &self.get_player(player_id).interaction_state {
-            PlayerInteractionState::Idle => &[],
             PlayerInteractionState::PendingPick { options } => options,
+            _ => &[],
         }
     }
 

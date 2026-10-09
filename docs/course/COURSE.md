@@ -12,7 +12,7 @@ Understand card game systems well enough to design MTG, Hearthstone, or Yu-Gi-Oh
 - Roles in exercises. First we agree on the design in discussion. The learner writes the design-bearing code (types, traits, key function signatures and bodies). The agent writes scaffolding and tests against that API, then reviews. Tests come before the implementation. He sees little learning value in typing out plain data types, so the agent drafts those, such as `Event` and `View`, for him to edit. Design choices and bodies stay his.
 - End at a node boundary, not mid-node. Commit once per node.
 
-## Knowledge map (from the 2026-09-28 probe, updated through session 04a)
+## Knowledge map (from the 2026-09-28 probe, updated through session 04b)
 
 Session 01 (R1, S, L, P, G all landed on the first node check):
 - Determinism: a seeded RNG in the state, the clock in the shell (timer becomes an `EndTurn` input). Knows `HashMap`, `thread_rng` and `Instant::now` break replay.
@@ -126,6 +126,25 @@ Session 04a exercise (green: 17 unit + 114 spec; his commits `1614884`, `9dd3360
 - His calls: keep the untested branches (`CharacterSelector::Itself`, `OwnerHero`, `AddFriendlyAura`, player `All` and `Random`); allow an empty filter (no load check); Stray Shot stays playable into an empty board and does nothing (may change in 04b); a checkpoint after each effect and after the card's own board entry, none trailing after `Play`, and empty steps from effects that do nothing are accepted until a UI cares; `side` stays the term (glossary: Owner, Side, Friendly, Enemy); `history_query` back to `pub(crate)`.
 - `9dd3360` doesn't build alone: the member `Cargo.toml` uses `enumset` before the workspace entry, which landed in `c4aef7c`.
 
+Session 04b probe (no retrieval quiz, at his request):
+- Right: "different" vs independent picks (Twin Shot vs Double Tap); a legal first pick can strand the draft (Shove). His note: Shove's picks are ordered, and "a friendly and an enemy minion" could go in any order. Right that the filters there can't overlap. The hidden draft needs no event and a view at a checkpoint, picked over an ID-only event, a shell filter and a client mirror.
+- The edge: deriving "can the draft finish" from the selectors. He picked a pooled candidate count across different filters. On Prod he then picked "offered, but stuck", with the note that not offering needs a separate condition list ("splitting condition and effects", Pokemon evolution, "always offering may be fine"). Taught the search over the choices, run at `Draft` and at each `Choose`, as one more reader of the effect data (E1). Node check right: Shove's first choice hides the only friendly minion. He asked whether hiding a matching minion is good design. Answer: the engine never lists a dead end, and wording the tight filter first avoids it.
+
+Session 04b design (his calls; ADR 0009, then ADR 0010):
+- Names: `Choose` for targets, `Pick` stays for revealed cards. `Draft`/`Play` instead of `Play`/`Commit`: `Draft` opens, `Play` pays and resolves once every choice is filled, and a card with no choices is `Play` alone.
+- Re-click: only `Cancel` undoes, for consistency, since `Unchoose` would collide with choosing the same minion again in Double Tap. Taught: the core sees actions, not clicks, and `Back` (undo the last choice) is the consistent option if he ever wants one.
+- He found the reuse forcing case himself ("Choose a minion, give it +1/+1, if it's a Pirate also give it Haste"), raised a target that stops matching during resolution, and asked which games choose mid-resolution (Hearthstone Discover, MTG 608.2d, YGO non-targeting effects). Picked choices declared on the card with ids, effects referring by id (XMage-like), superseding ADR 0007.
+- Choices are filled one at a time in declaration order. He first let `Choose` fill any choice, then switched. `Choose` keeps `choice_id`. `different: bool` means "differs from every earlier choice" (Forge `TargetUnique$`). An explicit `ChoiceId` found by search, with load checks he wrote (`DuplicateChoice`, `ChoiceNotFound`) and unit tests.
+- Kept by choice: chosen targets copied onto the object at `Play`. He argued that a card can remember its target ("deal 2 damage to it every turn"), and I conceded. Also `AmountBound` with one variant and `AtMost`/`AtLeast` commented out, and Ping's `different: true`.
+- He made the draft visible to both players (ADR 0010): the opponent sees the drafted card's id and the targets, not its face.
+
+Session 04b exercise (green: 20 unit + 142 spec; `4bb2960`):
+- The mirror habit came back as one fact computed in two places, not as stored state: a `preconditions` list restating `choices`; a second "characters matching a filter" that used `||` where the first used `&&`; a redundant "is this choice filled" check in `scan_for_valid_choices` that counted every choice's targets, so no two-choice card was ever offered. He fixed each one, but didn't see the last until a red test showed it.
+- Other sketch bugs, found by throwaway probes: `Choose` wrote to the target object, `Cancel` never returned to `Idle`, and `Play` was listed once nothing could be chosen (a panic at resolution). Choices stored on the object outlived the draft. He moved them into the draft state, so `Cancel` became a reset and `==` holds.
+- Speculative structure again: `AtMost` was already broken (filled before any pick), `AtLeast` acted as `Exactly`, `unique` was ignored, plus a `Choosing` variant for session 06. He cut `unique` and `Choosing`.
+- He wrote `can_finish_choices` from pseudo-code after saying he had "no idea how". The first version passed the candidate where the card belonged, which made the look-ahead a no-op. Without cross-choice "different" the look-ahead couldn't hide anything, so nothing caught it. His 1b call made it reachable, and the Shove tests pin it.
+- Tests: 25 new (drafts, events, views). The playouts include the four drafting cards, with the model marking chosen damage. The spec run went from 1.0s to 6.5s, then to 0.4s: one comparison per state in the unlisted check, invariants only in the checked playout, seeds spread over the cores. Drafting benches: `legal_actions` about 1.1 µs with a drafting card in hand or a draft open; drafting playouts 2.6 times as long.
+
 Solid:
 - Card definition (never changes) vs object with its own ID and modifiers.
 - Non-commuting modifiers ("set to 1" vs "+2") need an ordering rule. Noted himself that 1 vs 3 is a design choice.
@@ -138,13 +157,14 @@ Solid:
 - Player vs piece (session 04c): the player decides, the hero is an object in a zone of one, hero is a kind while P's hero is a zone fact, unify where the rules unify, summon is not play. Token meanings (Hearthstone uncollectible on the definition, MTG created on the object) landed after an "I don't know".
 
 Partial:
-- Pending choice: has the idea. Session 01 update: solid for simple drafts (Discover picks, attacker drafts, and Forage in the exercise are all state in `Game`). Session 04: targeting becomes a draft in state (04b). Not yet tested on a half-finished effect *mid-resolution* ("deal 3, then if it died draw" paused for a target, or his token case). That's session 06.
+- Pending choice: has the idea. Session 01 update: solid for simple drafts (Discover picks, attacker drafts, and Forage in the exercise are all state in `Game`). Session 04b built the targeting draft as state, with `Cancel` as a reset. Not yet tested on a half-finished effect *mid-resolution* ("deal 3, then if it died draw" paused for a target, or his token case). That's session 06.
 
 Gaps (teach into these):
 - Timing, i.e. *when* things run. Put the state check in a health setter ("every change goes through the setter"). Dislodged by the "can't die this turn" expiry case, but still needs a proper node. Chose the trigger queue for decoupling reasons, not for re-entrancy and timing reasons. Session 04: no state check inside a card now holds (derived unprompted), and he separates a checkpoint from a state check. Trigger timing is still open (05).
 - ~~Core to shell output.~~ Closed in session 03 (returned, observer at checkpoints, views per viewer).
 - ~~Determinism sources.~~ Closed in session 01 (`HashMap`, `thread_rng`, `Instant::now`, and seeds as streams).
 - Property-based testing. Sees crashes and rejected legal moves as fuzz findings. Missed invariants you assert yourself (card in two zones, replay divergence).
+- Mirror habit, 04b form: one fact computed in two places (two filter functions, two "is this choice filled" checks, a `preconditions` list restating `choices`). Each copy drifted on its first day. Teach: one function per question, and every caller asks it. Also searching: he couldn't start a backtracking search unaided, and wrote it once given pseudo-code.
 
 Rust: knows traits, generics, lifetimes, but they don't come naturally when designing. Explain *why* each trait, generic, or ownership choice is the one to make. Session 04: thought fn pointers aren't `Clone` (they're `Copy`). Session 04a: thought an integer `as` narrowing panics in debug (it keeps the low bits, and the overflow checks are on arithmetic). He then wrote a generic helper (`select_random<T>`) unprompted.
 
@@ -154,28 +174,31 @@ Rust: knows traits, generics, lifetimes, but they don't come naturally when desi
 - Core track (A to G, T, K) is concept-first with one small exercise per session. Application track (H, I, J) gets one design session each. Implementation there is optional.
 - Final exam (K): add a Yu-Gi-Oh style chain without rewriting the core. He knows YGO best.
 - The tooling the course works toward: card data files with validation, generated rules text, test tooling (scenario DSL, replays, fuzzer), a headless CLI with a machine-readable protocol so bots and LLM agents can playtest, a visual editor, and hot reload.
-- Session 04's exercise is three sessions, his split: 04a effect reshape, 04b targeting draft, 04c heroes, players and tokens as objects, all before 05. He moved 04c first. 04c and 04a are done, and 04b is next.
+- Session 04's exercise is three sessions, his split: 04a effect reshape, 04b targeting draft, 04c heroes, players and tokens as objects, all before 05. He moved 04c first. All three are done.
 
 ## Open threads
 
 - Where does a half-finished effect live between `apply` calls? (node 06-G)
 - Outside a pending pick, only the active player has legal actions, so an opponent's response is never offered. Sessions 06 and 08.
 - Signed modifiers: `ModifierEffect` amounts are `u8` since 04a, so "-2 Attack" or "costs (1) more" needs its own verb (the sign in the verb, like restore). He didn't say whether that's intended. Settle it with the first debuff or cost-increase card.
-- Random with no candidates: Stray Shot is playable into an empty board and does nothing (Bomb Lobber). The alternative is Deadly Shot's `REQ_MINIMUM_ENEMY_MINIONS`. Decide in 04b, once `legal_actions` reads effects for the draft.
+- Random with no candidates: Stray Shot stays playable into an empty board and does nothing (Bomb Lobber), his 04b call "at least for now". `can_finish_choices` reads only declared choices. The alternative is Deadly Shot's `REQ_MINIMUM_ENEMY_MINIONS`, a play condition that no choice implies.
 - Hearthstone's random damage skips minions already at 0 health (the Advanced rulebook's "mortally wounded"). Our filters read the board, so a random pick after an earlier hit in the same card can land on a minion at 0. No card does that yet. Session 05 or 06.
 - An empty filter (`EnumSet::empty()`) matches nothing, and he chose no load check. Revisit with session H's validation.
 - A minion with an enter effect would get `BoardEntered` and its first enter effect in one step, and `play`'s checkpoint after the summon would add an empty step. Accepted under his empty-step rule. No card has an enter effect.
-- `CharacterSideFilter` is also the side type of `PlayerSelectorFilter`, so the name says less than it covers. `mana_cost` sums discounts with `.sum::<u8>()`, which panics in debug past 255 (unreachable).
-- 04b: `Chosen(filter)` takes the same `CharacterSelectorFilter` as `All` and `Random`. Opener: "What happens when an already targeted minion is clicked again?" Then decide "two different minions" vs "a minion. Then a minion." (a distinctness rule in the data, and the can-finish check needs two minions), a new pick action vs reusing `Pick { object_id }` (every target is an `ObjectId` by 04b, heroes included), and whether `Play` keeps its name now that it only opens a cast.
-- The "Deal 1 damage to a minion. Then deal 1 damage to a hero." card needs the targeting draft, so it belongs to 04b.
+- `CharacterSideFilter` is also the side type of `PlayerSelectorFilter`, so the name says less than it covers. `mana_cost` sums discounts with `.sum::<u8>()`, which panics in debug past 255 (unreachable). `EffectAmount` lives in `choice.rs`, though every verb uses it.
+- A chosen target that stops matching during resolution: no verb can cause it yet (filters read kind and side, and deaths wait for the state check). When bounce, control change or a filter on damage arrives, apply MTG 608.2b: skip an illegal target, and if every target is illegal the card does nothing.
+- `Play` appends the draft's choices to `Object.choice_targets` and `Chosen` reads them with `find`, so a card played twice (after a bounce) resolves against its first play's targets. Assign instead of appending. A card that remembers its target (his "deal 2 damage to it every turn") needs triggers (05) and a rule for when the remembered minion dies or leaves.
+- `AmountBound` has only `Exactly`, with `AtMost` and `AtLeast` commented out (his call). MTG's "up to N targets" is the card that brings `AtMost` back. His first `AtMost` counted as filled before any choice, so its candidates were never listed.
+- Cross-choice "different" is "differs from every earlier choice" (Forge `TargetUnique$`). XMage's tags (differ from some choices only) wait for a card that needs them. If `Cancel`-only undo proves clumsy, `Back` removes the last choice and works the same on every card.
+- Card wording: loose-then-tight filters (Shove) make the look-ahead hide a matching minion, and tight-first wording avoids it. A candidate for session H's card validation.
 - Hero replacement (concept in 04c, not built): a new object, with the card's data saying whether damage carries over (Hearthstone hero cards keep it, Jaraxxus sets 15). Queries about "your hero" key by `PlayerId`. No event reports a swap yet.
 - N-player elimination: `Player.playing` is his committed record, kept by choice. Test it when setup takes more than two decks.
-- Glossary terms he deferred until used more (Owner, Side, Friendly and Enemy went in during 04a): token (Hearthstone's uncollectible vs MTG's created by an effect, a flagged pair when it lands), summon (the code now says `summon`), graveyard (and the `emtomb` spelling). Character was added in 04c.
-- `lib.rs`'s docstring still lists `cards` among the public data types, but the module is private now.
+- Glossary terms he deferred until used more (Owner, Side, Friendly and Enemy went in during 04a, Draft and Choose in 04b): token (Hearthstone's uncollectible vs MTG's created by an effect, a flagged pair when it lands), summon (the code now says `summon`), graveyard (and the `emtomb` spelling). Character was added in 04c.
+- `lib.rs`'s docstring still lists `cards` among the public data types, but the module is private now, and its layout list doesn't mention `choice`.
 - Dependent sequencing (sessions 06 and 08): "if A succeeded, B" is a second axis beside together/then. Each verb reports what it did, a later effect's condition reads the report, and the report lives only while the card resolves (06's half-finished effect). Open 08 with the YGO conjunction table. What "succeeded" means differs per game, as MTG 118.12 in the verified facts shows, so it belongs in the data.
 - Restore as its own verb (E2) has no card yet. Build it with the first card that restores.
-- "Chosen" will split into chosen while casting (a target) and chosen during resolution (a pending pick), like MTG "target" vs "choose". Session 06.
-- Playability with no target: a Hearthstone spell needs one (`REQ_TARGET_TO_PLAY`), and a Battlecry minion is played anyway (`REQ_TARGET_IF_AVAILABLE`). Matters once a minion has a targeted enter effect.
+- Choices during resolution (Discover-style, or "deal 1, then choose a minion" after the hit lands) are session 06. Choose is the casting-time name and Pick the resolution-time one. He cut the `Choosing` variant from 04b.
+- Playability with no target: a Hearthstone spell needs one (`REQ_TARGET_TO_PLAY`), and a Battlecry minion is played anyway (`REQ_TARGET_IF_AVAILABLE`). Today any card with choices needs a draft that can finish, so a minion with a targeted enter effect couldn't be played into an empty board.
 - Chance as an input (OpenSpiel style) for testing random effects without seeds. Session 07.
 - `ObjectId`s are allocated in deck-list order before the shuffle, so an opponent who knows the deck list can name a hidden card from its ID. Fix: allocate after the shuffle. Hidden cards' IDs are visible by policy (Arena and Hearthstone do the same).
 - Cause across steps ("this hit came from that deathrattle, from that Blast"): blocks or brackets, deferred to session 05 when triggers exist.
@@ -251,8 +274,8 @@ graph TD
 | 04 | R3, E | Effects as data | done (concept only: E1 to E5; targeting draft designed) |
 | 04c | B | Heroes, players and tokens as objects | done (green: 18 unit + 106 spec; ADR 0008; Barracks summons a Squire; PR #4) |
 | 04a | E | Exercise: effect reshape | done (green: 17 unit + 114 spec; kind and side filters as sets, one `Damage`, Zap and Stray Shot, a checkpoint per effect; `c4aef7c`) |
-| 04b | E, G | Exercise: targeting draft | next. Opens with the retrieval quiz on 04a (the `as` cast, the player-side axis split). `Chosen(filter)`, `Play` opens a cast, a pick per decision, `Commit`, `Cancel`. Ping, a two-minion card, and the minion-and-hero card. Opener: re-clicking a targeted minion. |
-| 05 | F | Triggers, replacements, statics | |
+| 04b | E, G | Exercise: targeting draft | done (green: 20 unit + 142 spec; ADR 0009 and 0010; choices on the card, `Draft`/`Choose`/`Cancel`/`Play`, a look-ahead search; Ping, Twin Shot, Crossfire, Shove; drafting benches; `4bb2960`) |
+| 05 | F | Triggers, replacements, statics | next. Opens with the retrieval quiz on 04b (the can-finish search as a reader of the choices, one fact in one function). Then collect-then-commit with the Medic card (open threads). |
 | 06 | R4, G | Resolution loop, pending choices, stored half-finished effects | |
 | 07 | R5, T | Scenario DSL, replays, determinism trap, invariant fuzzing | |
 | 08 | K | YGO chain: spell speed, right to act, LIFO, SEGOC, missing the timing | |

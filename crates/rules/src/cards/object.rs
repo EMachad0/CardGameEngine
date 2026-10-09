@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::{DefId, PlayerId, cards::modifier::Modifiers};
+use crate::{DefId, PlayerId, cards::modifier::Modifiers, choice::ChoiceTarget};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ObjectId(u64);
@@ -13,6 +13,7 @@ pub(crate) struct Object {
     pub damage: u8,
     pub modifiers: Modifiers,
     pub friendly_aura: Modifiers,
+    pub choice_targets: Vec<ChoiceTarget>,
 }
 
 impl Object {
@@ -24,6 +25,7 @@ impl Object {
             damage: 0,
             modifiers: Modifiers::default(),
             friendly_aura: Modifiers::default(),
+            choice_targets: Default::default(),
         }
     }
 }

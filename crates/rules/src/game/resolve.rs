@@ -4,15 +4,13 @@
 //! Every action that reaches this module is already in `legal_actions`, so
 //! nothing here re-checks legality.
 
-use enumset::EnumSet;
-
 use super::Game;
 use crate::action::Action;
-use crate::cards::definition::{
-    CharacterKindFilter, CharacterSelector, CharacterSelectorFilter, CharacterSideFilter, Effect,
-    PlayerSelector, PlayerSelectorFilter,
-};
-use crate::cards::modifier::{EffectAmount, Modifier};
+use crate::cards::definition::{CharacterSelector, Effect, PlayerSelector, PlayerSelectorFilter};
+use crate::cards::modifier::Modifier;
+use crate::choice::{ChoiceTarget, EffectAmount};
+use crate::game::PlayerInteractionState;
+use crate::game::condition::fulfill_character_side_filter;
 use crate::history::{HistoryKind, HistoryQuery, HistoryQueryKind, PlayerFilter};
 use crate::ids::PlayerId;
 use crate::{Event, IllegalAction, ObjectId, Observer, Views};
@@ -57,6 +55,40 @@ impl Game {
     ) {
         match action {
             Action::Play { object_id } => {
+                let from_draft = matches!(
+                    self.get_player(player_id).interaction_state,
+                    PlayerInteractionState::Draft { .. }
+                );
+                if from_draft {
+                    let PlayerInteractionState::Draft {
+                        of_object_id,
+                        chosen,
+                    } = std::mem::take(&mut self.get_player_mut(player_id).interaction_state)
+                    else {
+                        unreachable!();
+                    };
+                    let def_id = self.def_id(of_object_id);
+                    let choice_ids = self
+                        .binder
+                        .choices(def_id)
+                        .iter()
+                        .map(|c| c.id)
+                        .collect::<Vec<_>>();
+
+                    let obj = self.objects.get_mut(of_object_id);
+                    obj.choice_targets.clear();
+                    for choice_id in choice_ids {
+                        obj.choice_targets.push(ChoiceTarget {
+                            choice_id,
+                            targets: chosen
+                                .iter()
+                                .filter(|(_, c)| *c == choice_id)
+                                .map(|(o, _)| *o)
+                                .collect(),
+                        });
+                    }
+                }
+
                 let mana_cost = self
                     .mana_cost(object_id)
                     .expect("[legal_actions] guarantees a play action object_id has mana");
@@ -70,6 +102,30 @@ impl Game {
             Action::EndTurn => {
                 self.end_turn(obs);
                 self.start_turn(obs);
+                obs.checkpoint(Views::new(self));
+            }
+            Action::Draft { object_id } => {
+                self.get_player_mut(player_id).interaction_state = PlayerInteractionState::Draft {
+                    of_object_id: object_id,
+                    chosen: Vec::new(),
+                };
+                obs.checkpoint(Views::new(self));
+            }
+            Action::Choose {
+                choice_id,
+                object_id,
+            } => {
+                let player = self.get_player_mut(player_id);
+                let PlayerInteractionState::Draft { chosen, .. } = &mut player.interaction_state
+                else {
+                    unreachable!();
+                };
+                chosen.push((object_id, choice_id));
+                obs.checkpoint(Views::new(self));
+            }
+            Action::Cancel { .. } => {
+                let player = self.get_player_mut(player_id);
+                player.interaction_state = PlayerInteractionState::default();
                 obs.checkpoint(Views::new(self));
             }
         };
@@ -193,7 +249,7 @@ impl Game {
             self.players
                 .iter()
                 .map(|p| p.id)
-                .filter(|&player_id| resolve_side_filter(side, owner, player_id))
+                .filter(|&player_id| fulfill_character_side_filter(side, owner, player_id))
                 .collect()
         };
         match selector {
@@ -212,34 +268,25 @@ impl Game {
         object_id: ObjectId,
         selector: CharacterSelector,
     ) -> Vec<ObjectId> {
-        let all = |CharacterSelectorFilter { kind, side }| {
-            let mut characters = Vec::new();
-            if kind.contains(CharacterKindFilter::Heroes) {
-                characters.extend(
-                    self.players
-                        .iter()
-                        .filter(|player| resolve_side_filter(side, owner, player.id))
-                        .map(|player| player.zones.hero),
-                );
-            }
-            if kind.contains(CharacterKindFilter::Minions) {
-                characters.extend(
-                    self.players
-                        .iter()
-                        .filter(|player| resolve_side_filter(side, owner, player.id))
-                        .flat_map(|player| player.zones.board.as_slice()),
-                );
-            }
-            characters
-        };
         match selector {
-            CharacterSelector::All(filter) => all(filter),
+            CharacterSelector::All(filter) => self.scan_characters_with_filter(owner, filter),
             CharacterSelector::Itself => vec![object_id],
             CharacterSelector::OwnerHero => vec![self.hero_id(owner)],
-            CharacterSelector::Random(filter) => match self.select_random(&all(filter)) {
-                Some(v) => vec![v],
-                None => Vec::new(),
-            },
+            CharacterSelector::Random(filter) => {
+                match self.select_random(&self.scan_characters_with_filter(owner, filter)) {
+                    Some(v) => vec![v],
+                    None => Vec::new(),
+                }
+            }
+            CharacterSelector::Chosen(choice_id) => self
+                .objects
+                .get(object_id)
+                .choice_targets
+                .iter()
+                .find(|c| c.choice_id == choice_id)
+                .expect("Choice not fulfilled")
+                .targets
+                .clone(),
         }
     }
 
@@ -249,13 +296,4 @@ impl Game {
             values[idx].clone()
         })
     }
-}
-
-fn resolve_side_filter(
-    side: EnumSet<CharacterSideFilter>,
-    owner: PlayerId,
-    player_id: PlayerId,
-) -> bool {
-    (side.contains(CharacterSideFilter::Enemy) && player_id != owner)
-        || (side.contains(CharacterSideFilter::Friendly) && player_id == owner)
 }

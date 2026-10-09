@@ -4,6 +4,7 @@ use crate::cards::{
     definition::{CardDef, CardDefKind, DefId, Effect},
     modifier::ModifierEffect,
 };
+use crate::choice::{CharacterChoice, ChoiceId};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Binder {
@@ -109,5 +110,13 @@ impl Binder {
 
     pub(crate) fn modifier_effects(&self, def_id: DefId) -> &[ModifierEffect] {
         &self.get(def_id).modifier_effects
+    }
+
+    pub(crate) fn choice(&self, def_id: DefId, choice_id: ChoiceId) -> Option<&CharacterChoice> {
+        self.get(def_id).choices.iter().find(|c| c.id == choice_id)
+    }
+
+    pub(crate) fn choices(&self, def_id: DefId) -> &[CharacterChoice] {
+        &self.get(def_id).choices
     }
 }

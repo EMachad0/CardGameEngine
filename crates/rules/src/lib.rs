@@ -11,6 +11,7 @@
 
 mod action;
 mod cards;
+mod choice;
 mod event;
 mod game;
 mod history;
@@ -27,10 +28,11 @@ pub use cards::{
     loader::{CardDefError, CardDefLoader, static_card_definition},
     object::ObjectId,
 };
+pub use choice::ChoiceId;
 pub use event::Event;
 pub use game::{
     ApplyError, Game,
-    view::{BoardCard, Face, HandCard, HeroCard, PlayerView, RevealedCard, View},
+    view::{BoardCard, DraftView, Face, HandCard, HeroCard, PlayerView, RevealedCard, View},
 };
 pub use ids::PlayerId;
 pub use observer::{Observer, Views};
