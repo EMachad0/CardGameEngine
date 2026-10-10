@@ -1,6 +1,6 @@
 //! The state check at the end of every `apply`.
 
-use rules::static_card_definition::{BLAST, CAPTAIN, RECRUIT};
+use rules::static_card_definition::{BLAST, CAPTAIN, MEDIC, RECRUIT};
 use rules::{Game, Outcome};
 
 use crate::support::*;
@@ -106,4 +106,18 @@ fn a_hero_brought_to_zero_stays_in_its_zone() {
 
     assert_eq!(game.hero_id(p0), hero);
     assert_eq!(game.health(hero), Some(0));
+}
+
+#[test]
+fn medic_cannot_save_a_minion_dying_in_the_same_pass() {
+    let mut b = boards(&[MEDIC, RECRUIT], &[], &[BLAST], 3);
+    let recruit = b.mine[1];
+
+    play_def(&mut b.game, b.p0, BLAST);
+
+    assert_eq!(
+        b.game.health(recruit),
+        None,
+        "every minion at 0 leaves before the Medic's +2 Health resolves"
+    );
 }

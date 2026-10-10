@@ -1,7 +1,8 @@
 //! What `apply` reports to its observer.
 
 use rules::static_card_definition::{
-    BARRACKS, BLAST, BOLT, CAPTAIN, FORAGE, PING, RECRUIT, SPARK, TWIN_SHOT, WILD_BOLT, ZAP,
+    BARRACKS, BLAST, BOLT, CAPTAIN, DRILLMASTER, FORAGE, PING, RECRUIT, SPARK, TWIN_SHOT,
+    WILD_BOLT, ZAP,
 };
 use rules::{Action, Event, Game, ObjectId, Outcome, PlayerId, View};
 
@@ -448,16 +449,16 @@ fn a_hero_brought_to_zero_is_reported_dead_once_before_the_game_ends() {
         .collect();
     assert_eq!(hero_deaths.len(), 1, "one Died for the hero: {events:?}");
     assert_eq!(
-        &events[hero_deaths[0] + 1..],
-        [Event::GameEnded {
+        events.last(),
+        Some(&Event::GameEnded {
             outcome: Outcome::Won(p1)
-        }],
-        "the game ends right after the hero's death"
+        }),
+        "the game ends after the pass that killed the hero: {events:?}"
     );
 }
 
 #[test]
-fn a_minion_dying_with_a_hero_is_reported_dead_first() {
+fn a_hero_dying_with_a_minion_is_reported_dead_first() {
     let (mut game, recruit) = recruit_and_low_hero_facing_blast();
     let [p0, _] = players(&game);
     let hero = game.hero_id(p0);
@@ -472,10 +473,10 @@ fn a_minion_dying_with_a_hero_is_reported_dead_first() {
     assert_eq!(
         deaths,
         [
-            Event::Died { object_id: recruit },
             Event::Died { object_id: hero },
+            Event::Died { object_id: recruit },
         ],
-        "dead minions leave the board before the outcome is decided"
+        "heroes enter play at setup, so they come first in order of play"
     );
 }
 
@@ -504,6 +505,78 @@ fn heroes_brought_to_zero_together_are_each_reported_dead_before_the_draw() {
             "no Died for {object_id:?}: {events:?}"
         );
     }
+}
+
+/// P0 and P1 each have two Recruits, played in turn, and P0 holds a Blast.
+fn four_recruits_facing_blast() -> Boards {
+    boards(&[RECRUIT, RECRUIT], &[RECRUIT, RECRUIT], &[BLAST], 3)
+}
+
+#[test]
+fn minions_dying_together_are_reported_in_order_of_play_across_both_boards() {
+    let mut b = four_recruits_facing_blast();
+    let blast = in_hand(&b.game, b.p0, BLAST);
+
+    let events = observe(&mut b.game, b.p0, play(blast)).events();
+
+    let deaths: Vec<Event> = events
+        .into_iter()
+        .filter(|e| matches!(e, Event::Died { .. }))
+        .collect();
+    let played = [b.mine[0], b.theirs[0], b.mine[1], b.theirs[1]];
+    assert_eq!(deaths, played.map(|object_id| Event::Died { object_id }));
+}
+
+#[test]
+fn one_state_check_pass_reports_its_deaths_in_one_step() {
+    let mut b = four_recruits_facing_blast();
+    let blast = in_hand(&b.game, b.p0, BLAST);
+
+    let recorder = observe(&mut b.game, b.p0, play(blast));
+
+    let deaths_per_step: Vec<usize> = recorder
+        .steps
+        .iter()
+        .map(|step| {
+            step.events
+                .iter()
+                .filter(|e| matches!(e, Event::Died { .. }))
+                .count()
+        })
+        .filter(|&deaths| deaths > 0)
+        .collect();
+    assert_eq!(deaths_per_step, [4], "the four die together");
+}
+
+#[test]
+fn drillmasters_squire_enters_in_its_own_step_between_the_play_and_the_spell() {
+    let mut b = boards(&[DRILLMASTER], &[], &[], 2);
+    let bolt = in_hand(&b.game, b.p0, BOLT);
+    let enemy_hero = b.game.hero_id(b.p1);
+
+    let recorder = observe(&mut b.game, b.p0, play(bolt));
+
+    let &[_, squire] = b.game.board(b.p0) else {
+        panic!("no Squire: {:?}", board_defs(&b.game, b.p0));
+    };
+    assert_eq!(
+        event_steps(&recorder),
+        [
+            vec![Event::Played {
+                player_id: b.p0,
+                object_id: bolt
+            }],
+            vec![Event::BoardEntered {
+                player_id: b.p0,
+                object_id: squire
+            }],
+            vec![Event::Damaged {
+                target: enemy_hero,
+                amount: 2,
+                source: bolt
+            }],
+        ]
+    );
 }
 
 /// The health `view` shows for minion `id` on `p`'s board, or `None` if it isn't there.

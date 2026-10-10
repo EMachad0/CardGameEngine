@@ -7,10 +7,10 @@
 use super::Game;
 use crate::action::Action;
 use crate::cards::definition::{CharacterSelector, Effect, PlayerSelector, PlayerSelectorFilter};
+use crate::cards::filter::fulfill_side_filter;
 use crate::cards::modifier::Modifier;
 use crate::choice::{ChoiceTarget, EffectAmount};
 use crate::game::PlayerInteractionState;
-use crate::game::condition::fulfill_character_side_filter;
 use crate::history::{HistoryKind, HistoryQuery, HistoryQueryKind, PlayerFilter};
 use crate::ids::PlayerId;
 use crate::{Event, IllegalAction, ObjectId, Observer, Views};
@@ -166,11 +166,15 @@ impl Game {
                     });
                 }
             }
+            Effect::Buff { .. } => todo!(),
             Effect::AddFriendlyAura { selector, effect } => {
                 let targets = self.resolve_character_selector(owner, source, selector);
                 for target in targets.into_iter() {
                     let object = self.objects.get_mut(target);
-                    object.friendly_aura.add(Modifier { source, effect });
+                    object.friendly_aura.add(Modifier {
+                        source,
+                        effect: effect.clone(),
+                    });
                 }
             }
             Effect::Summon { selector, def_id } => {
@@ -249,7 +253,7 @@ impl Game {
             self.players
                 .iter()
                 .map(|p| p.id)
-                .filter(|&player_id| fulfill_character_side_filter(side, owner, player_id))
+                .filter(|&player_id| fulfill_side_filter(side, owner, player_id))
                 .collect()
         };
         match selector {

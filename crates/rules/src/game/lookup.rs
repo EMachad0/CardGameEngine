@@ -116,7 +116,7 @@ impl Game {
             .iter()
             .map(|e| Modifier {
                 source: object_id,
-                effect: *e,
+                effect: e.clone(),
             })
             .collect::<Vec<_>>();
         let mut modifiers = Modifiers::new(modifiers);
@@ -142,24 +142,9 @@ impl Game {
         modifiers
     }
 
-    pub(crate) fn on_play(&self, object_id: ObjectId) -> Vec<Effect> {
+    pub(crate) fn play_effects(&self, object_id: ObjectId) -> Vec<Effect> {
         let obj = self.object(object_id);
-        self.binder.on_play_effect(obj.def_id).to_vec()
-    }
-
-    pub(crate) fn on_board_enter(&self, object_id: ObjectId) -> Vec<Effect> {
-        let obj = self.object(object_id);
-        self.binder.on_board_enter(obj.def_id).to_vec()
-    }
-
-    pub(crate) fn on_board_leave(&self, object_id: ObjectId) -> Vec<Effect> {
-        let obj = self.object(object_id);
-        self.binder.on_board_leave(obj.def_id).to_vec()
-    }
-
-    pub(crate) fn on_death(&self, object_id: ObjectId) -> Vec<Effect> {
-        let obj = self.object(object_id);
-        self.binder.on_death(obj.def_id).to_vec()
+        self.binder.play_effects(obj.def_id).to_vec()
     }
 
     pub(crate) fn friendly_aura(&self, object_id: ObjectId) -> Modifiers {
@@ -170,7 +155,7 @@ impl Game {
             .iter()
             .map(|e| Modifier {
                 source: object_id,
-                effect: *e,
+                effect: e.clone(),
             })
             .collect::<Vec<_>>();
         let mut modifiers = Modifiers::new(modifiers);
@@ -186,7 +171,7 @@ impl Game {
             .iter()
             .map(|e| Modifier {
                 source: object_id,
-                effect: *e,
+                effect: e.clone(),
             })
             .collect::<Vec<_>>();
         Modifiers::new(modifiers)

@@ -1,7 +1,11 @@
 use enumset::EnumSet;
 
 use crate::{
-    cards::{loader::PLACEHOLDER, modifier::ModifierEffect},
+    cards::{
+        filter::{CardFilter, CharacterFilter, Side},
+        loader::PLACEHOLDER,
+        modifier::ModifierEffect,
+    },
     choice::{CharacterChoice, ChoiceId, EffectAmount},
 };
 
@@ -21,10 +25,8 @@ pub struct CardDef {
     pub kind: CardDefKind,
     pub mana_cost: u8,
     pub modifier_effects: Vec<ModifierEffect>,
-    pub on_play_effect: EffectSequence,
-    pub on_board_enter: EffectSequence,
-    pub on_board_leave: EffectSequence,
-    pub on_death: EffectSequence,
+    pub play_effects: EffectSequence,
+    pub triggers: Vec<Trigger>,
     pub choices: Vec<CharacterChoice>,
 }
 
@@ -36,10 +38,8 @@ impl Default for CardDef {
             kind: CardDefKind::Minion(MinionCardDef::new(1, 1)),
             mana_cost: Default::default(),
             modifier_effects: Default::default(),
-            on_play_effect: Default::default(),
-            on_board_enter: Default::default(),
-            on_board_leave: Default::default(),
-            on_death: Default::default(),
+            play_effects: Default::default(),
+            triggers: Default::default(),
             choices: Default::default(),
         }
     }
@@ -79,7 +79,7 @@ pub struct HeroCardDef {
     pub health: i32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Effect {
     Draw {
         selector: PlayerSelector,
@@ -92,6 +92,10 @@ pub enum Effect {
     Damage {
         selector: CharacterSelector,
         amount: EffectAmount,
+    },
+    Buff {
+        selector: CharacterSelector,
+        effect: ModifierEffect,
     },
     AddFriendlyAura {
         selector: CharacterSelector,
@@ -106,6 +110,25 @@ pub enum Effect {
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct EffectSequence(pub Vec<Effect>);
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Trigger {
+    pub pattern: TriggerPattern,
+    pub effects: EffectSequence,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TriggerPattern {
+    Died(TriggerSubject),
+    Damaged(TriggerSubject),
+    Played(CardFilter),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TriggerSubject {
+    Itself,
+    Character(CharacterFilter),
+}
+
 impl EffectSequence {
     pub fn as_slice(&self) -> &[Effect] {
         self.0.as_slice()
@@ -114,7 +137,7 @@ impl EffectSequence {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PlayerSelectorFilter {
-    pub side: EnumSet<CharacterSideFilter>,
+    pub side: EnumSet<Side>,
 }
 
 impl PlayerSelectorFilter {
@@ -132,38 +155,11 @@ pub enum PlayerSelector {
     Random(PlayerSelectorFilter),
 }
 
-#[derive(Debug, enumset::EnumSetType)]
-pub enum CharacterKindFilter {
-    Heroes,
-    Minions,
-}
-
-#[derive(Debug, enumset::EnumSetType)]
-pub enum CharacterSideFilter {
-    Friendly,
-    Enemy,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct CharacterSelectorFilter {
-    pub kind: EnumSet<CharacterKindFilter>,
-    pub side: EnumSet<CharacterSideFilter>,
-}
-
-impl CharacterSelectorFilter {
-    pub fn all() -> Self {
-        Self {
-            kind: EnumSet::all(),
-            side: EnumSet::all(),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CharacterSelector {
-    All(CharacterSelectorFilter),
+    All(CharacterFilter),
     Itself,
     OwnerHero,
-    Random(CharacterSelectorFilter),
+    Random(CharacterFilter),
     Chosen(ChoiceId),
 }

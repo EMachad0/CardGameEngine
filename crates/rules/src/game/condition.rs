@@ -1,8 +1,6 @@
-use enumset::EnumSet;
-
 use crate::{
     Game, ObjectId, PlayerId,
-    cards::definition::{CharacterKindFilter, CharacterSelectorFilter, CharacterSideFilter},
+    cards::filter::{CharacterFilter, CharacterKindFilter, fulfill_side_filter},
     choice::{CharacterChoice, ChoiceId},
 };
 
@@ -45,14 +43,14 @@ impl Game {
     pub(crate) fn scan_characters_with_filter(
         &self,
         asking: PlayerId,
-        CharacterSelectorFilter { kind, side }: CharacterSelectorFilter,
+        CharacterFilter { kind, side }: CharacterFilter,
     ) -> Vec<ObjectId> {
         let mut characters = Vec::new();
         if kind.contains(CharacterKindFilter::Heroes) {
             characters.extend(
                 self.players
                     .iter()
-                    .filter(|player| fulfill_character_side_filter(side, asking, player.id))
+                    .filter(|player| fulfill_side_filter(side, asking, player.id))
                     .map(|player| player.zones.hero),
             );
         }
@@ -60,7 +58,7 @@ impl Game {
             characters.extend(
                 self.players
                     .iter()
-                    .filter(|player| fulfill_character_side_filter(side, asking, player.id))
+                    .filter(|player| fulfill_side_filter(side, asking, player.id))
                     .flat_map(|player| player.zones.board.as_slice()),
             );
         }
@@ -98,13 +96,4 @@ impl Game {
         }
         !any_unfulfiled
     }
-}
-
-pub(crate) fn fulfill_character_side_filter(
-    side: EnumSet<CharacterSideFilter>,
-    asking: PlayerId,
-    player_id: PlayerId,
-) -> bool {
-    (side.contains(CharacterSideFilter::Enemy) && player_id != asking)
-        || (side.contains(CharacterSideFilter::Friendly) && player_id == asking)
 }

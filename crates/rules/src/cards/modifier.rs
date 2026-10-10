@@ -1,4 +1,4 @@
-use crate::{ObjectId, choice::EffectAmount};
+use crate::{ObjectId, cards::definition::Trigger, choice::EffectAmount};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(crate) struct Modifiers(Vec<Modifier>);
@@ -21,15 +21,16 @@ impl Modifiers {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Modifier {
     pub source: ObjectId,
     pub effect: ModifierEffect,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ModifierEffect {
     BuffAtk { amount: EffectAmount },
     BuffHealth { amount: EffectAmount },
     ReduceManaCost { amount: EffectAmount },
+    GrantTrigger(Trigger),
 }
