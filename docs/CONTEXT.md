@@ -159,6 +159,10 @@ _Avoid_: picker
 **Bury**:
 Putting a card on the bottom of its owner's deck.
 
+**Trigger**:
+Card text that reacts to an event. It matches when the event happens and resolves later.
+_Avoid_: listener, hook
+
 **State check**:
 The pass that removes dead cards from the board and decides whether the game is over.
 _Avoid_: death check, state-based actions
