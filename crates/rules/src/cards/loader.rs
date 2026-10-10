@@ -463,6 +463,7 @@ fn validate(defs: &[CardDef]) -> Result<(), CardDefError> {
     validate_not_found(defs)?;
     validate_choice_duplicates(defs)?;
     validate_choice_not_found(defs)?;
+    validate_choice_on_trigger(defs)?;
     Ok(())
 }
 
@@ -530,6 +531,42 @@ fn chosen_id(effect: &Effect) -> Option<ChoiceId> {
         | CharacterSelector::OwnerHero
         | CharacterSelector::Random(_) => None,
     }
+}
+
+fn validate_choice_on_trigger(defs: &[CardDef]) -> Result<(), CardDefError> {
+    for def in defs {
+        for trigger in def.triggers.iter() {
+            if let Some(choice_id) = choice_on_trigger(trigger) {
+                return Err(CardDefError::ChoiceInTrigger(def.id, choice_id));
+            }
+        }
+
+        if let CardDefKind::Minion(MinionCardDef {
+            friendly_aura_effects,
+            hostile_aura_effects,
+            ..
+        }) = &def.kind
+        {
+            let auras = friendly_aura_effects
+                .iter()
+                .chain(hostile_aura_effects.iter());
+            for modifier_effect in auras {
+                match modifier_effect {
+                    ModifierEffect::GrantTrigger(trigger) => {
+                        if let Some(choice_id) = choice_on_trigger(trigger) {
+                            return Err(CardDefError::ChoiceInTrigger(def.id, choice_id));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn choice_on_trigger(trigger: &Trigger) -> Option<ChoiceId> {
+    trigger.effects.as_slice().iter().find_map(chosen_id)
 }
 
 #[cfg(test)]
