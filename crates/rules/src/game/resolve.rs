@@ -230,7 +230,7 @@ impl Game {
                     )
                 })
                 .count(),
-            HistoryQueryKind::MinionDied => entries
+            HistoryQueryKind::MinionsDied => entries
                 .filter(|entry| targets.contains(&entry.player_id))
                 .filter(|entry| match query.turn {
                     crate::history::TurnFilter::Current => {

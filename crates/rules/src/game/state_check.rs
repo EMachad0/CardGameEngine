@@ -6,43 +6,54 @@ impl Game {
         self.decide_outcome(obs);
     }
 
-    fn find_dead(&self) -> Option<ObjectId> {
+    fn find_dead(&self) -> Vec<ObjectId> {
+        let mut death_pass = Vec::new();
         for player_id in self.players().into_iter() {
             for object_id in self.board(player_id).iter().copied() {
                 let health = self
                     .health(object_id)
                     .expect("board objects always have health");
                 if health <= 0 {
-                    return Some(object_id);
+                    death_pass.push(object_id);
                 }
             }
         }
-        None
+        death_pass
     }
 
     fn remove_dead(&mut self, obs: &mut impl Observer) {
-        while let Some(object_id) = self.find_dead() {
-            self.kill(self.objects.get(object_id).player_id, object_id, obs);
-            obs.checkpoint(Views::new(self));
-        }
+        loop {
+            let dead_minions = self.find_dead();
+            let minion_died = !dead_minions.is_empty();
 
-        let dead_players = self
-            .players()
-            .into_iter()
-            .filter(|&player_id| self.playing(player_id))
-            .filter(|&player_id| self.hero_health(player_id) <= 0)
-            .collect::<Vec<_>>();
-        let player_died = !dead_players.is_empty();
-        for player_id in dead_players.into_iter() {
-            self.kill(player_id, self.hero_id(player_id), obs);
-            // Hero deathrattle may update hero
-            if self.hero_health(player_id) <= 0 {
+            let dead_players = self
+                .players()
+                .into_iter()
+                .filter(|&player_id| self.playing(player_id))
+                .filter(|&player_id| self.hero_health(player_id) <= 0)
+                .collect::<Vec<_>>();
+            let player_died = !dead_players.is_empty();
+            let dead_heroes = dead_players.iter().map(|p| self.hero_id(*p));
+
+            let mut death_pass = dead_minions
+                .into_iter()
+                .chain(dead_heroes.into_iter())
+                .collect::<Vec<_>>();
+            death_pass.sort_by_key(|o| self.objects.get(*o).order);
+            for object_id in death_pass.into_iter() {
+                self.kill(self.objects.get(object_id).player_id, object_id, obs);
+            }
+
+            for player_id in dead_players.into_iter() {
                 let player = self.get_player_mut(player_id);
                 player.playing = false;
             }
-        }
-        if player_died {
-            obs.checkpoint(Views::new(self));
+
+            if player_died || minion_died {
+                obs.checkpoint(Views::new(self));
+            } else {
+                break;
+            }
         }
     }
 

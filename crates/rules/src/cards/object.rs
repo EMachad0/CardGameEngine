@@ -14,25 +14,14 @@ pub(crate) struct Object {
     pub modifiers: Modifiers,
     pub friendly_aura: Modifiers,
     pub choice_targets: Vec<ChoiceTarget>,
-}
-
-impl Object {
-    fn new(object_id: ObjectId, def_id: DefId, player_id: PlayerId) -> Self {
-        Self {
-            object_id,
-            def_id,
-            player_id,
-            damage: 0,
-            modifiers: Modifiers::default(),
-            friendly_aura: Modifiers::default(),
-            choice_targets: Default::default(),
-        }
-    }
+    /// unique idx updated when object move between zones
+    pub order: usize,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(crate) struct ObjectBag {
     next_id: u64,
+    order_id: usize,
     objects: BTreeMap<ObjectId, Object>,
 }
 
@@ -43,9 +32,24 @@ impl ObjectBag {
         ObjectId(id)
     }
 
+    fn next_order(&mut self) -> usize {
+        let order = self.order_id;
+        self.order_id += 1;
+        order
+    }
+
     pub(crate) fn insert(&mut self, def_id: DefId, player_id: PlayerId) -> ObjectId {
         let object_id = self.next_id();
-        let object = Object::new(object_id, def_id, player_id);
+        let object = Object {
+            object_id,
+            def_id,
+            player_id,
+            damage: 0,
+            modifiers: Modifiers::default(),
+            friendly_aura: Modifiers::default(),
+            choice_targets: Default::default(),
+            order: self.next_order(),
+        };
         self.objects.insert(object_id, object);
         object_id
     }
@@ -60,6 +64,12 @@ impl ObjectBag {
         self.objects
             .get_mut(&object_id)
             .expect("ObjectId is only created on object insert")
+    }
+
+    pub(crate) fn update_order(&mut self, object_id: ObjectId) -> usize {
+        let order = self.next_order();
+        self.get_mut(object_id).order = order;
+        order
     }
 }
 

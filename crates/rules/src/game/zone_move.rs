@@ -17,6 +17,7 @@ impl Game {
                     object_id,
                 });
                 player.zones.hand.add(object_id);
+                self.objects.update_order(object_id);
             } else {
                 let hero_id = player.zones.hero;
                 let damage = 1;
@@ -72,10 +73,7 @@ impl Game {
         obs: &mut impl Observer,
     ) {
         self.get_player_mut(player_id).zones.board.add(object_id);
-        obs.event(&Event::BoardEntered {
-            player_id,
-            object_id,
-        });
+        self.character_entered(player_id, object_id, obs);
     }
 
     pub(crate) fn kill(
@@ -121,6 +119,7 @@ impl Game {
         object_id: ObjectId,
         _obs: &mut impl Observer,
     ) {
+        self.objects.update_order(object_id);
         self.get_player_mut(player_id)
             .zones
             .graveyard
@@ -193,7 +192,29 @@ impl Game {
     ) {
         let player = self.get_player_mut(player_id);
         player.zones.deck.push_back(object_id);
+        self.objects.update_order(object_id);
         obs.event(&Event::Buried {
+            player_id,
+            object_id,
+        });
+    }
+
+    fn character_entered(
+        &mut self,
+        player_id: PlayerId,
+        object_id: ObjectId,
+        obs: &mut impl Observer,
+    ) {
+        self.objects.update_order(object_id);
+        let object = self.objects.get(object_id);
+        self.history.entries.push(HistoryEntry::new(
+            player_id,
+            HistoryKind::CharacterEntered {
+                object: object.clone(),
+            },
+            self.turn_order.turn_count(),
+        ));
+        obs.event(&Event::BoardEntered {
             player_id,
             object_id,
         });

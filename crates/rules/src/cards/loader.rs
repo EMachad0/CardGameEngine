@@ -551,13 +551,10 @@ fn validate_choice_on_trigger(defs: &[CardDef]) -> Result<(), CardDefError> {
                 .iter()
                 .chain(hostile_aura_effects.iter());
             for modifier_effect in auras {
-                match modifier_effect {
-                    ModifierEffect::GrantTrigger(trigger) => {
-                        if let Some(choice_id) = choice_on_trigger(trigger) {
-                            return Err(CardDefError::ChoiceInTrigger(def.id, choice_id));
-                        }
-                    }
-                    _ => {}
+                if let ModifierEffect::GrantTrigger(trigger) = modifier_effect
+                    && let Some(choice_id) = choice_on_trigger(trigger)
+                {
+                    return Err(CardDefError::ChoiceInTrigger(def.id, choice_id));
                 }
             }
         }

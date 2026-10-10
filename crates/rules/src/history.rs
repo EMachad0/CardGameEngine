@@ -4,6 +4,7 @@ use crate::{PlayerId, cards::object::Object};
 pub(crate) enum HistoryKind {
     CardPlayed { object: Object },
     CharacterDied { object: Object },
+    CharacterEntered { object: Object },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -46,7 +47,7 @@ pub struct HistoryQuery {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HistoryQueryKind {
     SpellsPlayed,
-    MinionDied,
+    MinionsDied,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
