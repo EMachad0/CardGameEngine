@@ -77,6 +77,8 @@ impl ObjectBag {
 mod tests {
     use super::*;
 
+    use pretty_assertions::assert_ne;
+
     #[test]
     fn each_new_id_is_distinct() {
         let mut bag = ObjectBag::default();

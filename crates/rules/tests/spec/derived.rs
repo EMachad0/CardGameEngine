@@ -1,5 +1,6 @@
 //! Attack, health and cost, derived on read.
 
+use pretty_assertions::assert_eq;
 use rules::static_card_definition::{BLAST, CAPTAIN, GIANT, RECRUIT, SPARK};
 use rules::{Game, ObjectId};
 

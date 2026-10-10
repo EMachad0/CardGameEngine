@@ -2,6 +2,7 @@
 
 use std::collections::BTreeSet;
 
+use pretty_assertions::{assert_eq, assert_ne};
 use rules::static_card_definition::{
     BARRACKS, BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK, SQUIRE, STRAY_SHOT, WILD_BOLT,
     ZAP,

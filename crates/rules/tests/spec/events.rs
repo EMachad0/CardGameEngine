@@ -1,5 +1,6 @@
 //! What `apply` reports to its observer.
 
+use pretty_assertions::assert_eq;
 use rules::static_card_definition::{
     BARRACKS, BLAST, BOLT, CAPTAIN, DRILLMASTER, FORAGE, PING, RECRUIT, SPARK, TWIN_SHOT,
     WILD_BOLT, ZAP,
@@ -285,7 +286,8 @@ fn blast_reports_its_play_then_a_hit_on_every_character() {
     assert_eq!(
         hits.len(),
         targets.len(),
-        "one hit per character: {events:?}"
+        "one hit per character:\n{}",
+        listing(&events)
     );
     for target in targets {
         let hit = Event::Damaged {
@@ -293,7 +295,11 @@ fn blast_reports_its_play_then_a_hit_on_every_character() {
             amount: 2,
             source: blast,
         };
-        assert!(hits.contains(&&hit), "missing {hit:?} in {events:?}");
+        assert!(
+            hits.contains(&&hit),
+            "missing {hit:?} in:\n{}",
+            listing(&events)
+        );
     }
 }
 
@@ -313,7 +319,7 @@ fn blast_hits_the_heroes_before_any_minion() {
         })
         .collect();
     let heroes = [game.hero_id(p0), game.hero_id(p1)];
-    assert_eq!(targets.len(), 4, "{events:?}");
+    assert_eq!(targets.len(), 4, "events:\n{}", listing(&events));
     assert!(
         targets[..2].iter().all(|t| heroes.contains(t)),
         "heroes come first: {targets:?}"
@@ -364,7 +370,8 @@ fn blast_reports_every_hit_before_any_death() {
         .expect("Blast killed something");
     assert!(
         last_hit < first_death,
-        "deaths come from the state check, after the spell: {events:?}"
+        "deaths come from the state check, after the spell:\n{}",
+        listing(&events)
     );
 }
 
@@ -447,13 +454,19 @@ fn a_hero_brought_to_zero_is_reported_dead_once_before_the_game_ends() {
         .filter(|(_, e)| **e == Event::Died { object_id: hero })
         .map(|(i, _)| i)
         .collect();
-    assert_eq!(hero_deaths.len(), 1, "one Died for the hero: {events:?}");
+    assert_eq!(
+        hero_deaths.len(),
+        1,
+        "one Died for the hero:\n{}",
+        listing(&events)
+    );
     assert_eq!(
         events.last(),
         Some(&Event::GameEnded {
             outcome: Outcome::Won(p1)
         }),
-        "the game ends after the pass that killed the hero: {events:?}"
+        "the game ends after the pass that killed the hero:\n{}",
+        listing(&events)
     );
 }
 
@@ -491,18 +504,19 @@ fn heroes_brought_to_zero_together_are_each_reported_dead_before_the_draw() {
     let events = observe(&mut game, p0, play(blast)).events();
 
     let Some((Event::GameEnded { outcome }, before)) = events.split_last() else {
-        panic!("the last event is not GameEnded: {events:?}");
+        panic!("the last event is not GameEnded:\n{}", listing(&events));
     };
     assert_eq!(*outcome, Outcome::Draw);
     let deaths: Vec<&Event> = before
         .iter()
         .filter(|e| matches!(e, Event::Died { .. }))
         .collect();
-    assert_eq!(deaths.len(), 2, "one Died per hero: {events:?}");
+    assert_eq!(deaths.len(), 2, "one Died per hero:\n{}", listing(&events));
     for object_id in heroes {
         assert!(
             deaths.contains(&&Event::Died { object_id }),
-            "no Died for {object_id:?}: {events:?}"
+            "no Died for {object_id:?}:\n{}",
+            listing(&events)
         );
     }
 }
@@ -760,8 +774,8 @@ fn an_apply_ends_with_a_checkpoint_showing_the_game_it_leaves() {
 
     assert!(
         recorder.trailing.is_empty(),
-        "events after the last checkpoint: {:?}",
-        recorder.trailing
+        "events after the last checkpoint:\n{}",
+        listing(&recorder.trailing)
     );
     let last = recorder.steps.last().expect("at least one checkpoint");
     assert_eq!(last.views, players(&game).map(|p| game.view(p)));

@@ -2,6 +2,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use pretty_assertions::assert_eq;
 use rules::static_card_definition::{
     BARRACKS, BLAST, BOLT, CAPTAIN, CROSSFIRE, FORAGE, GIANT, PING, RECRUIT, SHOVE, SPARK,
     TWIN_SHOT, WILD_BOLT,

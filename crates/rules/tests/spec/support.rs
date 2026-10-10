@@ -3,6 +3,7 @@
 
 use std::collections::BTreeSet;
 
+use pretty_assertions::assert_eq;
 use rules::static_card_definition::{BOLT, RECRUIT};
 use rules::{
     Action, ApplyError, ChoiceId, DefId, Event, Game, IllegalAction, ObjectId, Observer, PlayerId,
@@ -202,6 +203,16 @@ pub(crate) fn draws(events: &[Event], p: PlayerId) -> usize {
         .iter()
         .filter(|e| matches!(e, Event::Drew { player_id, .. } if *player_id == p))
         .count()
+}
+
+/// `events`, one per line, each prefixed with its index.
+pub(crate) fn listing(events: &[Event]) -> String {
+    events
+        .iter()
+        .enumerate()
+        .map(|(i, e)| format!("{i:>3}: {e:?}"))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// One checkpoint: the events since the previous one, then each player's view.

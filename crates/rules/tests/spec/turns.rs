@@ -1,5 +1,6 @@
 //! Turn start: mana, the draw and fatigue.
 
+use pretty_assertions::assert_eq;
 use rules::static_card_definition::{BOLT, RECRUIT, SPARK};
 use rules::{Action, Game, Outcome};
 

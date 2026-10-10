@@ -1,5 +1,6 @@
 //! Card text that reacts to events, and when it resolves.
 
+use pretty_assertions::assert_eq;
 use rules::static_card_definition::{
     BLAST, BOLT, BOMBER, DRILLMASTER, MEDIC, MOURNER, PING, RALLY_BANNER, RECRUIT, SQUIRE,
 };
@@ -20,7 +21,7 @@ fn first(events: &[Event], pred: impl Fn(&Event) -> bool) -> usize {
     events
         .iter()
         .position(pred)
-        .unwrap_or_else(|| panic!("no matching event in {events:?}"))
+        .unwrap_or_else(|| panic!("no matching event in:\n{}", listing(events)))
 }
 
 /// The index of the last event in `events` that matches `pred`.
@@ -28,7 +29,7 @@ fn last(events: &[Event], pred: impl Fn(&Event) -> bool) -> usize {
     events
         .iter()
         .rposition(pred)
-        .unwrap_or_else(|| panic!("no matching event in {events:?}"))
+        .unwrap_or_else(|| panic!("no matching event in:\n{}", listing(events)))
 }
 
 fn is_hit_from(e: &Event, from: ObjectId) -> bool {
@@ -77,7 +78,7 @@ fn mourner_draws_a_card_for_each_friendly_minion_that_dies() {
 
     let events = observe(&mut b.game, b.p0, play(blast)).events();
 
-    assert_eq!(draws(&events, b.p0), 2, "{events:?}");
+    assert_eq!(draws(&events, b.p0), 2, "events:\n{}", listing(&events));
 }
 
 #[test]
@@ -87,7 +88,7 @@ fn mourner_does_not_draw_for_enemy_minions_dying() {
 
     let events = observe(&mut b.game, b.p0, play(blast)).events();
 
-    assert_eq!(draws(&events, b.p0), 0, "{events:?}");
+    assert_eq!(draws(&events, b.p0), 0, "events:\n{}", listing(&events));
 }
 
 #[test]
@@ -110,7 +111,8 @@ fn a_mourner_dying_in_the_same_pass_draws_nothing() {
     assert_eq!(
         draws(&events, b.p0),
         0,
-        "a removed minion hears no death from its own pass: {events:?}"
+        "a removed minion hears no death from its own pass:\n{}",
+        listing(&events)
     );
 }
 
@@ -155,14 +157,15 @@ fn the_spell_that_made_drillmaster_summon_hits_the_squire() {
             Event::BoardEntered { object_id, .. } => Some(*object_id),
             _ => None,
         })
-        .unwrap_or_else(|| panic!("no Squire entered: {events:?}"));
+        .unwrap_or_else(|| panic!("no Squire entered:\n{}", listing(&events)));
     assert!(
         events.contains(&Event::Damaged {
             target: squire,
             amount: 2,
             source: blast,
         }),
-        "the Squire is on the board before Blast's effects: {events:?}"
+        "the Squire is on the board before Blast's effects:\n{}",
+        listing(&events)
     );
     assert_eq!(board_defs(&b.game, b.p0), [DRILLMASTER]);
 }
@@ -177,7 +180,8 @@ fn a_minion_played_after_rally_banner_draws_when_it_takes_damage() {
     assert_eq!(
         draws(&events, b.p0),
         1,
-        "the Mourner has the Banner's trigger though it entered after the Banner: {events:?}"
+        "the Mourner has the Banner's trigger though it entered after the Banner:\n{}",
+        listing(&events)
     );
 }
 
@@ -191,7 +195,8 @@ fn a_minion_brought_to_zero_health_still_draws_from_rally_banner() {
     assert_eq!(
         draws(&events, b.p0),
         1,
-        "the Recruit is still on the board when its hit is matched: {events:?}"
+        "the Recruit is still on the board when its hit is matched:\n{}",
+        listing(&events)
     );
 }
 
@@ -202,7 +207,7 @@ fn rally_banner_does_not_grant_its_trigger_to_itself() {
 
     let events = observe(&mut b.game, b.p0, play(blast)).events();
 
-    assert_eq!(draws(&events, b.p0), 0, "{events:?}");
+    assert_eq!(draws(&events, b.p0), 0, "events:\n{}", listing(&events));
 }
 
 #[test]
@@ -212,7 +217,7 @@ fn rally_banner_does_not_grant_its_trigger_to_enemy_minions() {
 
     let events = observe(&mut b.game, b.p0, play(blast)).events();
 
-    assert_eq!(draws(&events, b.p1), 0, "{events:?}");
+    assert_eq!(draws(&events, b.p1), 0, "events:\n{}", listing(&events));
 }
 
 #[test]
@@ -238,7 +243,8 @@ fn a_minion_killed_by_the_first_deathrattle_is_gone_before_the_second() {
         hits_on(&events, mourner),
         2,
         "Blast leaves it at 1, the first Bomber kills it, and the state check removes it \
-         before the second Bomber's deathrattle: {events:?}"
+         before the second Bomber's deathrattle:\n{}",
+        listing(&events)
     );
 }
 
@@ -255,7 +261,8 @@ fn a_trigger_resolves_after_its_source_has_died() {
         draws(&events, b.p0),
         1,
         "the Mourner's draw for the Bomber was queued before the Bomber's deathrattle \
-         killed it: {events:?}"
+         killed it:\n{}",
+        listing(&events)
     );
 }
 
@@ -269,7 +276,8 @@ fn an_older_minions_deathrattle_resolves_before_a_younger_minions_trigger() {
 
     assert!(
         first(&events, |e| is_hit_from(e, bomber)) < first(&events, is_draw),
-        "the Bomber entered first: {events:?}"
+        "the Bomber entered first:\n{}",
+        listing(&events)
     );
 }
 
@@ -283,7 +291,8 @@ fn an_older_minions_trigger_resolves_before_a_younger_minions_deathrattle() {
 
     assert!(
         first(&events, is_draw) < first(&events, |e| is_hit_from(e, bomber)),
-        "the Mourner entered first: {events:?}"
+        "the Mourner entered first:\n{}",
+        listing(&events)
     );
 }
 
@@ -299,6 +308,7 @@ fn a_deathrattles_consequences_resolve_before_triggers_already_waiting() {
     assert!(
         last(&events, |e| is_hit_from(e, second_bomber)) < first(&events, is_draw),
         "the first deathrattle kills the second Bomber, whose deathrattle resolves before \
-         the Mourner's draw that was already waiting: {events:?}"
+         the Mourner's draw that was already waiting:\n{}",
+        listing(&events)
     );
 }

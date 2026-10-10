@@ -1,3 +1,8 @@
+disallowed-macros = [
+  { path = "std::assert_eq", reason = "Import pretty_assertions::assert_eq, which prints a diff." },
+  { path = "std::assert_ne", reason = "Import pretty_assertions::assert_ne, which prints a diff." },
+]
+
 # The rules core is a function of seed, decks and decisions alone.
 # Each item below reads a hidden input, so a replay could diverge.
 # The ban covers this crate only.

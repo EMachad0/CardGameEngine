@@ -570,6 +570,8 @@ fn choice_on_trigger(trigger: &Trigger) -> Option<ChoiceId> {
 mod tests {
     use super::*;
 
+    use pretty_assertions::assert_eq;
+
     #[test]
     fn the_built_in_table_is_valid() {
         assert_eq!(validate(&CardDefLoader.load_all()), Ok(()));

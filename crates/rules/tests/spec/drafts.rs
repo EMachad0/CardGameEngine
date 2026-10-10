@@ -1,6 +1,7 @@
 //! Drafts: a card that needs choices is drafted, its choices are made one at a time, and then it
 //! is played.
 
+use pretty_assertions::assert_eq;
 use rules::Action;
 use rules::static_card_definition::{CROSSFIRE, PING, SHOVE, TWIN_SHOT};
 
