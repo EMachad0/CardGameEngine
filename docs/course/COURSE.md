@@ -12,7 +12,7 @@ Understand card game systems well enough to design MTG, Hearthstone, or Yu-Gi-Oh
 - Roles in exercises. First we agree on the design in discussion. The learner writes the design-bearing code (types, traits, key function signatures and bodies). The agent writes scaffolding and tests against that API, then reviews. Tests come before the implementation. He sees little learning value in typing out plain data types, so the agent drafts those, such as `Event` and `View`, for him to edit. Design choices and bodies stay his.
 - End at a node boundary, not mid-node. Commit once per node.
 
-## Knowledge map (from the 2026-09-28 probe, updated through session 04b)
+## Knowledge map (from the 2026-09-28 probe, updated through session 05)
 
 Session 01 (R1, S, L, P, G all landed on the first node check):
 - Determinism: a seeded RNG in the state, the clock in the shell (timer becomes an `EndTurn` input). Knows `HashMap`, `thread_rng` and `Instant::now` break replay.
@@ -145,6 +145,27 @@ Session 04b exercise (green: 20 unit + 142 spec; `4bb2960`):
 - He wrote `can_finish_choices` from pseudo-code after saying he had "no idea how". The first version passed the candidate where the card belonged, which made the look-ahead a no-op. Without cross-choice "different" the look-ahead couldn't hide anything, so nothing caught it. His 1b call made it reachable, and the Shove tests pin it.
 - Tests: 25 new (drafts, events, views). The playouts include the four drafting cards, with the model marking chosen damage. The spec run went from 1.0s to 6.5s, then to 0.4s: one comparison per state in the unlisted check, invariants only in the checked playout, seeds spread over the cores. Drafting benches: `legal_actions` about 1.1 µs with a drafting card in hand or a draft open; drafting playouts 2.6 times as long.
 
+Session 05 retrieval (all right): the can-finish search runs at each `Choose` (Duel offers only the friendly minion; his note gave the reason); a History-based count needs no change to the search, because "is this choice filled" has one function (his note: "I don't see the gap"); a trigger asks "friendly" through the selectors' one function.
+
+Session 05 probe (hooks; all right but one):
+- Right: a "whenever you cast" Squire is summoned before the spell's effects (his note: the timing is a design choice per trigger, with "before or after the death" as a third axis); Hearthstone vs MTG on simultaneous deaths is which state the matcher reads (he wasn't sure how MTG builds it: look-back through copies of the last state); order of play is a recorded fact (his note: a board-entry History record would hold it too); a replacement re-checked on its own output never ends (614.5); a replacement sits in one damage function, fatigue included.
+- Miss: Rally Banner under a registry. He saw that silence needs a patch, and that checking at match time fixes it (which is a scan), but thought the Banner's enter and leave hooks were enough. The trace landed (1 draw against the text's 2). He then proposed two more triggers to patch the grants: the stored-copy-plus-hooks default, now for "which triggers does X have".
+
+Session 05 nodes: U1 (every hook runs on read, before a change, or after it) right. N1 ("has trigger T" is a static, so listeners come from a scan; the Seize check) right. N2 (two replacements need an order rule or a choice) right. N3 (the queue is state in `Game`) right. N4 graded a miss on my wording ("the object Died names"); his model was right ("when we state check it is dead"), and so was the re-check trace. N5 answered "I don't know" because "the spell's text" and "settle" mapped to nothing in his code; his note placed both drain points correctly. Name things by their code names, not a game's rulebook phases.
+
+Session 05 design (his calls; ADRs 0011, 0012, 0014):
+- Scope: concept for statics, replacements and triggers, exercise on triggers. He asked for Rally Banner in the exercise ("won't more cards be useful?"), which became the registry red test.
+- Reactions are triggers; `on_play` is renamed `play_effects` and stays the card's body. `CharacterFilter` and `Side`. `GrantTrigger` as a modifier. Effects copied when the trigger matches.
+- Death policy, chosen after research on ten games: the dead leave before matching (Hearthstone, LoR, KeyForge, Shadowverse) and the state check runs after each trigger (MTG, Lorcana, Flesh and Blood, LoR). Together that's LoR's model.
+- He rejected my order-of-play sort as messy ("sometimes I push front and others back") and designed the stack himself: consequences on top; listeners pushed after the dead minion's own triggers, so they resolve first; one event's matches pushed oldest first, so the newest resolves first; any other order unpromised. He asked for a card to pin the one-event rule (Gravedigger). ADR 0014 supersedes 0013.
+- He rejected narrowing `ModifierEffect` ("I dont see the point if we dont fix the static self buff"). He asked why a trigger can't use `Chosen` (two meanings; the load check stays), whether `emit`'s events are the observer's (yes, under four conditions), and whether two ways to add triggers smell (two sources, one reader).
+- Game end in the middle of the loop: he chose "stop at the outcome" while implementing. Fatigue reports one `FatigueDamaged`, "for now".
+
+Session 05 exercise (green: 21 unit + 168 spec; `899f2c0`, `85d6bdb`):
+- Landed: no registry (`triggers(obj)` reads `modifiers(obj)`); one `fulfill_character_filter` for scans and matching (the 04b two-filters gap, closed by him); death triggers snapshotted before removal; `TriggerDef` on the card vs a runtime `Trigger`; an extra test of his own (a Mourner ignores its own death). Also his tooling: `pretty_assertions` and indexed event listings.
+- Review: the game kept resolving after `GameEnded` (probe: three events after it, the hero at -1); the drain loop existed twice and had already diverged (no state check in `play`'s copy), the one-fact-in-two-places shape, now in behavior; three events bypassed `emit` (now banned by clippy); History was written at three sites (moved into `emit`); `effect_queue_pop` became `pub` (a hole in ADR 0002); fatigue was reported twice (a test caught it). He fixed each one.
+- Speculative structure: `HistoryKind::CharacterEntered` is written and never read.
+
 Solid:
 - Card definition (never changes) vs object with its own ID and modifiers.
 - Non-commuting modifiers ("set to 1" vs "+2") need an ordering rule. Noted himself that 1 vs 3 is a design choice.
@@ -155,16 +176,17 @@ Solid:
 - Core returns a pending choice instead of blocking.
 - Effects as data (session 04): inspectability, interpreters as the readers of one source, verb + selector + amount, simultaneity in the target set. Session 04a: he designed the shape without prompting (independent axes, a set per axis). The slip was applying the split to one side only (players), and one forcing case fixed it.
 - Player vs piece (session 04c): the player decides, the hero is an object in a zone of one, hero is a kind while P's hero is a zone fact, unify where the rules unify, summon is not play. Token meanings (Hearthstone uncollectible on the definition, MTG created on the object) landed after an "I don't know".
+- Hooks (session 05): the three moments (on read, before, after); listeners from a scan once the Banner trace landed; matching at the event vs resolving later; the queue as state; collect then commit with snapshots; the stack discipline, his own design.
 
 Partial:
 - Pending choice: has the idea. Session 01 update: solid for simple drafts (Discover picks, attacker drafts, and Forage in the exercise are all state in `Game`). Session 04b built the targeting draft as state, with `Cancel` as a reset. Not yet tested on a half-finished effect *mid-resolution* ("deal 3, then if it died draw" paused for a target, or his token case). That's session 06.
 
 Gaps (teach into these):
-- Timing, i.e. *when* things run. Put the state check in a health setter ("every change goes through the setter"). Dislodged by the "can't die this turn" expiry case, but still needs a proper node. Chose the trigger queue for decoupling reasons, not for re-entrancy and timing reasons. Session 04: no state check inside a card now holds (derived unprompted), and he separates a checkpoint from a state check. Trigger timing is still open (05).
+- Timing, i.e. *when* things run. Put the state check in a health setter ("every change goes through the setter"). Dislodged by the "can't die this turn" expiry case, but still needs a proper node. Chose the trigger queue for decoupling reasons, not for re-entrancy and timing reasons. Session 04: no state check inside a card now holds (derived unprompted), and he separates a checkpoint from a state check. Session 05: mostly closed. He placed the drain points, separated matching from resolving, and designed the stack. Pausing a drain for a choice is session 06.
 - ~~Core to shell output.~~ Closed in session 03 (returned, observer at checkpoints, views per viewer).
 - ~~Determinism sources.~~ Closed in session 01 (`HashMap`, `thread_rng`, `Instant::now`, and seeds as streams).
 - Property-based testing. Sees crashes and rejected legal moves as fuzz findings. Missed invariants you assert yourself (card in two zones, replay divergence).
-- Mirror habit, 04b form: one fact computed in two places (two filter functions, two "is this choice filled" checks, a `preconditions` list restating `choices`). Each copy drifted on its first day. Teach: one function per question, and every caller asks it. Also searching: he couldn't start a backtracking search unaided, and wrote it once given pseudo-code.
+- Mirror habit, 04b form: one fact computed in two places (two filter functions, two "is this choice filled" checks, a `preconditions` list restating `choices`). Each copy drifted on its first day. Teach: one function per question, and every caller asks it. Also searching: he couldn't start a backtracking search unaided, and wrote it once given pseudo-code. Session 05: in design the stored-copy default still showed (the Banner hooks); in code it didn't (no registry, one filter function), but a copied behavior did (two drain loops).
 
 Rust: knows traits, generics, lifetimes, but they don't come naturally when designing. Explain *why* each trait, generic, or ownership choice is the one to make. Session 04: thought fn pointers aren't `Clone` (they're `Copy`). Session 04a: thought an integer `as` narrowing panics in debug (it keeps the low bits, and the overflow checks are on arithmetic). He then wrote a generic helper (`select_random<T>`) unprompted.
 
@@ -175,6 +197,7 @@ Rust: knows traits, generics, lifetimes, but they don't come naturally when desi
 - Final exam (K): add a Yu-Gi-Oh style chain without rewriting the core. He knows YGO best.
 - The tooling the course works toward: card data files with validation, generated rules text, test tooling (scenario DSL, replays, fuzzer), a headless CLI with a machine-readable protocol so bots and LLM agents can playtest, a visual editor, and hot reload.
 - Session 04's exercise is three sessions, his split: 04a effect reshape, 04b targeting draft, 04c heroes, players and tokens as objects, all before 05. He moved 04c first. All three are done.
+- Session 05 built triggers only. Replacements and new statics stay concept until a card needs one (his scope call).
 
 ## Open threads
 
@@ -182,12 +205,12 @@ Rust: knows traits, generics, lifetimes, but they don't come naturally when desi
 - Outside a pending pick, only the active player has legal actions, so an opponent's response is never offered. Sessions 06 and 08.
 - Signed modifiers: `ModifierEffect` amounts are `u8` since 04a, so "-2 Attack" or "costs (1) more" needs its own verb (the sign in the verb, like restore). He didn't say whether that's intended. Settle it with the first debuff or cost-increase card.
 - Random with no candidates: Stray Shot stays playable into an empty board and does nothing (Bomb Lobber), his 04b call "at least for now". `can_finish_choices` reads only declared choices. The alternative is Deadly Shot's `REQ_MINIMUM_ENEMY_MINIONS`, a play condition that no choice implies.
-- Hearthstone's random damage skips minions already at 0 health (the Advanced rulebook's "mortally wounded"). Our filters read the board, so a random pick after an earlier hit in the same card can land on a minion at 0. No card does that yet. Session 05 or 06.
+- Hearthstone's random damage skips minions already at 0 health (the Advanced rulebook's "mortally wounded"). Our filters read the board, so a random pick after an earlier hit in the same card can land on a minion at 0. No card does that yet. Session 06 or later.
 - An empty filter (`EnumSet::empty()`) matches nothing, and he chose no load check. Revisit with session H's validation.
-- A minion with an enter effect would get `BoardEntered` and its first enter effect in one step, and `play`'s checkpoint after the summon would add an empty step. Accepted under his empty-step rule. No card has an enter effect.
-- `CharacterSideFilter` is also the side type of `PlayerSelectorFilter`, so the name says less than it covers. `mana_cost` sums discounts with `.sum::<u8>()`, which panics in debug past 255 (unreachable). `EffectAmount` lives in `choice.rs`, though every verb uses it.
+- Enter effects: `on_board_enter` is gone since 05, so "when this enters" is a trigger pattern that doesn't exist yet. Add it with the first card that needs it.
+- `mana_cost` sums discounts with `.sum::<u8>()`, which panics in debug past 255 (unreachable). `EffectAmount` lives in `choice.rs`, though every verb uses it.
 - A chosen target that stops matching during resolution: no verb can cause it yet (filters read kind and side, and deaths wait for the state check). When bounce, control change or a filter on damage arrives, apply MTG 608.2b: skip an illegal target, and if every target is illegal the card does nothing.
-- `Play` appends the draft's choices to `Object.choice_targets` and `Chosen` reads them with `find`, so a card played twice (after a bounce) resolves against its first play's targets. Assign instead of appending. A card that remembers its target (his "deal 2 damage to it every turn") needs triggers (05) and a rule for when the remembered minion dies or leaves.
+- `Play` appends the draft's choices to `Object.choice_targets` and `Chosen` reads them with `find`, so a card played twice (after a bounce) resolves against its first play's targets. Assign instead of appending. A card that remembers its target (his "deal 2 damage to it every turn") needs `ChoiceInTrigger` lifted, a rule for summoned copies (no targets), and a rule for when the remembered minion dies or leaves.
 - `AmountBound` has only `Exactly`, with `AtMost` and `AtLeast` commented out (his call). MTG's "up to N targets" is the card that brings `AtMost` back. His first `AtMost` counted as filled before any choice, so its candidates were never listed.
 - Cross-choice "different" is "differs from every earlier choice" (Forge `TargetUnique$`). XMage's tags (differ from some choices only) wait for a card that needs them. If `Cancel`-only undo proves clumsy, `Back` removes the last choice and works the same on every card.
 - Card wording: loose-then-tight filters (Shove) make the look-ahead hide a matching minion, and tight-first wording avoids it. A candidate for session H's card validation.
@@ -201,13 +224,20 @@ Rust: knows traits, generics, lifetimes, but they don't come naturally when desi
 - Playability with no target: a Hearthstone spell needs one (`REQ_TARGET_TO_PLAY`), and a Battlecry minion is played anyway (`REQ_TARGET_IF_AVAILABLE`). Today any card with choices needs a draft that can finish, so a minion with a targeted enter effect couldn't be played into an empty board.
 - Chance as an input (OpenSpiel style) for testing random effects without seeds. Session 07.
 - `ObjectId`s are allocated in deck-list order before the shuffle, so an opponent who knows the deck list can name a hidden card from its ID. Fix: allocate after the shuffle. Hidden cards' IDs are visible by policy (Arena and Hearthstone do the same).
-- Cause across steps ("this hit came from that deathrattle, from that Blast"): blocks or brackets, deferred to session 05 when triggers exist.
-- Session 05: match triggers at event time and resolve later (pattern 2), not a `History` cursor (the Scavenger case). Decide how `HistoryEntry` and `Event` relate at the one place they're emitted.
+- Cause across steps ("this hit came from that deathrattle, from that Blast"): blocks or brackets. Triggers exist since 05, and no event says which trigger caused it. Decide when a shell or a card needs it.
 - Knowledge as state: a "look at the top card" effect needs a "P0 has seen X" fact in `Game`, read by `view` (Forge `mayPlayerLook`, XMage `getLookedAt`).
 - If History queries get expensive, cache a query result rebuilt at a checkpoint (an XMage watcher is a patched cache of one query). Measure first.
 - Session H: versioned definitions in one append-only table (his design, ADR 0003) vs a per-game snapshot of one data release with unversioned codes. Test cases from session 03: (1) a card that names another card ("Barracks: summon a Recruit") must be re-versioned whenever the named card is patched; (2) one game can mix v0 and v1 Bolts unless a "current only" rule exists; (3) random pools must exclude old versions; (4) his design needs no release number in a replay and allows deliberate version mixing. I lean per-game release, because of (1). He wasn't sure his approach was right. Hot reload as a recorded input. Load-time validation of card codes referenced in data: today `def_ids!` constants plus `validate_not_found` guarantee it, and it needs its own pass once codes come from files. Stable codes in files vs runtime index. Barracks v0 naming `base.squire.v0` is the first real instance of case (1).
-- Session 05 opener: collect-then-commit in his `remove_dead` (kills one at a time, `on_death` inside the loop). Since session 03, `kill` reports `Died` and removes the minion before its deathrattle runs, but still one minion per pass. Use the Medic card ("Deathrattle: give your other minions +2 health") as the red test. Also decide the order of simultaneous deathrattles. Since 04c, dead heroes are checked once after the minion loop and before the outcome; the order between two heroes dying together isn't pinned. A "whenever your hero takes damage" trigger must read `FatigueDamaged` as well as `Damaged`.
-- Untested speculative branches in `rules` (`HistoryQueryKind::MinionDied`, whose scope and turn filters no card reads, `PlayerFilter::Active`, `TurnFilter::Current`, `on_board_leave`, hostile auras, `has_deck_presence`, `Player.playing`, `PlayerSelector::All` and `Random`, `CharacterSelector::Itself` and `OwnerHero`, `Effect::AddFriendlyAura`). The 04a ones are kept by his choice. Cut them or give each a test card when its session comes.
+- One damage function: effect damage goes through `Game::damage`, while fatigue adds its damage inline and reports only `FatigueDamaged` (his 1a, "for now"). A "whenever your hero takes damage" trigger must match both events, or `Damaged` carries the cause and `FatigueDamaged` goes (option b). Replacements and prevention need the single function first.
+- Replacements (concept in 05, not built): the first "instead" or "prevent" card puts them in the one damage function, with an applied set per event (614.5) and an order rule or the affected player's choice (616.1, a pending choice, 06).
+- Trigger-time choices (06): `ChoiceInTrigger` rejects any `Chosen` in a trigger. Two meanings: a choice made for the trigger itself (a pick during resolution; MTG 603.3d) and a trigger reading its card's play-time choice (his remembered-target card). Lift the check with the card that needs it.
+- A trigger whose effect Reveals: the drain keeps popping while the pick is pending. 06 pauses it.
+- After a drain stopped by an outcome, `play` still runs `play_effects` (no card reaches it), and entries left on the stack stay in the final state.
+- Trigger loops have no cap. Hearthstone documents none, and Metastone throws after 20 death passes. The playouts don't include the trigger cards, because the board model doesn't model triggers. Session 07's fuzzing.
+- Self-modifiers can restate printed text (a static `BuffAtk`, or a `GrantTrigger` in `modifier_effects`). Session H's validation. He rejected narrowing the type unless the static self-buff is closed too.
+- Dead heroes stay in their zone and in `board_characters`, so a future hero trigger would hear deaths after its hero died. ADR 0012's "a removed object hears nothing" covers minions only.
+- Naming: `PendingEffect.object_id` was agreed as `source_id`; `effect_stack` with `effect_queue_pop`; a granted `Trigger.source` is the aura's source and is used only to sort.
+- Untested speculative branches in `rules` (`HistoryQueryKind::MinionDied`, whose scope and turn filters no card reads, `HistoryKind::CharacterEntered`, written and never read, `PlayerFilter::Active`, `TurnFilter::Current`, hostile auras, `has_deck_presence`, `Player.playing`, `PlayerSelector::All` and `Random`, `CharacterSelector::Itself` and `OwnerHero`, `Effect::AddFriendlyAura`, `TriggerPattern::Damaged` with a filter, `CardKindFilter::Minions` and `Heroes`). The 04a ones are kept by his choice. Cut them or give each a test card when its session comes.
 - Hand to board keeps the `ObjectId` and the bag keeps objects forever, so a "+500 until end of turn" in `obj.modifiers` would survive a bounce. Raise this when bounce arrives (the zone-reset table).
 
 ## Dependency map
@@ -275,8 +305,8 @@ graph TD
 | 04c | B | Heroes, players and tokens as objects | done (green: 18 unit + 106 spec; ADR 0008; Barracks summons a Squire; PR #4) |
 | 04a | E | Exercise: effect reshape | done (green: 17 unit + 114 spec; kind and side filters as sets, one `Damage`, Zap and Stray Shot, a checkpoint per effect; `c4aef7c`) |
 | 04b | E, G | Exercise: targeting draft | done (green: 20 unit + 142 spec; ADR 0009 and 0010; choices on the card, `Draft`/`Choose`/`Cancel`/`Play`, a look-ahead search; Ping, Twin Shot, Crossfire, Shove; drafting benches; `4bb2960`) |
-| 05 | F | Triggers, replacements, statics | next. Opens with the retrieval quiz on 04b (the can-finish search as a reader of the choices, one fact in one function). Then collect-then-commit with the Medic card (open threads). |
-| 06 | R4, G | Resolution loop, pending choices, stored half-finished effects | |
+| 05 | F | Triggers, replacements, statics | done (green: 21 unit + 168 spec; ADRs 0011, 0012, 0014; triggers derived on read, one `emit`, a stack, collect then commit; Medic, Mourner, Drillmaster, Rally Banner, Bomber, Gravedigger; a clippy ban on `Observer::event`) |
+| 06 | R4, G | Resolution loop, pending choices, stored half-finished effects | next. Opens with the retrieval quiz on 05 (the three moments, why listeners come from a scan, the stack rules). Then a trigger that pauses the drain for a pick. |
 | 07 | R5, T | Scenario DSL, replays, determinism trap, invariant fuzzing | |
 | 08 | K | YGO chain: spell speed, right to act, LIFO, SEGOC, missing the timing | |
 | app | H | Card files, validation, text generation, editor (design session) | |

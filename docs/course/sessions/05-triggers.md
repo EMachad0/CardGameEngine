@@ -1365,3 +1365,161 @@ Before committing, two quick checks for the review: which `obs.event` calls stil
 > [!abstract] PI
 
 Committing: your implementation plus my three mechanical fixes as one code commit, and the session log separately.
+
+
+> [!abstract] PI
+
+Feedback. The probe module is deleted and the tree is clean.
+
+## What landed
+
+- **No registry.** `triggers(obj)` reads `modifiers(obj)`, so a granted trigger goes through the same single aura walk as the Captain's +1. The mirror habit, as stored state, didn't show this time.
+- **One filter question, one function.** `fulfill_character_filter` now serves both `scan_characters_with_filter` and the matcher, where 04b had two copies (`||` vs `&&`). That's the 04b gap closed by your own hand.
+- **`kill` snapshots each dying minion's death triggers before removing anything.** A death trigger granted by an aura still fires even if the aura's source dies in the same pass.
+- **`TriggerDef` on the card vs a runtime `Trigger` with its source.** That's the definition-vs-object split from session 02, applied unprompted.
+- **Your pushback on ordering was right.** The stack replaced two orderings that one queue couldn't hold, and ADR 0014 records it. Your extra test (a Mourner ignoring its own death) pins a case I'd missed.
+
+## Findings, most important first
+
+**1. The game keeps resolving after it ends.** Here's the probe: Blast kills your hero (at 2) and a Bomber, with a Mourner beside them.
+```
+  7: GameEnded { outcome: Won(PlayerId(1)) }
+  8: FatigueDamaged { ... }          the Mourner's draw, on a dead hero
+  9: Damaged { ..., source: Bomber } the deathrattle
+ 10: Died { Mourner }
+hero health after: -1
+```
+`decide_outcome` runs, and then `apply`'s loop keeps popping. That's decision 22 settled by accident, as an option that wasn't on the list: the game ends in the middle, then more happens. Pick one:
+- **(a)** stop popping once there's an outcome
+- **(b)** drain the stack first, then decide the outcome
+
+I'll pin your choice with this probe as a real test.
+
+**2. The drain loop exists twice, and the copies already differ.** In `apply`, it checks state, then pops, then checks again. In `play`, after `Played`, it's `while self.effect_queue_pop(obs) {}` with no state check. So 6a doesn't hold at that drain point: a "whenever you cast a spell, deal 1 damage to all minions" card would leave minions at 0 on the board through the spell's effects. No current card reaches this, so no test catches it. It's the 04b shape again: one question ("resolve what's pending"), two bodies. One `resolve_pending(obs)` called from both places fixes it, and it's also the one place where finding 1 gets decided.
+
+**3. Three events still skip `emit`:** `TurnEnded` and `TurnStarted` (`game.rs`) and `GameEnded` (`state_check.rs`). A future "at the start of your turn" trigger would never hear `TurnStarted`. That's the fatigue bypass from N3, in a new spot. The `clippy.toml` ban (17, agreed) catches exactly this. Route the three through `emit` and I'll add the ban; or I add it now and clippy stays red until you do.
+
+**4. History is written in three places** (`play`, `kill`, `character_entered`) instead of inside `emit`, as N3 planned. It works today, but the lint can't catch a missed History write the way it catches a missed event. This one is optional.
+
+**5. Small ones:**
+- `board_characters` is `pub` but only `emit` uses it, so it should be `pub(crate)`. Renaming `board` to `player_board` changes the public interface; fine if that was intended.
+- `effect_stack` vs `effect_queue_pop`, and `PendingEffect.object_id` vs the `source_id` we agreed: the names disagree.
+- Fatigue emits `FatigueDamaged` before adding the damage, while `damage()` adds first and then emits. A trigger on fatigue would see the old health. This one predates the session; it goes with the deferred single damage function.
+
+## Next
+
+Decide 1 (a or b). Then fix 1 to 3, with 4 and 5 optional. I'll add the game-end test and the lint when you're done.
+
+
+> [!quote] YOU
+
+did it
+
+
+> [!abstract] PI
+
+Clippy is clean. To confirm the ban actually fires (a misspelled path would be silently ignored), here's a temporary run with the `#[expect]` removed:
+
+
+> [!abstract] PI
+
+The ban fires on the one call site when the `#[expect]` is removed, and passes with it restored. Now the game-end test:
+
+
+> [!abstract] PI
+
+Checked your changes. Findings 3 and 4 are done properly: History is now written only inside `emit`, and all three bypasses go through it. The drain is a single function now, and `board_characters` is `pub(crate)`. I added the two agreed pieces:
+- **The lint** in `crates/rules/clippy.toml`: calling `Observer::event` is banned, with one `#[expect]` in `emit`. I confirmed it fires when the `#[expect]` is removed.
+- **`nothing_resolves_after_the_game_ends`** (`triggers.rs`): the probe setup, asserting `GameEnded` is the last event. It passes with your stop rule.
+
+Neither is committed. Three things are left:
+
+**1. Red test, so I need your ruling:** `a_draw_from_an_empty_deck_reports_fatigue_damage_instead`. Fatigue now calls `self.damage(hero, 1, hero, obs)`, which emits `Damaged { target: hero, source: hero }`, and then you emit `FatigueDamaged` as well. One hit is reported twice, and `source: hero` says the hero hit itself. The test expects only `FatigueDamaged`. Which is right?
+- **(a) One event, `FatigueDamaged`.** Keep the session 03 call that fatigue has its own event. Split `damage()` into the mutation and the emit, so fatigue mutates through the same function but reports its own event. A future "whenever your hero takes damage" trigger then matches both kinds (the open thread stays).
+- **(b) One event, `Damaged`, with the cause in it.** For example `source: Option<ObjectId>`, or a source enum with a `Fatigue` case, and drop `FatigueDamaged`. One hit is one event, and one pattern hears all damage, which closes the open thread. It changes the public `Event` and reverses your session 03 choice.
+- **(c) Both, as now.** The test changes, and the shell shows two hits.
+
+I'd take (b) on the N3 logic (one thing happened, so one event), but (a) is the smaller change. Your call.
+
+**2. `effect_queue_pop` is now `pub`.** A shell could resolve a queued trigger without going through `apply`, which opens a hole in ADR 0002 (`apply` is the only way to change the game, and an `Err` changes nothing). Only `drain_effect_queue` calls it, so it can be private.
+
+**3. Smaller:**
+- The first state check sits in `apply`, outside the drain. `play`'s drain therefore pops before checking, while `apply`'s checks first. Moving the check to the top of `drain_effect_queue` makes both call sites identical.
+- After a drain that stopped because of an outcome, `play` still runs the spell's `play_effects`. No current card can end the game during the `Played` drain, so this is unreachable today. The same stop rule needs to cover it.
+- Entries left on the stack when the game ends stay in the final state. That's harmless, and clearing them is optional.
+
+
+> [!quote] YOU
+
+1 a for now. 2 ok. 3 fixed the fst.
+
+
+> [!quote] YOU
+
+continue
+
+
+> [!question] Question
+> Session 05's nodes and exercise are done. Close the session now?
+>
+> Closing means I update COURSE.md (knowledge map, open threads, sessions table), create the 06 log, and commit those docs with this log, all in one reply.
+>
+> The knowledge map would record:
+> - the probe miss on Rally Banner (registry plus hooks), and that the implementation had no registry
+> - the two drain loops that drifted (the one-fact-in-two-places shape, this time in behavior)
+> - your stack redesign (ADR 0014)
+> - that HS rulebook phase names didn't map to the code for you, so code names from now on
+>
+> The open threads would add: the single damage function, trigger-time choices (06), a trigger that Reveals during the drain, the static self-buff redundancy (H), no cap on trigger loops (07), trigger cards missing from the playouts, CharacterEntered unread, and dead heroes still in board_characters.
+>
+> Next session: 06, resolution loop and pending choices, opening with a retrieval quiz on 05.
+>
+> 1. Close the session (Recommended)
+> 2. Not yet
+
+
+> [!example] Answer
+> Other: close and commit and push
+
+
+> [!quote] YOU
+
+and open pr
+
+
+> [!abstract] PI
+
+Writing the close-out edits to `docs/course/COURSE.md` and creating the 06 log.
+
+
+> [!abstract] PI
+
+Session 05 is closed. Changes to `docs/course/COURSE.md`:
+
+**Knowledge map** (now through session 05):
+- **Retrieval:** all three right.
+- **Probe:** everything right except Rally Banner, where you'd patch a registry with more hooks: the stored-copy default, now for "which triggers does X have".
+- **Nodes:** U1 and N1 to N3 right. N4 and N5 failed on my wording, while your own notes had the right model, and the map now says to use code names, not rulebook phase names.
+- **Your design calls:** the stack you designed (ADR 0014), the death policy chosen from ten games (LoR's model), Gravedigger as the card that pins it.
+- **The exercise:** what landed (no registry, one filter function, death-trigger snapshots), and the review findings you fixed: the game resolving after it ended, the drain loop copied twice (the one-fact-in-two-places shape, in behavior this time), the `emit` bypasses, the `pub` hole, the double fatigue report.
+- **Solid** gets a Hooks entry, the Timing gap is marked mostly closed, and the mirror-habit gap gets its 05 form.
+
+**Open threads:**
+- Removed the two items 05 settled.
+- Added: the single damage function (fatigue is inline), replacements as concept only, trigger-time choices and `ChoiceInTrigger`, a trigger that Reveals during the drain, `play_effects` after an outcome-stopped drain, no cap on trigger loops (07) and the playouts missing trigger cards, self-modifiers restating printed text (H), dead heroes still in `board_characters`, the naming nits, and `HistoryKind::CharacterEntered` among the speculative branches.
+- Updated: enter effects (no pattern yet), the remembered-target card, and cause across steps.
+
+**Course plan:** 05 built triggers only. Replacements and new statics wait for a card.
+
+**Sessions table:** 05 is done, and 06 is next. It opens with a retrieval quiz on 05, then a trigger that pauses the drain for a pick.
+
+To start the next session:
+
+```
+/new
+/name 06-resolution-loop
+/md-log docs/course/sessions/06-resolution-loop.md
+continue the course
+```
+
+Committing now, then pushing `triggers` and opening the PR.
