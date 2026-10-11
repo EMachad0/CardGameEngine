@@ -2,7 +2,8 @@
 
 use pretty_assertions::assert_eq;
 use rules::static_card_definition::{
-    BLAST, BOLT, BOMBER, DRILLMASTER, MEDIC, MOURNER, PING, RALLY_BANNER, RECRUIT, SQUIRE,
+    BLAST, BOLT, BOMBER, DRILLMASTER, GRAVEDIGGER, MEDIC, MOURNER, PING, RALLY_BANNER, RECRUIT,
+    SQUIRE, TWIN_SHOT,
 };
 use rules::{Event, ObjectId};
 
@@ -21,14 +22,6 @@ fn first(events: &[Event], pred: impl Fn(&Event) -> bool) -> usize {
     events
         .iter()
         .position(pred)
-        .unwrap_or_else(|| panic!("no matching event in:\n{}", listing(events)))
-}
-
-/// The index of the last event in `events` that matches `pred`.
-fn last(events: &[Event], pred: impl Fn(&Event) -> bool) -> usize {
-    events
-        .iter()
-        .rposition(pred)
         .unwrap_or_else(|| panic!("no matching event in:\n{}", listing(events)))
 }
 
@@ -89,6 +82,23 @@ fn mourner_does_not_draw_for_enemy_minions_dying() {
     let events = observe(&mut b.game, b.p0, play(blast)).events();
 
     assert_eq!(draws(&events, b.p0), 0, "events:\n{}", listing(&events));
+}
+
+#[test]
+fn a_mourner_does_not_draw_for_its_own_death() {
+    let mut b = boards(&[MOURNER], &[], &[PING, PING], 2);
+    let mourner = b.mine[0];
+    ping(&mut b, mourner);
+
+    let events = ping(&mut b, mourner);
+
+    assert_eq!(b.game.health(mourner), None, "the second Ping kills it");
+    assert_eq!(
+        draws(&events, b.p0),
+        0,
+        "the Mourner has left the board when its own death is matched:\n{}",
+        listing(&events)
+    );
 }
 
 #[test]
@@ -231,7 +241,7 @@ fn bombers_deathrattle_deals_1_damage_to_every_minion() {
 }
 
 #[test]
-fn a_minion_killed_by_the_first_deathrattle_is_gone_before_the_second() {
+fn a_minion_killed_by_one_deathrattle_is_gone_before_the_next() {
     let mut b = boards(&[BOMBER, BOMBER, MOURNER], &[], &[BLAST], 3);
     let mourner = b.mine[2];
     let blast = in_hand(&b.game, b.p0, BLAST);
@@ -242,32 +252,30 @@ fn a_minion_killed_by_the_first_deathrattle_is_gone_before_the_second() {
     assert_eq!(
         hits_on(&events, mourner),
         2,
-        "Blast leaves it at 1, the first Bomber kills it, and the state check removes it \
-         before the second Bomber's deathrattle:\n{}",
+        "Blast leaves it at 1, one Bomber's deathrattle kills it, and the state check removes it \
+         before the other Bomber's deathrattle:\n{}",
         listing(&events)
     );
 }
 
 #[test]
 fn a_trigger_resolves_after_its_source_has_died() {
-    let mut b = boards(&[BOMBER, MOURNER], &[], &[BLAST], 3);
-    let mourner = b.mine[1];
+    let mut b = boards(&[RALLY_BANNER, RECRUIT], &[], &[BLAST], 3);
+    let recruit = b.mine[1];
     let blast = in_hand(&b.game, b.p0, BLAST);
 
     let events = observe(&mut b.game, b.p0, play(blast)).events();
 
-    assert_eq!(b.game.health(mourner), None);
-    assert_eq!(
-        draws(&events, b.p0),
-        1,
-        "the Mourner's draw for the Bomber was queued before the Bomber's deathrattle \
-         killed it:\n{}",
+    assert!(
+        first(&events, |e| *e == Event::Died { object_id: recruit }) < first(&events, is_draw),
+        "the Recruit's draw was matched at Blast's hit, and the state check removes the Recruit \
+         before any trigger resolves:\n{}",
         listing(&events)
     );
 }
 
 #[test]
-fn an_older_minions_deathrattle_resolves_before_a_younger_minions_trigger() {
+fn the_triggers_reacting_to_a_death_resolve_before_the_dead_minions_own() {
     let mut b = boards(&[BOMBER, MOURNER], &[], &[BLAST], 3);
     let bomber = b.mine[0];
     let blast = in_hand(&b.game, b.p0, BLAST);
@@ -275,40 +283,67 @@ fn an_older_minions_deathrattle_resolves_before_a_younger_minions_trigger() {
     let events = observe(&mut b.game, b.p0, play(blast)).events();
 
     assert!(
-        first(&events, |e| is_hit_from(e, bomber)) < first(&events, is_draw),
-        "the Bomber entered first:\n{}",
-        listing(&events)
-    );
-}
-
-#[test]
-fn an_older_minions_trigger_resolves_before_a_younger_minions_deathrattle() {
-    let mut b = boards(&[MOURNER, BOMBER], &[], &[BLAST], 3);
-    let bomber = b.mine[1];
-    let blast = in_hand(&b.game, b.p0, BLAST);
-
-    let events = observe(&mut b.game, b.p0, play(blast)).events();
-
-    assert!(
         first(&events, is_draw) < first(&events, |e| is_hit_from(e, bomber)),
-        "the Mourner entered first:\n{}",
+        "the Mourner's draw goes on top of the Bomber's deathrattle, though the Bomber entered \
+         first:\n{}",
         listing(&events)
     );
 }
 
 #[test]
 fn a_deathrattles_consequences_resolve_before_triggers_already_waiting() {
-    let mut b = boards(&[BOMBER, BOMBER, MOURNER], &[], &[PING], 1);
-    let [first_bomber, second_bomber, _] = b.mine[..] else {
+    let mut b = boards(&[BOMBER, BOMBER, BOMBER], &[RALLY_BANNER], &[TWIN_SHOT], 2);
+    let [one, two, three] = b.mine[..] else {
         unreachable!();
     };
+    let twin_shot = in_hand(&b.game, b.p0, TWIN_SHOT);
+    apply_all(
+        &mut b.game,
+        b.p0,
+        &[draft(twin_shot), choose(0, one), choose(0, two)],
+    );
 
-    let events = ping(&mut b, first_bomber);
+    let events = observe(&mut b.game, b.p0, play(twin_shot)).events();
+
+    let waiting =
+        if first(&events, |e| is_hit_from(e, one)) < first(&events, |e| is_hit_from(e, two)) {
+            two
+        } else {
+            one
+        };
+    assert!(
+        first(&events, |e| is_hit_from(e, three)) < first(&events, |e| is_hit_from(e, waiting)),
+        "Twin Shot kills two Bombers. Whichever deathrattle resolves first kills the third Bomber, \
+         and the third's deathrattle resolves before the other one, which was already \
+         waiting:\n{}",
+        listing(&events)
+    );
+}
+
+#[test]
+fn gravedigger_hits_the_enemy_hero_when_any_minion_dies() {
+    let mut b = boards(&[GRAVEDIGGER], &[RECRUIT], &[PING], 1);
+    let recruit = b.theirs[0];
+
+    ping(&mut b, recruit);
+
+    assert_eq!(b.game.hero_health(b.p1), 9);
+}
+
+#[test]
+fn the_newest_of_the_triggers_matched_by_one_event_resolves_first() {
+    let mut b = boards(&[RECRUIT, GRAVEDIGGER], &[GRAVEDIGGER], &[PING], 1);
+    let [recruit, friendly] = b.mine[..] else {
+        unreachable!();
+    };
+    let enemy = b.theirs[0];
+
+    let events = ping(&mut b, recruit);
 
     assert!(
-        last(&events, |e| is_hit_from(e, second_bomber)) < first(&events, is_draw),
-        "the first deathrattle kills the second Bomber, whose deathrattle resolves before \
-         the Mourner's draw that was already waiting:\n{}",
+        first(&events, |e| is_hit_from(e, friendly)) < first(&events, |e| is_hit_from(e, enemy)),
+        "the enemy Gravedigger entered play before the friendly one, so the friendly one's \
+         trigger is on top of the stack:\n{}",
         listing(&events)
     );
 }

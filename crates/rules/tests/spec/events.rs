@@ -406,7 +406,7 @@ fn barracks_reports_its_play_then_the_squire_entering_the_board() {
 
     let events = observe(&mut game, p0, play(barracks)).events();
 
-    let &[squire] = game.board(p0) else {
+    let &[squire] = game.player_board(p0) else {
         panic!("Barracks left {:?}", board_defs(&game, p0));
     };
     assert_eq!(
@@ -570,7 +570,7 @@ fn drillmasters_squire_enters_in_its_own_step_between_the_play_and_the_spell() {
 
     let recorder = observe(&mut b.game, b.p0, play(bolt));
 
-    let &[_, squire] = b.game.board(b.p0) else {
+    let &[_, squire] = b.game.player_board(b.p0) else {
         panic!("no Squire: {:?}", board_defs(&b.game, b.p0));
     };
     assert_eq!(

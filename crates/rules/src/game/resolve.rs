@@ -13,7 +13,7 @@ use crate::choice::{ChoiceTarget, EffectAmount};
 use crate::game::PlayerInteractionState;
 use crate::history::{HistoryKind, HistoryQuery, HistoryQueryKind, PlayerFilter};
 use crate::ids::PlayerId;
-use crate::{Event, IllegalAction, ObjectId, Observer, Views};
+use crate::{IllegalAction, ObjectId, Observer, Views};
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum ApplyError {
@@ -43,6 +43,9 @@ impl Game {
         } else {
             self.apply_action(player_id, action, obs);
             self.check_state(obs);
+            while self.effect_queue_pop(obs) {
+                self.check_state(obs);
+            }
             Ok(())
         }
     }
@@ -135,7 +138,7 @@ impl Game {
         &mut self,
         owner: PlayerId,
         source: ObjectId,
-        effect: Effect,
+        effect: &Effect,
         obs: &mut impl Observer,
     ) {
         match effect {
@@ -157,16 +160,19 @@ impl Game {
                 let amount = self.effect_amount(amount, owner);
                 let targets = self.resolve_character_selector(owner, source, selector);
                 for target in targets.into_iter() {
+                    self.damage(target, amount, source, obs);
+                }
+            }
+            Effect::Buff { selector, effect } => {
+                let targets = self.resolve_character_selector(owner, source, selector);
+                for target in targets.into_iter() {
                     let object = self.objects.get_mut(target);
-                    object.damage += amount;
-                    obs.event(&Event::Damaged {
-                        target,
-                        amount,
+                    object.modifiers.add(Modifier {
                         source,
+                        effect: effect.clone(),
                     });
                 }
             }
-            Effect::Buff { .. } => todo!(),
             Effect::AddFriendlyAura { selector, effect } => {
                 let targets = self.resolve_character_selector(owner, source, selector);
                 for target in targets.into_iter() {
@@ -180,7 +186,7 @@ impl Game {
             Effect::Summon { selector, def_id } => {
                 let targets = self.resolve_player_selector(owner, selector);
                 for player_id in targets.into_iter() {
-                    let object_id = self.objects.insert(def_id, player_id);
+                    let object_id = self.objects.insert(*def_id, player_id);
                     self.summon(player_id, object_id, obs);
                 }
             }
@@ -190,20 +196,20 @@ impl Game {
     pub(crate) fn apply_effects(
         &mut self,
         source: ObjectId,
-        effects: Vec<Effect>,
+        effects: &[Effect],
         obs: &mut impl Observer,
     ) {
         let owner = self.objects.get(source).player_id;
-        effects.into_iter().for_each(|e| {
+        effects.iter().for_each(|e| {
             self.apply_effect(owner, source, e, obs);
             obs.checkpoint(Views::new(self));
         });
     }
 
-    pub(crate) fn effect_amount(&self, amount: EffectAmount, player_id: PlayerId) -> u8 {
+    pub(crate) fn effect_amount(&self, amount: &EffectAmount, player_id: PlayerId) -> u8 {
         match amount {
-            EffectAmount::Static(value) => value,
-            EffectAmount::History(query) => self.history_query(query, player_id),
+            EffectAmount::Static(value) => *value,
+            EffectAmount::History(query) => self.history_query(*query, player_id),
         }
     }
 
@@ -247,9 +253,9 @@ impl Game {
     fn resolve_player_selector(
         &mut self,
         owner: PlayerId,
-        selector: PlayerSelector,
+        selector: &PlayerSelector,
     ) -> Vec<PlayerId> {
-        let all = |PlayerSelectorFilter { side }| {
+        let all = |&PlayerSelectorFilter { side }| {
             self.players
                 .iter()
                 .map(|p| p.id)
@@ -270,7 +276,7 @@ impl Game {
         &mut self,
         owner: PlayerId,
         object_id: ObjectId,
-        selector: CharacterSelector,
+        selector: &CharacterSelector,
     ) -> Vec<ObjectId> {
         match selector {
             CharacterSelector::All(filter) => self.scan_characters_with_filter(owner, filter),
@@ -287,7 +293,7 @@ impl Game {
                 .get(object_id)
                 .choice_targets
                 .iter()
-                .find(|c| c.choice_id == choice_id)
+                .find(|c| c.choice_id == *choice_id)
                 .expect("Choice not fulfilled")
                 .targets
                 .clone(),

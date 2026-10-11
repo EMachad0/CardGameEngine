@@ -77,7 +77,7 @@ pub(crate) fn revealed_defs(game: &Game, p: PlayerId) -> Vec<DefId> {
 }
 
 pub(crate) fn board_defs(game: &Game, p: PlayerId) -> Vec<DefId> {
-    defs(game, game.board(p))
+    defs(game, game.player_board(p))
 }
 
 pub(crate) fn has_in_hand(game: &Game, p: PlayerId, def: DefId) -> bool {
@@ -286,7 +286,10 @@ pub(crate) fn observe(game: &mut Game, p: PlayerId, a: Action) -> Recorder {
 /// Plays minion `def` from `p`'s hand and returns its board id.
 pub(crate) fn summon(game: &mut Game, p: PlayerId, def: DefId) -> ObjectId {
     play_def(game, p, def);
-    *game.board(p).last().expect("the minion entered the board")
+    *game
+        .player_board(p)
+        .last()
+        .expect("the minion entered the board")
 }
 
 /// Every id in a zone: hand, deck, revealed, board and hero, for each player.
@@ -298,7 +301,7 @@ pub(crate) fn zone_ids(game: &Game) -> Vec<ObjectId> {
                 game.hand(p),
                 &game.deck(p),
                 game.revealed(p),
-                game.board(p),
+                game.player_board(p),
                 &[game.hero_id(p)],
             ]
             .concat()

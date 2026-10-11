@@ -26,7 +26,7 @@ pub struct CardDef {
     pub mana_cost: u8,
     pub modifier_effects: Vec<ModifierEffect>,
     pub play_effects: EffectSequence,
-    pub triggers: Vec<Trigger>,
+    pub triggers: Vec<TriggerDef>,
     pub choices: Vec<CharacterChoice>,
 }
 
@@ -111,7 +111,7 @@ pub enum Effect {
 pub struct EffectSequence(pub Vec<Effect>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Trigger {
+pub struct TriggerDef {
     pub pattern: TriggerPattern,
     pub effects: EffectSequence,
 }

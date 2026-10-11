@@ -9,7 +9,7 @@ impl Game {
     fn find_dead(&self) -> Vec<ObjectId> {
         let mut death_pass = Vec::new();
         for player_id in self.players().into_iter() {
-            for object_id in self.board(player_id).iter().copied() {
+            for object_id in self.player_board(player_id).iter().copied() {
                 let health = self
                     .health(object_id)
                     .expect("board objects always have health");
@@ -37,12 +37,10 @@ impl Game {
 
             let mut death_pass = dead_minions
                 .into_iter()
-                .chain(dead_heroes.into_iter())
+                .chain(dead_heroes)
                 .collect::<Vec<_>>();
             death_pass.sort_by_key(|o| self.objects.get(*o).order);
-            for object_id in death_pass.into_iter() {
-                self.kill(self.objects.get(object_id).player_id, object_id, obs);
-            }
+            self.kill(&death_pass, obs);
 
             for player_id in dead_players.into_iter() {
                 let player = self.get_player_mut(player_id);

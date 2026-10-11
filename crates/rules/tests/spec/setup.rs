@@ -89,7 +89,7 @@ fn a_new_game_has_empty_boards_and_nothing_revealed() {
     let game = opening();
 
     for p in players(&game) {
-        assert!(game.board(p).is_empty(), "{p:?}'s board");
+        assert!(game.player_board(p).is_empty(), "{p:?}'s board");
         assert!(game.revealed(p).is_empty(), "{p:?}'s reveal");
     }
 }

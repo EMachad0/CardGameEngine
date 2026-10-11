@@ -108,7 +108,7 @@ fn minions_enter_at_the_right_end_of_their_owners_board() {
 
     assert_eq!(board_defs(&game, p0), [RECRUIT, CAPTAIN, RECRUIT]);
     assert!(
-        game.board(p1).is_empty(),
+        game.player_board(p1).is_empty(),
         "a minion enters its owner's board only"
     );
 }
@@ -145,7 +145,7 @@ fn barracks_summons_a_squire_at_the_right_end_of_its_casters_board() {
 
     assert_eq!(board_defs(&game, p0), [RECRUIT, SQUIRE]);
     assert!(
-        game.board(p1).is_empty(),
+        game.player_board(p1).is_empty(),
         "the Squire enters its caster's board only"
     );
 }
@@ -158,7 +158,7 @@ fn a_summoned_squire_has_its_printed_stats() {
 
     play_def(&mut game, p0, BARRACKS);
 
-    let squire = game.board(p0)[0];
+    let squire = game.player_board(p0)[0];
     assert_eq!(
         (game.attack(squire), game.health(squire)),
         (Some(1), Some(1))
@@ -176,7 +176,7 @@ fn each_barracks_summons_a_new_object() {
     play_def(&mut game, p0, BARRACKS);
     play_def(&mut game, p0, BARRACKS);
 
-    let &[first, second] = game.board(p0) else {
+    let &[first, second] = game.player_board(p0) else {
         panic!("two Barracks left {:?}", board_defs(&game, p0));
     };
     assert_ne!(first, second);
@@ -330,11 +330,11 @@ fn stray_shot_facing_two_recruits(seed: u64) -> (Game, [ObjectId; 2]) {
 fn cast_stray_shot(seed: u64) -> ObjectId {
     let (mut game, enemy_recruits) = stray_shot_facing_two_recruits(seed);
     let [p0, p1] = players(&game);
-    let mine = game.board(p0)[0];
+    let mine = game.player_board(p0)[0];
 
     play_def(&mut game, p0, STRAY_SHOT);
 
-    let &[survivor] = game.board(p1) else {
+    let &[survivor] = game.player_board(p1) else {
         panic!(
             "seed {seed}: player 1's board after Stray Shot: {:?}",
             board_defs(&game, p1)

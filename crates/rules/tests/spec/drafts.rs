@@ -229,7 +229,7 @@ fn ping_deals_2_damage_to_the_chosen_minion_only() {
     );
 
     assert_eq!(
-        t.game.board(t.p1),
+        t.game.player_board(t.p1),
         [t.enemy[1]],
         "the chosen 2/2 Recruit dies and the other stays"
     );

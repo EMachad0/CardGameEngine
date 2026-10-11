@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use crate::cards::{
-    definition::{CardDef, CardDefKind, DefId, Effect},
+    definition::{CardDef, CardDefKind, DefId, Effect, TriggerDef},
     modifier::ModifierEffect,
 };
 use crate::choice::{CharacterChoice, ChoiceId};
@@ -106,5 +106,9 @@ impl Binder {
 
     pub(crate) fn choices(&self, def_id: DefId) -> &[CharacterChoice] {
         &self.get(def_id).choices
+    }
+
+    pub(crate) fn triggers(&self, def_id: DefId) -> &[TriggerDef] {
+        &self.get(def_id).triggers
     }
 }

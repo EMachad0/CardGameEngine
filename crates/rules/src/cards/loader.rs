@@ -4,7 +4,8 @@ use crate::{
     cards::{
         definition::{
             CardDef, CardDefKind, CharacterSelector, DefId, Effect, EffectSequence, HeroCardDef,
-            MinionCardDef, PlayerSelector, SpellCardDef, Trigger, TriggerPattern, TriggerSubject,
+            MinionCardDef, PlayerSelector, SpellCardDef, TriggerDef, TriggerPattern,
+            TriggerSubject,
         },
         filter::{CardFilter, CardKindFilter, CharacterFilter, CharacterKindFilter, Side},
         modifier::ModifierEffect,
@@ -73,6 +74,7 @@ def_ids!(
     DRILLMASTER = "base.drillmaster.v0",
     RALLY_BANNER = "base.rally_banner.v0",
     BOMBER = "base.bomber.v0",
+    GRAVEDIGGER = "base.gravedigger.v0",
 );
 
 // TODO: loading cards from disk into the engine should be shells job
@@ -365,7 +367,7 @@ impl CardDefLoader {
                 name: "Medic".to_string(),
                 kind: CardDefKind::Minion(MinionCardDef::new(1, 1)),
                 mana_cost: 2,
-                triggers: vec![Trigger {
+                triggers: vec![TriggerDef {
                     pattern: TriggerPattern::Died(TriggerSubject::Itself),
                     effects: EffectSequence(vec![Effect::Buff {
                         selector: CharacterSelector::All(CharacterFilter {
@@ -382,7 +384,7 @@ impl CardDefLoader {
                 name: "Mourner".to_string(),
                 kind: CardDefKind::Minion(MinionCardDef::new(1, 3)),
                 mana_cost: 3,
-                triggers: vec![Trigger {
+                triggers: vec![TriggerDef {
                     pattern: TriggerPattern::Died(TriggerSubject::Character(CharacterFilter {
                         kind: EnumSet::only(CharacterKindFilter::Minions),
                         side: EnumSet::only(Side::Friendly),
@@ -399,7 +401,7 @@ impl CardDefLoader {
                 name: "Drillmaster".to_string(),
                 kind: CardDefKind::Minion(MinionCardDef::new(2, 3)),
                 mana_cost: 3,
-                triggers: vec![Trigger {
+                triggers: vec![TriggerDef {
                     pattern: TriggerPattern::Played(CardFilter {
                         kind: EnumSet::only(CardKindFilter::Spells),
                         side: EnumSet::only(Side::Friendly),
@@ -417,7 +419,7 @@ impl CardDefLoader {
                 kind: CardDefKind::Minion(MinionCardDef {
                     attack: 0,
                     health: 5,
-                    friendly_aura_effects: vec![ModifierEffect::GrantTrigger(Trigger {
+                    friendly_aura_effects: vec![ModifierEffect::GrantTrigger(TriggerDef {
                         pattern: TriggerPattern::Damaged(TriggerSubject::Itself),
                         effects: EffectSequence(vec![Effect::Draw {
                             selector: PlayerSelector::Owner,
@@ -434,12 +436,32 @@ impl CardDefLoader {
                 name: "Bomber".to_string(),
                 kind: CardDefKind::Minion(MinionCardDef::new(1, 1)),
                 mana_cost: 2,
-                triggers: vec![Trigger {
+                triggers: vec![TriggerDef {
                     pattern: TriggerPattern::Died(TriggerSubject::Itself),
                     effects: EffectSequence(vec![Effect::Damage {
                         selector: CharacterSelector::All(CharacterFilter {
                             kind: EnumSet::only(CharacterKindFilter::Minions),
                             side: EnumSet::all(),
+                        }),
+                        amount: 1.into(),
+                    }]),
+                }],
+                ..Default::default()
+            },
+            CardDef {
+                id: GRAVEDIGGER,
+                name: "Gravedigger".to_string(),
+                kind: CardDefKind::Minion(MinionCardDef::new(2, 2)),
+                mana_cost: 2,
+                triggers: vec![TriggerDef {
+                    pattern: TriggerPattern::Died(TriggerSubject::Character(CharacterFilter {
+                        kind: EnumSet::only(CharacterKindFilter::Minions),
+                        side: EnumSet::all(),
+                    })),
+                    effects: EffectSequence(vec![Effect::Damage {
+                        selector: CharacterSelector::All(CharacterFilter {
+                            kind: EnumSet::only(CharacterKindFilter::Heroes),
+                            side: EnumSet::only(Side::Enemy),
                         }),
                         amount: 1.into(),
                     }]),
@@ -562,7 +584,7 @@ fn validate_choice_on_trigger(defs: &[CardDef]) -> Result<(), CardDefError> {
     Ok(())
 }
 
-fn choice_on_trigger(trigger: &Trigger) -> Option<ChoiceId> {
+fn choice_on_trigger(trigger: &TriggerDef) -> Option<ChoiceId> {
     trigger.effects.as_slice().iter().find_map(chosen_id)
 }
 
@@ -630,8 +652,8 @@ mod tests {
         );
     }
 
-    fn chosen_damage_trigger() -> Trigger {
-        Trigger {
+    fn chosen_damage_trigger() -> TriggerDef {
+        TriggerDef {
             pattern: TriggerPattern::Died(TriggerSubject::Itself),
             effects: EffectSequence(vec![Effect::Damage {
                 selector: CharacterSelector::Chosen(ChoiceId(0)),

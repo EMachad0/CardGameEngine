@@ -20,7 +20,11 @@ fn blast_removes_every_minion_it_brings_to_zero_health() {
     play_def(&mut game, p0, BLAST);
 
     for p in players(&game) {
-        assert!(game.board(p).is_empty(), "left {:?}", board_defs(&game, p));
+        assert!(
+            game.player_board(p).is_empty(),
+            "left {:?}",
+            board_defs(&game, p)
+        );
     }
     for minion in [mine, theirs] {
         assert_eq!(game.health(minion), None, "a removed minion has no health");
@@ -49,7 +53,7 @@ fn the_check_repeats_until_a_pass_removes_nothing() {
     play_def(&mut game, p0, BLAST);
 
     assert!(
-        game.board(p0).is_empty(),
+        game.player_board(p0).is_empty(),
         "left {:?}",
         board_defs(&game, p0)
     );

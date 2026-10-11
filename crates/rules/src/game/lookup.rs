@@ -3,10 +3,11 @@
 use crate::{
     DefId, Game, ObjectId, PlayerId,
     cards::{
-        definition::Effect,
+        definition::{Effect, TriggerPattern, TriggerSubject},
         modifier::{Modifier, ModifierEffect, Modifiers},
         object::Object,
     },
+    trigger::Trigger,
 };
 
 impl Game {
@@ -38,7 +39,7 @@ impl Game {
                         ModifierEffect::ReduceManaCost { amount } => Some(amount),
                         _ => None,
                     })
-                    .map(|a| self.effect_amount(a, obj.player_id))
+                    .map(|a| self.effect_amount(&a, obj.player_id))
                     .sum::<u8>();
                 def.saturating_sub(neg_modifiers)
             })
@@ -76,7 +77,7 @@ impl Game {
                     ModifierEffect::BuffHealth { amount } => Some(amount),
                     _ => None,
                 })
-                .map(|a| self.effect_amount(a, obj.player_id) as i32)
+                .map(|a| self.effect_amount(&a, obj.player_id) as i32)
                 .sum::<i32>();
             let damage = obj.damage as i32;
             def + modifiers - damage
@@ -102,10 +103,42 @@ impl Game {
                         ModifierEffect::BuffAtk { amount } => Some(amount),
                         _ => None,
                     })
-                    .map(|a| self.effect_amount(a, obj.player_id) as i32)
+                    .map(|a| self.effect_amount(&a, obj.player_id) as i32)
                     .sum::<i32>();
                 def + modifiers
             })
+    }
+
+    pub(crate) fn death_rattles(&self, object_id: ObjectId) -> Vec<Trigger> {
+        self.triggers(object_id)
+            .into_iter()
+            .filter(|t| matches!(t.pattern, TriggerPattern::Died(TriggerSubject::Itself)))
+            .collect()
+    }
+
+    pub(crate) fn triggers(&self, object_id: ObjectId) -> Vec<Trigger> {
+        let obj = self.object(object_id);
+        let def = self.binder.triggers(obj.def_id).iter().map(|td| Trigger {
+            source: object_id,
+            pattern: td.pattern,
+            effects: td.effects.clone(),
+        });
+        let mut modifiers = self
+            .modifiers(object_id)
+            .as_slice()
+            .iter()
+            .filter_map(|m| match &m.effect {
+                ModifierEffect::GrantTrigger(trigger) => Some(Trigger {
+                    source: m.source,
+                    pattern: trigger.pattern,
+                    effects: trigger.effects.clone(),
+                }),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        modifiers.extend(def);
+        modifiers.sort_by_key(|t| self.objects.get(t.source).order);
+        modifiers
     }
 
     fn modifiers(&self, object_id: ObjectId) -> Modifiers {
@@ -124,7 +157,7 @@ impl Game {
 
         if self.binder.is_minion(obj.def_id) {
             for other_player_id in self.players().into_iter() {
-                for other_object_id in self.board(other_player_id).iter().copied() {
+                for other_object_id in self.player_board(other_player_id).iter().copied() {
                     if object_id == other_object_id {
                         continue;
                     }
@@ -142,9 +175,9 @@ impl Game {
         modifiers
     }
 
-    pub(crate) fn play_effects(&self, object_id: ObjectId) -> Vec<Effect> {
+    pub(crate) fn play_effects(&self, object_id: ObjectId) -> &[Effect] {
         let obj = self.object(object_id);
-        self.binder.play_effects(obj.def_id).to_vec()
+        self.binder.play_effects(obj.def_id)
     }
 
     pub(crate) fn friendly_aura(&self, object_id: ObjectId) -> Modifiers {

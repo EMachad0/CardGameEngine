@@ -42,11 +42,7 @@ impl CharacterFilter {
     }
 }
 
-pub(crate) fn fulfill_side_filter(
-    side: EnumSet<Side>,
-    asking: PlayerId,
-    player_id: PlayerId,
-) -> bool {
-    (side.contains(Side::Enemy) && player_id != asking)
-        || (side.contains(Side::Friendly) && player_id == asking)
+pub(crate) fn fulfill_side_filter(side: EnumSet<Side>, asking: PlayerId, owner: PlayerId) -> bool {
+    (side.contains(Side::Enemy) && owner != asking)
+        || (side.contains(Side::Friendly) && owner == asking)
 }
