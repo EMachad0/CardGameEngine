@@ -3,10 +3,11 @@ use enumset::EnumSet;
 use crate::{
     cards::{
         definition::{
-            CardDef, CardDefKind, CharacterKindFilter, CharacterSelector, CharacterSelectorFilter,
-            CharacterSideFilter, DefId, Effect, EffectSequence, HeroCardDef, MinionCardDef,
-            PlayerSelector, SpellCardDef,
+            CardDef, CardDefKind, CharacterSelector, DefId, Effect, EffectSequence, HeroCardDef,
+            MinionCardDef, PlayerSelector, SpellCardDef, TriggerDef, TriggerPattern,
+            TriggerSubject,
         },
+        filter::{CardFilter, CardKindFilter, CharacterFilter, CharacterKindFilter, Side},
         modifier::ModifierEffect,
     },
     choice::{AmountBound, CharacterChoice, ChoiceId, EffectAmount},
@@ -26,6 +27,8 @@ pub enum CardDefError {
     DuplicateChoice(DefId, ChoiceId),
     #[error("Choice {1:?} not found on {0:?}")]
     ChoiceNotFound(DefId, ChoiceId),
+    #[error("Choice {1:?} used by a trigger on {0:?}")]
+    ChoiceInTrigger(DefId, ChoiceId),
 }
 
 pub(crate) const PLACEHOLDER: DefId = DefId::new("placeholder");
@@ -66,6 +69,12 @@ def_ids!(
     SHOVE = "base.shove.v0",
     TWIN_SHOT = "base.twin_shot.v0",
     CROSSFIRE = "base.crossfire.v0",
+    MEDIC = "base.medic.v0",
+    MOURNER = "base.mourner.v0",
+    DRILLMASTER = "base.drillmaster.v0",
+    RALLY_BANNER = "base.rally_banner.v0",
+    BOMBER = "base.bomber.v0",
+    GRAVEDIGGER = "base.gravedigger.v0",
 );
 
 // TODO: loading cards from disk into the engine should be shells job
@@ -80,10 +89,10 @@ impl CardDefLoader {
                 name: "Spark".to_string(),
                 kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 1,
-                on_play_effect: EffectSequence(vec![Effect::Damage {
-                    selector: CharacterSelector::All(CharacterSelectorFilter {
+                play_effects: EffectSequence(vec![Effect::Damage {
+                    selector: CharacterSelector::All(CharacterFilter {
                         kind: EnumSet::only(CharacterKindFilter::Heroes),
-                        side: EnumSet::only(CharacterSideFilter::Enemy),
+                        side: EnumSet::only(Side::Enemy),
                     }),
                     amount: 1.into(),
                 }]),
@@ -94,10 +103,10 @@ impl CardDefLoader {
                 name: "Bolt".to_string(),
                 kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 2,
-                on_play_effect: EffectSequence(vec![Effect::Damage {
-                    selector: CharacterSelector::All(CharacterSelectorFilter {
+                play_effects: EffectSequence(vec![Effect::Damage {
+                    selector: CharacterSelector::All(CharacterFilter {
                         kind: EnumSet::only(CharacterKindFilter::Heroes),
-                        side: EnumSet::only(CharacterSideFilter::Enemy),
+                        side: EnumSet::only(Side::Enemy),
                     }),
                     amount: 2.into(),
                 }]),
@@ -108,8 +117,8 @@ impl CardDefLoader {
                 name: "Wild Bolt".to_string(),
                 kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 1,
-                on_play_effect: EffectSequence(vec![Effect::Damage {
-                    selector: CharacterSelector::Random(CharacterSelectorFilter {
+                play_effects: EffectSequence(vec![Effect::Damage {
+                    selector: CharacterSelector::Random(CharacterFilter {
                         kind: EnumSet::only(CharacterKindFilter::Heroes),
                         side: EnumSet::all(),
                     }),
@@ -122,8 +131,8 @@ impl CardDefLoader {
                 name: "Blast".to_string(),
                 kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 3,
-                on_play_effect: EffectSequence(vec![Effect::Damage {
-                    selector: CharacterSelector::All(CharacterSelectorFilter::all()),
+                play_effects: EffectSequence(vec![Effect::Damage {
+                    selector: CharacterSelector::All(CharacterFilter::all()),
                     amount: 2.into(),
                 }]),
                 ..Default::default()
@@ -133,7 +142,7 @@ impl CardDefLoader {
                 name: "Forage".to_string(),
                 kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 1,
-                on_play_effect: EffectSequence(vec![Effect::Reveal {
+                play_effects: EffectSequence(vec![Effect::Reveal {
                     selector: PlayerSelector::Owner,
                     amount: 2.into(),
                 }]),
@@ -193,7 +202,7 @@ impl CardDefLoader {
                 name: "Barracks".to_string(),
                 kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 2,
-                on_play_effect: EffectSequence(vec![Effect::Summon {
+                play_effects: EffectSequence(vec![Effect::Summon {
                     selector: PlayerSelector::Owner,
                     def_id: SQUIRE,
                 }]),
@@ -204,11 +213,11 @@ impl CardDefLoader {
                 name: "Zap".to_string(),
                 kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 2,
-                on_play_effect: EffectSequence(vec![
+                play_effects: EffectSequence(vec![
                     Effect::Damage {
-                        selector: CharacterSelector::All(CharacterSelectorFilter {
+                        selector: CharacterSelector::All(CharacterFilter {
                             kind: EnumSet::only(CharacterKindFilter::Heroes),
-                            side: EnumSet::only(CharacterSideFilter::Enemy),
+                            side: EnumSet::only(Side::Enemy),
                         }),
                         amount: 1.into(),
                     },
@@ -224,10 +233,10 @@ impl CardDefLoader {
                 name: "Stray Shot".to_string(),
                 kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 1,
-                on_play_effect: EffectSequence(vec![Effect::Damage {
-                    selector: CharacterSelector::Random(CharacterSelectorFilter {
+                play_effects: EffectSequence(vec![Effect::Damage {
+                    selector: CharacterSelector::Random(CharacterFilter {
                         kind: EnumSet::only(CharacterKindFilter::Minions),
-                        side: EnumSet::only(CharacterSideFilter::Enemy),
+                        side: EnumSet::only(Side::Enemy),
                     }),
                     amount: 2.into(),
                 }]),
@@ -238,13 +247,13 @@ impl CardDefLoader {
                 name: "Ping".to_string(),
                 kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 1,
-                on_play_effect: EffectSequence(vec![Effect::Damage {
+                play_effects: EffectSequence(vec![Effect::Damage {
                     selector: CharacterSelector::Chosen(ChoiceId(0)),
                     amount: 2.into(),
                 }]),
                 choices: vec![CharacterChoice {
                     id: ChoiceId(0),
-                    filter: CharacterSelectorFilter {
+                    filter: CharacterFilter {
                         kind: EnumSet::only(CharacterKindFilter::Minions),
                         side: EnumSet::all(),
                     },
@@ -259,7 +268,7 @@ impl CardDefLoader {
                 name: "Shove".to_string(),
                 kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 1,
-                on_play_effect: EffectSequence(vec![
+                play_effects: EffectSequence(vec![
                     Effect::Damage {
                         selector: CharacterSelector::Chosen(ChoiceId(0)),
                         amount: 1.into(),
@@ -272,7 +281,7 @@ impl CardDefLoader {
                 choices: vec![
                     CharacterChoice {
                         id: ChoiceId(0),
-                        filter: CharacterSelectorFilter {
+                        filter: CharacterFilter {
                             kind: EnumSet::only(CharacterKindFilter::Minions),
                             side: EnumSet::all(),
                         },
@@ -282,9 +291,9 @@ impl CardDefLoader {
                     },
                     CharacterChoice {
                         id: ChoiceId(1),
-                        filter: CharacterSelectorFilter {
+                        filter: CharacterFilter {
                             kind: EnumSet::only(CharacterKindFilter::Minions),
-                            side: EnumSet::only(CharacterSideFilter::Friendly),
+                            side: EnumSet::only(Side::Friendly),
                         },
                         count: 1.into(),
                         bound: AmountBound::Exactly,
@@ -298,13 +307,13 @@ impl CardDefLoader {
                 name: "Twin Shot".to_string(),
                 kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 2,
-                on_play_effect: EffectSequence(vec![Effect::Damage {
+                play_effects: EffectSequence(vec![Effect::Damage {
                     selector: CharacterSelector::Chosen(ChoiceId(0)),
                     amount: 1.into(),
                 }]),
                 choices: vec![CharacterChoice {
                     id: ChoiceId(0),
-                    filter: CharacterSelectorFilter {
+                    filter: CharacterFilter {
                         kind: EnumSet::only(CharacterKindFilter::Minions),
                         side: EnumSet::all(),
                     },
@@ -319,7 +328,7 @@ impl CardDefLoader {
                 name: "Crossfire".to_string(),
                 kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 2,
-                on_play_effect: EffectSequence(vec![
+                play_effects: EffectSequence(vec![
                     Effect::Damage {
                         selector: CharacterSelector::Chosen(ChoiceId(0)),
                         amount: 1.into(),
@@ -332,7 +341,7 @@ impl CardDefLoader {
                 choices: vec![
                     CharacterChoice {
                         id: ChoiceId(0),
-                        filter: CharacterSelectorFilter {
+                        filter: CharacterFilter {
                             kind: EnumSet::only(CharacterKindFilter::Minions),
                             side: EnumSet::all(),
                         },
@@ -342,7 +351,7 @@ impl CardDefLoader {
                     },
                     CharacterChoice {
                         id: ChoiceId(1),
-                        filter: CharacterSelectorFilter {
+                        filter: CharacterFilter {
                             kind: EnumSet::only(CharacterKindFilter::Heroes),
                             side: EnumSet::all(),
                         },
@@ -351,6 +360,112 @@ impl CardDefLoader {
                         different: true,
                     },
                 ],
+                ..Default::default()
+            },
+            CardDef {
+                id: MEDIC,
+                name: "Medic".to_string(),
+                kind: CardDefKind::Minion(MinionCardDef::new(1, 1)),
+                mana_cost: 2,
+                triggers: vec![TriggerDef {
+                    pattern: TriggerPattern::Died(TriggerSubject::Itself),
+                    effects: EffectSequence(vec![Effect::Buff {
+                        selector: CharacterSelector::All(CharacterFilter {
+                            kind: EnumSet::only(CharacterKindFilter::Minions),
+                            side: EnumSet::only(Side::Friendly),
+                        }),
+                        effect: ModifierEffect::BuffHealth { amount: 2.into() },
+                    }]),
+                }],
+                ..Default::default()
+            },
+            CardDef {
+                id: MOURNER,
+                name: "Mourner".to_string(),
+                kind: CardDefKind::Minion(MinionCardDef::new(1, 3)),
+                mana_cost: 3,
+                triggers: vec![TriggerDef {
+                    pattern: TriggerPattern::Died(TriggerSubject::Character(CharacterFilter {
+                        kind: EnumSet::only(CharacterKindFilter::Minions),
+                        side: EnumSet::only(Side::Friendly),
+                    })),
+                    effects: EffectSequence(vec![Effect::Draw {
+                        selector: PlayerSelector::Owner,
+                        amount: 1.into(),
+                    }]),
+                }],
+                ..Default::default()
+            },
+            CardDef {
+                id: DRILLMASTER,
+                name: "Drillmaster".to_string(),
+                kind: CardDefKind::Minion(MinionCardDef::new(2, 3)),
+                mana_cost: 3,
+                triggers: vec![TriggerDef {
+                    pattern: TriggerPattern::Played(CardFilter {
+                        kind: EnumSet::only(CardKindFilter::Spells),
+                        side: EnumSet::only(Side::Friendly),
+                    }),
+                    effects: EffectSequence(vec![Effect::Summon {
+                        selector: PlayerSelector::Owner,
+                        def_id: SQUIRE,
+                    }]),
+                }],
+                ..Default::default()
+            },
+            CardDef {
+                id: RALLY_BANNER,
+                name: "Rally Banner".to_string(),
+                kind: CardDefKind::Minion(MinionCardDef {
+                    attack: 0,
+                    health: 5,
+                    friendly_aura_effects: vec![ModifierEffect::GrantTrigger(TriggerDef {
+                        pattern: TriggerPattern::Damaged(TriggerSubject::Itself),
+                        effects: EffectSequence(vec![Effect::Draw {
+                            selector: PlayerSelector::Owner,
+                            amount: 1.into(),
+                        }]),
+                    })],
+                    hostile_aura_effects: Default::default(),
+                }),
+                mana_cost: 3,
+                ..Default::default()
+            },
+            CardDef {
+                id: BOMBER,
+                name: "Bomber".to_string(),
+                kind: CardDefKind::Minion(MinionCardDef::new(1, 1)),
+                mana_cost: 2,
+                triggers: vec![TriggerDef {
+                    pattern: TriggerPattern::Died(TriggerSubject::Itself),
+                    effects: EffectSequence(vec![Effect::Damage {
+                        selector: CharacterSelector::All(CharacterFilter {
+                            kind: EnumSet::only(CharacterKindFilter::Minions),
+                            side: EnumSet::all(),
+                        }),
+                        amount: 1.into(),
+                    }]),
+                }],
+                ..Default::default()
+            },
+            CardDef {
+                id: GRAVEDIGGER,
+                name: "Gravedigger".to_string(),
+                kind: CardDefKind::Minion(MinionCardDef::new(2, 2)),
+                mana_cost: 2,
+                triggers: vec![TriggerDef {
+                    pattern: TriggerPattern::Died(TriggerSubject::Character(CharacterFilter {
+                        kind: EnumSet::only(CharacterKindFilter::Minions),
+                        side: EnumSet::all(),
+                    })),
+                    effects: EffectSequence(vec![Effect::Damage {
+                        selector: CharacterSelector::All(CharacterFilter {
+                            kind: EnumSet::only(CharacterKindFilter::Heroes),
+                            side: EnumSet::only(Side::Enemy),
+                        }),
+                        amount: 1.into(),
+                    }]),
+                }],
                 ..Default::default()
             },
         ]
@@ -370,6 +485,7 @@ fn validate(defs: &[CardDef]) -> Result<(), CardDefError> {
     validate_not_found(defs)?;
     validate_choice_duplicates(defs)?;
     validate_choice_not_found(defs)?;
+    validate_choice_on_trigger(defs)?;
     Ok(())
 }
 
@@ -413,14 +529,7 @@ fn validate_choice_duplicates(defs: &[CardDef]) -> Result<(), CardDefError> {
 
 fn validate_choice_not_found(defs: &[CardDef]) -> Result<(), CardDefError> {
     for def in defs {
-        let effects = [
-            &def.on_play_effect,
-            &def.on_board_enter,
-            &def.on_board_leave,
-            &def.on_death,
-        ]
-        .into_iter()
-        .flat_map(EffectSequence::as_slice);
+        let effects = def.play_effects.as_slice().iter();
         for choice_id in effects.filter_map(chosen_id) {
             if !def.choices.iter().any(|choice| choice.id == choice_id) {
                 return Err(CardDefError::ChoiceNotFound(def.id, choice_id));
@@ -432,7 +541,9 @@ fn validate_choice_not_found(defs: &[CardDef]) -> Result<(), CardDefError> {
 
 fn chosen_id(effect: &Effect) -> Option<ChoiceId> {
     let selector = match effect {
-        Effect::Damage { selector, .. } | Effect::AddFriendlyAura { selector, .. } => selector,
+        Effect::Damage { selector, .. }
+        | Effect::Buff { selector, .. }
+        | Effect::AddFriendlyAura { selector, .. } => selector,
         Effect::Draw { .. } | Effect::Reveal { .. } | Effect::Summon { .. } => return None,
     };
     match selector {
@@ -444,9 +555,44 @@ fn chosen_id(effect: &Effect) -> Option<ChoiceId> {
     }
 }
 
+fn validate_choice_on_trigger(defs: &[CardDef]) -> Result<(), CardDefError> {
+    for def in defs {
+        for trigger in def.triggers.iter() {
+            if let Some(choice_id) = choice_on_trigger(trigger) {
+                return Err(CardDefError::ChoiceInTrigger(def.id, choice_id));
+            }
+        }
+
+        if let CardDefKind::Minion(MinionCardDef {
+            friendly_aura_effects,
+            hostile_aura_effects,
+            ..
+        }) = &def.kind
+        {
+            let auras = friendly_aura_effects
+                .iter()
+                .chain(hostile_aura_effects.iter());
+            for modifier_effect in auras {
+                if let ModifierEffect::GrantTrigger(trigger) = modifier_effect
+                    && let Some(choice_id) = choice_on_trigger(trigger)
+                {
+                    return Err(CardDefError::ChoiceInTrigger(def.id, choice_id));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn choice_on_trigger(trigger: &TriggerDef) -> Option<ChoiceId> {
+    trigger.effects.as_slice().iter().find_map(chosen_id)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn the_built_in_table_is_valid() {
@@ -506,18 +652,43 @@ mod tests {
         );
     }
 
+    fn chosen_damage_trigger() -> TriggerDef {
+        TriggerDef {
+            pattern: TriggerPattern::Died(TriggerSubject::Itself),
+            effects: EffectSequence(vec![Effect::Damage {
+                selector: CharacterSelector::Chosen(ChoiceId(0)),
+                amount: 1.into(),
+            }]),
+        }
+    }
+
     #[test]
-    fn an_on_death_effect_naming_an_undeclared_choice_is_not_found() {
+    fn a_trigger_effect_naming_a_choice_is_rejected() {
         let mut defs = CardDefLoader.load_all();
-        let recruit = defs.iter_mut().find(|def| def.id == RECRUIT).unwrap();
-        recruit.on_death = EffectSequence(vec![Effect::Damage {
-            selector: CharacterSelector::Chosen(ChoiceId(0)),
-            amount: 1.into(),
-        }]);
+        let ping = defs.iter_mut().find(|def| def.id == PING).unwrap();
+        ping.triggers.push(chosen_damage_trigger());
 
         assert_eq!(
             validate(&defs),
-            Err(CardDefError::ChoiceNotFound(RECRUIT, ChoiceId(0)))
+            Err(CardDefError::ChoiceInTrigger(PING, ChoiceId(0))),
+            "a trigger resolves with no draft, even on a card that declares the choice"
+        );
+    }
+
+    #[test]
+    fn a_granted_trigger_effect_naming_a_choice_is_rejected() {
+        let mut defs = CardDefLoader.load_all();
+        let ping_choice = defs.iter().find(|def| def.id == PING).unwrap().choices[0];
+        let banner = defs.iter_mut().find(|def| def.id == RALLY_BANNER).unwrap();
+        banner.choices.push(ping_choice);
+        let CardDefKind::Minion(minion) = &mut banner.kind else {
+            panic!("Rally Banner is a minion");
+        };
+        minion.friendly_aura_effects = vec![ModifierEffect::GrantTrigger(chosen_damage_trigger())];
+
+        assert_eq!(
+            validate(&defs),
+            Err(CardDefError::ChoiceInTrigger(RALLY_BANNER, ChoiceId(0)))
         );
     }
 }

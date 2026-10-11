@@ -9,6 +9,7 @@ thiserror = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
+pretty_assertions = { workspace = true }
 
 [[bench]]
 name = "game"

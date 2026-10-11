@@ -1,6 +1,7 @@
 //! P on exact positions. An unlisted action returns the exact `IllegalAction` and
 //! leaves the game unchanged.
 
+use pretty_assertions::assert_eq;
 use rules::static_card_definition::{BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK};
 use rules::{Action, ApplyError, Game, IllegalAction, Outcome};
 

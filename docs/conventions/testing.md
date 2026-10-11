@@ -69,6 +69,13 @@ probe finds gets a test.
 ## Conventions
 
 - Start every colocated `mod tests` with `use super::*;`.
+- Take `assert_eq!` and `assert_ne!` from `pretty_assertions`, which prints a diff on a mismatch
+  instead of both values whole. Import them in each test module that calls them, after
+  `use super::*;` in a colocated `mod tests`. `crates/rules/clippy.toml` bans the std versions,
+  so a missing import fails the checks.
+- The diff covers only the two compared values. Don't assert more than the behavior needs to get
+  one. Put the context in the message instead, and print an event stream there with `listing` from
+  `tests/spec/support.rs`, one event per line.
 - Name a test after its behavior, as a `snake_case` sentence:
   `forage_on_an_empty_deck_does_nothing`, not `test_forage`.
 - One behavior per test. Several assertions about one behavior are fine. A name joined by "and"

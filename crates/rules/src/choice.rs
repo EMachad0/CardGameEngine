@@ -1,4 +1,4 @@
-use crate::{ObjectId, cards::definition::CharacterSelectorFilter, history::HistoryQuery};
+use crate::{ObjectId, cards::filter::CharacterFilter, history::HistoryQuery};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EffectAmount {
@@ -39,7 +39,7 @@ pub struct ChoiceId(pub usize);
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CharacterChoice {
     pub id: ChoiceId,
-    pub filter: CharacterSelectorFilter,
+    pub filter: CharacterFilter,
     pub count: EffectAmount,
     pub bound: AmountBound,
     pub different: bool,

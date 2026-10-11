@@ -1,6 +1,7 @@
 //! The state check at the end of every `apply`.
 
-use rules::static_card_definition::{BLAST, CAPTAIN, RECRUIT};
+use pretty_assertions::assert_eq;
+use rules::static_card_definition::{BLAST, CAPTAIN, MEDIC, RECRUIT};
 use rules::{Game, Outcome};
 
 use crate::support::*;
@@ -19,7 +20,11 @@ fn blast_removes_every_minion_it_brings_to_zero_health() {
     play_def(&mut game, p0, BLAST);
 
     for p in players(&game) {
-        assert!(game.board(p).is_empty(), "left {:?}", board_defs(&game, p));
+        assert!(
+            game.player_board(p).is_empty(),
+            "left {:?}",
+            board_defs(&game, p)
+        );
     }
     for minion in [mine, theirs] {
         assert_eq!(game.health(minion), None, "a removed minion has no health");
@@ -48,7 +53,7 @@ fn the_check_repeats_until_a_pass_removes_nothing() {
     play_def(&mut game, p0, BLAST);
 
     assert!(
-        game.board(p0).is_empty(),
+        game.player_board(p0).is_empty(),
         "left {:?}",
         board_defs(&game, p0)
     );
@@ -106,4 +111,18 @@ fn a_hero_brought_to_zero_stays_in_its_zone() {
 
     assert_eq!(game.hero_id(p0), hero);
     assert_eq!(game.health(hero), Some(0));
+}
+
+#[test]
+fn medic_cannot_save_a_minion_dying_in_the_same_pass() {
+    let mut b = boards(&[MEDIC, RECRUIT], &[], &[BLAST], 3);
+    let recruit = b.mine[1];
+
+    play_def(&mut b.game, b.p0, BLAST);
+
+    assert_eq!(
+        b.game.health(recruit),
+        None,
+        "every minion at 0 leaves before the Medic's +2 Health resolves"
+    );
 }

@@ -12,5 +12,6 @@ mod properties;
 mod setup;
 mod state_check;
 mod support;
+mod triggers;
 mod turns;
 mod views;

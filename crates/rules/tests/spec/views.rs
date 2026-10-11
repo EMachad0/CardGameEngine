@@ -1,5 +1,6 @@
 //! What `view` shows each player.
 
+use pretty_assertions::assert_eq;
 use rules::static_card_definition::{BOLT, CAPTAIN, FORAGE, HERO, PING, RECRUIT, SPARK, TWIN_SHOT};
 use rules::{BoardCard, DefId, DraftView, Face, Game, HeroCard, ObjectId, PlayerId, RevealedCard};
 

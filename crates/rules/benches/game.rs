@@ -74,7 +74,11 @@ fn drafting_stages() -> [(&'static str, Game); 2] {
     for seed in PLAYOUT_SEEDS {
         play_out(drafting_deck, seed, |game| {
             let actions = game.legal_actions(decider(game));
-            let minions = game.players().iter().map(|&p| game.board(p).len()).sum();
+            let minions = game
+                .players()
+                .iter()
+                .map(|&p| game.player_board(p).len())
+                .sum();
             let chooses = actions
                 .iter()
                 .filter(|a| matches!(a, Action::Choose { .. }))

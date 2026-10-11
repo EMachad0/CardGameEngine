@@ -2,7 +2,9 @@ use enumset::EnumSet;
 
 use crate::{
     Game, ObjectId, PlayerId,
-    cards::definition::{CharacterKindFilter, CharacterSelectorFilter, CharacterSideFilter},
+    cards::filter::{
+        CardFilter, CardKindFilter, CharacterFilter, CharacterKindFilter, fulfill_side_filter,
+    },
     choice::{CharacterChoice, ChoiceId},
 };
 
@@ -23,7 +25,7 @@ impl Game {
         }
 
         let obj = self.objects.get(chooser_id);
-        self.scan_characters_with_filter(obj.player_id, choice.filter)
+        self.scan_characters_with_filter(obj.player_id, &choice.filter)
             .into_iter()
             .filter(|o| !choice.different || chosen.iter().all(|(o2, _)| o != o2))
             .filter(|o| !chosen_for_choice.contains(o))
@@ -38,33 +40,68 @@ impl Game {
     ) -> bool {
         let obj = self.objects.get(object_id);
         let choice = self.binder.choice(obj.def_id, choice_id).unwrap();
-        let count = self.effect_amount(choice.count, obj.player_id);
+        let count = self.effect_amount(&choice.count, obj.player_id);
         choice.bound.is_satisfied(chosen_count, count)
     }
 
     pub(crate) fn scan_characters_with_filter(
         &self,
         asking: PlayerId,
-        CharacterSelectorFilter { kind, side }: CharacterSelectorFilter,
+        filter: &CharacterFilter,
     ) -> Vec<ObjectId> {
         let mut characters = Vec::new();
-        if kind.contains(CharacterKindFilter::Heroes) {
-            characters.extend(
-                self.players
-                    .iter()
-                    .filter(|player| fulfill_character_side_filter(side, asking, player.id))
-                    .map(|player| player.zones.hero),
-            );
-        }
-        if kind.contains(CharacterKindFilter::Minions) {
-            characters.extend(
-                self.players
-                    .iter()
-                    .filter(|player| fulfill_character_side_filter(side, asking, player.id))
-                    .flat_map(|player| player.zones.board.as_slice()),
-            );
-        }
+        characters.extend(
+            self.players
+                .iter()
+                .filter(|player| {
+                    self.fulfill_character_filter(asking, player.id, player.zones.hero, filter)
+                })
+                .map(|player| player.zones.hero),
+        );
+        characters.extend(self.players.iter().flat_map(|player| {
+            player.zones.board.as_slice().iter().filter(|object_id| {
+                self.fulfill_character_filter(asking, player.id, **object_id, filter)
+            })
+        }));
         characters
+    }
+
+    pub(crate) fn fulfill_character_filter(
+        &self,
+        asking: PlayerId,
+        owner: PlayerId,
+        object_id: ObjectId,
+        &CharacterFilter { kind, side }: &CharacterFilter,
+    ) -> bool {
+        fulfill_side_filter(side, asking, owner)
+            && self.fulfill_character_kind_filter(object_id, kind)
+    }
+
+    pub(crate) fn fulfill_card_filter(
+        &self,
+        asking: PlayerId,
+        owner: PlayerId,
+        object_id: ObjectId,
+        &CardFilter { kind, side }: &CardFilter,
+    ) -> bool {
+        fulfill_side_filter(side, asking, owner) && self.fulfill_card_kind_filter(object_id, kind)
+    }
+
+    fn fulfill_character_kind_filter(
+        &self,
+        object_id: ObjectId,
+        kind: EnumSet<CharacterKindFilter>,
+    ) -> bool {
+        let def_id = self.objects.get(object_id).def_id;
+        kind.contains(CharacterKindFilter::Heroes) && self.binder.is_hero(def_id)
+            || kind.contains(CharacterKindFilter::Minions) && self.binder.is_minion(def_id)
+    }
+
+    fn fulfill_card_kind_filter(&self, object_id: ObjectId, kind: EnumSet<CardKindFilter>) -> bool {
+        let def_id = self.objects.get(object_id).def_id;
+        kind.contains(CardKindFilter::Heroes) && self.binder.is_hero(def_id)
+            || kind.contains(CardKindFilter::Minions) && self.binder.is_minion(def_id)
+            || kind.contains(CardKindFilter::Spells) && self.binder.is_spell(def_id)
     }
 
     pub(super) fn can_finish_choices(
@@ -98,13 +135,4 @@ impl Game {
         }
         !any_unfulfiled
     }
-}
-
-pub(crate) fn fulfill_character_side_filter(
-    side: EnumSet<CharacterSideFilter>,
-    asking: PlayerId,
-    player_id: PlayerId,
-) -> bool {
-    (side.contains(CharacterSideFilter::Enemy) && player_id != asking)
-        || (side.contains(CharacterSideFilter::Friendly) && player_id == asking)
 }

@@ -1,6 +1,7 @@
 //! Drafts: a card that needs choices is drafted, its choices are made one at a time, and then it
 //! is played.
 
+use pretty_assertions::assert_eq;
 use rules::Action;
 use rules::static_card_definition::{CROSSFIRE, PING, SHOVE, TWIN_SHOT};
 
@@ -228,7 +229,7 @@ fn ping_deals_2_damage_to_the_chosen_minion_only() {
     );
 
     assert_eq!(
-        t.game.board(t.p1),
+        t.game.player_board(t.p1),
         [t.enemy[1]],
         "the chosen 2/2 Recruit dies and the other stays"
     );

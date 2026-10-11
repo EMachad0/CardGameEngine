@@ -41,6 +41,8 @@ impl Rng {
 mod tests {
     use super::*;
 
+    use pretty_assertions::assert_eq;
+
     #[test]
     fn matches_reference_splitmix64_output() {
         // First output of the reference SplitMix64 for seed 0.

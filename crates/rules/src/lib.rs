@@ -19,6 +19,7 @@ mod ids;
 mod observer;
 mod outcome;
 mod rng;
+mod trigger;
 mod turn;
 mod zones;
 

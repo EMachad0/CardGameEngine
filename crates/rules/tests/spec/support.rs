@@ -3,6 +3,7 @@
 
 use std::collections::BTreeSet;
 
+use pretty_assertions::assert_eq;
 use rules::static_card_definition::{BOLT, RECRUIT};
 use rules::{
     Action, ApplyError, ChoiceId, DefId, Event, Game, IllegalAction, ObjectId, Observer, PlayerId,
@@ -76,7 +77,7 @@ pub(crate) fn revealed_defs(game: &Game, p: PlayerId) -> Vec<DefId> {
 }
 
 pub(crate) fn board_defs(game: &Game, p: PlayerId) -> Vec<DefId> {
-    defs(game, game.board(p))
+    defs(game, game.player_board(p))
 }
 
 pub(crate) fn has_in_hand(game: &Game, p: PlayerId, def: DefId) -> bool {
@@ -155,6 +156,65 @@ pub(crate) fn table(hand: &[DefId], friendly: usize, enemy: usize) -> Table {
     }
 }
 
+/// Two boards built by `boards`, on P0's turn.
+pub(crate) struct Boards {
+    pub(crate) game: Game,
+    pub(crate) p0: PlayerId,
+    pub(crate) p1: PlayerId,
+    /// P0's minions, in the order played.
+    pub(crate) mine: Vec<ObjectId>,
+    /// P1's minions, in the order played.
+    pub(crate) theirs: Vec<ObjectId>,
+}
+
+/// P0 plays `mine` and P1 plays `theirs`, one minion each in turn, P0 first, so the two boards'
+/// order of play interleaves. Then it's P0's turn with at least `mana` mana, holding `hand`.
+/// Every minion costs at most 3, and anything else in either hand is Bolts.
+pub(crate) fn boards(mine: &[DefId], theirs: &[DefId], hand: &[DefId], mana: u8) -> Boards {
+    let mut top0 = mine.to_vec();
+    top0.extend_from_slice(hand);
+    let mut game = Game::with_deck_order(0, [deck_with_top(&top0), deck_with_top(theirs)]);
+    let [p0, p1] = players(&game);
+    let mut mine_ids = Vec::new();
+    let mut theirs_ids = Vec::new();
+    for i in 0..mine.len().max(theirs.len()) {
+        if let Some(&def) = mine.get(i) {
+            turn_with_mana(&mut game, p0, 3);
+            mine_ids.push(summon(&mut game, p0, def));
+        }
+        if let Some(&def) = theirs.get(i) {
+            turn_with_mana(&mut game, p1, 3);
+            theirs_ids.push(summon(&mut game, p1, def));
+        }
+    }
+    turn_with_mana(&mut game, p0, mana);
+    Boards {
+        game,
+        p0,
+        p1,
+        mine: mine_ids,
+        theirs: theirs_ids,
+    }
+}
+
+/// How many cards `p` drew in `events`.
+pub(crate) fn draws(events: &[Event], p: PlayerId) -> usize {
+    events
+        .iter()
+        .filter(|e| matches!(e, Event::Drew { player_id, .. } if *player_id == p))
+        .count()
+}
+
+/// `events`, one per line, each prefixed with its index.
+pub(crate) fn listing(events: &[Event]) -> String {
+    events
+        .iter()
+        .enumerate()
+        .map(|(i, e)| format!("{i:>3}: {e:?}"))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 /// One checkpoint: the events since the previous one, then each player's view.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Step {
@@ -226,7 +286,10 @@ pub(crate) fn observe(game: &mut Game, p: PlayerId, a: Action) -> Recorder {
 /// Plays minion `def` from `p`'s hand and returns its board id.
 pub(crate) fn summon(game: &mut Game, p: PlayerId, def: DefId) -> ObjectId {
     play_def(game, p, def);
-    *game.board(p).last().expect("the minion entered the board")
+    *game
+        .player_board(p)
+        .last()
+        .expect("the minion entered the board")
 }
 
 /// Every id in a zone: hand, deck, revealed, board and hero, for each player.
@@ -238,7 +301,7 @@ pub(crate) fn zone_ids(game: &Game) -> Vec<ObjectId> {
                 game.hand(p),
                 &game.deck(p),
                 game.revealed(p),
-                game.board(p),
+                game.player_board(p),
                 &[game.hero_id(p)],
             ]
             .concat()

@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use crate::cards::{
-    definition::{CardDef, CardDefKind, DefId, Effect},
+    definition::{CardDef, CardDefKind, DefId, Effect, TriggerDef},
     modifier::ModifierEffect,
 };
 use crate::choice::{CharacterChoice, ChoiceId};
@@ -76,20 +76,8 @@ impl Binder {
         self.get(def_id).mana_cost
     }
 
-    pub(crate) fn on_play_effect(&self, def_id: DefId) -> &[Effect] {
-        &self.get(def_id).on_play_effect.0
-    }
-
-    pub(crate) fn on_board_enter(&self, def_id: DefId) -> &[Effect] {
-        &self.get(def_id).on_board_enter.0
-    }
-
-    pub(crate) fn on_board_leave(&self, def_id: DefId) -> &[Effect] {
-        &self.get(def_id).on_board_leave.0
-    }
-
-    pub(crate) fn on_death(&self, def_id: DefId) -> &[Effect] {
-        &self.get(def_id).on_death.0
+    pub(crate) fn play_effects(&self, def_id: DefId) -> &[Effect] {
+        &self.get(def_id).play_effects.0
     }
 
     pub(crate) fn friendly_aura_effects(&self, def_id: DefId) -> &[ModifierEffect] {
@@ -118,5 +106,9 @@ impl Binder {
 
     pub(crate) fn choices(&self, def_id: DefId) -> &[CharacterChoice] {
         &self.get(def_id).choices
+    }
+
+    pub(crate) fn triggers(&self, def_id: DefId) -> &[TriggerDef] {
+        &self.get(def_id).triggers
     }
 }

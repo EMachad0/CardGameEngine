@@ -1,7 +1,6 @@
 use crate::{
-    Event, Game, ObjectId, Observer, PlayerId, Views,
-    game::PlayerInteractionState,
-    history::{HistoryEntry, HistoryKind},
+    Event, Game, ObjectId, Observer, PlayerId, Views, game::PlayerInteractionState,
+    trigger::PendingEffect,
 };
 
 impl Game {
@@ -12,21 +11,24 @@ impl Game {
             let player = self.get_player_mut(player_id);
             let card = player.zones.deck.pop_front();
             if let Some(object_id) = card {
-                obs.event(&Event::Drew {
+                player.zones.hand.add(object_id);
+                let event = Event::Drew {
                     player_id,
                     object_id,
-                });
-                player.zones.hand.add(object_id);
+                };
+                self.emit(event, obs);
+                self.objects.update_order(object_id);
             } else {
                 let hero_id = player.zones.hero;
                 let damage = 1;
-                obs.event(&Event::FatigueDamaged {
+                let object = self.objects.get_mut(hero_id);
+                object.damage += damage;
+                let event = Event::FatigueDamaged {
                     amount: damage,
                     player_id,
                     object_id: hero_id,
-                });
-                let object = self.objects.get_mut(hero_id);
-                object.damage += damage;
+                };
+                self.emit(event, obs);
             };
         }
     }
@@ -43,20 +45,15 @@ impl Game {
             .remove(object_id)
             .expect("legal actions guarantee playable cards are in hand");
 
-        let object = self.objects.get(object_id);
-        self.history.entries.push(HistoryEntry::new(
-            player_id,
-            HistoryKind::CardPlayed {
-                object: object.clone(),
-            },
-            self.turn_order.turn_count(),
-        ));
-        obs.event(&Event::Played {
+        let event = Event::Played {
             player_id,
             object_id,
-        });
+        };
+        self.emit(event, obs);
         obs.checkpoint(Views::new(self));
-        self.apply_effects(object_id, self.on_play(object_id), obs);
+        self.drain_effect_queue(obs);
+        let effects = self.play_effects(object_id).to_vec();
+        self.apply_effects(object_id, &effects, obs);
 
         let def_id = self.def_id(object_id);
         if self.binder.has_board_presence(def_id) {
@@ -72,32 +69,28 @@ impl Game {
         obs: &mut impl Observer,
     ) {
         self.get_player_mut(player_id).zones.board.add(object_id);
-        obs.event(&Event::BoardEntered {
-            player_id,
-            object_id,
-        });
-        self.apply_effects(object_id, self.on_board_enter(object_id), obs);
+        self.character_entered(player_id, object_id, obs);
     }
 
-    pub(crate) fn kill(
-        &mut self,
-        player_id: PlayerId,
-        object_id: ObjectId,
-        obs: &mut impl Observer,
-    ) {
-        let object = self.objects.get(object_id);
-        self.history.entries.push(HistoryEntry::new(
-            player_id,
-            HistoryKind::CharacterDied {
-                object: object.clone(),
-            },
-            self.turn_order.turn_count(),
-        ));
-        obs.event(&Event::Died { object_id });
-        if !self.binder.is_hero(object.def_id) {
-            self.destroy(player_id, object_id, obs);
+    pub(crate) fn kill(&mut self, object_ids: &[ObjectId], obs: &mut impl Observer) {
+        // Enqueue death rattles
+        for &object_id in object_ids.iter() {
+            for death_rattle in self.death_rattles(object_id).into_iter() {
+                self.effect_stack.push(PendingEffect {
+                    object_id,
+                    effects: death_rattle.effects,
+                });
+            }
         }
-        self.apply_effects(object_id, self.on_death(object_id), obs);
+
+        for &object_id in object_ids.iter() {
+            let object = self.objects.get(object_id);
+            let is_hero = self.binder.is_hero(object.def_id);
+            if !is_hero {
+                self.destroy(object.player_id, object_id, obs);
+            }
+            self.emit(Event::Died { object_id }, obs);
+        }
     }
 
     pub(crate) fn destroy(
@@ -106,7 +99,6 @@ impl Game {
         object_id: ObjectId,
         obs: &mut impl Observer,
     ) {
-        self.apply_effects(object_id, self.on_board_leave(object_id), obs);
         self.get_player_mut(player_id)
             .zones
             .board
@@ -124,6 +116,7 @@ impl Game {
         object_id: ObjectId,
         _obs: &mut impl Observer,
     ) {
+        self.objects.update_order(object_id);
         self.get_player_mut(player_id)
             .zones
             .graveyard
@@ -144,18 +137,10 @@ impl Game {
         if !options.is_empty() {
             let event = Event::Revealed {
                 player_id,
-                object_ids: options,
+                object_ids: options.clone(),
             };
-            obs.event(&event);
-            if let Event::Revealed {
-                object_ids: options,
-                ..
-            } = event
-            {
-                player.interaction_state = PlayerInteractionState::PendingPick { options }
-            } else {
-                unreachable!();
-            };
+            player.interaction_state = PlayerInteractionState::PendingPick { options };
+            self.emit(event, obs);
         }
     }
 
@@ -178,10 +163,11 @@ impl Game {
         let picked = options.remove(idx);
         player.zones.hand.add(picked);
 
-        obs.event(&Event::Picked {
+        let event = Event::Picked {
             player_id,
             object_id,
-        });
+        };
+        self.emit(event, obs);
 
         options
             .into_iter()
@@ -196,9 +182,42 @@ impl Game {
     ) {
         let player = self.get_player_mut(player_id);
         player.zones.deck.push_back(object_id);
-        obs.event(&Event::Buried {
+        self.objects.update_order(object_id);
+        let event = Event::Buried {
             player_id,
             object_id,
-        });
+        };
+        self.emit(event, obs);
+    }
+
+    fn character_entered(
+        &mut self,
+        player_id: PlayerId,
+        object_id: ObjectId,
+        obs: &mut impl Observer,
+    ) {
+        self.objects.update_order(object_id);
+        let event = Event::BoardEntered {
+            player_id,
+            object_id,
+        };
+        self.emit(event, obs);
+    }
+
+    pub(crate) fn damage(
+        &mut self,
+        target: ObjectId,
+        amount: u8,
+        source: ObjectId,
+        obs: &mut impl Observer,
+    ) {
+        let object = self.objects.get_mut(target);
+        object.damage += amount;
+        let event = Event::Damaged {
+            target,
+            amount,
+            source,
+        };
+        self.emit(event, obs);
     }
 }

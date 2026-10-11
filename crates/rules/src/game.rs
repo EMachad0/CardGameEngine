@@ -11,6 +11,7 @@ mod lookup;
 mod player;
 mod resolve;
 mod state_check;
+mod triggering;
 pub(crate) mod view;
 mod zone_move;
 
@@ -21,6 +22,7 @@ use crate::history::History;
 use crate::ids::PlayerId;
 use crate::rng::Rng;
 use crate::static_card_definition::HERO;
+use crate::trigger::PendingEffect;
 use crate::turn::TurnOrder;
 use crate::zones::Deck;
 use crate::{DefId, Event, ObjectId, Observer, Outcome};
@@ -36,6 +38,7 @@ pub struct Game {
     binder: Binder,
     history: History,
     outcome: Option<Outcome>,
+    effect_stack: Vec<PendingEffect>,
 }
 
 impl Game {
@@ -85,6 +88,7 @@ impl Game {
             binder,
             history,
             outcome: None,
+            effect_stack: Default::default(),
         };
 
         for player in game.players.iter_mut() {
@@ -201,8 +205,21 @@ impl Game {
         self.get_player(player_id).zones.deck.to_vec()
     }
 
-    pub fn board(&self, player_id: PlayerId) -> &[ObjectId] {
+    pub fn player_board(&self, player_id: PlayerId) -> &[ObjectId] {
         self.get_player(player_id).zones.board.as_slice()
+    }
+
+    pub(crate) fn board_characters(&self) -> Vec<ObjectId> {
+        let heroes = self.players.iter().map(|p| p.zones.hero);
+        let minions = self
+            .players()
+            .into_iter()
+            .flat_map(|p| self.player_board(p))
+            .cloned();
+
+        let mut characters = heroes.chain(minions).collect::<Vec<_>>();
+        characters.sort_by_key(|o| self.objects.get(*o).order);
+        characters
     }
 
     pub fn mana(&self, player_id: PlayerId) -> u8 {
@@ -223,17 +240,19 @@ impl Game {
 
     fn end_turn(&mut self, obs: &mut impl Observer) {
         let active_player_id = self.turn_order.get_active_player_id();
-        obs.event(&Event::TurnEnded {
+        let event = Event::TurnEnded {
             player_id: active_player_id,
-        });
+        };
+        self.emit(event, obs);
         self.turn_order.end_turn();
     }
 
     fn start_turn(&mut self, obs: &mut impl Observer) {
         let active_player_id = self.turn_order.get_active_player_id();
-        obs.event(&Event::TurnStarted {
+        let event = Event::TurnStarted {
             player_id: active_player_id,
-        });
+        };
+        self.emit(event, obs);
         let player = self.get_player_mut(active_player_id);
         player.max_mana = (player.max_mana + 1).min(10);
         player.mana = player.max_mana;

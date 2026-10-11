@@ -127,11 +127,13 @@ impl Zones {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
+    use pretty_assertions::assert_eq;
+
     use crate::cards::object::ObjectBag;
     use crate::ids::PlayerId;
     use crate::static_card_definition::SPARK;
-
-    use super::*;
 
     fn ids<const N: usize>() -> [ObjectId; N] {
         let mut bag = ObjectBag::default();

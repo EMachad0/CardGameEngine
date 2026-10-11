@@ -2,6 +2,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use pretty_assertions::assert_eq;
 use rules::static_card_definition::{
     BARRACKS, BLAST, BOLT, CAPTAIN, CROSSFIRE, FORAGE, GIANT, PING, RECRUIT, SHOVE, SPARK,
     TWIN_SHOT, WILD_BOLT,
@@ -146,7 +147,7 @@ fn index_of(game: &Game, p: PlayerId) -> usize {
 /// The owner's index and the position from the left of `id`, if it is a minion on a board.
 fn board_position(game: &Game, id: ObjectId) -> Option<(usize, usize)> {
     players(game).iter().enumerate().find_map(|(owner, &p)| {
-        game.board(p)
+        game.player_board(p)
             .iter()
             .position(|&m| m == id)
             .map(|position| (owner, position))
@@ -262,7 +263,7 @@ fn assert_accessors(game: &Game, history: &History, context: &str) {
                 "{context}"
             );
         }
-        for &id in game.board(p) {
+        for &id in game.player_board(p) {
             assert_eq!(game.mana_cost(id), None, "{context}");
             let health = game.health(id);
             assert!(
@@ -278,7 +279,7 @@ fn assert_boards_match(game: &Game, model: &BoardModel, context: &str) {
     type Row = (DefId, Option<i32>, Option<i32>);
     for p in players(game) {
         let actual: Vec<Row> = game
-            .board(p)
+            .player_board(p)
             .iter()
             .map(|&id| (game.def_id(id), game.attack(id), game.health(id)))
             .collect();

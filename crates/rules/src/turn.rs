@@ -40,6 +40,8 @@ impl TurnOrder {
 mod tests {
     use super::*;
 
+    use pretty_assertions::assert_eq;
+
     const P0: PlayerId = PlayerId::new(0);
     const P1: PlayerId = PlayerId::new(1);
     const P2: PlayerId = PlayerId::new(2);
