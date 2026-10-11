@@ -5,7 +5,7 @@ use rules::static_card_definition::{
     BLAST, BOLT, BOMBER, DRILLMASTER, GRAVEDIGGER, MEDIC, MOURNER, PING, RALLY_BANNER, RECRUIT,
     SQUIRE, TWIN_SHOT,
 };
-use rules::{Event, ObjectId};
+use rules::{Event, Game, ObjectId, Outcome};
 
 use crate::support::*;
 
@@ -344,6 +344,31 @@ fn the_newest_of_the_triggers_matched_by_one_event_resolves_first() {
         first(&events, |e| is_hit_from(e, friendly)) < first(&events, |e| is_hit_from(e, enemy)),
         "the enemy Gravedigger entered play before the friendly one, so the friendly one's \
          trigger is on top of the stack:\n{}",
+        listing(&events)
+    );
+}
+
+#[test]
+fn nothing_resolves_after_the_game_ends() {
+    let deck0 = vec![BOMBER, MOURNER, BLAST, BLAST];
+    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
+    let [p0, p1] = players(&game);
+    turn_with_mana(&mut game, p0, 2);
+    summon(&mut game, p0, BOMBER);
+    turn_with_mana(&mut game, p0, 3);
+    summon(&mut game, p0, MOURNER);
+    turn_with_mana(&mut game, p0, 9);
+    assert_eq!(game.hero_health(p0), 2, "fatigue leaves player 0 at 2");
+    let blast = in_hand(&game, p0, BLAST);
+
+    let events = observe(&mut game, p0, play(blast)).events();
+
+    assert_eq!(
+        events.last(),
+        Some(&Event::GameEnded {
+            outcome: Outcome::Won(p1)
+        }),
+        "the Mourner's draw and the Bomber's deathrattle were waiting when the hero died:\n{}",
         listing(&events)
     );
 }

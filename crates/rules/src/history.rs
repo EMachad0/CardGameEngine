@@ -14,16 +14,6 @@ pub(crate) struct HistoryEntry {
     pub turn: u32,
 }
 
-impl HistoryEntry {
-    pub(crate) fn new(player_id: PlayerId, kind: HistoryKind, turn: u32) -> Self {
-        Self {
-            player_id,
-            kind,
-            turn,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlayerFilter {
     Active,

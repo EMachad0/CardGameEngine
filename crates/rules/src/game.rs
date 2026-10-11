@@ -209,7 +209,7 @@ impl Game {
         self.get_player(player_id).zones.board.as_slice()
     }
 
-    pub fn board_characters(&self) -> Vec<ObjectId> {
+    pub(crate) fn board_characters(&self) -> Vec<ObjectId> {
         let heroes = self.players.iter().map(|p| p.zones.hero);
         let minions = self
             .players()
@@ -240,17 +240,19 @@ impl Game {
 
     fn end_turn(&mut self, obs: &mut impl Observer) {
         let active_player_id = self.turn_order.get_active_player_id();
-        obs.event(&Event::TurnEnded {
+        let event = Event::TurnEnded {
             player_id: active_player_id,
-        });
+        };
+        self.emit(event, obs);
         self.turn_order.end_turn();
     }
 
     fn start_turn(&mut self, obs: &mut impl Observer) {
         let active_player_id = self.turn_order.get_active_player_id();
-        obs.event(&Event::TurnStarted {
+        let event = Event::TurnStarted {
             player_id: active_player_id,
-        });
+        };
+        self.emit(event, obs);
         let player = self.get_player_mut(active_player_id);
         player.max_mana = (player.max_mana + 1).min(10);
         player.mana = player.max_mana;

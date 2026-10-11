@@ -1,7 +1,5 @@
 use crate::{
-    Event, Game, ObjectId, Observer, PlayerId, Views,
-    game::PlayerInteractionState,
-    history::{HistoryEntry, HistoryKind},
+    Event, Game, ObjectId, Observer, PlayerId, Views, game::PlayerInteractionState,
     trigger::PendingEffect,
 };
 
@@ -23,14 +21,14 @@ impl Game {
             } else {
                 let hero_id = player.zones.hero;
                 let damage = 1;
+                let object = self.objects.get_mut(hero_id);
+                object.damage += damage;
                 let event = Event::FatigueDamaged {
                     amount: damage,
                     player_id,
                     object_id: hero_id,
                 };
                 self.emit(event, obs);
-                let object = self.objects.get_mut(hero_id);
-                object.damage += damage;
             };
         }
     }
@@ -47,21 +45,13 @@ impl Game {
             .remove(object_id)
             .expect("legal actions guarantee playable cards are in hand");
 
-        let object = self.objects.get(object_id);
-        self.history.entries.push(HistoryEntry::new(
-            player_id,
-            HistoryKind::CardPlayed {
-                object: object.clone(),
-            },
-            self.turn_order.turn_count(),
-        ));
         let event = Event::Played {
             player_id,
             object_id,
         };
         self.emit(event, obs);
         obs.checkpoint(Views::new(self));
-        while self.effect_queue_pop(obs) {}
+        self.drain_effect_queue(obs);
         let effects = self.play_effects(object_id).to_vec();
         self.apply_effects(object_id, &effects, obs);
 
@@ -83,18 +73,6 @@ impl Game {
     }
 
     pub(crate) fn kill(&mut self, object_ids: &[ObjectId], obs: &mut impl Observer) {
-        let event = |object_id: ObjectId| Event::Died { object_id };
-        for &object_id in object_ids.iter() {
-            let object = self.objects.get(object_id);
-            self.history.entries.push(HistoryEntry::new(
-                object.player_id,
-                HistoryKind::CharacterDied {
-                    object: object.clone(),
-                },
-                self.turn_order.turn_count(),
-            ));
-        }
-
         // Enqueue death rattles
         for &object_id in object_ids.iter() {
             for death_rattle in self.death_rattles(object_id).into_iter() {
@@ -111,7 +89,7 @@ impl Game {
             if !is_hero {
                 self.destroy(object.player_id, object_id, obs);
             }
-            self.emit(event(object_id), obs);
+            self.emit(Event::Died { object_id }, obs);
         }
     }
 
@@ -219,14 +197,6 @@ impl Game {
         obs: &mut impl Observer,
     ) {
         self.objects.update_order(object_id);
-        let object = self.objects.get(object_id);
-        self.history.entries.push(HistoryEntry::new(
-            player_id,
-            HistoryKind::CharacterEntered {
-                object: object.clone(),
-            },
-            self.turn_order.turn_count(),
-        ));
         let event = Event::BoardEntered {
             player_id,
             object_id,

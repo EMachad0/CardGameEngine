@@ -13,4 +13,5 @@ disallowed-types = [
 disallowed-methods = [
   { path = "std::time::Instant::now", reason = "The clock lives in the shell. Pass time in as an action." },
   { path = "std::time::SystemTime::now", reason = "The clock lives in the shell. Pass time in as an action." },
+  { path = "rules::observer::Observer::event", reason = "Report events through Game::emit, which also records History and matches triggers." },
 ]

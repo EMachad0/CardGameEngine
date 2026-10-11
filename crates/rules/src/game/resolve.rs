@@ -42,10 +42,7 @@ impl Game {
             )))
         } else {
             self.apply_action(player_id, action, obs);
-            self.check_state(obs);
-            while self.effect_queue_pop(obs) {
-                self.check_state(obs);
-            }
+            self.drain_effect_queue(obs);
             Ok(())
         }
     }

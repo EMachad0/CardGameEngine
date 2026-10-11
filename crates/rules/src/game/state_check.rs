@@ -73,7 +73,8 @@ impl Game {
 
         self.outcome = outcome;
         if let Some(outcome) = outcome {
-            obs.event(&Event::GameEnded { outcome });
+            let event = Event::GameEnded { outcome };
+            self.emit(event, obs);
             obs.checkpoint(Views::new(self));
         }
     }
