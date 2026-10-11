@@ -1073,3 +1073,295 @@ can u commit everything rn so its easier for me to see my diff
 > [!abstract] PI
 
 Committing now. One note on the repo rules: the checks can't be fully green at this commit. fmt and clippy pass, but 18 tests are red by design. `docs/conventions/testing.md` allows that as long as the commit message lists them, so it does. I'm making two commits, code and docs, so the code diff you review stays clean.
+
+
+> [!abstract] PI
+
+Done, and the working tree is clean:
+
+- `b9f6def`: the code. That's the refactor, the trigger data types, the five cards and the tests, and the message lists all 18 red tests.
+- `a8508da`: the docs. That's the research reports, the verified facts, the Trigger glossary entry and the session log so far.
+- `cdefc90`: ADRs 0011 and 0012, committed earlier.
+
+From here, `git diff` shows only your changes. Tell me when you want a review, or if a test seems to disagree with the design we settled.
+
+
+> [!quote] YOU
+
+why cant a trigger contain an effect selecting a choice?
+
+
+> [!abstract] PI
+
+Because nothing fills the choice for a trigger. `Chosen(id)` reads the targets a player put in a draft (`Draft`, `Choose`, then `Play`), and `Play` copies them onto the object as `choice_targets`. A draft only exists while a card is being played from the hand. A trigger resolves out of the queue in `resolve_pending`, where nobody drafted anything for it. So `Chosen` inside a trigger reads one of two things:
+- **Nothing.** That panics at `expect("Choice not fulfilled")`, for example on a summoned copy that was never played.
+- **The targets from the card's last play.** That may be stale: the minion could be dead, or the object could be a different one.
+
+The load check turns both into a load error instead of a panic or a silent wrong target.
+
+There are really two different things here, though, and the check bans both.
+
+**1. A choice made for the trigger itself** ("Deathrattle: deal 2 damage to a minion"). Real games have these. MTG 603.3d: putting a trigger on the stack follows the same process as casting (601.2c, targets announced), and "if a choice is required when the triggered ability goes on the stack but no legal choices can be made for it... the ability is simply removed from the stack." That's a player decision in the middle of resolving something else, which makes it a resolution-time pick (Pick, not Choose, per the glossary pair). It needs `resolve_pending` to pause, return from `apply`, and resume when the player answers. That's session 06's machinery, and the queue in `Game` is what will make it possible. Until then, banning it is right.
+
+**2. A trigger that refers back to the choice made when the card was played.** This is your 04b case, "choose a minion, deal 2 damage to it every turn", and the reason you kept targets on the object. It works with today's machinery, and the check forbids it anyway. The open thread already says that card needs two more rules:
+- what a summoned copy does, since it has no targets
+- what happens when the remembered minion dies or leaves
+
+So the check is stricter than it needs to be for case 2. You can:
+- (a) **Keep it** until the remembered-target card arrives, and lift it then together with those two rules.
+- (b) **Allow it now** for cards that declare the choice (only `ChoiceNotFound` applies), and accept the summoned-copy panic until those rules exist.
+
+I'd keep it (a): no card needs case 2 yet, and the error marks the gap. It's a policy, though, so it's your call. If you pick (b), `a_trigger_effect_naming_a_choice_is_rejected` changes, because it uses Ping, which declares its choice. That's case 2 exactly.
+
+
+> [!quote] YOU
+
+should the events emit recieves and triggers react to be the same events on events.rs that are also returned to the observer?
+
+
+> [!abstract] PI
+
+Yes, one type, for the reason from session 03's D4: one event does three jobs (rules record, trigger input, shell output). If triggers matched a separate internal type, every mutation site would emit two things that have to agree. The first site that emits one and forgets the other is a bypass, and the fatigue thread is that bug waiting to happen: a damage trigger that hears `Damaged` but not `FatigueDamaged`. One type at one `emit` means one place to get it right.
+
+It holds as long as `Event` keeps four properties:
+
+1. **Absolute facts and ids, never viewer-relative data.** `Died { object_id }`, not "a friendly minion died". Each reader applies its own frame, as in the retrieval question: Mourner asks `fulfill_side_filter` from its owner.
+2. **What will be gone afterwards travels in the event. What's still in `Game` is looked up by id.** The amount and source of a hit go in the event. A dead minion's owner and definition don't, because the object stays in the bag. A future "gain the dead minion's Attack" would need that value in the event (or a snapshot), since an aura that buffed it may be gone too. That's D2: mid-resolution values travel in the stream.
+3. **No hidden information.** The observer gets every event unfiltered, which is why `event.rs` says events carry ids only and identity comes through `View`. A trigger that needs hidden data, like "whenever your opponent draws a spell", reads it from `Game` by id, not from the payload.
+4. **No "would" events.** A replacement's input is a proposed change, before the mutation, and that isn't an `Event`. It's a different type at a different moment (U1). Only what actually happened is emitted.
+
+The cost: `Event` is public, so a field added for a trigger's sake also changes the shell interface. That's the price of one source of truth, and usually it's information the shell wants anyway.
+
+When would you split? If the shell needed presentation-only events (animation hints) that rules mustn't read, or if a trigger needed hidden data in the payload. Engines go both ways:
+- **Metastone and Spellsource**: one `GameEvent` feeds triggers and the UI.
+- **Forge**: splits them. `TriggerHandler.runTrigger` takes its own parameter map, and UI events go on a separate `EventBus`.
+- **XMage**: uses `GameEvent` for rules only, and the client gets `GameView` snapshots.
+
+None of our cards pushes toward a split.
+
+
+> [!quote] YOU
+
+with the GrantTrigger modifier there is two ways to add triggers to a card, via triggers and modifiers, this smells a little no?
+
+
+> [!abstract] PI
+
+It's two sources, not two copies, and the difference matters. Run it through the mirror test: is one fact stored twice, or answered by two functions? Neither:
+
+- `CardDef.triggers` is what's printed on the card. It never changes (R2).
+- `GrantTrigger` is what other cards do to it, and it comes and goes with the Banner.
+- One function, `triggers(obj)`, reads both and is the only answer to "which triggers does X have".
+
+That's exactly how stats already work. A Recruit's 2 Attack is printed in `MinionCardDef.attack`, the Captain's +1 arrives as `BuffAtk` through `modifiers(obj)`, and `attack(obj)` adds them. Nobody calls that a smell, because the two inputs are different facts (printed vs granted) with one reader. Both spellings feed the same reader, so they can't disagree. A real mirror can.
+
+Engines do the same:
+- **Forge**: printed traits on the card state, plus `CardTraitChanges` applied on top in `updateTriggers` (from today's research).
+- **Hearthstone**: printed deathrattles, plus enchantments that grant one ("Give a minion 'Deathrattle: ...'").
+
+With Medic's `Buff`, that last case is free in our design too. A `Buff` carrying `GrantTrigger` writes it to `Object.modifiers`, and `triggers(obj)` picks it up with no new code.
+
+The smell you're sensing is real, but narrower. `ModifierEffect` is also the type of `CardDef.modifier_effects` (the card's modifiers on itself, like the Giant's discount). So `modifier_effects: [GrantTrigger(T)]` is now a second way to write a printed trigger, a card granting itself T, next to `triggers: [T]`. Both behave the same through `triggers(obj)`, so it's a style redundancy, not a correctness bug. Stats already have the same gap, since `modifier_effects: [BuffAtk 1]` on a 2/2 is just a 3/2. That field exists for self-modifiers no plain number can hold, like the Giant's discount that reads History.
+
+Two ways to close it:
+- **A load check** that rejects static self-grants (`GrantTrigger`, plain `BuffAtk`/`BuffHealth`) in `modifier_effects`.
+- **Narrow the type**, so the definition's own modifiers can't express a grant.
+
+No card does either today, so I'd file it as an open thread for session H's validation rather than spend this exercise on it. Your call.
+
+
+> [!quote] YOU
+
+how would we Narrow the type, so the definition's own modifiers can't express a grant ?
+
+
+> [!abstract] PI
+
+Split the enum by what it changes, then give each field only the part it should be able to hold:
+
+```rust
+/// Changes a number: attack, health or cost.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StatModifier {
+    BuffAtk { amount: EffectAmount },
+    BuffHealth { amount: EffectAmount },
+    ReduceManaCost { amount: EffectAmount },
+}
+
+/// Anything one card can give another.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ModifierEffect {
+    Stat(StatModifier),
+    GrantTrigger(Trigger),
+}
+
+pub struct CardDef {
+    pub modifier_effects: Vec<StatModifier>,   // on itself: numbers only, so no grant fits
+    ...
+}
+pub struct MinionCardDef {
+    pub friendly_aura_effects: Vec<ModifierEffect>, // auras can grant
+    pub hostile_aura_effects: Vec<ModifierEffect>,
+    ...
+}
+// Effect::Buff, Effect::AddFriendlyAura and Object.modifiers keep ModifierEffect
+```
+
+`modifiers(obj)` wraps the definition's own entries as `ModifierEffect::Stat(..)` when it collects them, so every reader still walks one list. `attack`, `health` and `mana_cost` match `ModifierEffect::Stat(StatModifier::BuffAtk { amount })`, and `triggers(obj)` matches `GrantTrigger(t)`. A `From<StatModifier> for ModifierEffect` keeps the card table readable (`StatModifier::BuffAtk { .. }.into()`).
+
+**What it buys:**
+- **The self-grant can't be written.** No load check needed, and the reader of `modifier_effects` never sees a `GrantTrigger` arm it could mishandle. It's the same move as your 04a filters: a type that can't express the wrong thing beats a check that rejects it.
+- **It contains the `Copy` loss from 15a.** `StatModifier` holds no `Vec`, so it stays `Copy`: the Giant's discount, the stat readers and the definition's list keep copying cheaply. Only `ModifierEffect`, the one carrying a trigger, gives it up.
+- **It's the right time.** This exercise already changes `ModifierEffect` (new variant, lost `Copy`). Splitting now means changing it once, not twice.
+
+**What it costs:** one more level of nesting in every stat match and in the aura data, and a wrapper at the point where `modifiers(obj)` merges the sources.
+
+**What it doesn't close:** a static self-buff (`StatModifier::BuffAtk { amount: 1.into() }` on a 2/2) is still writable, since it's the same type as the Giant's dynamic discount. Making that unrepresentable would mean letting self-modifiers take only dynamic amounts (a `HistoryQuery`, not an `EffectAmount`). That overfits to the one card we have, so I'd leave it.
+
+It's an interface change, so it's yours. If you want it, say so and I'll update the card table and the drafted types, since that part is plain data, and you write the reader changes in `lookup.rs`. Or skip it and file the redundancy for session H.
+
+
+> [!quote] YOU
+
+I dont see the point if we dont fix the static self buff. I think I disagree with an_older_minions_trigger_resolves_before_a_younger_minions_deathrattle, I dont see why it should be order dependent, the more I think bout it, I feel it should simply be a queue or stack, rn we are pushing death rattle first then emitting the death, so any other trigger that is a reaction to the death goes first, the implementation is feeling messy cause sometimes I push front and others back
+
+
+> [!abstract] PI
+
+**On narrowing:** fair. If the static self-buff stays writable, the split only moves the redundancy around. I'll skip it and file "self-modifiers can restate printed text (a static `BuffAtk`, a self-`GrantTrigger`)" as an open thread for session H's validation.
+
+**On the ordering:** you're right, and the mess is my doing. Determinism only needs a fixed rule. It doesn't need order of play, and every game picks a different rule: Hearthstone sorts by order of play, MTG lets the controller choose, LoR goes left to right, Shadowverse goes turn player first. I wrote ADR 0012 to sort one event's matches by order of play, and then 20a asked for consequences before older waiting triggers. Those are two orderings layered on one queue, so you end up pushing front for one and back for the other. No single structure gives both.
+
+Pick one discipline and let the rest fall out:
+
+**1. The structure**
+- **(a) A stack.** Push every match as it's found, pop the newest. Depth-first (20a) comes free: whatever a resolving trigger causes lands on top, so it resolves before anything already waiting. This is MTG's stack and LoR's.
+- **(b) A queue.** Push back, pop front. Simple too, but it reverses 20a: consequences wait behind older triggers. That's closer to YGO, where triggers wait for the whole chain.
+
+My lean is (a), since it keeps 20a with one operation.
+
+**2. Within one death, what resolves first.** With a stack, the push order is the rule, reversed, so this is just the order of two lines in your code, not a sort.
+- **(a) The dead minion's own death triggers first, then the listeners.** You'd push the snapshotted deathrattle after the matcher's finds. Shadowverse does this (Last Words before "when destroyed" triggers), and so does KeyForge ("Destroyed:" abilities before "after a creature is destroyed"). Both are in today's research.
+- **(b) The listeners first.** That's what your push order does now: deathrattle pushed, then `Died` emitted, so Mourner's draw lands on top.
+
+My lean is (a): two games agree on it, and it reads naturally ("its last words, then the mourners").
+
+**3. Order of play itself.** Its remaining job would be the order the deaths of one pass are emitted, and with a stack, the last-emitted death's triggers resolve first.
+- **(a) Keep the stamp** for that report order. Fair across seats, and 11a still holds.
+- **(b) Drop the stamp** and emit in scan order: heroes, then boards in seat order. It's simpler, with no field and no counter. The cost is that P0's deaths are always reported first, even on P1's turn. Scanning from the active player instead (MTG's active player first) would remove that bias for the cost of one rotation.
+
+Your 7 answer leaned toward simple, so (b) with the active-player rotation fits it. That one is fully yours.
+
+Whatever you pick, I'll supersede the ordering part of ADR 0012 with a new ADR and rewrite the affected tests:
+- the order-of-play pair
+- `a_trigger_resolves_after_its_source_has_died`, which needs a setup where the source really dies before its trigger pops
+- the depth-first test, which as written also depends on the within-event order, so it should be rebuilt to pin only depth-first
+
+
+> [!quote] YOU
+
+1 a, 2 listeners triggers after and thus are resolved first cause of the stack, 3 a since I already did it and it kinda makes sense, I think the rule we are going for is: triggers are stacked on top of one another, if there is a dependency "A happened cause of B" they A goes on top of B and is resolved first, if there is no dependency and they are the same event it is resolved on order of play, if they are different events then it is arbitrary by order the code is executed
+
+
+> [!abstract] PI
+
+Recorded: **1a** (stack), **2**: listeners resolve before the dead minion's own death triggers, **3a** (keep the stamp). Your rule, stated precisely:
+
+1. Every matched trigger is pushed on a stack, and the newest resolves first.
+2. So whatever a resolving trigger causes lands on top and resolves before anything already waiting.
+3. A dying minion's own death triggers are pushed before its death is reported, so the triggers that react to the death go on top and resolve first.
+4. Triggers matched by one event resolve in order of play.
+5. Otherwise, the order is whatever the code's matching order produces, and no test pins it.
+
+That clears the ADR bar (it changes game behavior, it's surprising next to Hearthstone, and it's a real trade-off), so I'm recording it now. Then I'll rewrite the tests it affects.
+
+
+> [!abstract] PI
+
+ADR 0013 is committed (`54174ef`). Before I touch the tests, a check that I won't overwrite any of your work in progress:
+
+
+> [!abstract] PI
+
+ADR 0013 is committed (`54174ef`). The four tests in `tests/spec/triggers.rs` are rewritten for the stack:
+
+| Test | Change |
+|---|---|
+| `a_minion_killed_by_one_deathrattle_is_gone_before_the_next` | Renamed. Same setup and assertion; the message no longer assumes which Bomber goes first. |
+| `the_triggers_reacting_to_a_death_resolve_before_the_dead_minions_own` | Replaces the order-of-play pair. Bomber is older, and the Mourner's draw still comes first. |
+| `a_trigger_resolves_after_its_source_has_died` | New setup (Banner and Recruit). The Recruit's `Died` comes before its draw, because the loop checks state before popping anything. |
+| `a_deathrattles_consequences_resolve_before_triggers_already_waiting` | Twin Shot kills two of three Bombers, with an enemy Banner to absorb the hits. Whichever deathrattle resolves first kills the third Bomber, and the third's deathrattle must resolve before the other one, which was waiting. It doesn't depend on which of the two goes first (your rule 5), so it pins only depth-first. |
+
+The `last` helper is gone, since nothing uses it. Your `a_mourner_does_not_draw_for_its_own_death` is untouched.
+
+**Two things to know:**
+- **I ran `cargo fmt --all`**, which also touched `zone_move.rs` while your work there is uncommitted. Its diff against HEAD has the same line counts as before, so at most it re-wrapped lines you'd already changed. From now on I'll run `rustfmt` on my own files only.
+- **Your lib doesn't compile right now.** `trigger.rs` calls `push_back` and `pop_front` on a `Vec`, which looks like you're mid-switch from `VecDeque` to the stack. I haven't touched it, so my rewritten tests are unverified until it builds.
+
+**One question on your rule 4 (one event, order of play).** None of the five cards can observe it. Two listeners on one event are only ever two of your own Mourners, and the order of their draws is invisible. The Banner's grant only hears its own damage, and Drillmaster only hears friendly spells. So no test can pin rule 4 yet.
+- **(a) Implement it anyway.** It's unpinned structure, the speculative-branch habit from the knowledge map.
+- **(b) Push in scan order for now**, which is deterministic. File rule 4 for the first card that makes it visible, for example a listener that hears enemy deaths.
+
+I'd go with (b) unless (a) costs you nothing.
+
+
+> [!quote] YOU
+
+could u add a card to pin this? I would say we sort ascending so oldest resolves last
+
+
+> [!abstract] PI
+
+Yes. One question first, because what you wrote reverses the ADR I just committed. ADR 0013 says triggers matched by one event resolve "oldest first". Sorting ascending and pushing means the oldest is at the bottom, so it resolves last: **newest first**. That fits the stack better, and LoR does the same: units put their skills on the stack in board order, so "the unit on the right will end up resolving their skill first." I'm taking your sentence as the decision. Per the ADR rules I won't edit 0013; I'll supersede it with 0014.
+
+The card that pins it:
+
+**Gravedigger** (2/2, cost 2): "Whenever a minion dies, deal 1 damage to each enemy hero." Put one on each side, with the enemy's played first, then kill a single minion. Both Gravediggers match the one `Died`, and the hits show which resolved first. Making the enemy's the older one separates the rules:
+- **newest first (your rule):** the friendly Gravedigger hits first
+- **oldest first (ADR 0013 as written):** the enemy's hits first
+- **plain scan order (seat 0 first, then pushed):** the enemy's hits first
+
+So only your rule passes.
+
+
+> [!abstract] PI
+
+Card and tests are in, and this time I formatted only `loader.rs` and `triggers.rs`. Now the ADR supersession:
+
+
+> [!abstract] PI
+
+Done, and nothing is committed except the ADR:
+
+- **Card**: Gravedigger (2/2, cost 2), "Whenever a minion dies, deal 1 damage to each enemy hero", added to `loader.rs`.
+- **Tests**, in `tests/spec/triggers.rs`:
+  - `gravedigger_hits_the_enemy_hero_when_any_minion_dies`: the card's basic behavior.
+  - `the_newest_of_the_triggers_matched_by_one_event_resolves_first`: the order is Recruit (P0), enemy Gravedigger (P1), friendly Gravedigger (P0). Ping the Recruit, and the friendly Gravedigger's hit must come first. Only "sort ascending, push" passes. Oldest-first and plain scan order both fail it.
+- **ADR 0014** (`ea58b83`) supersedes 0013. The only change: triggers matched by one event are pushed oldest first, so the newest resolves first. 0013 is marked superseded.
+
+The card and tests sit uncommitted in your working tree next to your changes, so they'll go in with your commit. They're unverified until `trigger.rs` builds again.
+
+
+> [!quote] YOU
+
+done, commit everything then give feedback
+
+
+> [!abstract] PI
+
+The checks stop at `cargo fmt`. Running each check separately for the full picture:
+
+
+> [!abstract] PI
+
+Checks are green: fmt, clippy, 21 unit and 167 spec. Before writing the commit message, I'm reading your diff, since that's the review anyway:
+
+
+> [!abstract] PI
+
+Before committing, two quick checks for the review: which `obs.event` calls still bypass `emit`, and whether anything outside the crate uses the new public `board_characters`.
+
+
+> [!abstract] PI
+
+Committing: your implementation plus my three mechanical fixes as one code commit, and the session log separately.
