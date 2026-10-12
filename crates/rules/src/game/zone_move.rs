@@ -1,10 +1,24 @@
 use crate::{
-    Event, Game, ObjectId, Observer, PlayerId, Views,
-    effect::{EffectSequence, PendingEffect},
+    Event, Game, ObjectId, Observer, PickId, PlayerId, Views,
+    choice::PickTarget,
+    effect::{PendingEffect, ZoneMove},
     game::PlayerInteractionState,
 };
 
 impl Game {
+    pub(crate) fn zone_move(
+        &mut self,
+        player_id: PlayerId,
+        object_id: ObjectId,
+        zone_move: ZoneMove,
+        obs: &mut impl Observer,
+    ) {
+        match zone_move {
+            ZoneMove::AddToHand => self.add_to_hand(player_id, object_id, obs),
+            ZoneMove::Bury => self.bury(player_id, object_id, obs),
+        }
+    }
+
     /// Moves the top card to the end of the hand, `count` times.
     /// Each draw from an empty deck costs 1 health instead.
     pub(crate) fn draw(&mut self, player_id: PlayerId, count: u8, obs: &mut impl Observer) {
@@ -46,8 +60,12 @@ impl Game {
             .remove(object_id)
             .expect("legal actions guarantee playable cards are in hand");
 
-        let effects = EffectSequence(self.play_effects(object_id).to_vec());
-        self.effect_stack.push(PendingEffect { object_id, effects });
+        if !self.play_effects(object_id).is_empty() {
+            self.effect_stack.push(PendingEffect::new(
+                object_id,
+                self.play_effects(object_id).to_vec(),
+            ));
+        }
 
         let event = Event::Played {
             player_id,
@@ -124,23 +142,38 @@ impl Game {
             .add(object_id);
     }
 
-    pub(crate) fn reveal(&mut self, player_id: PlayerId, count: u8, obs: &mut impl Observer) {
-        let player = self.get_player_mut(player_id);
+    pub(crate) fn reveal(
+        &mut self,
+        player_id: PlayerId,
+        source: ObjectId,
+        pick_id: PickId,
+        count: u8,
+        obs: &mut impl Observer,
+    ) {
+        let options = {
+            let player = self.get_player_mut(player_id);
+            let mut options = Vec::new();
+            for _ in 0..count {
+                let Some(card) = player.zones.deck.pop_front() else {
+                    break;
+                };
 
-        let mut options = Vec::new();
-        for _ in 0..count {
-            let Some(card) = player.zones.deck.pop_front() else {
-                break;
-            };
+                options.push(card);
+            }
+            options
+        };
 
-            options.push(card);
-        }
         if !options.is_empty() {
             let event = Event::Revealed {
                 player_id,
                 object_ids: options.clone(),
             };
-            player.interaction_state = PlayerInteractionState::PendingPick { options };
+            let player = self.get_player_mut(player_id);
+            player.interaction_state = PlayerInteractionState::PendingPick {
+                options,
+                source,
+                pick_id,
+            };
             self.emit(event, obs);
         }
     }
@@ -152,8 +185,11 @@ impl Game {
         obs: &mut impl Observer,
     ) {
         let player = self.get_player_mut(player_id);
-        let PlayerInteractionState::PendingPick { mut options } =
-            std::mem::take(&mut player.interaction_state)
+        let PlayerInteractionState::PendingPick {
+            mut options,
+            source,
+            pick_id,
+        } = std::mem::take(&mut player.interaction_state)
         else {
             unreachable!();
         };
@@ -162,17 +198,35 @@ impl Game {
             .position(|id| *id == object_id)
             .expect("a legal pick should name one of the options");
         let picked = options.remove(idx);
-        player.zones.hand.add(picked);
+
+        let obj = self.objects.get_mut(source);
+        obj.pick_targets.push(PickTarget {
+            pick_id,
+            picked: vec![picked],
+            others: options,
+        });
 
         let event = Event::Picked {
             player_id,
             object_id,
         };
         self.emit(event, obs);
+    }
 
-        options
-            .into_iter()
-            .for_each(|id| self.bury(player_id, id, obs));
+    pub(crate) fn add_to_hand(
+        &mut self,
+        player_id: PlayerId,
+        object_id: ObjectId,
+        obs: &mut impl Observer,
+    ) {
+        let player = self.get_player_mut(player_id);
+        player.zones.hand.add(object_id);
+        self.objects.update_order(object_id);
+        let event = Event::AddedToHand {
+            player_id,
+            object_id,
+        };
+        self.emit(event, obs);
     }
 
     pub(crate) fn bury(

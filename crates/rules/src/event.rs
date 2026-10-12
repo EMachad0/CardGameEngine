@@ -38,6 +38,10 @@ pub enum Event {
         player_id: PlayerId,
         object_id: ObjectId,
     },
+    AddedToHand {
+        player_id: PlayerId,
+        object_id: ObjectId,
+    },
     BoardEntered {
         player_id: PlayerId,
         object_id: ObjectId,

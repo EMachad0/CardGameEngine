@@ -36,23 +36,6 @@ impl Game {
         }
     }
 
-    pub(super) fn drain_effect_queue(&mut self, obs: &mut impl Observer) {
-        self.check_state(obs);
-        while self.outcome().is_none() && self.effect_queue_pop(obs) {
-            self.check_state(obs);
-        }
-    }
-
-    fn effect_queue_pop(&mut self, obs: &mut impl Observer) -> bool {
-        if let Some(pending_effect) = self.effect_stack.pop() {
-            let PendingEffect { object_id, effects } = pending_effect;
-            self.apply_effects(object_id, effects.as_slice(), obs);
-            true
-        } else {
-            false
-        }
-    }
-
     pub(super) fn fulfill_trigger_pattern(
         &self,
         trigger_owner: PlayerId,

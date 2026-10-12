@@ -690,6 +690,10 @@ fn a_pick_reports_the_picked_card_then_buries_the_rest() {
                 player_id: p0,
                 object_id: captain
             },
+            Event::AddedToHand {
+                player_id: p0,
+                object_id: captain
+            },
             Event::Buried {
                 player_id: p0,
                 object_id: recruit
@@ -699,7 +703,7 @@ fn a_pick_reports_the_picked_card_then_buries_the_rest() {
 }
 
 #[test]
-fn a_pick_and_its_burials_share_one_step() {
+fn a_pick_is_its_own_step_and_the_cards_it_moves_share_the_next() {
     let mut game = forage_over_recruit_and_captain();
     let [p0, _] = players(&game);
     play_def(&mut game, p0, FORAGE);
@@ -711,16 +715,22 @@ fn a_pick_and_its_burials_share_one_step() {
 
     assert_eq!(
         event_steps(&recorder),
-        [vec![
-            Event::Picked {
+        [
+            vec![Event::Picked {
                 player_id: p0,
                 object_id: captain
-            },
-            Event::Buried {
-                player_id: p0,
-                object_id: recruit
-            },
-        ]]
+            }],
+            vec![
+                Event::AddedToHand {
+                    player_id: p0,
+                    object_id: captain
+                },
+                Event::Buried {
+                    player_id: p0,
+                    object_id: recruit
+                },
+            ],
+        ]
     );
 }
 

@@ -14,7 +14,7 @@ use crate::{
         filter::fulfill_side_filter,
         modifier::Modifier,
     },
-    choice::{ChoiceTarget, EffectAmount},
+    choice::{ChoiceTarget, EffectAmount, PickTarget},
     effect::Effect,
     game::PlayerInteractionState,
     history::{HistoryKind, HistoryQuery, HistoryQueryKind, PlayerFilter},
@@ -152,11 +152,37 @@ impl Game {
                     self.draw(target, amount, obs);
                 }
             }
-            Effect::Reveal { selector, amount } => {
+            Effect::Reveal {
+                pick_id,
+                selector,
+                amount,
+            } => {
                 let amount = self.effect_amount(amount, owner);
                 let targets = self.resolve_player_selector(owner, selector);
                 for target in targets.into_iter() {
-                    self.reveal(target, amount, obs);
+                    self.reveal(target, source, *pick_id, amount, obs);
+                }
+            }
+            Effect::ResolvePick {
+                pick_id,
+                picked_move,
+                other_move,
+            } => {
+                let pick_target = self
+                    .objects
+                    .get(source)
+                    .pick_targets
+                    .iter()
+                    .find(|pt| pt.pick_id == *pick_id)
+                    .cloned();
+
+                if let Some(PickTarget { picked, others, .. }) = pick_target {
+                    picked
+                        .into_iter()
+                        .for_each(|id| self.zone_move(owner, id, *picked_move, obs));
+                    others
+                        .into_iter()
+                        .for_each(|id| self.zone_move(owner, id, *other_move, obs));
                 }
             }
             Effect::Damage { selector, amount } => {
@@ -196,17 +222,57 @@ impl Game {
         }
     }
 
-    pub(crate) fn apply_effects(
-        &mut self,
-        source: ObjectId,
-        effects: &[Effect],
-        obs: &mut impl Observer,
-    ) {
-        let owner = self.objects.get(source).player_id;
-        effects.iter().for_each(|e| {
-            self.apply_effect(owner, source, e, obs);
+    fn drain_effect_queue(&mut self, obs: &mut impl Observer) {
+        while !self.is_pending_interaction() && self.outcome().is_none() {
+            self.continue_resolving_effect(obs);
+
+            // finished a unit
+            if self.resolving_effect.is_none() {
+                self.check_state(obs);
+
+                if let Some(pending_effect) = self.effect_stack.pop() {
+                    self.resolving_effect = Some(pending_effect.into());
+                }
+            }
+
+            // no more units
+            if self.resolving_effect.is_none() && self.effect_stack.is_empty() {
+                break;
+            }
+        }
+    }
+
+    fn continue_resolving_effect(&mut self, obs: &mut impl Observer) {
+        while !self.is_pending_interaction()
+            && let Some(resolving) = &mut self.resolving_effect
+            && !resolving.is_finished()
+        {
+            let effect = resolving
+                .curr_effect()
+                .expect("An unfinished ResolvingEffect have effects to apply")
+                .clone();
+            let object_id = resolving.object_id;
+            resolving.advance();
+
+            let owner = self.objects.get(object_id).player_id;
+            self.apply_effect(owner, object_id, &effect, obs);
             obs.checkpoint(Views::new(self));
-        });
+        }
+        if let Some(resolving) = &mut self.resolving_effect
+            && resolving.is_finished()
+        {
+            self.resolving_effect = None;
+            self.check_state(obs);
+        }
+    }
+
+    pub(crate) fn is_pending_interaction(&self) -> bool {
+        self.players().into_iter().any(|p| {
+            !matches!(
+                self.get_player(p).interaction_state,
+                PlayerInteractionState::Idle
+            )
+        })
     }
 
     pub(crate) fn effect_amount(&self, amount: &EffectAmount, player_id: PlayerId) -> u8 {
