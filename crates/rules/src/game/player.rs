@@ -3,16 +3,18 @@
 //! Fields are `pub(super)`, so `Game` can change them and nothing outside
 //! `game` can see them.
 
-use crate::ObjectId;
 use crate::choice::ChoiceId;
 use crate::ids::PlayerId;
 use crate::zones::Zones;
+use crate::{ObjectId, PickId};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(super) enum PlayerInteractionState {
     #[default]
     Idle,
     PendingPick {
+        source: ObjectId,
+        pick_id: PickId,
         options: Vec<ObjectId>,
     },
     Draft {

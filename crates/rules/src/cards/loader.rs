@@ -1,18 +1,20 @@
 use enumset::EnumSet;
 
 use crate::{
+    PickId,
     cards::{
         definition::{
-            CardDef, CardDefKind, CharacterSelector, DefId, Effect, EffectSequence, HeroCardDef,
-            MinionCardDef, PlayerSelector, SpellCardDef, TriggerDef, TriggerPattern,
-            TriggerSubject,
+            CardDef, CardDefKind, CharacterSelector, DefId, HeroCardDef, MinionCardDef,
+            PlayerSelector, SpellCardDef, TriggerDef,
         },
         filter::{CardFilter, CardKindFilter, CharacterFilter, CharacterKindFilter, Side},
         modifier::ModifierEffect,
     },
     choice::{AmountBound, CharacterChoice, ChoiceId, EffectAmount},
+    effect::{Effect, EffectSequence, ZoneMove},
     history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter},
     static_card_definition::*,
+    trigger::{TriggerPattern, TriggerSubject},
 };
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
@@ -29,6 +31,10 @@ pub enum CardDefError {
     ChoiceNotFound(DefId, ChoiceId),
     #[error("Choice {1:?} used by a trigger on {0:?}")]
     ChoiceInTrigger(DefId, ChoiceId),
+    #[error("Pick {1:?} resolved with no reveal before it on {0:?}")]
+    PickNotFound(DefId, PickId),
+    #[error("Pick {1:?} revealed and never resolved on {0:?}")]
+    PickNotResolved(DefId, PickId),
 }
 
 pub(crate) const PLACEHOLDER: DefId = DefId::new("placeholder");
@@ -75,6 +81,9 @@ def_ids!(
     RALLY_BANNER = "base.rally_banner.v0",
     BOMBER = "base.bomber.v0",
     GRAVEDIGGER = "base.gravedigger.v0",
+    SWEEP = "base.sweep.v0",
+    HOARDER = "base.hoarder.v0",
+    DRUMMER = "base.drummer.v0",
 );
 
 // TODO: loading cards from disk into the engine should be shells job
@@ -142,10 +151,18 @@ impl CardDefLoader {
                 name: "Forage".to_string(),
                 kind: CardDefKind::Spell(SpellCardDef),
                 mana_cost: 1,
-                play_effects: EffectSequence(vec![Effect::Reveal {
-                    selector: PlayerSelector::Owner,
-                    amount: 2.into(),
-                }]),
+                play_effects: EffectSequence(vec![
+                    Effect::Reveal {
+                        pick_id: PickId(0),
+                        selector: PlayerSelector::Owner,
+                        amount: 2.into(),
+                    },
+                    Effect::ResolvePick {
+                        pick_id: PickId(0),
+                        picked_move: ZoneMove::AddToHand,
+                        other_move: ZoneMove::Bury,
+                    },
+                ]),
                 ..Default::default()
             },
             CardDef {
@@ -468,6 +485,72 @@ impl CardDefLoader {
                 }],
                 ..Default::default()
             },
+            CardDef {
+                id: SWEEP,
+                name: "Sweep".to_string(),
+                kind: CardDefKind::Spell(SpellCardDef),
+                mana_cost: 2,
+                play_effects: EffectSequence(vec![
+                    Effect::Damage {
+                        selector: CharacterSelector::All(CharacterFilter {
+                            kind: EnumSet::only(CharacterKindFilter::Minions),
+                            side: EnumSet::all(),
+                        }),
+                        amount: 1.into(),
+                    },
+                    Effect::Reveal {
+                        pick_id: PickId(0),
+                        selector: PlayerSelector::Owner,
+                        amount: 2.into(),
+                    },
+                    Effect::ResolvePick {
+                        pick_id: PickId(0),
+                        picked_move: ZoneMove::AddToHand,
+                        other_move: ZoneMove::Bury,
+                    },
+                    Effect::Draw {
+                        selector: PlayerSelector::Owner,
+                        amount: 1.into(),
+                    },
+                ]),
+                ..Default::default()
+            },
+            CardDef {
+                id: HOARDER,
+                name: "Hoarder".to_string(),
+                kind: CardDefKind::Minion(MinionCardDef::new(1, 1)),
+                mana_cost: 1,
+                triggers: vec![TriggerDef {
+                    pattern: TriggerPattern::Died(TriggerSubject::Itself),
+                    effects: EffectSequence(vec![
+                        Effect::Reveal {
+                            pick_id: PickId(0),
+                            selector: PlayerSelector::Owner,
+                            amount: 2.into(),
+                        },
+                        Effect::ResolvePick {
+                            pick_id: PickId(0),
+                            picked_move: ZoneMove::AddToHand,
+                            other_move: ZoneMove::Bury,
+                        },
+                    ]),
+                }],
+                ..Default::default()
+            },
+            CardDef {
+                id: DRUMMER,
+                name: "Drummer".to_string(),
+                kind: CardDefKind::Minion(MinionCardDef::new(1, 1)),
+                mana_cost: 2,
+                play_effects: EffectSequence(vec![Effect::Buff {
+                    selector: CharacterSelector::All(CharacterFilter {
+                        kind: EnumSet::only(CharacterKindFilter::Minions),
+                        side: EnumSet::only(Side::Friendly),
+                    }),
+                    effect: ModifierEffect::BuffHealth { amount: 1.into() },
+                }]),
+                ..Default::default()
+            },
         ]
     }
 
@@ -486,6 +569,7 @@ fn validate(defs: &[CardDef]) -> Result<(), CardDefError> {
     validate_choice_duplicates(defs)?;
     validate_choice_not_found(defs)?;
     validate_choice_on_trigger(defs)?;
+    validate_picks(defs)?;
     Ok(())
 }
 
@@ -544,7 +628,10 @@ fn chosen_id(effect: &Effect) -> Option<ChoiceId> {
         Effect::Damage { selector, .. }
         | Effect::Buff { selector, .. }
         | Effect::AddFriendlyAura { selector, .. } => selector,
-        Effect::Draw { .. } | Effect::Reveal { .. } | Effect::Summon { .. } => return None,
+        Effect::Draw { .. }
+        | Effect::Reveal { .. }
+        | Effect::Summon { .. }
+        | Effect::ResolvePick { .. } => return None,
     };
     match selector {
         CharacterSelector::Chosen(choice_id) => Some(*choice_id),
@@ -586,6 +673,53 @@ fn validate_choice_on_trigger(defs: &[CardDef]) -> Result<(), CardDefError> {
 
 fn choice_on_trigger(trigger: &TriggerDef) -> Option<ChoiceId> {
     trigger.effects.as_slice().iter().find_map(chosen_id)
+}
+
+fn validate_picks(defs: &[CardDef]) -> Result<(), CardDefError> {
+    for def in defs {
+        validate_pick_order(def.id, def.play_effects.as_slice())?;
+        for trigger in def.triggers.iter() {
+            validate_pick_order(def.id, trigger.effects.as_slice())?;
+        }
+        if let CardDefKind::Minion(MinionCardDef {
+            friendly_aura_effects,
+            hostile_aura_effects,
+            ..
+        }) = &def.kind
+        {
+            for modifier_effect in friendly_aura_effects.iter().chain(hostile_aura_effects) {
+                if let ModifierEffect::GrantTrigger(trigger) = modifier_effect {
+                    validate_pick_order(def.id, trigger.effects.as_slice())?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_pick_order(def_id: DefId, effects: &[Effect]) -> Result<(), CardDefError> {
+    let mut unresolved = Vec::new();
+    for effect in effects {
+        match effect {
+            Effect::Reveal { pick_id, .. } => unresolved.push(*pick_id),
+            Effect::ResolvePick { pick_id, .. } => {
+                let at = unresolved
+                    .iter()
+                    .position(|revealed| revealed == pick_id)
+                    .ok_or(CardDefError::PickNotFound(def_id, *pick_id))?;
+                unresolved.remove(at);
+            }
+            Effect::Draw { .. }
+            | Effect::Damage { .. }
+            | Effect::Buff { .. }
+            | Effect::AddFriendlyAura { .. }
+            | Effect::Summon { .. } => {}
+        }
+    }
+    match unresolved.first() {
+        Some(&pick_id) => Err(CardDefError::PickNotResolved(def_id, pick_id)),
+        None => Ok(()),
+    }
 }
 
 #[cfg(test)]
@@ -689,6 +823,80 @@ mod tests {
         assert_eq!(
             validate(&defs),
             Err(CardDefError::ChoiceInTrigger(RALLY_BANNER, ChoiceId(0)))
+        );
+    }
+
+    fn play_effects_of(defs: &mut [CardDef], def_id: DefId) -> &mut Vec<Effect> {
+        &mut defs
+            .iter_mut()
+            .find(|def| def.id == def_id)
+            .unwrap()
+            .play_effects
+            .0
+    }
+
+    #[test]
+    fn a_pick_resolved_with_no_reveal_is_not_found() {
+        let mut defs = CardDefLoader.load_all();
+        play_effects_of(&mut defs, FORAGE).remove(0);
+
+        assert_eq!(
+            validate(&defs),
+            Err(CardDefError::PickNotFound(FORAGE, PickId(0)))
+        );
+    }
+
+    #[test]
+    fn a_pick_resolved_before_its_reveal_is_not_found() {
+        let mut defs = CardDefLoader.load_all();
+        play_effects_of(&mut defs, FORAGE).swap(0, 1);
+
+        assert_eq!(
+            validate(&defs),
+            Err(CardDefError::PickNotFound(FORAGE, PickId(0))),
+            "resolving first would find no pick to move"
+        );
+    }
+
+    #[test]
+    fn a_pick_revealed_and_never_resolved_is_rejected() {
+        let mut defs = CardDefLoader.load_all();
+        play_effects_of(&mut defs, FORAGE).truncate(1);
+
+        assert_eq!(
+            validate(&defs),
+            Err(CardDefError::PickNotResolved(FORAGE, PickId(0))),
+            "the revealed cards would be left in no zone"
+        );
+    }
+
+    #[test]
+    fn a_triggers_pick_must_be_resolved_too() {
+        let mut defs = CardDefLoader.load_all();
+        let hoarder = defs.iter_mut().find(|def| def.id == HOARDER).unwrap();
+        hoarder.triggers[0].effects.0.truncate(1);
+
+        assert_eq!(
+            validate(&defs),
+            Err(CardDefError::PickNotResolved(HOARDER, PickId(0)))
+        );
+    }
+
+    #[test]
+    fn a_granted_triggers_pick_must_be_resolved_too() {
+        let mut defs = CardDefLoader.load_all();
+        let mut deathrattle =
+            defs.iter().find(|def| def.id == HOARDER).unwrap().triggers[0].clone();
+        deathrattle.effects.0.truncate(1);
+        let banner = defs.iter_mut().find(|def| def.id == RALLY_BANNER).unwrap();
+        let CardDefKind::Minion(minion) = &mut banner.kind else {
+            panic!("Rally Banner is a minion");
+        };
+        minion.friendly_aura_effects = vec![ModifierEffect::GrantTrigger(deathrattle)];
+
+        assert_eq!(
+            validate(&defs),
+            Err(CardDefError::PickNotResolved(RALLY_BANNER, PickId(0)))
         );
     }
 }

@@ -12,6 +12,7 @@
 mod action;
 mod cards;
 mod choice;
+mod effect;
 mod event;
 mod game;
 mod history;
@@ -29,7 +30,7 @@ pub use cards::{
     loader::{CardDefError, CardDefLoader, static_card_definition},
     object::ObjectId,
 };
-pub use choice::ChoiceId;
+pub use choice::{ChoiceId, PickId};
 pub use event::Event;
 pub use game::{
     ApplyError, Game,

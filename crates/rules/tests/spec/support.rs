@@ -205,6 +205,14 @@ pub(crate) fn draws(events: &[Event], p: PlayerId) -> usize {
         .count()
 }
 
+/// The index of the first event in `events` that matches `pred`.
+pub(crate) fn first(events: &[Event], pred: impl Fn(&Event) -> bool) -> usize {
+    events
+        .iter()
+        .position(pred)
+        .unwrap_or_else(|| panic!("no matching event in:\n{}", listing(events)))
+}
+
 /// `events`, one per line, each prefixed with its index.
 pub(crate) fn listing(events: &[Event]) -> String {
     events

@@ -142,7 +142,7 @@ impl Game {
         interaction_state: &PlayerInteractionState,
     ) -> Vec<RevealedCard> {
         match interaction_state {
-            PlayerInteractionState::PendingPick { options } => options
+            PlayerInteractionState::PendingPick { options, .. } => options
                 .iter()
                 .map(|&object_id| RevealedCard {
                     object_id,

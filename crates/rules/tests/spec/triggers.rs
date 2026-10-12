@@ -17,14 +17,6 @@ fn hits_on(events: &[Event], target: ObjectId) -> usize {
         .count()
 }
 
-/// The index of the first event in `events` that matches `pred`.
-fn first(events: &[Event], pred: impl Fn(&Event) -> bool) -> usize {
-    events
-        .iter()
-        .position(pred)
-        .unwrap_or_else(|| panic!("no matching event in:\n{}", listing(events)))
-}
-
 fn is_hit_from(e: &Event, from: ObjectId) -> bool {
     matches!(e, Event::Damaged { source, .. } if *source == from)
 }

@@ -1,6 +1,10 @@
 use std::collections::BTreeMap;
 
-use crate::{DefId, PlayerId, cards::modifier::Modifiers, choice::ChoiceTarget};
+use crate::{
+    DefId, PlayerId,
+    cards::modifier::Modifiers,
+    choice::{ChoiceTarget, PickTarget},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ObjectId(u64);
@@ -14,6 +18,7 @@ pub(crate) struct Object {
     pub modifiers: Modifiers,
     pub friendly_aura: Modifiers,
     pub choice_targets: Vec<ChoiceTarget>,
+    pub pick_targets: Vec<PickTarget>,
     /// unique idx updated when object move between zones
     pub order: usize,
 }
@@ -48,6 +53,7 @@ impl ObjectBag {
             modifiers: Modifiers::default(),
             friendly_aura: Modifiers::default(),
             choice_targets: Default::default(),
+            pick_targets: Default::default(),
             order: self.next_order(),
         };
         self.objects.insert(object_id, object);

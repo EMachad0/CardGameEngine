@@ -17,12 +17,12 @@ mod zone_move;
 
 use crate::action::Action;
 use crate::cards::{binder::Binder, loader::CardDefLoader, object::ObjectBag};
+use crate::effect::{PendingEffect, ResolvingEffect};
 use crate::game::player::{Player, PlayerInteractionState};
 use crate::history::History;
 use crate::ids::PlayerId;
 use crate::rng::Rng;
 use crate::static_card_definition::HERO;
-use crate::trigger::PendingEffect;
 use crate::turn::TurnOrder;
 use crate::zones::Deck;
 use crate::{DefId, Event, ObjectId, Observer, Outcome};
@@ -39,6 +39,7 @@ pub struct Game {
     history: History,
     outcome: Option<Outcome>,
     effect_stack: Vec<PendingEffect>,
+    resolving_effect: Option<ResolvingEffect>,
 }
 
 impl Game {
@@ -87,8 +88,9 @@ impl Game {
             objects,
             binder,
             history,
-            outcome: None,
+            outcome: Default::default(),
             effect_stack: Default::default(),
+            resolving_effect: Default::default(),
         };
 
         for player in game.players.iter_mut() {
@@ -113,7 +115,9 @@ impl Game {
         let mut actions = Vec::new();
         match &self.get_player(player_id).interaction_state {
             PlayerInteractionState::Idle => {
-                if self.turn_order.get_active_player_id() != player_id {
+                if self.turn_order.get_active_player_id() != player_id
+                    || self.is_pending_interaction()
+                {
                     return Vec::new();
                 }
 
@@ -142,7 +146,7 @@ impl Game {
 
                 actions.push(Action::EndTurn);
             }
-            PlayerInteractionState::PendingPick { options } => {
+            PlayerInteractionState::PendingPick { options, .. } => {
                 actions.extend(
                     options
                         .iter()
@@ -229,7 +233,7 @@ impl Game {
     /// The cards a pending Forage revealed. Empty if nothing is pending.
     pub fn revealed(&self, player_id: PlayerId) -> &[ObjectId] {
         match &self.get_player(player_id).interaction_state {
-            PlayerInteractionState::PendingPick { options } => options,
+            PlayerInteractionState::PendingPick { options, .. } => options,
             _ => &[],
         }
     }
