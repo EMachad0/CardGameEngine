@@ -1364,3 +1364,76 @@ All green: `just check::all` exits 0, with 26 unit tests and 177 spec tests pass
 > [!abstract] PI
 
 Committing everything, as you asked: your code, the pick checks, the updated event tests, the session log, and the research with its verified facts.
+
+
+> [!abstract] PI
+
+Done. The commit is `877f48e`, and the working tree was clean right after it.
+
+**Item 3: `Reveal` and `ResolvePick` are paired by `pick_id` at load.** I built it as five red-green slices, all unit tests on `validate`:
+
+| Test | Rejects |
+|---|---|
+| `a_pick_resolved_with_no_reveal_is_not_found` | `PickNotFound` |
+| `a_pick_resolved_before_its_reveal_is_not_found` | `PickNotFound`, because it would find nothing to move |
+| `a_pick_revealed_and_never_resolved_is_rejected` | `PickNotResolved`, because the cards would be left in no zone |
+| `a_triggers_pick_must_be_resolved_too` | the same, in a trigger's list (Hoarder) |
+| `a_granted_triggers_pick_must_be_resolved_too` | the same, in a trigger an aura grants (Rally Banner) |
+
+It adds two variants to the public `CardDefError`. Two things follow from the rule without a test of their own: a second `ResolvePick` for a pick that's already resolved counts as not found, and a reused `pick_id` pairs with the oldest open Reveal.
+
+**Checks:** `just check::all` exits 0, with 26 unit tests and 177 spec tests passing.
+
+**The commit includes** your refactor, the event-test updates, the session log, the five research reports and the new verified facts.
+
+The session stays open for your refactor. Items 4 (Reveal over several players) and 5 (stale `pick_targets`) go into the open threads when we close.
+
+
+> [!quote] YOU
+
+close the session and create a pr, refactors will land as another prs
+
+
+> [!abstract] PI
+
+Closing out. First I'll read the glossary, to record the terms this session settled in your code (`ResolvingEffect`, `PendingEffect`).
+
+
+> [!abstract] PI
+
+Now the `COURSE.md` edits: the knowledge map, the plan, the open threads and the sessions table.
+
+
+> [!abstract] PI
+
+Session 06 is closed. Here's what changed in `docs/course/COURSE.md`:
+
+**Knowledge map** (now through session 06):
+- **Retrieval:** all three right.
+- **Probe:** every trace of today's code was right. The miss was Sweep under the naive fix, where your expectation (the card finishes first) was the right rule and the naive stack can't express it. Also recorded: you stopped the lesson to ask for a production-level design, and everything that followed from it (typestate, a generic paused state, the definition address, push-in-reverse measured by the prototype, ADR 0015).
+- **Nodes:** N1 to N5 right. The N3 miss was regraded, since it came from my wording. N6 was an "I don't know" because I never tied "unit" to your code. That's my slip, repeating the 05 lesson.
+- **Your design calls:** the four-way split, two types, pending picks kept per player (you withdrew my 2c), answers on the object "for now", and minions entering before their play effects (Drummer).
+- **The exercise:** what landed, including the composable `Reveal`/`ResolvePick` you built unprompted. The review found the state check at three call sites, the one-fact-in-two-places shape in behavior again.
+- **Solid** gains "resolution as data", **Partial** (pending choice) now lists only what's left for 06c and 06d, and **Gaps** gets the 06 forms of the timing and mirror entries.
+
+**Course plan:** 06b named results and composable reveals, with `If` and the frame stack; 06c choices inside triggers and remembered choices, around your "+1/+1 every turn" card; 06d simultaneous picks. Your refactors land as separate PRs first.
+
+**Open threads:**
+- Removed: where a half-finished effect lives, a trigger that Reveals during the drain, and `play_effects` after a game-ending drain.
+- Updated: opponent responses (now 08 only), remembered targets (06c, with MTG's double-activation case for 08), dependent sequencing (06b), enter-effect ordering, naming.
+- Added: stale `pick_targets`, Reveal over several players (06d), nesting and frames (06b), "immediately" reactions (08), a hero at 0 mid-resolution, the resolving card's zone, and clone vs definition address.
+
+**Sessions table:** 06 is done, and 06b is next, with rows for 06c and 06d.
+
+**Glossary** (`docs/CONTEXT.md`): added pending effect, effect stack and resolving effect, plus a flagged pair for the first and last.
+
+To start the next session:
+
+```
+/new
+/name 06b-named-results
+/md-log docs/course/sessions/06b-named-results.md
+continue the course
+```
+
+Committing now, then pushing `resolution-loop` and opening the PR.

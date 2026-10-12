@@ -163,6 +163,18 @@ Putting a card on the bottom of its owner's deck.
 Card text that reacts to an event. It matches when the event happens and resolves later.
 _Avoid_: listener, hook
 
+**Pending effect**:
+Text waiting to resolve, with the card it came from: a played card's effects or a matched trigger.
+_Avoid_: unit
+
+**Effect stack**:
+The pending effects waiting to resolve. The newest resolves first.
+_Avoid_: queue
+
+**Resolving effect**:
+The pending effect being carried out now, with its place in the text. It can pause on a pending pick.
+_Avoid_: unit, current trigger
+
 **State check**:
 The pass that removes dead cards from the board and decides whether the game is over.
 _Avoid_: death check, state-based actions
@@ -204,6 +216,8 @@ The part of a card that can be hidden from a player: its definition and cost.
   action, and the game reports events while it resolves.
 - **Choose** and **Pick**: a player chooses while playing a card, before it resolves, from what is
   already in play. A player picks while a card resolves, from the cards it revealed.
+- **Pending effect** and **Resolving effect**: a pending effect waits on the effect stack. The
+  resolving effect has been taken off it and is being carried out, one effect at a time.
 - **Checkpoint** and **State check**: a checkpoint lets observers read views and changes nothing. A
   state check changes the game: it removes dead cards from the board and can end the game.
 - **Draw** a card and a **draw** as an outcome: the first moves a card from deck to hand, the second
