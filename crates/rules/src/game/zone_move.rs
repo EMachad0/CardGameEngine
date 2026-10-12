@@ -1,6 +1,7 @@
 use crate::{
-    Event, Game, ObjectId, Observer, PlayerId, Views, game::PlayerInteractionState,
-    trigger::PendingEffect,
+    Event, Game, ObjectId, Observer, PlayerId, Views,
+    effect::{EffectSequence, PendingEffect},
+    game::PlayerInteractionState,
 };
 
 impl Game {
@@ -45,16 +46,16 @@ impl Game {
             .remove(object_id)
             .expect("legal actions guarantee playable cards are in hand");
 
+        let effects = EffectSequence(self.play_effects(object_id).to_vec());
+        self.effect_stack.push(PendingEffect { object_id, effects });
+
         let event = Event::Played {
             player_id,
             object_id,
         };
         self.emit(event, obs);
-        obs.checkpoint(Views::new(self));
-        self.drain_effect_queue(obs);
-        let effects = self.play_effects(object_id).to_vec();
-        self.apply_effects(object_id, &effects, obs);
 
+        obs.checkpoint(Views::new(self));
         let def_id = self.def_id(object_id);
         if self.binder.has_board_presence(def_id) {
             self.summon(player_id, object_id, obs);

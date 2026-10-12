@@ -9,6 +9,7 @@ mod lookups;
 mod model;
 mod playout;
 mod properties;
+mod resolution;
 mod setup;
 mod state_check;
 mod support;

@@ -17,12 +17,12 @@ mod zone_move;
 
 use crate::action::Action;
 use crate::cards::{binder::Binder, loader::CardDefLoader, object::ObjectBag};
+use crate::effect::PendingEffect;
 use crate::game::player::{Player, PlayerInteractionState};
 use crate::history::History;
 use crate::ids::PlayerId;
 use crate::rng::Rng;
 use crate::static_card_definition::HERO;
-use crate::trigger::PendingEffect;
 use crate::turn::TurnOrder;
 use crate::zones::Deck;
 use crate::{DefId, Event, ObjectId, Observer, Outcome};

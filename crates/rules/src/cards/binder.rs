@@ -1,10 +1,13 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use crate::cards::{
-    definition::{CardDef, CardDefKind, DefId, Effect, TriggerDef},
-    modifier::ModifierEffect,
+use crate::{
+    cards::{
+        definition::{CardDef, CardDefKind, DefId, TriggerDef},
+        modifier::ModifierEffect,
+    },
+    choice::{CharacterChoice, ChoiceId},
+    effect::Effect,
 };
-use crate::choice::{CharacterChoice, ChoiceId};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Binder {

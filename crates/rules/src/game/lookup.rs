@@ -3,11 +3,11 @@
 use crate::{
     DefId, Game, ObjectId, PlayerId,
     cards::{
-        definition::{Effect, TriggerPattern, TriggerSubject},
         modifier::{Modifier, ModifierEffect, Modifiers},
         object::Object,
     },
-    trigger::Trigger,
+    effect::Effect,
+    trigger::{Trigger, TriggerPattern, TriggerSubject},
 };
 
 impl Game {

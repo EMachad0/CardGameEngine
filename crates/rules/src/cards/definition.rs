@@ -2,11 +2,13 @@ use enumset::EnumSet;
 
 use crate::{
     cards::{
-        filter::{CardFilter, CharacterFilter, Side},
+        filter::{CharacterFilter, Side},
         loader::PLACEHOLDER,
         modifier::ModifierEffect,
     },
-    choice::{CharacterChoice, ChoiceId, EffectAmount},
+    choice::{CharacterChoice, ChoiceId},
+    effect::EffectSequence,
+    trigger::TriggerPattern,
 };
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -80,59 +82,9 @@ pub struct HeroCardDef {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Effect {
-    Draw {
-        selector: PlayerSelector,
-        amount: EffectAmount,
-    },
-    Reveal {
-        selector: PlayerSelector,
-        amount: EffectAmount,
-    },
-    Damage {
-        selector: CharacterSelector,
-        amount: EffectAmount,
-    },
-    Buff {
-        selector: CharacterSelector,
-        effect: ModifierEffect,
-    },
-    AddFriendlyAura {
-        selector: CharacterSelector,
-        effect: ModifierEffect,
-    },
-    Summon {
-        selector: PlayerSelector,
-        def_id: DefId,
-    },
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct EffectSequence(pub Vec<Effect>);
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TriggerDef {
     pub pattern: TriggerPattern,
     pub effects: EffectSequence,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TriggerPattern {
-    Died(TriggerSubject),
-    Damaged(TriggerSubject),
-    Played(CardFilter),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TriggerSubject {
-    Itself,
-    Character(CharacterFilter),
-}
-
-impl EffectSequence {
-    pub fn as_slice(&self) -> &[Effect] {
-        self.0.as_slice()
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

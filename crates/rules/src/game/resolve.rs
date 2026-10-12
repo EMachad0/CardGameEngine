@@ -5,15 +5,21 @@
 //! nothing here re-checks legality.
 
 use super::Game;
-use crate::action::Action;
-use crate::cards::definition::{CharacterSelector, Effect, PlayerSelector, PlayerSelectorFilter};
-use crate::cards::filter::fulfill_side_filter;
-use crate::cards::modifier::Modifier;
-use crate::choice::{ChoiceTarget, EffectAmount};
-use crate::game::PlayerInteractionState;
-use crate::history::{HistoryKind, HistoryQuery, HistoryQueryKind, PlayerFilter};
-use crate::ids::PlayerId;
-use crate::{IllegalAction, ObjectId, Observer, Views};
+
+use crate::{
+    IllegalAction, ObjectId, Observer, Views,
+    action::Action,
+    cards::{
+        definition::{CharacterSelector, PlayerSelector, PlayerSelectorFilter},
+        filter::fulfill_side_filter,
+        modifier::Modifier,
+    },
+    choice::{ChoiceTarget, EffectAmount},
+    effect::Effect,
+    game::PlayerInteractionState,
+    history::{HistoryKind, HistoryQuery, HistoryQueryKind, PlayerFilter},
+    ids::PlayerId,
+};
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum ApplyError {

@@ -4,8 +4,8 @@ use std::collections::BTreeSet;
 
 use pretty_assertions::{assert_eq, assert_ne};
 use rules::static_card_definition::{
-    BARRACKS, BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK, SQUIRE, STRAY_SHOT, WILD_BOLT,
-    ZAP,
+    BARRACKS, BLAST, BOLT, CAPTAIN, DRUMMER, FORAGE, GIANT, HOARDER, RECRUIT, SPARK, SQUIRE,
+    STRAY_SHOT, SWEEP, WILD_BOLT, ZAP,
 };
 use rules::{Action, Event, Game, ObjectId};
 
@@ -80,6 +80,9 @@ fn every_card_pays_its_printed_cost() {
         (SQUIRE, 1),
         (ZAP, 2),
         (STRAY_SHOT, 1),
+        (SWEEP, 2),
+        (HOARDER, 1),
+        (DRUMMER, 2),
     ];
     for (def, cost) in cases {
         let mut game = Game::with_deck_order(0, [deck_with_top(&[def]), deck_with_top(&[])]);

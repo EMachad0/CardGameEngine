@@ -3,16 +3,17 @@ use enumset::EnumSet;
 use crate::{
     cards::{
         definition::{
-            CardDef, CardDefKind, CharacterSelector, DefId, Effect, EffectSequence, HeroCardDef,
-            MinionCardDef, PlayerSelector, SpellCardDef, TriggerDef, TriggerPattern,
-            TriggerSubject,
+            CardDef, CardDefKind, CharacterSelector, DefId, HeroCardDef, MinionCardDef,
+            PlayerSelector, SpellCardDef, TriggerDef,
         },
         filter::{CardFilter, CardKindFilter, CharacterFilter, CharacterKindFilter, Side},
         modifier::ModifierEffect,
     },
     choice::{AmountBound, CharacterChoice, ChoiceId, EffectAmount},
+    effect::{Effect, EffectSequence},
     history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter},
     static_card_definition::*,
+    trigger::{TriggerPattern, TriggerSubject},
 };
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
@@ -75,6 +76,9 @@ def_ids!(
     RALLY_BANNER = "base.rally_banner.v0",
     BOMBER = "base.bomber.v0",
     GRAVEDIGGER = "base.gravedigger.v0",
+    SWEEP = "base.sweep.v0",
+    HOARDER = "base.hoarder.v0",
+    DRUMMER = "base.drummer.v0",
 );
 
 // TODO: loading cards from disk into the engine should be shells job
@@ -466,6 +470,58 @@ impl CardDefLoader {
                         amount: 1.into(),
                     }]),
                 }],
+                ..Default::default()
+            },
+            CardDef {
+                id: SWEEP,
+                name: "Sweep".to_string(),
+                kind: CardDefKind::Spell(SpellCardDef),
+                mana_cost: 2,
+                play_effects: EffectSequence(vec![
+                    Effect::Damage {
+                        selector: CharacterSelector::All(CharacterFilter {
+                            kind: EnumSet::only(CharacterKindFilter::Minions),
+                            side: EnumSet::all(),
+                        }),
+                        amount: 1.into(),
+                    },
+                    Effect::Reveal {
+                        selector: PlayerSelector::Owner,
+                        amount: 2.into(),
+                    },
+                    Effect::Draw {
+                        selector: PlayerSelector::Owner,
+                        amount: 1.into(),
+                    },
+                ]),
+                ..Default::default()
+            },
+            CardDef {
+                id: HOARDER,
+                name: "Hoarder".to_string(),
+                kind: CardDefKind::Minion(MinionCardDef::new(1, 1)),
+                mana_cost: 1,
+                triggers: vec![TriggerDef {
+                    pattern: TriggerPattern::Died(TriggerSubject::Itself),
+                    effects: EffectSequence(vec![Effect::Reveal {
+                        selector: PlayerSelector::Owner,
+                        amount: 2.into(),
+                    }]),
+                }],
+                ..Default::default()
+            },
+            CardDef {
+                id: DRUMMER,
+                name: "Drummer".to_string(),
+                kind: CardDefKind::Minion(MinionCardDef::new(1, 1)),
+                mana_cost: 2,
+                play_effects: EffectSequence(vec![Effect::Buff {
+                    selector: CharacterSelector::All(CharacterFilter {
+                        kind: EnumSet::only(CharacterKindFilter::Minions),
+                        side: EnumSet::only(Side::Friendly),
+                    }),
+                    effect: ModifierEffect::BuffHealth { amount: 1.into() },
+                }]),
                 ..Default::default()
             },
         ]
