@@ -6,7 +6,7 @@ Issues live as markdown files in `docs/issues/`, committed with the code. They w
 ## What goes here
 
 A defect or chore found outside the current task, with a known fix and no design call. A finding
-that needs a design decision or belongs in a course session is a `COURSE.md` open thread instead.
+that needs a design call or belongs in a course session is a `COURSE.md` open thread instead.
 `docs/conventions/skills-and-docs.md` owns that split.
 
 ## Layout
@@ -19,9 +19,8 @@ docs/issues/
     └── issues/<NN>-<slug>.md
 ```
 
-- A standalone issue is named by slug only, never by number. Parallel branches would collide on
-  numbers.
-- Tickets inside an effort folder are numbered from `01`. One session writes them.
+- Name a standalone issue by slug only, never by number. Parallel branches would collide on numbers.
+- Number the tickets inside an effort folder from `01`. One session writes them.
 - Where a skill names `.scratch/`, use `docs/issues/` instead.
 
 ## Standalone issue format
@@ -36,8 +35,8 @@ Category: bug
 ```
 
 - `Status:` holds one state from `docs/agents/triage-labels.md`. File a new issue as
-  `needs-triage`, or as `ready-for-human` when the fix belongs in the learner's design-bearing code
-  (the roles in `docs/course/COURSE.md`).
+  `needs-triage`, or as `ready-for-human` when the fix belongs in the learner's design-bearing
+  code. The roles in `docs/course/COURSE.md` say which code that is.
 - `Category:` is `bug` or `enhancement`.
 - Comments go at the bottom, under `## Comments`.
 
@@ -67,16 +66,16 @@ Read the file at the referenced path. The user normally passes the path or the s
 
 ## Wayfinding operations
 
-Used by `/wayfinder`. The map is a file with one child file per ticket.
+`/wayfinder` uses these operations. The map is a file with one child file per ticket.
 
 - Map: `docs/issues/<effort>/map.md`, holding the Notes, Decisions-so-far and Fog body.
 - Child ticket: `docs/issues/<effort>/issues/NN-<slug>.md`, with the question in the body. A
-  `Type:` line records the ticket type (`research`, `prototype`, `grilling`, `task`), and a
-  `Status:` line records `claimed` or `resolved`.
+  `Type:` line records the ticket type: `research`, `prototype`, `grilling` or `task`. A `Status:`
+  line records `claimed` or `resolved`.
 - Blocking: a `Blocked by: NN, NN` line near the top. A ticket is unblocked when every file it
   lists is `resolved`.
 - Frontier: the open, unblocked, unclaimed files in `docs/issues/<effort>/issues/`, lowest number
   first.
 - Claim: set `Status: claimed` and save before any work.
-- Resolve: append the answer under `## Answer`, set `Status: resolved`, then append a pointer
-  (gist and link) to the map's Decisions-so-far.
+- Resolve: append the answer under `## Answer`, set `Status: resolved`, then append a pointer to
+  the map's Decisions-so-far: a gist and a link.

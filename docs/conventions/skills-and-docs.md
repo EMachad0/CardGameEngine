@@ -45,7 +45,7 @@ Decisions that clear the bar in `docs/adr/README.md`, which also says who writes
 ### Issues (`docs/issues/`)
 
 Defects and chores found outside the current task, with a known fix and no design call. Only open
-issues live here: the PR that resolves one deletes its file. `docs/agents/issue-tracker.md` governs
+issues live here. The PR that resolves one deletes its file. `docs/agents/issue-tracker.md` governs
 the format and the workflow.
 
 ### Course (`docs/course/`)
