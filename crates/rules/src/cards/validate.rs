@@ -83,7 +83,12 @@ enum SequenceOrigin {
     Trigger,
 }
 
-fn effect_sequences(def: &CardDef) -> Vec<(SequenceOrigin, &[Effect])> {
+struct Sequence<'a> {
+    origin: SequenceOrigin,
+    effects: &'a [Effect],
+}
+
+fn effect_sequences(def: &CardDef) -> Vec<Sequence<'_>> {
     let mut sequences = Vec::new();
     collect_sequence(
         &mut sequences,
@@ -111,11 +116,11 @@ fn effect_sequences(def: &CardDef) -> Vec<(SequenceOrigin, &[Effect])> {
 }
 
 fn collect_sequence<'a>(
-    sequences: &mut Vec<(SequenceOrigin, &'a [Effect])>,
+    sequences: &mut Vec<Sequence<'a>>,
     origin: SequenceOrigin,
     effects: &'a [Effect],
 ) {
-    sequences.push((origin, effects));
+    sequences.push(Sequence { origin, effects });
     for effect in effects {
         match effect {
             Effect::Buff { effect, .. } | Effect::AddFriendlyAura { effect, .. } => {
@@ -130,10 +135,7 @@ fn collect_sequence<'a>(
     }
 }
 
-fn collect_modifier<'a>(
-    sequences: &mut Vec<(SequenceOrigin, &'a [Effect])>,
-    modifier_effect: &'a ModifierEffect,
-) {
+fn collect_modifier<'a>(sequences: &mut Vec<Sequence<'a>>, modifier_effect: &'a ModifierEffect) {
     match modifier_effect {
         ModifierEffect::GrantTrigger(trigger) => collect_trigger(sequences, trigger),
         ModifierEffect::BuffAtk { .. }
@@ -142,10 +144,7 @@ fn collect_modifier<'a>(
     }
 }
 
-fn collect_trigger<'a>(
-    sequences: &mut Vec<(SequenceOrigin, &'a [Effect])>,
-    trigger: &'a TriggerDef,
-) {
+fn collect_trigger<'a>(sequences: &mut Vec<Sequence<'a>>, trigger: &'a TriggerDef) {
     collect_sequence(
         sequences,
         SequenceOrigin::Trigger,
@@ -153,16 +152,16 @@ fn collect_trigger<'a>(
     );
 }
 
-fn effects_from(def: &CardDef, origin: SequenceOrigin) -> impl Iterator<Item = &Effect> {
+fn effects_by_origin(def: &CardDef, origin: SequenceOrigin) -> impl Iterator<Item = &Effect> {
     effect_sequences(def)
         .into_iter()
-        .filter(move |(sequence_origin, _)| *sequence_origin == origin)
-        .flat_map(|(_, effects)| effects)
+        .filter(move |sequence| sequence.origin == origin)
+        .flat_map(|sequence| sequence.effects)
 }
 
 fn validate_choice_not_found(defs: &[CardDef]) -> Result<(), CardDefError> {
     for def in defs {
-        for choice_id in effects_from(def, SequenceOrigin::Play).filter_map(chosen_id) {
+        for choice_id in effects_by_origin(def, SequenceOrigin::Play).filter_map(chosen_id) {
             if !def.choices.iter().any(|choice| choice.id == choice_id) {
                 return Err(CardDefError::ChoiceNotFound(def.id, choice_id));
             }
@@ -192,7 +191,8 @@ fn chosen_id(effect: &Effect) -> Option<ChoiceId> {
 
 fn validate_choice_on_trigger(defs: &[CardDef]) -> Result<(), CardDefError> {
     for def in defs {
-        if let Some(choice_id) = effects_from(def, SequenceOrigin::Trigger).find_map(chosen_id) {
+        if let Some(choice_id) = effects_by_origin(def, SequenceOrigin::Trigger).find_map(chosen_id)
+        {
             return Err(CardDefError::ChoiceInTrigger(def.id, choice_id));
         }
     }
@@ -201,8 +201,8 @@ fn validate_choice_on_trigger(defs: &[CardDef]) -> Result<(), CardDefError> {
 
 fn validate_picks(defs: &[CardDef]) -> Result<(), CardDefError> {
     for def in defs {
-        for (_, effects) in effect_sequences(def) {
-            validate_pick_order(def.id, effects)?;
+        for sequence in effect_sequences(def) {
+            validate_pick_order(def.id, sequence.effects)?;
         }
     }
     Ok(())
@@ -316,6 +316,14 @@ mod tests {
         }
     }
 
+    fn replace_rally_banner_friendly_auras(defs: &mut [CardDef], auras: Vec<ModifierEffect>) {
+        let banner = defs.iter_mut().find(|def| def.id == RALLY_BANNER).unwrap();
+        let CardDefKind::Minion(minion) = &mut banner.kind else {
+            panic!("Rally Banner is a minion");
+        };
+        minion.friendly_aura_effects = auras;
+    }
+
     #[test]
     fn a_trigger_effect_naming_a_choice_is_rejected() {
         let mut defs = CardDefLoader.load_all();
@@ -335,10 +343,10 @@ mod tests {
         let ping_choice = defs.iter().find(|def| def.id == PING).unwrap().choices[0];
         let banner = defs.iter_mut().find(|def| def.id == RALLY_BANNER).unwrap();
         banner.choices.push(ping_choice);
-        let CardDefKind::Minion(minion) = &mut banner.kind else {
-            panic!("Rally Banner is a minion");
-        };
-        minion.friendly_aura_effects = vec![ModifierEffect::GrantTrigger(chosen_damage_trigger())];
+        replace_rally_banner_friendly_auras(
+            &mut defs,
+            vec![ModifierEffect::GrantTrigger(chosen_damage_trigger())],
+        );
 
         assert_eq!(
             validate(&defs),
@@ -394,16 +402,16 @@ mod tests {
         let ping_choice = defs.iter().find(|def| def.id == PING).unwrap().choices[0];
         let banner = defs.iter_mut().find(|def| def.id == RALLY_BANNER).unwrap();
         banner.choices.push(ping_choice);
-        let CardDefKind::Minion(minion) = &mut banner.kind else {
-            panic!("Rally Banner is a minion");
-        };
-        minion.friendly_aura_effects = vec![ModifierEffect::GrantTrigger(TriggerDef {
-            pattern: TriggerPattern::Damaged(TriggerSubject::Itself),
-            effects: EffectSequence(vec![Effect::Buff {
-                selector: CharacterSelector::Itself,
-                effect: ModifierEffect::GrantTrigger(chosen_damage_trigger()),
-            }]),
-        })];
+        replace_rally_banner_friendly_auras(
+            &mut defs,
+            vec![ModifierEffect::GrantTrigger(TriggerDef {
+                pattern: TriggerPattern::Damaged(TriggerSubject::Itself),
+                effects: EffectSequence(vec![Effect::Buff {
+                    selector: CharacterSelector::Itself,
+                    effect: ModifierEffect::GrantTrigger(chosen_damage_trigger()),
+                }]),
+            })],
+        );
 
         assert_eq!(
             validate(&defs),
@@ -434,6 +442,12 @@ mod tests {
             .unwrap()
             .play_effects
             .0
+    }
+
+    fn hoarder_trigger_with_an_unresolved_pick(defs: &[CardDef]) -> TriggerDef {
+        let mut trigger = defs.iter().find(|def| def.id == HOARDER).unwrap().triggers[0].clone();
+        trigger.effects.0.truncate(1);
+        trigger
     }
 
     #[test]
@@ -486,14 +500,11 @@ mod tests {
     #[test]
     fn a_granted_triggers_pick_must_be_resolved_too() {
         let mut defs = CardDefLoader.load_all();
-        let mut deathrattle =
-            defs.iter().find(|def| def.id == HOARDER).unwrap().triggers[0].clone();
-        deathrattle.effects.0.truncate(1);
-        let banner = defs.iter_mut().find(|def| def.id == RALLY_BANNER).unwrap();
-        let CardDefKind::Minion(minion) = &mut banner.kind else {
-            panic!("Rally Banner is a minion");
-        };
-        minion.friendly_aura_effects = vec![ModifierEffect::GrantTrigger(deathrattle)];
+        let deathrattle = hoarder_trigger_with_an_unresolved_pick(&defs);
+        replace_rally_banner_friendly_auras(
+            &mut defs,
+            vec![ModifierEffect::GrantTrigger(deathrattle)],
+        );
 
         assert_eq!(
             validate(&defs),
@@ -504,9 +515,7 @@ mod tests {
     #[test]
     fn a_pick_in_a_trigger_granted_by_a_buff_must_be_resolved_too() {
         let mut defs = CardDefLoader.load_all();
-        let mut deathrattle =
-            defs.iter().find(|def| def.id == HOARDER).unwrap().triggers[0].clone();
-        deathrattle.effects.0.truncate(1);
+        let deathrattle = hoarder_trigger_with_an_unresolved_pick(&defs);
         play_effects_of(&mut defs, DRUMMER).push(Effect::Buff {
             selector: CharacterSelector::Itself,
             effect: ModifierEffect::GrantTrigger(deathrattle),
