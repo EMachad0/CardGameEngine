@@ -25,6 +25,19 @@ Informal knowledge inside one module is cheap, because whoever changes the decis
 editing that module. Across a module boundary, make it formal. Put it in a type, or in a lint where
 a type can't hold it. Where neither can, pin it with a test.
 
+### One place knows each decision
+
+A change to a decision costs one edit for each place that knows it, plus the search for those
+places. The build does the search only when the knowledge is formal. So the fewer places know the
+answer, the cheaper the change. Ideally one place knows it, and every other place asks it a stable
+question or gives it a stable command, by name.
+
+- Give each question its own home, even when two questions share an answer today. The second can
+  be built on the first. The day their answers differ, each changes alone.
+- Prefer taking knowledge away from callers to making it formal. A caller that must call two
+  functions in order still knows the decision, even when a type enforces it. One command that does
+  both leaves the caller nothing to get wrong. Make formal only what callers must still know.
+
 ## Rust
 
 ### Making knowledge formal
