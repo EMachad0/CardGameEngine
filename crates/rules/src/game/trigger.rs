@@ -99,20 +99,16 @@ impl Game {
             granted_by: object_id,
             def: td.clone(),
         });
-        let mut granted = self
-            .modifiers(object_id)
-            .as_slice()
-            .iter()
-            .filter_map(|m| match &m.effect {
-                ModifierEffect::GrantTrigger(trigger) => Some(Trigger {
-                    granted_by: m.granted_by,
-                    def: trigger.clone(),
-                }),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-        granted.extend(printed);
-        granted.sort_by_key(|t| self.objects.get(t.granted_by).order);
-        granted
+        let modifiers = self.modifiers(object_id);
+        let from_modifiers = modifiers.as_slice().iter().filter_map(|m| match &m.effect {
+            ModifierEffect::GrantTrigger(trigger) => Some(Trigger {
+                granted_by: m.granted_by,
+                def: trigger.clone(),
+            }),
+            _ => None,
+        });
+        let mut triggers = from_modifiers.chain(printed).collect::<Vec<_>>();
+        triggers.sort_by_key(|t| self.objects.get(t.granted_by).order);
+        triggers
     }
 }
