@@ -9,6 +9,9 @@ you decide where new code goes.
 
 ### Coupling is shared knowledge of a decision
 
+A decision is a choice the code makes where another was possible: a representation, a rule, a
+meaning, an order or a policy.
+
 Two pieces of code are coupled when one holds knowledge of a decision the other made. Changing the
 decision then forces a change wherever that knowledge is held, to keep the program correct. A call
 or an import is one way to hold it. A copied rule, a relied-on meaning and a required call order
@@ -16,14 +19,17 @@ are others, and none of them needs a call.
 
 The knowledge is formal or informal:
 
-- Formal knowledge is a reference, such as a name, a type or a match that lists every case. When
-  the decision changes, the build fails at every place that holds it.
-- Informal knowledge is an assumption or a copy. When the decision changes, the build passes, and
-  only a test, a review or a bug finds the places that hold it.
+- Knowledge is formal for a change when that change fails the build at every place that holds it.
+  A name, a type or a match that lists every case can make it formal.
+- Knowledge is informal for a change when the build still passes after it, and only a test, a
+  review or a bug finds the places that hold it. An assumption or a copy is informal for every
+  change.
 
-Informal knowledge inside one module is cheap, because whoever changes the decision is already
-editing that module. Across a module boundary, make it formal. Put it in a type, or in a lint where
-a type can't hold it. Where neither can, pin it with a test.
+Judge each place against the changes you expect to the decision. Informal knowledge in the module
+that makes the decision is cheap, because whoever changes the decision is already editing that
+module. In any other module, make it formal. Put it in a type, or in a lint where a type can't hold
+it. Where neither can, pin it with a test. A test shows that a change broke something, not where
+the decision is known, so it doesn't reduce the places that know it.
 
 ### One place knows each decision
 
@@ -32,8 +38,10 @@ places. The build does the search only when the knowledge is formal. So the fewe
 answer, the cheaper the change. Ideally one place knows it, and every other place asks it a stable
 question or gives it a stable command, by name.
 
-- Give each question its own home, even when two questions share an answer today. The second can
-  be built on the first. The day their answers differ, each changes alone.
+- A question is one thing callers ask about a decision, and one decision can answer several. Give
+  each question its own function, even when two share an answer today. The second can be built on
+  the first. The day their answers differ, each changes alone. When no plausible change would make
+  two answers differ, they are one question asked twice, and the two places are a copy.
 - Prefer taking knowledge away from callers to making it formal. A caller that must call two
   functions in order still knows the decision, even when a type enforces it. One command that does
   both leaves the caller nothing to get wrong. Make formal only what callers must still know.
@@ -44,18 +52,24 @@ Before drawing a boundary, list the decisions the code makes. Build modules arou
 especially the ones likely to change or hard to get right. Each module hides its decision behind an
 interface that holds still when the decision moves.
 
-- A decision is likely to change when it has changed before, when the roadmap or the domain says
-  it varies, or when it comes from outside your control: a file format, a provider's API, a
-  regulation. Merge the decisions that change together. Leave stable, easy decisions where they
-  are. A decision that never changes costs no edits, however many places know it.
+- Judge whether a decision is likely to change by reasoning about the domain: what other systems
+  in it already vary, what the roadmap plans, and what comes from outside your control, such as a
+  file format, a provider's API or a regulation. Merge the decisions that change together. Leave
+  stable, easy decisions where they are. A decision that never changes costs no edits, however
+  many places know it.
 - An interface is made of decisions too, the ones its callers know. Hiding one decision exposes
   others, so expose the ones you expect to stay put. No design makes every decision cheap to
   change.
 - Don't split by processing step. A step hands its output forward as data, so every later step
   knows that data's layout, and when it was computed. A step that checks what a later step will do
-  has to know that step's rule. Either way, one decision lands in several modules.
+  has to know that step's rule. Either way, one decision lands in several modules. When an
+  interface needs separate steps, keep them as entry points, and move each rule they share into
+  one module that both ask.
 - Steps still run, inside one coordinator that calls the modules in order. It knows the order and
-  nothing about any format.
+  nothing about any format. An order belongs to whoever decides it. When it is a precondition of
+  the callee, such as validating input before storing it, take it away from callers with one
+  command. When it is the procedure itself, it lives in the coordinator. An order that is a rule of
+  the domain is a decision, and gets a module like any other.
 - Passing data between modules is fine when its layout is a decision you expect to stay put. The
   module that builds the data keeps the decision that moves.
 
@@ -63,10 +77,16 @@ interface that holds still when the decision moves.
 
 ### Making knowledge formal
 
+These are ways to make knowledge formal where the general rules call for it, not rules of their
+own.
+
 - A private field or constructor, so only the owning module can create the value, and holding one
   proves the module made it.
 - A newtype for a value with a meaning, such as an ID or an amount, so it can't be mixed up with a
   bare integer.
 - An exhaustive `match` with no `_` arm, so adding a variant fails the build at every place that
-  has to handle it.
+  has to handle it. This is for matches that decide something for every variant. A filter that
+  only cares about some variants can use `_` or `matches!`, and a new variant passes it silently.
+  When several filters together decide what each variant means, give that decision one exhaustive
+  match.
 - A clippy `disallowed_methods` or `disallowed_types` ban, for "only this place may call that".
