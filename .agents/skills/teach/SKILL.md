@@ -156,7 +156,7 @@ Before asking the `researcher` to check a fact, look in `docs/course/verified-fa
 
 A session ends when you and he agree it's finished. Then run the three steps below in order, with no review stop between them.
 
-This close-out overrides the git rules in `CLAUDE.md` for this one commit. Don't wait for his review. His agreement to end the session is the approval.
+This close-out overrides the git rules in `AGENTS.md` for this one commit. Don't wait for his review. His agreement to end the session is the approval.
 
 1. **Make the edits.** Update `docs/course/COURSE.md`: the knowledge map, the open threads, the sessions table, and anything else `docs/conventions/skills-and-docs.md` puts there. If the next session's log doesn't exist yet, create it as an empty file (`docs/course/sessions/NN-topic.md`), because `/md-log` only links an existing file.
 2. **Write the closing message and commit in the same reply.** The text comes first. Summarize what changed in `COURSE.md`, then show how to start the next session:
@@ -180,7 +180,7 @@ This close-out overrides the git rules in `CLAUDE.md` for this one commit. Don't
    md-log appends a reply's text to the session log when the reply ends, and that happens before the reply's tool calls run. So the closing text is already in the log when the commit runs. Follow the message style in `git log`, e.g. `Close session 04: effects as data, targeting draft design; session log; prepare 04a log`.
 3. **After the commit, write nothing.** If the commit succeeded and the status output is empty, end the turn with no text at all. md-log appends any text you write, and it would show up as a session diff after the commit. No question, no quiz. If the commit failed or the status lists a file, say so. The diff can't be avoided then, and he needs to know.
 
-Stage only those files. Exercise code and anything else in his working tree still follow the `CLAUDE.md` git rules.
+Stage only those files. Exercise code and anything else in his working tree still follow the `AGENTS.md` git rules.
 
 ## Formatting — math renders as LaTeX
 

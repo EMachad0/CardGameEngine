@@ -111,7 +111,7 @@ probe finds gets a test.
 
 ## Running
 
-The checks in `CLAUDE.md` run every test. Clippy has to run with `--all-targets`. Without it,
+The checks in `AGENTS.md` run every test. Clippy has to run with `--all-targets`. Without it,
 clippy checks only the library and binaries, so no `#[cfg(test)]` module or `tests/` file gets
 linted. An editor that runs clippy without the flag hides every test lint.
 

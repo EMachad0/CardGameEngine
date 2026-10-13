@@ -19,7 +19,7 @@ comment. The test code is the statement. `docs/conventions/testing.md` governs t
 
 ### Docs (`docs/conventions/`)
 
-Conventions to follow while working, such as `docs/conventions/testing.md` and this doc. CLAUDE.md
+Conventions to follow while working, such as `docs/conventions/testing.md` and this doc. AGENTS.md
 says when to read each one.
 
 ### Skills (`.agents/skills/` and `~/.agents/skills/`)
@@ -73,7 +73,7 @@ The learner and the course plan. The game's design lives in the tests, the gloss
 | What the learner holds and misses, with the evidence | `COURSE.md` knowledge map |
 | What the course covers next, and why | `COURSE.md` |
 | A fact checked against a source | `verified-facts.md` |
-| A convention to follow while working | The doc for its topic, else CLAUDE.md. A teaching convention goes in the teach skill |
+| A convention to follow while working | The doc for its topic, else AGENTS.md. A teaching convention goes in the teach skill |
 
 ## Consistency rules
 
