@@ -7,22 +7,22 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) enum HistoryKind {
+enum HistoryKind {
     CardPlayed { object: Object },
     CharacterDied { object: Object },
     CharacterEntered { object: Object },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct HistoryEntry {
-    pub player_id: PlayerId,
-    pub kind: HistoryKind,
-    pub turn: u32,
+struct HistoryEntry {
+    player_id: PlayerId,
+    kind: HistoryKind,
+    turn: u32,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(super) struct History {
-    pub entries: Vec<HistoryEntry>,
+    entries: Vec<HistoryEntry>,
 }
 
 impl Game {
