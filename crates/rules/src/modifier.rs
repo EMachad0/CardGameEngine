@@ -1,4 +1,4 @@
-//! Granted modifiers, and the stat bonuses and triggers they add up to.
+//! The modifiers on an object, and the stat changes and triggers they give it.
 
 use crate::{
     cards::{amount::EffectAmount, modifier::ModifierEffect, trigger::TriggerDef},
@@ -127,19 +127,19 @@ mod tests {
         ModifierEffect::GrantTrigger(trigger(TriggerPattern::Died(TriggerSubject::Itself)))
     }
 
-    fn attack(amount: u8) -> ModifierEffect {
+    fn attack_buff(amount: u8) -> ModifierEffect {
         ModifierEffect::BuffAtk {
             amount: EffectAmount::Static(amount),
         }
     }
 
-    fn health(amount: u8) -> ModifierEffect {
+    fn health_buff(amount: u8) -> ModifierEffect {
         ModifierEffect::BuffHealth {
             amount: EffectAmount::Static(amount),
         }
     }
 
-    fn cost(amount: u8) -> ModifierEffect {
+    fn cost_reduction(amount: u8) -> ModifierEffect {
         ModifierEffect::ReduceManaCost {
             amount: EffectAmount::Static(amount),
         }
@@ -148,7 +148,7 @@ mod tests {
     #[test]
     fn attack_bonus_sums_every_attack_buff() {
         let [granter] = ids();
-        let modifiers = modifiers(granter, vec![attack(1), attack(2)]);
+        let modifiers = modifiers(granter, vec![attack_buff(1), attack_buff(2)]);
 
         assert_eq!(modifiers.attack_bonus(evaluate), 3);
     }
@@ -156,7 +156,10 @@ mod tests {
     #[test]
     fn attack_bonus_ignores_health_cost_and_trigger_modifiers() {
         let [granter] = ids();
-        let modifiers = modifiers(granter, vec![health(1), cost(2), grant_death_rattle()]);
+        let modifiers = modifiers(
+            granter,
+            vec![health_buff(1), cost_reduction(2), grant_death_rattle()],
+        );
 
         assert_eq!(modifiers.attack_bonus(evaluate), 0);
     }
@@ -164,7 +167,7 @@ mod tests {
     #[test]
     fn health_bonus_sums_every_health_buff() {
         let [granter] = ids();
-        let modifiers = modifiers(granter, vec![health(1), health(2)]);
+        let modifiers = modifiers(granter, vec![health_buff(1), health_buff(2)]);
 
         assert_eq!(modifiers.health_bonus(evaluate), 3);
     }
@@ -172,7 +175,10 @@ mod tests {
     #[test]
     fn health_bonus_ignores_attack_cost_and_trigger_modifiers() {
         let [granter] = ids();
-        let modifiers = modifiers(granter, vec![attack(1), cost(2), grant_death_rattle()]);
+        let modifiers = modifiers(
+            granter,
+            vec![attack_buff(1), cost_reduction(2), grant_death_rattle()],
+        );
 
         assert_eq!(modifiers.health_bonus(evaluate), 0);
     }
@@ -180,7 +186,7 @@ mod tests {
     #[test]
     fn cost_reduction_sums_every_cost_reduction() {
         let [granter] = ids();
-        let modifiers = modifiers(granter, vec![cost(1), cost(2)]);
+        let modifiers = modifiers(granter, vec![cost_reduction(1), cost_reduction(2)]);
 
         assert_eq!(modifiers.cost_reduction(evaluate), 3);
     }
@@ -188,7 +194,10 @@ mod tests {
     #[test]
     fn cost_reduction_ignores_attack_health_and_trigger_modifiers() {
         let [granter] = ids();
-        let modifiers = modifiers(granter, vec![attack(1), health(2), grant_death_rattle()]);
+        let modifiers = modifiers(
+            granter,
+            vec![attack_buff(1), health_buff(2), grant_death_rattle()],
+        );
 
         assert_eq!(modifiers.cost_reduction(evaluate), 0);
     }
@@ -243,7 +252,10 @@ mod tests {
     #[test]
     fn granted_triggers_ignores_stat_modifiers() {
         let [granter] = ids();
-        let modifiers = modifiers(granter, vec![attack(1), health(2), cost(3)]);
+        let modifiers = modifiers(
+            granter,
+            vec![attack_buff(1), health_buff(2), cost_reduction(3)],
+        );
 
         assert_eq!(modifiers.granted_triggers().count(), 0);
     }
