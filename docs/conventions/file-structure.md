@@ -38,6 +38,27 @@ question or gives it a stable command, by name.
   functions in order still knows the decision, even when a type enforces it. One command that does
   both leaves the caller nothing to get wrong. Make formal only what callers must still know.
 
+### Build modules around decisions, not steps
+
+Before drawing a boundary, list the decisions the code makes. Build modules around them,
+especially the ones likely to change or hard to get right. Each module hides its decision behind an
+interface that holds still when the decision moves.
+
+- A decision is likely to change when it has changed before, when the roadmap or the domain says
+  it varies, or when it comes from outside your control: a file format, a provider's API, a
+  regulation. Merge the decisions that change together. Leave stable, easy decisions where they
+  are. A decision that never changes costs no edits, however many places know it.
+- An interface is made of decisions too, the ones its callers know. Hiding one decision exposes
+  others, so expose the ones you expect to stay put. No design makes every decision cheap to
+  change.
+- Don't split by processing step. A step hands its output forward as data, so every later step
+  knows that data's layout, and when it was computed. A step that checks what a later step will do
+  has to know that step's rule. Either way, one decision lands in several modules.
+- Steps still run, inside one coordinator that calls the modules in order. It knows the order and
+  nothing about any format.
+- Passing data between modules is fine when its layout is a decision you expect to stay put. The
+  module that builds the data keeps the decision that moves.
+
 ## Rust
 
 ### Making knowledge formal
