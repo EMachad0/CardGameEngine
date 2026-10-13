@@ -31,6 +31,8 @@ They set the conventions you follow, not material for you to summarize.
 - Before recording a bug or chore found outside the current task: `docs/agents/issue-tracker.md`.
 - Before adding, upgrading or removing a dependency, or changing the features a crate enables:
   `docs/conventions/dependencies.md`.
+- Before creating, splitting, moving or naming a module, a file or a crate, or deciding where new
+  code goes: `docs/conventions/file-structure.md`.
 
 ## Code comments
 
