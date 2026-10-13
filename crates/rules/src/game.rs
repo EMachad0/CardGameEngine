@@ -16,8 +16,9 @@ pub(crate) mod view;
 mod zone_move;
 
 use crate::action::Action;
-use crate::cards::def_ids::static_card_definition::HERO;
-use crate::cards::{binder::Binder, definition::DefId, loader::CardDefLoader};
+use crate::cards::{
+    binder::Binder, def_ids::static_card_definition::HERO, definition::DefId, loader::CardDefLoader,
+};
 use crate::effect::{PendingEffect, ResolvingEffect};
 use crate::event::Event;
 use crate::game::player::{Player, PlayerInteractionState};

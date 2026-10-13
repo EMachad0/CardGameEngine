@@ -27,9 +27,10 @@ mod zones;
 
 pub use action::{Action, IllegalAction};
 pub use cards::{
-    choice::{ChoiceId, PickId},
+    choice::ChoiceId,
     def_ids::static_card_definition,
     definition::{CardDef, DefId},
+    effect::PickId,
     loader::CardDefLoader,
     validate::CardDefError,
 };

@@ -32,6 +32,3 @@ pub struct CharacterChoice {
     pub bound: AmountBound,
     pub different: bool,
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct PickId(pub usize);

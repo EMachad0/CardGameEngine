@@ -1,6 +1,5 @@
 use crate::cards::{
     amount::EffectAmount,
-    choice::PickId,
     definition::DefId,
     modifier::ModifierEffect,
     selector::{CharacterSelector, PlayerSelector},
@@ -11,6 +10,9 @@ pub enum ZoneMove {
     AddToHand,
     Bury,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PickId(pub usize);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Effect {

@@ -3,7 +3,7 @@
 //! Fields are `pub(super)`, so `Game` can change them and nothing outside
 //! `game` can see them.
 
-use crate::cards::choice::{ChoiceId, PickId};
+use crate::cards::{choice::ChoiceId, effect::PickId};
 use crate::ids::PlayerId;
 use crate::object::ObjectId;
 use crate::zones::Zones;

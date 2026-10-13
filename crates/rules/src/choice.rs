@@ -1,5 +1,5 @@
 use crate::{
-    cards::choice::{ChoiceId, PickId},
+    cards::{choice::ChoiceId, effect::PickId},
     object::ObjectId,
 };
 
