@@ -1,8 +1,5 @@
 use crate::{
-    cards::{
-        modifier::ModifierEffect,
-        trigger::{TriggerDef, TriggerPattern, TriggerSubject},
-    },
+    cards::trigger::{TriggerDef, TriggerPattern, TriggerSubject},
     event::Event,
     game::Game,
     ids::PlayerId,
@@ -96,13 +93,12 @@ impl Game {
             def: td.clone(),
         });
         let modifiers = self.modifiers(object_id);
-        let from_modifiers = modifiers.as_slice().iter().filter_map(|m| match &m.effect {
-            ModifierEffect::GrantTrigger(trigger) => Some(Trigger {
-                granted_by: m.granted_by,
-                def: trigger.clone(),
-            }),
-            _ => None,
-        });
+        let from_modifiers = modifiers
+            .granted_triggers()
+            .map(|(granted_by, def)| Trigger {
+                granted_by,
+                def: def.clone(),
+            });
         let mut triggers = from_modifiers.chain(printed).collect::<Vec<_>>();
         triggers.sort_by_key(|t| self.objects.get(t.granted_by).order);
         triggers

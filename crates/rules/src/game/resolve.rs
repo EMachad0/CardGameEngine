@@ -10,7 +10,8 @@ use crate::{
     choice::PickTarget,
     game::{Game, PlayerInteractionState, filter::fulfill_side_filter},
     ids::PlayerId,
-    object::{Modifier, ObjectId},
+    modifier::Modifier,
+    object::ObjectId,
     observer::{Observer, Views},
 };
 

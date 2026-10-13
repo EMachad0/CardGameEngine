@@ -1,10 +1,10 @@
 //! Attack, health and cost, computed on read from history and printed data.
 
 use crate::{
-    cards::modifier::ModifierEffect,
     game::Game,
     ids::PlayerId,
-    object::{Modifier, Modifiers, ObjectId},
+    modifier::{Modifier, Modifiers},
+    object::ObjectId,
 };
 
 impl Game {
@@ -16,17 +16,10 @@ impl Game {
             .contains(&object_id)
             .then(|| {
                 let printed_cost = self.card_def(object_id).mana_cost;
-                let neg_modifiers = self
+                let reduction = self
                     .modifiers(object_id)
-                    .as_slice()
-                    .iter()
-                    .filter_map(|m| match m.effect {
-                        ModifierEffect::ReduceManaCost { amount } => Some(amount),
-                        _ => None,
-                    })
-                    .map(|a| self.effect_amount(&a, obj.player_id))
-                    .sum::<u8>();
-                printed_cost.saturating_sub(neg_modifiers)
+                    .cost_reduction(|amount| self.effect_amount(amount, obj.player_id));
+                printed_cost.saturating_sub(reduction)
             })
     }
 
@@ -53,18 +46,11 @@ impl Game {
             let printed_health = card_def
                 .health()
                 .expect("in play objects always have health");
-            let modifiers = self
+            let bonus = self
                 .modifiers(object_id)
-                .as_slice()
-                .iter()
-                .filter_map(|m| match m.effect {
-                    ModifierEffect::BuffHealth { amount } => Some(amount),
-                    _ => None,
-                })
-                .map(|a| self.effect_amount(&a, obj.player_id) as i32)
-                .sum::<i32>();
+                .health_bonus(|amount| self.effect_amount(amount, obj.player_id));
             let damage = obj.damage as i32;
-            printed_health + modifiers - damage
+            printed_health + bonus - damage
         })
     }
 
@@ -79,17 +65,10 @@ impl Game {
                     .card_def(object_id)
                     .attack()
                     .expect("board objects always have attack");
-                let modifiers = self
+                let bonus = self
                     .modifiers(object_id)
-                    .as_slice()
-                    .iter()
-                    .filter_map(|m| match m.effect {
-                        ModifierEffect::BuffAtk { amount } => Some(amount),
-                        _ => None,
-                    })
-                    .map(|a| self.effect_amount(&a, obj.player_id) as i32)
-                    .sum::<i32>();
-                printed_attack + modifiers
+                    .attack_bonus(|amount| self.effect_amount(amount, obj.player_id));
+                printed_attack + bonus
             })
     }
 

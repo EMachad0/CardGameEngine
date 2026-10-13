@@ -9,6 +9,7 @@ mod choice;
 mod event;
 mod game;
 mod ids;
+mod modifier;
 mod object;
 mod observer;
 mod outcome;

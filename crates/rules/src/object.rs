@@ -1,9 +1,10 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    cards::{definition::DefId, modifier::ModifierEffect},
+    cards::definition::DefId,
     choice::{ChoiceTarget, PickTarget},
     ids::PlayerId,
+    modifier::Modifiers,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -77,33 +78,6 @@ impl ObjectBag {
         self.get_mut(object_id).order = order;
         order
     }
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub(crate) struct Modifiers(Vec<Modifier>);
-
-impl Modifiers {
-    pub(crate) fn new(modifiers: Vec<Modifier>) -> Self {
-        Self(modifiers)
-    }
-
-    pub(crate) fn add(&mut self, modifier: Modifier) {
-        self.0.push(modifier);
-    }
-
-    pub(crate) fn extend(&mut self, modifiers: Self) {
-        self.0.extend(modifiers.0);
-    }
-
-    pub(crate) fn as_slice(&self) -> &[Modifier] {
-        self.0.as_slice()
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Modifier {
-    pub granted_by: ObjectId,
-    pub effect: ModifierEffect,
 }
 
 #[cfg(test)]
