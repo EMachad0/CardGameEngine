@@ -1,37 +1,33 @@
 //! `Game`: the whole state, and the interface a shell drives it through.
-//!
-//! `legal_actions` is the one definition of legality. `apply` accepts exactly
-//! what it lists, and an `Err` leaves the game unchanged. Child modules:
-//! - `player`: one player's resources, zones and pending choice.
-//! - `resolve`: the mutation half of `apply`.
-//! - `lookup`: attack, health and cost, computed on read.
 
-mod condition;
-mod lookup;
+mod actions;
+mod derived;
+mod draft;
+mod filter;
+mod history;
+mod pick;
 mod player;
 mod resolve;
 mod state_check;
-mod triggering;
+mod trigger;
+mod verb;
 pub(crate) mod view;
-mod zone_move;
 
-use crate::action::Action;
 use crate::cards::{
-    binder::Binder, def_ids::static_card_definition::HERO, definition::DefId, loader::CardDefLoader,
+    binder::Binder, def_ids::static_card_definition::HERO, definition::DefId, effect::Effect,
+    loader::CardDefLoader,
 };
 use crate::effect::{PendingEffect, ResolvingEffect};
 use crate::event::Event;
+use crate::game::history::History;
 use crate::game::player::{Player, PlayerInteractionState};
-use crate::history::History;
 use crate::ids::PlayerId;
-use crate::object::{ObjectBag, ObjectId};
+use crate::object::{Object, ObjectBag, ObjectId};
 use crate::observer::Observer;
 use crate::outcome::Outcome;
 use crate::rng::Rng;
 use crate::turn::TurnOrder;
 use crate::zones::Deck;
-
-pub use resolve::ApplyError;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Game {
@@ -111,99 +107,6 @@ impl Game {
         game
     }
 
-    pub fn legal_actions(&self, player_id: PlayerId) -> Vec<Action> {
-        if self.outcome().is_some() {
-            return Vec::new();
-        }
-
-        let mut actions = Vec::new();
-        match &self.get_player(player_id).interaction_state {
-            PlayerInteractionState::Idle => {
-                if self.turn_order.get_active_player_id() != player_id
-                    || self.is_pending_interaction()
-                {
-                    return Vec::new();
-                }
-
-                let mana = self.mana(player_id);
-                let hand = self.hand(player_id);
-                for object_id in hand.iter().copied() {
-                    let mana_cost = self
-                        .mana_cost(object_id)
-                        .expect("objects in hand always have mana cost");
-                    if mana_cost > mana {
-                        continue;
-                    }
-
-                    let def_id = self.def_id(object_id);
-                    match self.binder.choices(def_id).is_empty() {
-                        true => {
-                            actions.push(Action::Play { object_id });
-                        }
-                        false => {
-                            if self.can_finish_choices(object_id, &mut Vec::new()) {
-                                actions.push(Action::Draft { object_id });
-                            }
-                        }
-                    }
-                }
-
-                actions.push(Action::EndTurn);
-            }
-            PlayerInteractionState::PendingPick { options, .. } => {
-                actions.extend(
-                    options
-                        .iter()
-                        .cloned()
-                        .map(|object_id| Action::Pick { object_id }),
-                );
-            }
-            PlayerInteractionState::Draft {
-                of_object_id,
-                chosen,
-            } => {
-                let def_id = self.def_id(*of_object_id);
-                let mut all_choices_fulfilled = true;
-                for choice in self.binder.choices(def_id) {
-                    let chosen_for_choice_count = chosen
-                        .iter()
-                        .filter(|(_, choice_id)| choice.id == *choice_id)
-                        .count();
-                    if self.check_choice_count_fulfilled(
-                        *of_object_id,
-                        choice.id,
-                        chosen_for_choice_count as u8,
-                    ) {
-                        continue;
-                    }
-
-                    let candidates = self.scan_for_valid_choices(*of_object_id, choice, chosen);
-                    for candidate in candidates.into_iter() {
-                        let mut chosen = chosen.clone();
-                        chosen.push((candidate, choice.id));
-                        if self.can_finish_choices(*of_object_id, &mut chosen) {
-                            actions.push(Action::Choose {
-                                choice_id: choice.id,
-                                object_id: candidate,
-                            })
-                        }
-                    }
-                    all_choices_fulfilled = false;
-                    break;
-                }
-                if all_choices_fulfilled {
-                    actions.push(Action::Play {
-                        object_id: *of_object_id,
-                    });
-                }
-                actions.push(Action::Cancel {
-                    object_id: *of_object_id,
-                });
-            }
-        }
-        actions
-    }
-
     pub fn hand(&self, player_id: PlayerId) -> &[ObjectId] {
         self.get_player(player_id).zones.hand.as_slice()
     }
@@ -217,7 +120,7 @@ impl Game {
         self.get_player(player_id).zones.board.as_slice()
     }
 
-    pub(crate) fn board_characters(&self) -> Vec<ObjectId> {
+    fn board_characters(&self) -> Vec<ObjectId> {
         let heroes = self.players.iter().map(|p| p.zones.hero);
         let minions = self
             .players()
@@ -244,6 +147,27 @@ impl Game {
 
     pub fn outcome(&self) -> Option<Outcome> {
         self.outcome
+    }
+
+    fn object(&self, object_id: ObjectId) -> &Object {
+        self.objects.get(object_id)
+    }
+
+    pub fn def_id(&self, object_id: ObjectId) -> DefId {
+        self.object(object_id).def_id
+    }
+
+    pub fn hero_id(&self, player_id: PlayerId) -> ObjectId {
+        self.get_player(player_id).zones.hero
+    }
+
+    fn play_effects(&self, object_id: ObjectId) -> &[Effect] {
+        let obj = self.object(object_id);
+        self.binder.play_effects(obj.def_id)
+    }
+
+    fn playing(&self, player_id: PlayerId) -> bool {
+        self.get_player(player_id).playing
     }
 
     fn end_turn(&mut self, obs: &mut impl Observer) {

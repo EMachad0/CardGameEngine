@@ -1,143 +1,21 @@
-//! The mutation half of `Game::apply`. It runs an action and resolves any card
-//! the action plays.
-//!
-//! Every action that reaches this module is already in `legal_actions`, so
-//! nothing here re-checks legality.
-
-use super::Game;
+//! Effect resolution: the loop that drains the effect stack, and the
+//! interpreter for each effect, its amounts and its selectors.
 
 use crate::{
-    action::{Action, IllegalAction},
     cards::{
-        amount::{EffectAmount, HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter},
+        amount::EffectAmount,
         effect::Effect,
         selector::{CharacterSelector, PlayerSelector, PlayerSelectorFilter},
     },
-    choice::{ChoiceTarget, PickTarget},
-    game::{PlayerInteractionState, condition::fulfill_side_filter},
-    history::HistoryKind,
+    choice::PickTarget,
+    game::{Game, PlayerInteractionState, filter::fulfill_side_filter},
     ids::PlayerId,
     object::{Modifier, ObjectId},
     observer::{Observer, Views},
 };
 
-#[derive(Debug, PartialEq, Eq, thiserror::Error)]
-pub enum ApplyError {
-    #[error("Illegal Action")]
-    IllegalAction(IllegalAction),
-}
-
 impl Game {
-    pub fn applied(&self, player_id: PlayerId, action: Action) -> Result<Self, ApplyError> {
-        let mut game = self.clone();
-        game.apply(player_id, action, &mut ())?;
-        Ok(game)
-    }
-
-    /// `Ok` if and only if `action` is in `legal_actions(player_id)`.
-    /// An `Err` leaves the game unchanged.
-    pub fn apply(
-        &mut self,
-        player_id: PlayerId,
-        action: Action,
-        obs: &mut impl Observer,
-    ) -> Result<(), ApplyError> {
-        if !self.legal_actions(player_id).contains(&action) {
-            Err(ApplyError::IllegalAction(IllegalAction::new(
-                player_id, action,
-            )))
-        } else {
-            self.apply_action(player_id, action, obs);
-            self.drain_effect_queue(obs);
-            Ok(())
-        }
-    }
-
-    pub(super) fn apply_action(
-        &mut self,
-        player_id: PlayerId,
-        action: Action,
-        obs: &mut impl Observer,
-    ) {
-        match action {
-            Action::Play { object_id } => {
-                let from_draft = matches!(
-                    self.get_player(player_id).interaction_state,
-                    PlayerInteractionState::Draft { .. }
-                );
-                if from_draft {
-                    let PlayerInteractionState::Draft {
-                        of_object_id,
-                        chosen,
-                    } = std::mem::take(&mut self.get_player_mut(player_id).interaction_state)
-                    else {
-                        unreachable!();
-                    };
-                    let def_id = self.def_id(of_object_id);
-                    let choice_ids = self
-                        .binder
-                        .choices(def_id)
-                        .iter()
-                        .map(|c| c.id)
-                        .collect::<Vec<_>>();
-
-                    let obj = self.objects.get_mut(of_object_id);
-                    obj.choice_targets.clear();
-                    for choice_id in choice_ids {
-                        obj.choice_targets.push(ChoiceTarget {
-                            choice_id,
-                            targets: chosen
-                                .iter()
-                                .filter(|(_, c)| *c == choice_id)
-                                .map(|(o, _)| *o)
-                                .collect(),
-                        });
-                    }
-                }
-
-                let mana_cost = self
-                    .mana_cost(object_id)
-                    .expect("[legal_actions] guarantees a play action object_id has mana");
-                self.get_player_mut(player_id).mana -= mana_cost;
-                self.play(player_id, object_id, obs);
-            }
-            Action::Pick { object_id } => {
-                self.pick(player_id, object_id, obs);
-                obs.checkpoint(Views::new(self));
-            }
-            Action::EndTurn => {
-                self.end_turn(obs);
-                self.start_turn(obs);
-                obs.checkpoint(Views::new(self));
-            }
-            Action::Draft { object_id } => {
-                self.get_player_mut(player_id).interaction_state = PlayerInteractionState::Draft {
-                    of_object_id: object_id,
-                    chosen: Vec::new(),
-                };
-                obs.checkpoint(Views::new(self));
-            }
-            Action::Choose {
-                choice_id,
-                object_id,
-            } => {
-                let player = self.get_player_mut(player_id);
-                let PlayerInteractionState::Draft { chosen, .. } = &mut player.interaction_state
-                else {
-                    unreachable!();
-                };
-                chosen.push((object_id, choice_id));
-                obs.checkpoint(Views::new(self));
-            }
-            Action::Cancel { .. } => {
-                let player = self.get_player_mut(player_id);
-                player.interaction_state = PlayerInteractionState::default();
-                obs.checkpoint(Views::new(self));
-            }
-        };
-    }
-
-    pub(crate) fn apply_effect(
+    fn apply_effect(
         &mut self,
         owner: PlayerId,
         source: ObjectId,
@@ -222,7 +100,7 @@ impl Game {
         }
     }
 
-    fn drain_effect_queue(&mut self, obs: &mut impl Observer) {
+    pub(super) fn drain_effect_queue(&mut self, obs: &mut impl Observer) {
         while !self.is_pending_interaction() && self.outcome().is_none() {
             self.continue_resolving_effect(obs);
 
@@ -266,7 +144,7 @@ impl Game {
         }
     }
 
-    pub(crate) fn is_pending_interaction(&self) -> bool {
+    pub(super) fn is_pending_interaction(&self) -> bool {
         self.players().into_iter().any(|p| {
             !matches!(
                 self.get_player(p).interaction_state,
@@ -275,48 +153,11 @@ impl Game {
         })
     }
 
-    pub(crate) fn effect_amount(&self, amount: &EffectAmount, player_id: PlayerId) -> u8 {
+    pub(super) fn effect_amount(&self, amount: &EffectAmount, player_id: PlayerId) -> u8 {
         match amount {
             EffectAmount::Static(value) => *value,
             EffectAmount::History(query) => self.history_query(*query, player_id),
         }
-    }
-
-    pub(crate) fn history_query(&self, query: HistoryQuery, player_id: PlayerId) -> u8 {
-        let entries = self.history.entries.iter();
-        let targets = match query.scope {
-            PlayerFilter::All => self.players.iter().map(|p| p.id).collect(),
-            PlayerFilter::Owner => vec![player_id],
-            PlayerFilter::Active => vec![self.turn_order.get_active_player_id()],
-        };
-        let count = match query.kind {
-            HistoryQueryKind::SpellsPlayed => entries
-                .filter(|entry| targets.contains(&entry.player_id))
-                .filter(|entry| match query.turn {
-                    TurnFilter::Current => {
-                        entry.turn == self.turn_order.turn_count()
-                    }
-                    TurnFilter::All => true,
-                })
-                .filter(|entry| {
-                    matches!(
-                        &entry.kind,
-                        HistoryKind::CardPlayed { object } if self.binder.is_spell(object.def_id)
-                    )
-                })
-                .count(),
-            HistoryQueryKind::MinionsDied => entries
-                .filter(|entry| targets.contains(&entry.player_id))
-                .filter(|entry| match query.turn {
-                    TurnFilter::Current => {
-                        entry.turn == self.turn_order.turn_count()
-                    }
-                    TurnFilter::All => true,
-                })
-                .filter(|entry| matches!(&entry.kind, HistoryKind::CharacterDied { object } if self.binder.is_minion(object.def_id)))
-                .count(),
-        };
-        u8::try_from(count).unwrap_or(u8::MAX)
     }
 
     fn resolve_player_selector(

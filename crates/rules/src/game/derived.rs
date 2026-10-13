@@ -1,31 +1,13 @@
 //! Attack, health and cost, computed on read from history and printed data.
 
 use crate::{
-    cards::{
-        definition::DefId,
-        effect::Effect,
-        modifier::ModifierEffect,
-        trigger::{TriggerPattern, TriggerSubject},
-    },
+    cards::modifier::ModifierEffect,
     game::Game,
     ids::PlayerId,
-    object::{Modifier, Modifiers, Object, ObjectId},
-    trigger::Trigger,
+    object::{Modifier, Modifiers, ObjectId},
 };
 
 impl Game {
-    fn object(&self, object_id: ObjectId) -> &Object {
-        self.objects.get(object_id)
-    }
-
-    pub fn def_id(&self, object_id: ObjectId) -> DefId {
-        self.object(object_id).def_id
-    }
-
-    pub fn hero_id(&self, player_id: PlayerId) -> ObjectId {
-        self.get_player(player_id).zones.hero
-    }
-
     pub fn mana_cost(&self, object_id: ObjectId) -> Option<u8> {
         let obj = self.object(object_id);
         self.get_player(obj.player_id)
@@ -112,39 +94,7 @@ impl Game {
             })
     }
 
-    pub(crate) fn death_rattles(&self, object_id: ObjectId) -> Vec<Trigger> {
-        self.triggers(object_id)
-            .into_iter()
-            .filter(|t| matches!(t.pattern, TriggerPattern::Died(TriggerSubject::Itself)))
-            .collect()
-    }
-
-    pub(crate) fn triggers(&self, object_id: ObjectId) -> Vec<Trigger> {
-        let obj = self.object(object_id);
-        let def = self.binder.triggers(obj.def_id).iter().map(|td| Trigger {
-            source: object_id,
-            pattern: td.pattern,
-            effects: td.effects.clone(),
-        });
-        let mut modifiers = self
-            .modifiers(object_id)
-            .as_slice()
-            .iter()
-            .filter_map(|m| match &m.effect {
-                ModifierEffect::GrantTrigger(trigger) => Some(Trigger {
-                    source: m.source,
-                    pattern: trigger.pattern,
-                    effects: trigger.effects.clone(),
-                }),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-        modifiers.extend(def);
-        modifiers.sort_by_key(|t| self.objects.get(t.source).order);
-        modifiers
-    }
-
-    fn modifiers(&self, object_id: ObjectId) -> Modifiers {
+    pub(super) fn modifiers(&self, object_id: ObjectId) -> Modifiers {
         let obj = self.object(object_id);
         let modifiers = self
             .binder
@@ -178,12 +128,7 @@ impl Game {
         modifiers
     }
 
-    pub(crate) fn play_effects(&self, object_id: ObjectId) -> &[Effect] {
-        let obj = self.object(object_id);
-        self.binder.play_effects(obj.def_id)
-    }
-
-    pub(crate) fn friendly_aura(&self, object_id: ObjectId) -> Modifiers {
+    fn friendly_aura(&self, object_id: ObjectId) -> Modifiers {
         let obj = self.object(object_id);
         let modifiers = self
             .binder
@@ -199,7 +144,7 @@ impl Game {
         modifiers
     }
 
-    pub(crate) fn hostile_aura(&self, object_id: ObjectId) -> Modifiers {
+    fn hostile_aura(&self, object_id: ObjectId) -> Modifiers {
         let obj = self.object(object_id);
         let modifiers = self
             .binder
@@ -211,9 +156,5 @@ impl Game {
             })
             .collect::<Vec<_>>();
         Modifiers::new(modifiers)
-    }
-
-    pub(crate) fn playing(&self, player_id: PlayerId) -> bool {
-        self.get_player(player_id).playing
     }
 }

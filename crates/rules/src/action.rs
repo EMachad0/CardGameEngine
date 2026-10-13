@@ -34,3 +34,9 @@ impl IllegalAction {
         Self { player_id, action }
     }
 }
+
+#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+pub enum ApplyError {
+    #[error("Illegal Action")]
+    IllegalAction(IllegalAction),
+}

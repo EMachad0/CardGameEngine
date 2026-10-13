@@ -1,17 +1,26 @@
 use crate::{
-    cards::trigger::{TriggerPattern, TriggerSubject},
+    cards::{
+        effect::EffectSequence,
+        modifier::ModifierEffect,
+        trigger::{TriggerPattern, TriggerSubject},
+    },
     effect::PendingEffect,
     event::Event,
     game::Game,
-    history::{HistoryEntry, HistoryKind},
     ids::PlayerId,
     object::ObjectId,
     observer::Observer,
-    trigger::Trigger,
 };
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct Trigger {
+    source: ObjectId,
+    pattern: TriggerPattern,
+    pub(super) effects: EffectSequence,
+}
+
 impl Game {
-    pub(crate) fn emit(&mut self, event: Event, obs: &mut impl Observer) {
+    pub(super) fn emit(&mut self, event: Event, obs: &mut impl Observer) {
         self.history_from_event(&event);
         #[expect(
             clippy::disallowed_methods,
@@ -24,12 +33,7 @@ impl Game {
         }
     }
 
-    pub(super) fn enqueue_triggers(
-        &mut self,
-        player_id: PlayerId,
-        object_id: ObjectId,
-        event: &Event,
-    ) {
+    fn enqueue_triggers(&mut self, player_id: PlayerId, object_id: ObjectId, event: &Event) {
         for Trigger {
             pattern, effects, ..
         } in self.triggers(object_id)
@@ -40,7 +44,7 @@ impl Game {
         }
     }
 
-    pub(super) fn fulfill_trigger_pattern(
+    fn fulfill_trigger_pattern(
         &self,
         trigger_owner: PlayerId,
         trigger_object: ObjectId,
@@ -65,42 +69,6 @@ impl Game {
         }
     }
 
-    fn history_from_event(&mut self, event: &Event) {
-        let turn = self.turn_order.turn_count();
-        if let Some(entry) = match event {
-            Event::Died { object_id } => Some(HistoryEntry {
-                player_id: self.objects.get(*object_id).player_id,
-                kind: HistoryKind::CharacterDied {
-                    object: self.objects.get(*object_id).clone(),
-                },
-                turn,
-            }),
-            Event::Played {
-                player_id,
-                object_id,
-            } => Some(HistoryEntry {
-                player_id: *player_id,
-                kind: HistoryKind::CardPlayed {
-                    object: self.objects.get(*object_id).clone(),
-                },
-                turn,
-            }),
-            Event::BoardEntered {
-                player_id,
-                object_id,
-            } => Some(HistoryEntry {
-                player_id: *player_id,
-                kind: HistoryKind::CharacterEntered {
-                    object: self.objects.get(*object_id).clone(),
-                },
-                turn,
-            }),
-            _ => None,
-        } {
-            self.history.entries.push(entry);
-        }
-    }
-
     fn fulfill_trigger_subject(
         &self,
         subject: TriggerSubject,
@@ -115,5 +83,37 @@ impl Game {
                 self.fulfill_character_filter(trigger_owner, owner, event_object, &character_filter)
             }
         }
+    }
+
+    pub(super) fn death_rattles(&self, object_id: ObjectId) -> Vec<Trigger> {
+        self.triggers(object_id)
+            .into_iter()
+            .filter(|t| matches!(t.pattern, TriggerPattern::Died(TriggerSubject::Itself)))
+            .collect()
+    }
+
+    fn triggers(&self, object_id: ObjectId) -> Vec<Trigger> {
+        let obj = self.object(object_id);
+        let def = self.binder.triggers(obj.def_id).iter().map(|td| Trigger {
+            source: object_id,
+            pattern: td.pattern,
+            effects: td.effects.clone(),
+        });
+        let mut modifiers = self
+            .modifiers(object_id)
+            .as_slice()
+            .iter()
+            .filter_map(|m| match &m.effect {
+                ModifierEffect::GrantTrigger(trigger) => Some(Trigger {
+                    source: m.source,
+                    pattern: trigger.pattern,
+                    effects: trigger.effects.clone(),
+                }),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        modifiers.extend(def);
+        modifiers.sort_by_key(|t| self.objects.get(t.source).order);
+        modifiers
     }
 }
