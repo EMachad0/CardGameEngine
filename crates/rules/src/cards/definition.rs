@@ -3,7 +3,6 @@ use enumset::EnumSet;
 use crate::{
     cards::{
         filter::{CharacterFilter, Side},
-        loader::PLACEHOLDER,
         modifier::ModifierEffect,
     },
     choice::{CharacterChoice, ChoiceId},
@@ -19,6 +18,8 @@ impl DefId {
         Self(id)
     }
 }
+
+pub(super) const PLACEHOLDER: DefId = DefId::new("placeholder");
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CardDef {
