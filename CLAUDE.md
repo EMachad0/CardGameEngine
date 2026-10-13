@@ -28,6 +28,7 @@ They set the conventions you follow, not material for you to summarize.
   deciding where knowledge belongs: `docs/conventions/skills-and-docs.md`.
 - Before writing, moving or deleting any test, or designing code that has to be testable:
   `docs/conventions/testing.md`.
+- Before recording a bug or chore found outside the current task: `docs/agents/issue-tracker.md`.
 - Before adding, upgrading or removing a dependency, or changing the features a crate enables:
   `docs/conventions/dependencies.md`.
 
@@ -98,6 +99,14 @@ Most skills are installed outside this repo and read their per-repo configuratio
 
 Runs the course sessions. It lives in `.agents/skills/teach/`. The tools and subagents it calls are
 the pi extensions and agents under `.pi/`.
+
+### Issue tracker
+
+Local markdown in `docs/issues/`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default roles, written on each issue's `Status:` line. See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
