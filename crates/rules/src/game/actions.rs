@@ -1,5 +1,5 @@
-//! Legality and dispatch. `legal_actions` is the one definition of legality:
-//! `apply` accepts exactly what it lists, and `apply_action` re-checks nothing.
+//! Legality and dispatch. `legal_actions` is the one definition of legality, and
+//! `apply_action` re-checks nothing.
 
 use crate::{
     action::{Action, ApplyError, IllegalAction},
@@ -167,7 +167,7 @@ impl Game {
 
                 let mana_cost = self
                     .mana_cost(object_id)
-                    .expect("[legal_actions] guarantees a play action object_id has mana");
+                    .expect("legal_actions lists Play only for a card in hand, which has a cost");
                 self.get_player_mut(player_id).mana -= mana_cost;
                 self.play(player_id, object_id, obs);
             }
