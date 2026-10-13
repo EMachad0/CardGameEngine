@@ -75,7 +75,7 @@ impl Game {
                 for target in targets.into_iter() {
                     let object = self.objects.get_mut(target);
                     object.modifiers.add(Modifier {
-                        source,
+                        granted_by: source,
                         effect: effect.clone(),
                     });
                 }
@@ -85,7 +85,7 @@ impl Game {
                 for target in targets.into_iter() {
                     let object = self.objects.get_mut(target);
                     object.friendly_aura.add(Modifier {
-                        source,
+                        granted_by: source,
                         effect: effect.clone(),
                     });
                 }

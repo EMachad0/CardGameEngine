@@ -15,7 +15,7 @@ impl Game {
             .hand
             .contains(&object_id)
             .then(|| {
-                let def = self.card_def(object_id).mana_cost;
+                let printed_cost = self.card_def(object_id).mana_cost;
                 let neg_modifiers = self
                     .modifiers(object_id)
                     .as_slice()
@@ -26,7 +26,7 @@ impl Game {
                     })
                     .map(|a| self.effect_amount(&a, obj.player_id))
                     .sum::<u8>();
-                def.saturating_sub(neg_modifiers)
+                printed_cost.saturating_sub(neg_modifiers)
             })
     }
 
@@ -50,7 +50,7 @@ impl Game {
         let is_in_play = is_in_play_hero || is_in_play_minion;
 
         is_in_play.then(|| {
-            let def = card_def
+            let printed_health = card_def
                 .health()
                 .expect("in play objects always have health");
             let modifiers = self
@@ -64,7 +64,7 @@ impl Game {
                 .map(|a| self.effect_amount(&a, obj.player_id) as i32)
                 .sum::<i32>();
             let damage = obj.damage as i32;
-            def + modifiers - damage
+            printed_health + modifiers - damage
         })
     }
 
@@ -75,7 +75,7 @@ impl Game {
             .board
             .contains(&object_id)
             .then(|| {
-                let def = self
+                let printed_attack = self
                     .card_def(object_id)
                     .attack()
                     .expect("board objects always have attack");
@@ -89,25 +89,25 @@ impl Game {
                     })
                     .map(|a| self.effect_amount(&a, obj.player_id) as i32)
                     .sum::<i32>();
-                def + modifiers
+                printed_attack + modifiers
             })
     }
 
     pub(super) fn modifiers(&self, object_id: ObjectId) -> Modifiers {
         let obj = self.object(object_id);
-        let modifiers = self
-            .card_def(object_id)
+        let card_def = self.card_def(object_id);
+        let modifiers = card_def
             .modifier_effects
             .iter()
             .map(|e| Modifier {
-                source: object_id,
+                granted_by: object_id,
                 effect: e.clone(),
             })
             .collect::<Vec<_>>();
         let mut modifiers = Modifiers::new(modifiers);
         modifiers.extend(obj.modifiers.clone());
 
-        if self.card_def(object_id).is_minion() {
+        if card_def.is_minion() {
             for other_player_id in self.players().into_iter() {
                 for other_object_id in self.player_board(other_player_id).iter().copied() {
                     if object_id == other_object_id {
@@ -134,7 +134,7 @@ impl Game {
             .friendly_aura_effects()
             .iter()
             .map(|e| Modifier {
-                source: object_id,
+                granted_by: object_id,
                 effect: e.clone(),
             })
             .collect::<Vec<_>>();
@@ -149,7 +149,7 @@ impl Game {
             .hostile_aura_effects()
             .iter()
             .map(|e| Modifier {
-                source: object_id,
+                granted_by: object_id,
                 effect: e.clone(),
             })
             .collect::<Vec<_>>();

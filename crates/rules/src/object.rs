@@ -102,7 +102,7 @@ impl Modifiers {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Modifier {
-    pub source: ObjectId,
+    pub granted_by: ObjectId,
     pub effect: ModifierEffect,
 }
 

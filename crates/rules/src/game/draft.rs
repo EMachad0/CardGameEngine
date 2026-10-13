@@ -35,12 +35,7 @@ impl Game {
         chosen_count: u8,
     ) -> bool {
         let obj = self.objects.get(object_id);
-        let choice = self
-            .card_def(object_id)
-            .choices
-            .iter()
-            .find(|c| c.id == choice_id)
-            .unwrap();
+        let choice = self.card_def(object_id).choice(choice_id).unwrap();
         let count = self.effect_amount(&choice.count, obj.player_id);
         choice.bound.is_satisfied(chosen_count, count)
     }

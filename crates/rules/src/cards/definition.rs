@@ -1,5 +1,8 @@
 use crate::cards::{
-    choice::CharacterChoice, effect::EffectSequence, modifier::ModifierEffect, trigger::TriggerDef,
+    choice::{CharacterChoice, ChoiceId},
+    effect::EffectSequence,
+    modifier::ModifierEffect,
+    trigger::TriggerDef,
 };
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -99,6 +102,10 @@ impl CardDef {
             CardDefKind::Minion(minion) => &minion.hostile_aura_effects,
             CardDefKind::Hero(_) => &[],
         }
+    }
+
+    pub(crate) fn choice(&self, id: ChoiceId) -> Option<&CharacterChoice> {
+        self.choices.iter().find(|choice| choice.id == id)
     }
 }
 

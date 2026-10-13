@@ -13,7 +13,7 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct Trigger {
-    source: ObjectId,
+    granted_by: ObjectId,
     pub(super) def: TriggerDef,
 }
 
@@ -95,24 +95,24 @@ impl Game {
     }
 
     fn triggers(&self, object_id: ObjectId) -> Vec<Trigger> {
-        let def = self.card_def(object_id).triggers.iter().map(|td| Trigger {
-            source: object_id,
+        let printed = self.card_def(object_id).triggers.iter().map(|td| Trigger {
+            granted_by: object_id,
             def: td.clone(),
         });
-        let mut modifiers = self
+        let mut granted = self
             .modifiers(object_id)
             .as_slice()
             .iter()
             .filter_map(|m| match &m.effect {
                 ModifierEffect::GrantTrigger(trigger) => Some(Trigger {
-                    source: m.source,
+                    granted_by: m.granted_by,
                     def: trigger.clone(),
                 }),
                 _ => None,
             })
             .collect::<Vec<_>>();
-        modifiers.extend(def);
-        modifiers.sort_by_key(|t| self.objects.get(t.source).order);
-        modifiers
+        granted.extend(printed);
+        granted.sort_by_key(|t| self.objects.get(t.granted_by).order);
+        granted
     }
 }

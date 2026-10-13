@@ -156,7 +156,7 @@ fn effects_by_origin(def: &CardDef, origin: SequenceOrigin) -> impl Iterator<Ite
 fn validate_choice_not_found(defs: &[CardDef]) -> Result<(), CardDefError> {
     for def in defs {
         for choice_id in effects_by_origin(def, SequenceOrigin::Play).filter_map(chosen_id) {
-            if !def.choices.iter().any(|choice| choice.id == choice_id) {
+            if def.choice(choice_id).is_none() {
                 return Err(CardDefError::ChoiceNotFound(def.id, choice_id));
             }
         }
