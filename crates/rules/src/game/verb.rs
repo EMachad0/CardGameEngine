@@ -1,6 +1,5 @@
 use crate::{
     cards::effect::ZoneMove,
-    effect::PendingEffect,
     event::Event,
     game::Game,
     ids::PlayerId,
@@ -64,10 +63,8 @@ impl Game {
             .expect("legal actions guarantee playable cards are in hand");
 
         if !self.play_effects(object_id).is_empty() {
-            self.effect_stack.push(PendingEffect::new(
-                object_id,
-                self.play_effects(object_id).to_vec(),
-            ));
+            self.effect_stack
+                .push(object_id, self.play_effects(object_id).to_vec());
         }
 
         let event = Event::Played {
@@ -94,13 +91,9 @@ impl Game {
     }
 
     pub(super) fn kill(&mut self, object_ids: &[ObjectId], obs: &mut impl Observer) {
-        // Enqueue death rattles
         for &object_id in object_ids.iter() {
             for death_rattle in self.death_rattles(object_id).into_iter() {
-                self.effect_stack.push(PendingEffect {
-                    source: object_id,
-                    effects: death_rattle.def.effects,
-                });
+                self.effect_stack.push(object_id, death_rattle.def.effects);
             }
         }
 

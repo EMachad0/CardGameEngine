@@ -20,7 +20,6 @@ use crate::cards::{
     effect::Effect,
     loader::CardDefLoader,
 };
-use crate::effect::{PendingEffect, ResolvingEffect};
 use crate::event::Event;
 use crate::game::history::History;
 use crate::game::player::{Player, PlayerInteractionState};
@@ -29,6 +28,7 @@ use crate::object::{Object, ObjectBag, ObjectId};
 use crate::observer::Observer;
 use crate::outcome::Outcome;
 use crate::rng::Rng;
+use crate::stack::EffectStack;
 use crate::turn::TurnOrder;
 use crate::zones::Deck;
 
@@ -41,8 +41,7 @@ pub struct Game {
     binder: Binder,
     history: History,
     outcome: Option<Outcome>,
-    effect_stack: Vec<PendingEffect>,
-    resolving_effect: Option<ResolvingEffect>,
+    effect_stack: EffectStack,
 }
 
 impl Game {
@@ -93,7 +92,6 @@ impl Game {
             history,
             outcome: Default::default(),
             effect_stack: Default::default(),
-            resolving_effect: Default::default(),
         };
 
         for player in game.players.iter_mut() {

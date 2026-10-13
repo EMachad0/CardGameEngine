@@ -121,7 +121,7 @@ impl Game {
             )))
         } else {
             self.apply_action(player_id, action, obs);
-            self.drain_effect_queue(obs);
+            self.resolve_effect_stack(obs);
             Ok(())
         }
     }

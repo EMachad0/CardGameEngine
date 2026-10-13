@@ -6,7 +6,6 @@
 mod action;
 mod cards;
 mod choice;
-mod effect;
 mod event;
 mod game;
 mod ids;
@@ -14,6 +13,7 @@ mod object;
 mod observer;
 mod outcome;
 mod rng;
+mod stack;
 mod turn;
 mod zones;
 

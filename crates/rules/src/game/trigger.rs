@@ -3,7 +3,6 @@ use crate::{
         modifier::ModifierEffect,
         trigger::{TriggerDef, TriggerPattern, TriggerSubject},
     },
-    effect::PendingEffect,
     event::Event,
     game::Game,
     ids::PlayerId,
@@ -27,21 +26,18 @@ impl Game {
         obs.event(&event);
         for object_id in self.board_characters().into_iter() {
             let obj = self.objects.get(object_id);
-            self.enqueue_triggers(obj.player_id, object_id, &event);
+            self.push_matched_triggers(obj.player_id, object_id, &event);
         }
     }
 
-    fn enqueue_triggers(&mut self, player_id: PlayerId, object_id: ObjectId, event: &Event) {
+    fn push_matched_triggers(&mut self, player_id: PlayerId, object_id: ObjectId, event: &Event) {
         for Trigger {
             def: TriggerDef { pattern, effects },
             ..
         } in self.triggers(object_id)
         {
             if self.fulfill_trigger_pattern(player_id, object_id, pattern, event) {
-                self.effect_stack.push(PendingEffect {
-                    source: object_id,
-                    effects,
-                });
+                self.effect_stack.push(object_id, effects);
             }
         }
     }

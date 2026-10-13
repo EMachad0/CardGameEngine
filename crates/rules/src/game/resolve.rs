@@ -1,4 +1,4 @@
-//! Effect resolution: the loop that drains the effect stack, and the
+//! Effect resolution: the loop that resolves the effect stack, and the
 //! interpreter for each effect, its amounts and its selectors.
 
 use crate::{
@@ -100,21 +100,16 @@ impl Game {
         }
     }
 
-    pub(super) fn drain_effect_queue(&mut self, obs: &mut impl Observer) {
+    pub(super) fn resolve_effect_stack(&mut self, obs: &mut impl Observer) {
         while !self.is_pending_interaction() && self.outcome().is_none() {
             self.continue_resolving_effect(obs);
 
-            // finished a unit
-            if self.resolving_effect.is_none() {
+            if !self.effect_stack.is_resolving() {
                 self.check_state(obs);
-
-                if let Some(pending_effect) = self.effect_stack.pop() {
-                    self.resolving_effect = Some(pending_effect.into());
-                }
+                self.effect_stack.start_next();
             }
 
-            // no more units
-            if self.resolving_effect.is_none() && self.effect_stack.is_empty() {
+            if self.effect_stack.is_empty() {
                 break;
             }
         }
@@ -122,24 +117,13 @@ impl Game {
 
     fn continue_resolving_effect(&mut self, obs: &mut impl Observer) {
         while !self.is_pending_interaction()
-            && let Some(resolving) = &mut self.resolving_effect
-            && !resolving.is_finished()
+            && let Some((source, effect)) = self.effect_stack.next_effect()
         {
-            let effect = resolving
-                .curr_effect()
-                .expect("An unfinished ResolvingEffect have effects to apply")
-                .clone();
-            let source = resolving.source;
-            resolving.advance();
-
             let owner = self.objects.get(source).player_id;
             self.apply_effect(owner, source, &effect, obs);
             obs.checkpoint(Views::new(self));
         }
-        if let Some(resolving) = &mut self.resolving_effect
-            && resolving.is_finished()
-        {
-            self.resolving_effect = None;
+        if self.effect_stack.finish() {
             self.check_state(obs);
         }
     }
