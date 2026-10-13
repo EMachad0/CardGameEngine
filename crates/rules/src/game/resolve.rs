@@ -109,7 +109,7 @@ impl Game {
                 self.effect_stack.start_next();
             }
 
-            if self.effect_stack.is_empty() {
+            if self.effect_stack.is_idle() {
                 break;
             }
         }
@@ -123,7 +123,7 @@ impl Game {
             self.apply_effect(owner, source, &effect, obs);
             obs.checkpoint(Views::new(self));
         }
-        if self.effect_stack.finish() {
+        if self.effect_stack.finish_if_done() {
             self.check_state(obs);
         }
     }
