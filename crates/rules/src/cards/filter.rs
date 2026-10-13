@@ -1,7 +1,5 @@
 use enumset::EnumSet;
 
-use crate::PlayerId;
-
 #[derive(Debug, enumset::EnumSetType)]
 pub enum CharacterKindFilter {
     Heroes,
@@ -40,9 +38,4 @@ impl CharacterFilter {
             side: EnumSet::all(),
         }
     }
-}
-
-pub(crate) fn fulfill_side_filter(side: EnumSet<Side>, asking: PlayerId, owner: PlayerId) -> bool {
-    (side.contains(Side::Enemy) && owner != asking)
-        || (side.contains(Side::Friendly) && owner == asking)
 }

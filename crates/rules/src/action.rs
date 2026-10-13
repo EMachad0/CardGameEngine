@@ -1,6 +1,6 @@
 //! What a player sends in, and what comes back when it isn't legal.
 
-use crate::{ObjectId, choice::ChoiceId, ids::PlayerId};
+use crate::{cards::choice::ChoiceId, ids::PlayerId, object::ObjectId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Action {

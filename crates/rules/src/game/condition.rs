@@ -1,11 +1,13 @@
 use enumset::EnumSet;
 
 use crate::{
-    Game, ObjectId, PlayerId,
-    cards::filter::{
-        CardFilter, CardKindFilter, CharacterFilter, CharacterKindFilter, fulfill_side_filter,
+    cards::{
+        choice::{CharacterChoice, ChoiceId},
+        filter::{CardFilter, CardKindFilter, CharacterFilter, CharacterKindFilter, Side},
     },
-    choice::{CharacterChoice, ChoiceId},
+    game::Game,
+    ids::PlayerId,
+    object::ObjectId,
 };
 
 impl Game {
@@ -135,4 +137,9 @@ impl Game {
         }
         !any_unfulfiled
     }
+}
+
+pub(super) fn fulfill_side_filter(side: EnumSet<Side>, asking: PlayerId, owner: PlayerId) -> bool {
+    (side.contains(Side::Enemy) && owner != asking)
+        || (side.contains(Side::Friendly) && owner == asking)
 }

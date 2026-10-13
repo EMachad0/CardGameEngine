@@ -1,12 +1,11 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use crate::{
-    cards::{
-        definition::{CardDef, CardDefKind, DefId, TriggerDef},
-        modifier::ModifierEffect,
-    },
+use crate::cards::{
     choice::{CharacterChoice, ChoiceId},
+    definition::{CardDef, CardDefKind, DefId},
     effect::Effect,
+    modifier::ModifierEffect,
+    trigger::TriggerDef,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

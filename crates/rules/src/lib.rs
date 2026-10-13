@@ -17,6 +17,7 @@ mod event;
 mod game;
 mod history;
 mod ids;
+mod object;
 mod observer;
 mod outcome;
 mod rng;
@@ -26,19 +27,19 @@ mod zones;
 
 pub use action::{Action, IllegalAction};
 pub use cards::{
+    choice::{ChoiceId, PickId},
     def_ids::static_card_definition,
     definition::{CardDef, DefId},
     loader::CardDefLoader,
-    object::ObjectId,
     validate::CardDefError,
 };
-pub use choice::{ChoiceId, PickId};
 pub use event::Event;
 pub use game::{
     ApplyError, Game,
     view::{BoardCard, DraftView, Face, HandCard, HeroCard, PlayerView, RevealedCard, View},
 };
 pub use ids::PlayerId;
+pub use object::ObjectId;
 pub use observer::{Observer, Views};
 pub use outcome::Outcome;
 pub use rng::Rng;

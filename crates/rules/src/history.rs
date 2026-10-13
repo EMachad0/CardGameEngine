@@ -1,4 +1,4 @@
-use crate::{PlayerId, cards::object::Object};
+use crate::{ids::PlayerId, object::Object};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum HistoryKind {
@@ -12,32 +12,6 @@ pub(crate) struct HistoryEntry {
     pub player_id: PlayerId,
     pub kind: HistoryKind,
     pub turn: u32,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PlayerFilter {
-    Active,
-    All,
-    Owner,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TurnFilter {
-    Current,
-    All,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct HistoryQuery {
-    pub kind: HistoryQueryKind,
-    pub scope: PlayerFilter,
-    pub turn: TurnFilter,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum HistoryQueryKind {
-    SpellsPlayed,
-    MinionsDied,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]

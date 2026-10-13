@@ -7,18 +7,18 @@
 use super::Game;
 
 use crate::{
-    IllegalAction, ObjectId, Observer, Views,
-    action::Action,
+    action::{Action, IllegalAction},
     cards::{
-        definition::{CharacterSelector, PlayerSelector, PlayerSelectorFilter},
-        filter::fulfill_side_filter,
-        modifier::Modifier,
+        amount::{EffectAmount, HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter},
+        effect::Effect,
+        selector::{CharacterSelector, PlayerSelector, PlayerSelectorFilter},
     },
-    choice::{ChoiceTarget, EffectAmount, PickTarget},
-    effect::Effect,
-    game::PlayerInteractionState,
-    history::{HistoryKind, HistoryQuery, HistoryQueryKind, PlayerFilter},
+    choice::{ChoiceTarget, PickTarget},
+    game::{PlayerInteractionState, condition::fulfill_side_filter},
+    history::HistoryKind,
     ids::PlayerId,
+    object::{Modifier, ObjectId},
+    observer::{Observer, Views},
 };
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
@@ -293,10 +293,10 @@ impl Game {
             HistoryQueryKind::SpellsPlayed => entries
                 .filter(|entry| targets.contains(&entry.player_id))
                 .filter(|entry| match query.turn {
-                    crate::history::TurnFilter::Current => {
+                    TurnFilter::Current => {
                         entry.turn == self.turn_order.turn_count()
                     }
-                    crate::history::TurnFilter::All => true,
+                    TurnFilter::All => true,
                 })
                 .filter(|entry| {
                     matches!(
@@ -308,10 +308,10 @@ impl Game {
             HistoryQueryKind::MinionsDied => entries
                 .filter(|entry| targets.contains(&entry.player_id))
                 .filter(|entry| match query.turn {
-                    crate::history::TurnFilter::Current => {
+                    TurnFilter::Current => {
                         entry.turn == self.turn_order.turn_count()
                     }
-                    crate::history::TurnFilter::All => true,
+                    TurnFilter::All => true,
                 })
                 .filter(|entry| matches!(&entry.kind, HistoryKind::CharacterDied { object } if self.binder.is_minion(object.def_id)))
                 .count(),

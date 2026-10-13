@@ -1,13 +1,11 @@
-use crate::{
-    cards::{
-        def_ids::static_card_definition::ALL_DEF_ID,
-        definition::{
-            CardDef, CardDefKind, CharacterSelector, DefId, MinionCardDef, PLACEHOLDER, TriggerDef,
-        },
-        modifier::ModifierEffect,
-    },
+use crate::cards::{
     choice::{ChoiceId, PickId},
+    def_ids::static_card_definition::ALL_DEF_ID,
+    definition::{CardDef, CardDefKind, DefId, MinionCardDef, PLACEHOLDER},
     effect::Effect,
+    modifier::ModifierEffect,
+    selector::CharacterSelector,
+    trigger::TriggerDef,
 };
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
@@ -196,12 +194,10 @@ mod tests {
 
     use pretty_assertions::assert_eq;
 
-    use crate::{
-        cards::{
-            def_ids::static_card_definition::{BOLT, FORAGE, HOARDER, PING, RALLY_BANNER, SPARK},
-            loader::CardDefLoader,
-        },
+    use crate::cards::{
+        def_ids::static_card_definition::{BOLT, FORAGE, HOARDER, PING, RALLY_BANNER, SPARK},
         effect::EffectSequence,
+        loader::CardDefLoader,
         trigger::{TriggerPattern, TriggerSubject},
     };
 

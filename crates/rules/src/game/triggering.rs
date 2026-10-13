@@ -1,9 +1,13 @@
 use crate::{
-    Event, Game, ObjectId, Observer, PlayerId,
+    cards::trigger::{TriggerPattern, TriggerSubject},
     effect::PendingEffect,
+    event::Event,
+    game::Game,
     history::{HistoryEntry, HistoryKind},
+    ids::PlayerId,
+    object::ObjectId,
+    observer::Observer,
     trigger::Trigger,
-    trigger::{TriggerPattern, TriggerSubject},
 };
 
 impl Game {
