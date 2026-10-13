@@ -56,16 +56,16 @@ impl Game {
         object_id: ObjectId,
         kind: EnumSet<CharacterKindFilter>,
     ) -> bool {
-        let def_id = self.objects.get(object_id).def_id;
-        kind.contains(CharacterKindFilter::Heroes) && self.binder.is_hero(def_id)
-            || kind.contains(CharacterKindFilter::Minions) && self.binder.is_minion(def_id)
+        let card_def = self.card_def(object_id);
+        kind.contains(CharacterKindFilter::Heroes) && card_def.is_hero()
+            || kind.contains(CharacterKindFilter::Minions) && card_def.is_minion()
     }
 
     fn fulfill_card_kind_filter(&self, object_id: ObjectId, kind: EnumSet<CardKindFilter>) -> bool {
-        let def_id = self.objects.get(object_id).def_id;
-        kind.contains(CardKindFilter::Heroes) && self.binder.is_hero(def_id)
-            || kind.contains(CardKindFilter::Minions) && self.binder.is_minion(def_id)
-            || kind.contains(CardKindFilter::Spells) && self.binder.is_spell(def_id)
+        let card_def = self.card_def(object_id);
+        kind.contains(CardKindFilter::Heroes) && card_def.is_hero()
+            || kind.contains(CardKindFilter::Minions) && card_def.is_minion()
+            || kind.contains(CardKindFilter::Spells) && card_def.is_spell()
     }
 }
 

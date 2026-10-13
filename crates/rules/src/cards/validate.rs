@@ -1,7 +1,7 @@
 use crate::cards::{
     choice::ChoiceId,
     def_ids::static_card_definition::ALL_DEF_ID,
-    definition::{CardDef, CardDefKind, DefId, PLACEHOLDER},
+    definition::{CardDef, DefId, PLACEHOLDER},
     effect::{Effect, PickId},
     modifier::ModifierEffect,
     selector::CharacterSelector,
@@ -98,17 +98,11 @@ fn effect_sequences(def: &CardDef) -> Vec<Sequence<'_>> {
     for trigger in &def.triggers {
         collect_trigger(&mut sequences, trigger);
     }
-    let (friendly_auras, hostile_auras): (&[ModifierEffect], &[ModifierEffect]) = match &def.kind {
-        CardDefKind::Minion(minion) => {
-            (&minion.friendly_aura_effects, &minion.hostile_aura_effects)
-        }
-        CardDefKind::Spell(_) | CardDefKind::Hero(_) => (&[], &[]),
-    };
     let modifier_effects = def
         .modifier_effects
         .iter()
-        .chain(friendly_auras)
-        .chain(hostile_auras);
+        .chain(def.friendly_aura_effects())
+        .chain(def.hostile_aura_effects());
     for modifier_effect in modifier_effects {
         collect_modifier(&mut sequences, modifier_effect);
     }
@@ -243,6 +237,7 @@ mod tests {
         def_ids::static_card_definition::{
             BOLT, DRUMMER, FORAGE, HOARDER, PING, RALLY_BANNER, SPARK,
         },
+        definition::CardDefKind,
         effect::EffectSequence,
         loader::CardDefLoader,
         trigger::{TriggerPattern, TriggerSubject},

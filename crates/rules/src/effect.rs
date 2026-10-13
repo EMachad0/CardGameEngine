@@ -5,14 +5,14 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct PendingEffect {
-    pub object_id: ObjectId,
+    pub source: ObjectId,
     pub effects: EffectSequence,
 }
 
 impl PendingEffect {
-    pub(crate) fn new<I: Into<EffectSequence>>(object_id: ObjectId, effects: I) -> Self {
+    pub(crate) fn new<I: Into<EffectSequence>>(source: ObjectId, effects: I) -> Self {
         Self {
-            object_id,
+            source,
             effects: effects.into(),
         }
     }
@@ -20,15 +20,15 @@ impl PendingEffect {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ResolvingEffect {
-    pub object_id: ObjectId,
+    pub source: ObjectId,
     pub effects: EffectSequence,
     pub idx: usize,
 }
 
 impl ResolvingEffect {
-    pub(crate) fn new<I: Into<EffectSequence>>(object_id: ObjectId, effects: I) -> Self {
+    pub(crate) fn new<I: Into<EffectSequence>>(source: ObjectId, effects: I) -> Self {
         Self {
-            object_id,
+            source,
             effects: effects.into(),
             idx: 0,
         }
@@ -49,6 +49,6 @@ impl ResolvingEffect {
 
 impl From<PendingEffect> for ResolvingEffect {
     fn from(value: PendingEffect) -> Self {
-        Self::new(value.object_id, value.effects)
+        Self::new(value.source, value.effects)
     }
 }

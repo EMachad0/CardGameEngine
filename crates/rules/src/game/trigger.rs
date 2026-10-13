@@ -1,8 +1,7 @@
 use crate::{
     cards::{
-        effect::EffectSequence,
         modifier::ModifierEffect,
-        trigger::{TriggerPattern, TriggerSubject},
+        trigger::{TriggerDef, TriggerPattern, TriggerSubject},
     },
     effect::PendingEffect,
     event::Event,
@@ -15,8 +14,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct Trigger {
     source: ObjectId,
-    pattern: TriggerPattern,
-    pub(super) effects: EffectSequence,
+    pub(super) def: TriggerDef,
 }
 
 impl Game {
@@ -35,11 +33,15 @@ impl Game {
 
     fn enqueue_triggers(&mut self, player_id: PlayerId, object_id: ObjectId, event: &Event) {
         for Trigger {
-            pattern, effects, ..
+            def: TriggerDef { pattern, effects },
+            ..
         } in self.triggers(object_id)
         {
             if self.fulfill_trigger_pattern(player_id, object_id, pattern, event) {
-                self.effect_stack.push(PendingEffect { object_id, effects });
+                self.effect_stack.push(PendingEffect {
+                    source: object_id,
+                    effects,
+                });
             }
         }
     }
@@ -88,16 +90,14 @@ impl Game {
     pub(super) fn death_rattles(&self, object_id: ObjectId) -> Vec<Trigger> {
         self.triggers(object_id)
             .into_iter()
-            .filter(|t| matches!(t.pattern, TriggerPattern::Died(TriggerSubject::Itself)))
+            .filter(|t| matches!(t.def.pattern, TriggerPattern::Died(TriggerSubject::Itself)))
             .collect()
     }
 
     fn triggers(&self, object_id: ObjectId) -> Vec<Trigger> {
-        let obj = self.object(object_id);
-        let def = self.binder.triggers(obj.def_id).iter().map(|td| Trigger {
+        let def = self.card_def(object_id).triggers.iter().map(|td| Trigger {
             source: object_id,
-            pattern: td.pattern,
-            effects: td.effects.clone(),
+            def: td.clone(),
         });
         let mut modifiers = self
             .modifiers(object_id)
@@ -106,8 +106,7 @@ impl Game {
             .filter_map(|m| match &m.effect {
                 ModifierEffect::GrantTrigger(trigger) => Some(Trigger {
                     source: m.source,
-                    pattern: trigger.pattern,
-                    effects: trigger.effects.clone(),
+                    def: trigger.clone(),
                 }),
                 _ => None,
             })

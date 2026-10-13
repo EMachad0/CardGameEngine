@@ -81,7 +81,7 @@ impl Game {
                 .filter(|entry| {
                     matches!(
                         &entry.kind,
-                        HistoryKind::CardPlayed { object } if self.binder.is_spell(object.def_id)
+                        HistoryKind::CardPlayed { object } if self.binder.get(object.def_id).is_spell()
                     )
                 })
                 .count(),
@@ -93,7 +93,7 @@ impl Game {
                     }
                     TurnFilter::All => true,
                 })
-                .filter(|entry| matches!(&entry.kind, HistoryKind::CharacterDied { object } if self.binder.is_minion(object.def_id)))
+                .filter(|entry| matches!(&entry.kind, HistoryKind::CharacterDied { object } if self.binder.get(object.def_id).is_minion()))
                 .count(),
         };
         u8::try_from(count).unwrap_or(u8::MAX)

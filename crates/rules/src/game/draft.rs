@@ -35,7 +35,12 @@ impl Game {
         chosen_count: u8,
     ) -> bool {
         let obj = self.objects.get(object_id);
-        let choice = self.binder.choice(obj.def_id, choice_id).unwrap();
+        let choice = self
+            .card_def(object_id)
+            .choices
+            .iter()
+            .find(|c| c.id == choice_id)
+            .unwrap();
         let count = self.effect_amount(&choice.count, obj.player_id);
         choice.bound.is_satisfied(chosen_count, count)
     }
@@ -46,7 +51,7 @@ impl Game {
         chosen: &mut Vec<(ObjectId, ChoiceId)>,
     ) -> bool {
         let mut any_unfulfiled = false;
-        for choice in self.binder.choices(self.def_id(object_id)) {
+        for choice in &self.card_def(object_id).choices {
             let chosen_for_choice_count = chosen
                 .iter()
                 .filter(|(_, choice_id)| choice.id == *choice_id)

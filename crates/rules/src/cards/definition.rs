@@ -40,6 +40,68 @@ impl Default for CardDef {
     }
 }
 
+impl CardDef {
+    pub(crate) fn health(&self) -> Option<i32> {
+        match &self.kind {
+            CardDefKind::Spell(_) => None,
+            CardDefKind::Minion(minion) => Some(minion.health),
+            CardDefKind::Hero(hero) => Some(hero.health),
+        }
+    }
+
+    pub(crate) fn attack(&self) -> Option<i32> {
+        match &self.kind {
+            CardDefKind::Spell(_) => None,
+            CardDefKind::Minion(minion) => Some(minion.attack),
+            CardDefKind::Hero(_) => None,
+        }
+    }
+
+    pub(crate) fn is_spell(&self) -> bool {
+        matches!(self.kind, CardDefKind::Spell(_))
+    }
+
+    pub(crate) fn is_minion(&self) -> bool {
+        matches!(self.kind, CardDefKind::Minion(_))
+    }
+
+    pub(crate) fn is_hero(&self) -> bool {
+        matches!(self.kind, CardDefKind::Hero(_))
+    }
+
+    pub(crate) fn has_board_presence(&self) -> bool {
+        match self.kind {
+            CardDefKind::Spell(_) => false,
+            CardDefKind::Minion(_) => true,
+            CardDefKind::Hero(_) => false,
+        }
+    }
+
+    pub(crate) fn has_deck_presence(&self) -> bool {
+        match self.kind {
+            CardDefKind::Spell(_) => true,
+            CardDefKind::Minion(_) => true,
+            CardDefKind::Hero(_) => false,
+        }
+    }
+
+    pub(crate) fn friendly_aura_effects(&self) -> &[ModifierEffect] {
+        match &self.kind {
+            CardDefKind::Spell(_) => &[],
+            CardDefKind::Minion(minion) => &minion.friendly_aura_effects,
+            CardDefKind::Hero(_) => &[],
+        }
+    }
+
+    pub(crate) fn hostile_aura_effects(&self) -> &[ModifierEffect] {
+        match &self.kind {
+            CardDefKind::Spell(_) => &[],
+            CardDefKind::Minion(minion) => &minion.hostile_aura_effects,
+            CardDefKind::Hero(_) => &[],
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CardDefKind {
     Spell(SpellCardDef),

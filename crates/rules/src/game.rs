@@ -14,7 +14,10 @@ mod verb;
 pub(crate) mod view;
 
 use crate::cards::{
-    binder::Binder, def_ids::static_card_definition::HERO, definition::DefId, effect::Effect,
+    binder::Binder,
+    def_ids::static_card_definition::HERO,
+    definition::{CardDef, DefId},
+    effect::Effect,
     loader::CardDefLoader,
 };
 use crate::effect::{PendingEffect, ResolvingEffect};
@@ -157,13 +160,16 @@ impl Game {
         self.object(object_id).def_id
     }
 
+    fn card_def(&self, object_id: ObjectId) -> &CardDef {
+        self.binder.get(self.def_id(object_id))
+    }
+
     pub fn hero_id(&self, player_id: PlayerId) -> ObjectId {
         self.get_player(player_id).zones.hero
     }
 
     fn play_effects(&self, object_id: ObjectId) -> &[Effect] {
-        let obj = self.object(object_id);
-        self.binder.play_effects(obj.def_id)
+        self.card_def(object_id).play_effects.as_slice()
     }
 
     fn playing(&self, player_id: PlayerId) -> bool {
