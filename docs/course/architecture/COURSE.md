@@ -20,19 +20,54 @@ up.
 - One pi session per course session. Start with `/new`, `/name NN-topic`,
   `/md-log docs/course/architecture/sessions/NN-topic.md` (the file must exist first), then
   "continue the architecture course".
-- Every session opens with a short retrieval quiz on the previous session's nodes.
+- Every session opens with a short retrieval quiz on the previous session's nodes, unless he did
+  that session just before.
 - Roles. He learns the concepts and makes every decision about the rules. The agent drafts the docs
   and the lint rules, and does the refactor. He reviews all of it before it's committed.
 - Each node ends with a production exercise: he draws a split on real code with no options offered.
   When a node settles, he states the rule and the agent drafts it into the doc section it belongs
   to. The doc grows one node at a time.
+- A derivation step is asked open-ended, in plain text, and he answers in his own words. Options let
+  him get there by elimination (session 01). Quizzes are for checks whose wrong options are
+  mistakes he could really make.
 - No new card game features for this course. A concept with no problem in today's code becomes an
   open thread and waits until the card game course creates the problem.
-- Project-specific work waits until the refactor PRs in flight land. General and Rust concepts come
-  first.
+- General and Rust concepts come first, the project section and the refactor last. The refactor PRs
+  already open are drafts. Each is reviewed after the node it exercises, then merged, reworked or
+  closed. The open threads say which node each one waits for.
 - End at a node boundary, not mid-node. Commit once per node.
 
-## Knowledge map (from the session 00 probe)
+## Knowledge map
+
+### Session 01
+
+Probe, all right on real code: a dependency with no call (the in-play rule, the meaning of
+`order`), check then apply as a split by steps, `Game` deep outside with no inner boundaries, and
+`queries.rs` as a vague name. His note on the naming question: he applied the rule from session
+00 "but I am not sure why or where it came from". So recognition holds on these strands, and the
+edge is deriving the rules and producing with them.
+
+Taught: the definition of a dependency (Page-Jones), the compiler checks only types and
+signatures, every dependency is knowledge of a decision in formal or informal form, one place
+knows each decision. Both rules are in `file-structure.md`, in his words, edited.
+
+- Replays: he said they depend on the generator being seedable and repeatable. Corrected: they
+  depend on the exact sequence, so a swap to another repeatable generator breaks them too.
+- `Location` card kind: he thought `Game::health` uses a `match`. It's `Binder::health` that does;
+  the in-play test uses `is_hero` and `is_minion` booleans.
+- Decision inventory, no options, 22 minutes: three decisions, all about ordering or state.
+  Reactions resolve above the card's own effects; a pick happens only while idle; an `ObjectId`
+  always resolves. Missed `kill` as a third holder of the first, and the resolution loop's
+  `!is_pending_interaction()` as what makes the second true. Judged formal versus informal by
+  "could `insert` have a bug", not by "does the compiler check it".
+- One place exercise, 15 minutes: chose a command over a query, and unprompted set one command
+  that pushes and emits against a token that makes the order formal, noting that the token leaves
+  the knowledge in every caller. Missed that `kill` pushes every death rattle before any `Died`,
+  so a per-object helper would change the order of simultaneous deaths.
+- His rule edits: tests also find informal breakage; informal knowledge is cheap inside a module;
+  no example where it isn't practical; "still knows the decision".
+
+### Session 00 probe
 
 Background: deep Rails, so "where does this go" was always answered by the framework's layer-first
 layout. His Game Boy Color emulator has the same god struct (`App`) as `Game` here.
@@ -81,8 +116,11 @@ Two roots carry the course. Every dependency is knowledge of a decision, and who
 can break its rules. Each guideline is derived from them so he can apply it to cases no doc
 anticipated. Socratic teaching, quiz checks, and a production exercise per node.
 
-1. Session 01: coupling as shared knowledge, hiding decisions (Parnas), depth (Ousterhout), names
-   that exclude. Material: the `game/` split, the `lookup`/`condition` drift.
+1. Sessions 01 and 01a: coupling as shared knowledge, one place per decision, hiding decisions
+   (Parnas), depth (Ousterhout), names that exclude. Material: the `game/` split, the
+   `lookup`/`condition` drift. 01a opens with Parnas (a module built around a decision, the KWIC
+   example, check then apply), then depth with the formal and informal interface, then names that
+   exclude, then the review of #10, #13, #14 and #15.
 2. Session 02: ownership. An owner guards its invariants and an orchestrator coordinates owners;
    encapsulation vs OOP; aggregates (Evans, Vernon). Catherine West's nuance: one big state is
    fine, implicit reach and unowned invariants are the problem. Open with his own question: does
@@ -96,12 +134,24 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
    naming.
 6. Session 06: Rust layer (a crate is Martin's package, visibility as enforcement, the borrow
    checker and layout, errors near their unit of fallibility) and enforcement tools.
-7. Session 07 on: the project section and the refactor, once the refactor PRs land.
+7. Session 07 on: the project section and the rest of the refactor.
 
 ## Open threads
 
-- `docs/conventions/file-structure.md` doesn't exist yet. It's created with its first rule in
-  session 01, and `CLAUDE.md` gets a "when to read" line then.
+- The refactor PRs, a stack of nine on main, are drafts. Each waits for its node's review, and they
+  merge bottom-up, so an approved PR also waits for the ones below it. Rebasing waits until then.
+  - Session 01a: #10 loader split, #13 `game/` split by question, #14 one walk over card text, #15
+    card definitions answer their kind questions.
+  - Session 02: #16 history private, #17 guarded effect stack, #18 modifiers answer stat questions.
+  - Session 05: #11 printed card types in `cards/`.
+  - Session 06: #9 clippy ban by public path.
+- The Rust section of `file-structure.md` started early with "Making knowledge formal". Session 06
+  extends it.
+- "Own effects resolve after the reactions they cause": his design is one command next to the
+  resolution loop, taking the whole batch, since `kill` pushes every death rattle before any
+  `Died`. Compare it with #17 at that PR's review in session 02.
+- For the teach skill: ask derivation steps open-ended, not as a quiz, since options let him
+  eliminate. Propose the edit to him for review.
 - `fulfill_character_filter` is half narrow already: the side check is a free function in
   `cards/filter.rs`, while the kind check goes from object to definition to `binder`. Material for
   sessions 02 and 04.
@@ -109,10 +159,11 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   idea. Session 02 or 03.
 - Error placement: `ApplyError`, `CardDefError` and the loader's validation errors, against Sabrina
   Jewson's "near their unit of fallibility". Session 06.
-- Quotes flagged secondary in `research/00-scope/literature.md` (Ousterhout subsections, GOOS ch.
-  20, Acton) need checking before being quoted as exact. Unverified Rust items: Cargo's crate-cycle
-  ban, and scoping `clippy::disallowed_*` to one module with `#[allow]`. Verify before session 06
-  teaches them.
+- Quotes flagged secondary in `research/00-scope/literature.md` and
+  `research/01-coupling-and-hiding/sources.md` (Ousterhout's book text, GOOS ch. 20, Acton,
+  Page-Jones's later books) need checking before being quoted as exact. Unverified Rust items:
+  Cargo's crate-cycle ban, and scoping `clippy::disallowed_*` to one module with `#[allow]`. Verify
+  before session 06 teaches them.
 - Bevy names changed since 0.17: buffered events are `Message`s, `Event` is for observers, 0.20 is
   current. Use these names in session 03.
 
@@ -120,7 +171,10 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
 
 ```mermaid
 graph TD
+  U1["B depends on A if some change to A forces a change to B"]
+  U2["The compiler checks only types and signatures"]
   R1["Every dependency is knowledge of a decision"]
+  OP["One place knows each decision"]
   R2["Whoever can write data can break its rules"]
   R3["A dependency carries change one way"]
   R4["Rust: &mut self reaches every field"]
@@ -137,7 +191,10 @@ graph TD
   E["Enforcement: lints and checks"]
   DOCS["Docs: general, Rust, project; then the refactor"]
 
-  R1-->H
+  U1-->R1
+  U2-->R1
+  R1-->OP
+  OP-->H
   H-->D
   R2-->O
   R4-->O
@@ -167,10 +224,11 @@ graph TD
 | # | Nodes | Topic | Status |
 |---|-------|-------|--------|
 | 00 | probe | Knowledge probe and plan | done (edge is production, not recognition; aggregates a gap; plan and doc layout agreed; three research reports) |
-| 01 | R1, H, D | Coupling as shared knowledge, hiding decisions, depth, names that exclude | next |
+| 01 | U1, U2, R1, OP | Coupling as shared knowledge, one place per decision | done (recognition solid, edge is deriving; two rules in `file-structure.md`; PRs made drafts) |
+| 01a | H, D | Hiding decisions, depth, names that exclude; review #10, #13, #14, #15 | next |
 | 02 | R2, R4, O, A | Ownership and aggregates: untangling the god struct | |
 | 03 | DOD | Data-oriented design, ECS organization, the rules core beside Bevy | |
 | 04 | R3, P, T | Ports, anti-corruption layers, contract tests, tests as feedback | |
 | 05 | F | Feature-first, shared code, naming | |
 | 06 | RS, E | Rust layer and enforcement | |
-| 07+ | DOCS | Project section and refactor, after the refactor PRs land | |
+| 07+ | DOCS | Project section and the rest of the refactor | |
