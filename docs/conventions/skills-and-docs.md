@@ -42,6 +42,12 @@ name. Write a term the moment it resolves.
 
 Decisions that clear the bar in `docs/adr/README.md`, which also says who writes and commits them.
 
+### Issues (`docs/issues/`)
+
+Defects and chores found outside the current task, with a known fix and no design call. Only open
+issues live here. The PR that resolves one deletes its file. `docs/agents/issue-tracker.md` governs
+the format and the workflow.
+
 ### Course (`docs/course/`)
 
 The learner and the course plan. The game's design lives in the tests, the glossary and the ADRs.
@@ -58,7 +64,8 @@ The learner and the course plan. The game's design lives in the tests, the gloss
 | Finding | Home |
 |---|---|
 | What the code does | A test. Write one if none checks it yet |
-| What the code must do but doesn't yet | A red test in the exercise that builds it. Until then, the `COURSE.md` open thread or session that plans it |
+| A defect or chore outside the current task, with a known fix and no design call | An issue in `docs/issues/` |
+| What the code must do but doesn't yet, when it needs a design call or a lesson | A red test in the exercise that builds it. Until then, the `COURSE.md` open thread or session that plans it |
 | A name for a concept, or a name to stop using | Glossary |
 | A design choice that clears the ADR bar, built or not | ADR |
 | A design choice below the bar, already built | Nowhere. The code and the tests show it |
