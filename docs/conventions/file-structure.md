@@ -18,6 +18,8 @@ Decisions that change together count as one.
 - Data a module takes in or hands out is part of its interface: its layout, what each field means
   and the rules for writing it. A decision whose data crosses the boundary isn't hidden, because
   any caller can copy it.
+- A file that declares only public types hides nothing. Its types are part of the interface of
+  every module that takes them in or hands them out, and its name still has to pass.
 - A module keeps the knowledge of its decision local, because all of its code serves that
   decision. A boundary that holds many decisions that change independently doesn't. Its code has
   to be sorted by decision before a change.
