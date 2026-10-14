@@ -36,7 +36,9 @@ up.
   are drafts. Each is reviewed after the node it exercises, then merged, reworked or closed. The
   open threads say which node each one waits for.
 - After each node, the agent audits the crate against the doc as it stands, with no code changes.
-  He reviews the list, and the findings go in the open threads.
+  He reviews the list, and the findings go in the open threads. An audit is one pass and needn't
+  find everything, since refactors surface the rest (his call, 01d). Auditors get the card-game
+  course plan and open threads as the roadmap, since the repo has none.
 - The refactor runs while the knowledge is fresh (his call, session 01a, revising his first pick of
   refactoring at the end). After a teaching session, a refactor session reworks the PRs its nodes
   judged and fixes the audit findings whose home those nodes settle. Findings whose home depends on
@@ -44,6 +46,32 @@ up.
 - End at a node boundary, not mid-node. Commit once per node.
 
 ## Knowledge map
+
+### Session 01d
+
+No retrieval quiz (his call). The audit ran in two rounds of two agents, with reports in
+`research/01d-audit/`. Round 1 had no roadmap. Round 2 added the card-game course plan and open
+threads as one, his idea, to compare and to prepare later audits. Every report took `game` as one
+module and led with it holding about fifteen independent decisions.
+
+- I framed the first doc gap as "place" being undefined. He corrected it: a place is code you have
+  to edit, as the doc says. The real gap was two sentences on cheap informal knowledge that
+  disagreed for copies inside `game`. He drafted three versions, rejected his own second ("what I
+  said is not true"), and landed on locality: informal knowledge is acceptable where its places
+  sit close together, so changes stay cheap; a module keeps its decision local by definition;
+  informal knowledge is inevitable, as statement order shows. Added: an order forced by a data
+  dependency is formal.
+- Asked whether a module holding more than one decision should change the text. Resolved as
+  "decisions that change together count as one", which matches the names section.
+- Rejected doc additions that fix no shown gap, asking "why do we need this change?" (`impl`
+  files, tuple matches; I conceded both), and text owned elsewhere: "private", the glossary's
+  scope, a misplaced-function rule, and the roadmap's location (a course plan is not a roadmap).
+  On `loader` his reading held: a rule over public data can be copied, so it isn't a module.
+  Added: files of only public types hide nothing; the project section points to `testing.md`.
+- Audit 4 passed the five `update_order` calls as local. His answer: prefer formal over informal,
+  which the doc already says.
+- The Mourner bug was found by 2 of 4 auditors, the interaction state's `unreachable!` sites by
+  none. He's fine with misses: changes made in steps surface other issues.
 
 ### Session 01c
 
@@ -222,9 +250,10 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
 1. Sessions 01 to 01c: coupling as shared knowledge, one place per decision, hiding decisions
    (Parnas, done in 01a), then in 01b data as interface, depth, what a module is and file or
    module, then in 01c names that exclude, nesting, and the #13 and #15 verdicts (done).
-   Session 01d: the audit, rerun against the doc as it stands (module defined, names, nesting),
-   then his review of the list. Session 01e refactors under all of it: rework #10, #14 and #15,
-   close #13 and rebase the stack onto #11, and fix audit findings 8, 9, 11, 12 and likely 1.
+   Session 01d: the audit rerun in two rounds, the second with the roadmap (done). Session 01e
+   refactors under all of it: rework #10, #14 and #15, close #13 and rebase the stack onto #11,
+   and fix findings 10, 11, 14, 15 and likely 3. At its start he picks whether 7, 12 and the
+   names that don't wait for the `game` split join it.
 2. Session 02: ownership. An owner guards its invariants and an orchestrator coordinates owners;
    encapsulation vs OOP; aggregates (Evans, Vernon). Catherine West's nuance: one big state is
    fine, implicit reach and unowned invariants are the problem. Open with his own question: does
@@ -260,36 +289,58 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
     My default, unless he objects: carry its visibility narrowing, `ApplyError` next to
     `IllegalAction`, and `History` and `Trigger` under `game` into the PRs that build the real
     modules. #15: merge after a light rework, one exhaustive match on `CardDefKind` returning the
-    kind flag so `filter.rs` stops chaining `||` (finding 11). Commented on the PR.
+    kind flag so `filter.rs` stops chaining `||` (finding 14). Commented on the PR.
   - Session 02: #16 history private, #17 guarded effect stack, #18 modifiers answer stat questions.
   - Session 05: #11 printed card types in `cards/`.
-- Audit after node H (session 01a), reviewed by him. Four agent reports in
-  `research/01a-hiding-and-depth/audit-1.md` to `audit-4.md`. The refactor works from this list:
-  1. Characters in play known in five modules; a dead hero would match its own death triggers twice.
-  2. Order of play: `pub` stamp, six writers, three sorts; code renews it on every zone move, ADR
-     0012 says board entry.
-  3. Effect stack order: bare `Vec` pushed in three modules, push-before-emit in `play` and `kill`
-     (#17, session 02).
-  4. Death pass: `kill` removes and reports one at a time, against ADR 0012. The Mourner bug, handed
-     off for a card-game issue.
-  5. Draft rules copied in `game.rs` and `condition.rs`; `check_choice_count_fulfilled` answers two
-     questions that `AtMost` would split.
-  6. Mana: check in `legal_actions`, payment in `apply_action`, refill in `start_turn`.
-  7. `choice_targets` and `pick_targets` handed forward on `Object`; `pick_targets` never cleared.
-     ADR 0015 puts them in the resolving unit.
-  8. Card text walk: validators miss `modifier_effects` and grants inside `Buff` and
-     `AddFriendlyAura`; `lookup.rs` walks separately (#14).
-  9. Nothing proves a `Binder` holds a validated table.
-  10. History recorded in `triggering.rs`, counted in `resolve.rs` (#16).
-  11. Card kinds mapped with `||` at call sites; `has_deck_presence` asked as "goes to the
-      graveyard" (#15, names).
-  12. Trigger matching ends in `(_, _) => false`.
-  13. Each stat filters modifiers with `_`, so no match decides what a variant means (#18).
-  14. Owner and side: `player_id` and the holding zone are two representations of one fact.
-  15. Interaction state destructured with `unreachable!` in three modules.
-  16. Checkpoints placed in three files (low confidence).
-- Doc feedback deferred from the audit: recognizing the coordinator, and state written by several
-  modules (session 02). Session 01d reruns the audit.
+- Audit after D5 (session 01d), reviewed by him. It replaces the 01a list, whose reports stay in
+  `research/01a-hiding-and-depth/`. Reports in `research/01d-audit/audit-1.md` to `audit-4.md`;
+  3 and 4 had the roadmap. The refactor works from this list. 01a's numbers are in parentheses.
+  1. `game` is one module holding about fifteen independent decisions. Child types with private
+     fields; `game` keeps the coordinator. Session 02.
+  2. Death pass reports one death at a time, against ADR 0012: the Mourner bug, live (4). Filed
+     on main as `docs/issues/dying-mourner-hears-older-death.md`.
+  3. Characters in play computed in four or five places. One scan answers "all", random and draft
+     candidates. A dead hero hears its own death twice; an eliminated hero stays a target (1).
+  4. Order of play: `pub` stamp, five writers, three sorts, docstring against ADR 0012. Trigger
+     order and death order are two questions (2).
+  5. Effect stack order known at three push sites (3, #17).
+  6. Draft walk copied in `legal_actions` and `can_finish_choices`; layout read in five places (5).
+  7. `is_satisfied` answers "may stop" and "is full", so `AtMost` would offer no `Choose` (5).
+  8. Mana check, payment and refill in three files; the glossary's Play split three ways (6).
+  9. Resolution answers on `Object`; `pick_targets` never cleared; the validator accepts a reused
+     pick ID (7, roadmap 06b).
+  10. Validators walk card text by hand, missing `modifier_effects` and nested grants (8, #14).
+  11. `loader` holds the card set, the IDs and validation; `Binder::new` stores unvalidated
+      definitions (9).
+  12. Validators copy resolution's rules: `Chosen` needs a draft, `ResolvePick` a `Reveal`.
+  13. History recorded in `triggering.rs`, counted in `resolve.rs`, entries `pub` (10, #16).
+  14. Card kinds: `is_*` combined in six places, kind filters copy `CardDefKind`,
+      `has_deck_presence` asked as "goes to the graveyard". A new board kind panics in
+      `find_dead` (11, #15).
+  15. Trigger matching ends in `(_, _) => false` (12).
+  16. Modifiers decided by four `_` filters (13, #18).
+  17. Owner: `player_id` and the holding zone. Revealing from the enemy deck panics (14).
+  18. Fatigue marks damage by hand, so damage triggers miss it. Card-game thread "One damage
+      function".
+  19. Interaction state decided with `_` arms in `view` and `pending_*`. 01a's three
+      `unreachable!` sites weren't found again (15).
+  20. Checkpoints at ten sites, two inside `play` (16, low).
+  21. `ResolvingEffect`'s cursor is `pub`; its caller clones, then advances (roadmap 06b).
+  22. `CardDef`, the loader and its errors are re-exported, unused outside the crate (low).
+  23. Placeholder rule split between `definition` and `loader`, which import each other (low).
+
+  Names every auditor failed: `game`, `cards`, `choice`, `ids`, `turn`, `cards::definition`,
+  `cards::modifier` (not in the glossary), and `condition`, `lookup`, `resolve`, `triggering` and
+  `zone_move` under `game/`. Split: `loader` (3 of 4); `filter`, `history` (not in the glossary)
+  and `static_card_definition` (2 each); `effect`, `trigger` and `player` (1 each).
+
+  Routed elsewhere: ObjectIds name hidden cards (a card-game thread already). Board auras reach
+  minions in every zone, the hand included (`lookup.rs:158`), a rules question for the card-game
+  course.
+- Doc feedback deferred to session 02: a decision with no data of its own, or one that needs
+  another module's data (four auditors); procedure versus domain order, and checkpoints (two).
+- Main moved since this branch forked: CLAUDE.md became AGENTS.md (#20), `docs/issues/` arrived
+  (#19), and #9 changed `clippy.toml`. This branch edits CLAUDE.md, so the 01e PR rebases first.
 - His `verb.rs` design (session 01c), for the 01e refactor or session 02: a zones module owning
   the zones, the stamps and in-zone order behind moves such as `deck_to_hand` (maybe deepening
   `zones.rs`); a damage module, with fatigue calling it; and an intermediate coordinator for the
@@ -300,12 +351,12 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   with no term yet (#18's bet), and auras are another. He proposed four noun modules.
 - His D4 exercise ideas, for the 01e refactor or later: a builder for `Game` creation, so callers
   know only what they set (check the card-game roadmap for N players first); a `Board` that keeps
-  its own entry order, replacing `Object.order` and the three sorts (audit finding 2; heroes and
+  its own entry order, replacing `Object.order` and the three sorts (audit finding 4; heroes and
   graveyard order complicate it). His "Objects" module is the modifiers question of #18, session
   02.
 - After #15, `get` still hands out `&CardDef` with `pub` fields, read in `game/` for
-  `play_effects`, `choices`, `mana_cost`, `triggers` and `modifier_effects` (D1). Not judged in
-  01c; the audit should weigh it.
+  `play_effects`, `choices`, `mana_cost`, `triggers` and `modifier_effects` (D1). The 01d audit
+  ran on main, without #15; finding 22 is the public half. Weigh `get` at #15's rework in 01e.
 - Exhaustive destructuring (a struct pattern with no `..`) for functions that must visit every
   field: proposed for the Rust list, his decision pending. The enforcing clippy lint is nightly
   only. See `research/01a-hiding-and-depth/exhaustive-destructuring.md`. Session 06 at the latest.
@@ -400,8 +451,8 @@ graph TD
 | 01a | H | Hiding decisions, not steps; audit; review #10, #14 | done (derived H unaided; rule in `file-structure.md`; audit in two rounds, doc amended; #10 and #14 to rework; refactor moved to run per node) |
 | 01b | D1 to D4 | Data as interface, depth, what a module is, file or module | done (edge was data handed out; module defined as one decision behind an enforced boundary; two rules in `file-structure.md`; D5 onward split off) |
 | 01c | D5 | Names that exclude; review #13, #15 | done (edge was sorting names by word category; name and nesting rules in `file-structure.md`, project section started; #13 close, #15 light rework; Binder in the glossary; audit split off) |
-| 01d | audit | Audit against the doc as it stands; his review of the findings | next |
-| 01e | refactor | Rework #10, #14, #15; close #13 and rebase the stack; audit findings 8, 9, 11, 12, likely 1; PR of this branch to main | |
+| 01d | audit | Audit against the doc as it stands; his review of the findings | done (two rounds, roadmap in the second; locality replaces "cheap", decisions that change together count as one, files of public types; 23 findings replace the 01a list) |
+| 01e | refactor | Rework #10, #14, #15; close #13 and rebase the stack; findings 10, 11, 14, 15, likely 3; PR of this branch to main | next |
 | 02 | R2, R4, O, A | Ownership and aggregates: untangling the god struct | |
 | 02a | refactor | #16, #17, #18 and the ownership findings | |
 | 02b | PDV | Parse, don't validate: `apply` and `legal_actions`, `ObjectId` by zone | |
