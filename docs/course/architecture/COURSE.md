@@ -32,12 +32,48 @@ up.
   mistakes he could really make.
 - No new card game features for this course. A concept with no problem in today's code becomes an
   open thread and waits until the card game course creates the problem.
-- General and Rust concepts come first, the project section and the refactor last. The refactor PRs
-  already open are drafts. Each is reviewed after the node it exercises, then merged, reworked or
-  closed. The open threads say which node each one waits for.
+- General and Rust concepts come first, the project section last. The refactor PRs already open
+  are drafts. Each is reviewed after the node it exercises, then merged, reworked or closed. The
+  open threads say which node each one waits for.
+- After each node, the agent audits the crate against the doc as it stands, with no code changes.
+  He reviews the list, and the findings go in the open threads.
+- The refactor runs while the knowledge is fresh (his call, session 01a, revising his first pick of
+  refactoring at the end). After a teaching session, a refactor session reworks the PRs its nodes
+  judged and fixes the audit findings whose home those nodes settle. Findings whose home depends on
+  a later node wait for it. The agent does the work, he reviews it.
 - End at a node boundary, not mid-node. Commit once per node.
 
 ## Knowledge map
+
+### Session 01a
+
+Retrieval on session 01, 3 of 3: a unit assumed across crates is informal and must become formal;
+Undying gets one `is_dead` question, not a constant or a floored `health`; one `transfer` command
+beats a token that makes the order formal.
+
+Taught node H (Parnas) by derivation. He derived "list the decisions, build around the likely to
+change" unaided, and why steps leak: "the step code ceases to exist and only the representation is
+kept alive", plus that a check predicts the act, so it copies the act's rule. He pushed back with
+his boss's "every decision is likely to change"; resolved as: an interface is made of decisions
+too, so something must be bet stable. Quizzes right: billing filter, reconciliation split.
+
+- Validator exercise, no options, about 10 minutes for the follow-up (first part untimed): named
+  the card text's shape as the decision, with formal and informal per change (rename vs new
+  field). Missed the live gap until pointed at it. First proposals hid the wrong thing:
+  `Binder`-style accessors mirror the shape, a DI trait for rules he had rated stable went against
+  his own filter, a flat `get_effects` lost sequences, and storage labels (aura) leaked the shape
+  back. His payload idea was sound; I had misread it and conceded.
+- His rule: "Build modules around decisions, especially the ones likely to change or hard to get
+  right", with steps as the coordinator's job. Committed with bullets from the session.
+- Audit, two rounds of two agents, reports in `research/01a-hiding-and-depth/`. His doc calls:
+  define a decision on its own, not by change; git history is rarely useful, domain reasoning
+  comes first; no ranking rule; no load-time validation clause.
+- PR review: #10 rework (spotted that the IDs and the table change together, wants one loading
+  module); #14 light rework. Missed that a new `CardDef` field is informal for the walk. Mixed up
+  #10 with #13's new `game/` files.
+- Asked what DOD and data-driven design say, and whether Parnas is still relevant (researched:
+  extended and qualified, never superseded). Raised "parse, don't validate" himself, including
+  `ObjectId` in hand vs in play.
 
 ### Session 01
 
@@ -116,16 +152,22 @@ Two roots carry the course. Every dependency is knowledge of a decision, and who
 can break its rules. Each guideline is derived from them so he can apply it to cases no doc
 anticipated. Socratic teaching, quiz checks, and a production exercise per node.
 
-1. Sessions 01 and 01a: coupling as shared knowledge, one place per decision, hiding decisions
-   (Parnas), depth (Ousterhout), names that exclude. Material: the `game/` split, the
-   `lookup`/`condition` drift. 01a opens with Parnas (a module built around a decision, the KWIC
-   example, check then apply), then depth with the formal and informal interface, then names that
-   exclude, then the review of #10, #13, #14 and #15.
+1. Sessions 01 to 01b: coupling as shared knowledge, one place per decision, hiding decisions
+   (Parnas, done in 01a), then in 01b depth (Ousterhout) with the formal and informal interface,
+   what a module is (the audit's open question: child modules read a parent's private fields),
+   names that exclude, and the review of #13 and #15. Session 01c refactors under both nodes:
+   rework #10, #13, #14 and #15, and fix audit findings 8, 9, 11, 12 and likely 1.
 2. Session 02: ownership. An owner guards its invariants and an orchestrator coordinates owners;
    encapsulation vs OOP; aggregates (Evans, Vernon). Catherine West's nuance: one big state is
    fine, implicit reach and unowned invariants are the problem. Open with his own question: does
    the module owning `effect_stack` and `resolving_effect` need to apply effects, or only decide
-   which comes next?
+   which comes next? Session 02a refactors under it: #16, #17, #18 and the ownership findings.
+   Session 02b, its own node: parse, don't validate (Alexis King, 2019). A check's result carried
+   forward as a type, not an assumption; who can build the proof, and when it goes stale. Material:
+   `apply` checking `legal_actions` then `apply_action` relying on `expect` and `unreachable!`; an
+   `ObjectId` in hand and one in play sharing a type, with `health`, `attack` and `mana_cost`
+   returning `Option` on every call. He found the `ObjectId` case and finds its fix not obvious.
+   Session 03 shows ECS queries as the ECS take on it, session 04 applies it at the boundary.
 3. Session 03: data-oriented design and ECS organization (component granularity, single writer,
    plugins per feature), and the rules core beside Bevy (elevator-core's bridge).
 4. Session 04: ports, anti-corruption layers, errors at the port, contract tests, tests as design
@@ -138,13 +180,48 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
 
 ## Open threads
 
-- The refactor PRs, a stack of nine on main, are drafts. Each waits for its node's review, and they
-  merge bottom-up, so an approved PR also waits for the ones below it. Rebasing waits until then.
-  - Session 01a: #10 loader split, #13 `game/` split by question, #14 one walk over card text, #15
-    card definitions answer their kind questions.
+- The refactor PRs are drafts in a stack. #9 (clippy ban by public path) is merged, and #10 now
+  targets main. Each waits for its node's review, and they merge bottom-up.
+  - Session 01a, node H, reviewed. #10 loader split: rework into one loading module that exposes
+    loading plus the IDs, with the IDs and the table in one module since they change together.
+    #14 one walk over card text: rework lightly, moving the walk next to `CardDef` and
+    destructuring exhaustively.
+  - Depth node: #13 `game/` split by question, #15 card definitions answer their kind questions.
   - Session 02: #16 history private, #17 guarded effect stack, #18 modifiers answer stat questions.
   - Session 05: #11 printed card types in `cards/`.
-  - Session 06: #9 clippy ban by public path.
+- Audit after node H (session 01a), reviewed by him. Four agent reports in
+  `research/01a-hiding-and-depth/audit-1.md` to `audit-4.md`. The refactor works from this list:
+  1. Characters in play known in five modules; a dead hero would match its own death triggers twice.
+  2. Order of play: `pub` stamp, six writers, three sorts; code renews it on every zone move, ADR
+     0012 says board entry.
+  3. Effect stack order: bare `Vec` pushed in three modules, push-before-emit in `play` and `kill`
+     (#17, session 02).
+  4. Death pass: `kill` removes and reports one at a time, against ADR 0012. The Mourner bug, handed
+     off for a card-game issue.
+  5. Draft rules copied in `game.rs` and `condition.rs`; `check_choice_count_fulfilled` answers two
+     questions that `AtMost` would split.
+  6. Mana: check in `legal_actions`, payment in `apply_action`, refill in `start_turn`.
+  7. `choice_targets` and `pick_targets` handed forward on `Object`; `pick_targets` never cleared.
+     ADR 0015 puts them in the resolving unit.
+  8. Card text walk: validators miss `modifier_effects` and grants inside `Buff` and
+     `AddFriendlyAura`; `lookup.rs` walks separately (#14).
+  9. Nothing proves a `Binder` holds a validated table.
+  10. History recorded in `triggering.rs`, counted in `resolve.rs` (#16).
+  11. Card kinds mapped with `||` at call sites; `has_deck_presence` asked as "goes to the
+      graveyard" (#15, names).
+  12. Trigger matching ends in `(_, _) => false`.
+  13. Each stat filters modifiers with `_`, so no match decides what a variant means (#18).
+  14. Owner and side: `player_id` and the holding zone are two representations of one fact.
+  15. Interaction state destructured with `unreachable!` in three modules.
+  16. Checkpoints placed in three files (low confidence).
+- Doc feedback deferred from the audit: what a module is, given that child modules read a parent's
+  private fields (depth node); recognizing the coordinator, and state written by several modules
+  (session 02). Rerun the audit once "module" is defined.
+- Exhaustive destructuring (a struct pattern with no `..`) for functions that must visit every
+  field: proposed for the Rust list, his decision pending. The enforcing clippy lint is nightly
+  only. See `research/01a-hiding-and-depth/exhaustive-destructuring.md`. Session 06 at the latest.
+- The "several filters decide together" sentence sits in the Rust section; he isn't sure
+  `file-structure.md` is its home. Revisit in session 06.
 - The Rust section of `file-structure.md` started early with "Making knowledge formal". Session 06
   extends it.
 - "Own effects resolve after the reactions they cause": his design is one command next to the
@@ -179,10 +256,11 @@ graph TD
   R3["A dependency carries change one way"]
   R4["Rust: &mut self reaches every field"]
 
-  H["Hide decisions, not steps"]
+  H["Hide decisions, not steps (done)"]
   D["Deep modules, names that exclude"]
   O["Owners guard invariants, orchestrators coordinate"]
   A["Aggregates: the invariant draws the boundary"]
+  PDV["Parse, don't validate: proofs as types, and when they go stale"]
   DOD["Data-oriented design and ECS"]
   P["Ports, anti-corruption layers, contract tests"]
   T["Tests as design feedback"]
@@ -200,6 +278,11 @@ graph TD
   R4-->O
   D-->O
   O-->A
+  R1-->PDV
+  O-->PDV
+  PDV-->DOD
+  PDV-->P
+  PDV-->DOCS
   A-->DOD
   R1-->DOD
   R3-->P
@@ -225,10 +308,14 @@ graph TD
 |---|-------|-------|--------|
 | 00 | probe | Knowledge probe and plan | done (edge is production, not recognition; aggregates a gap; plan and doc layout agreed; three research reports) |
 | 01 | U1, U2, R1, OP | Coupling as shared knowledge, one place per decision | done (recognition solid, edge is deriving; two rules in `file-structure.md`; PRs made drafts) |
-| 01a | H, D | Hiding decisions, depth, names that exclude; review #10, #13, #14, #15 | next |
+| 01a | H | Hiding decisions, not steps; audit; review #10, #14 | done (derived H unaided; rule in `file-structure.md`; audit in two rounds, doc amended; #10 and #14 to rework; refactor moved to run per node) |
+| 01b | D | Depth, what a module is, names that exclude; audit; review #13, #15 | next |
+| 01c | refactor | Rework #10, #13, #14, #15; audit findings 8, 9, 11, 12, likely 1; PR of this branch to main | |
 | 02 | R2, R4, O, A | Ownership and aggregates: untangling the god struct | |
+| 02a | refactor | #16, #17, #18 and the ownership findings | |
+| 02b | PDV | Parse, don't validate: `apply` and `legal_actions`, `ObjectId` by zone | |
 | 03 | DOD | Data-oriented design, ECS organization, the rules core beside Bevy | |
 | 04 | R3, P, T | Ports, anti-corruption layers, contract tests, tests as feedback | |
 | 05 | F | Feature-first, shared code, naming | |
 | 06 | RS, E | Rust layer and enforcement | |
-| 07+ | DOCS | Project section and the rest of the refactor | |
+| 07+ | DOCS | Project section and the remaining refactor | |
