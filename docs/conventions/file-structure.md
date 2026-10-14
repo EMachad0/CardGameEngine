@@ -18,9 +18,9 @@ code outside it can't copy the decision.
 - Data a module takes in or hands out is part of its interface: its layout, what each field means
   and the rules for writing it. A decision whose data crosses the boundary isn't hidden, because
   any caller can copy it.
-- Informal knowledge inside a module is cheap, because all of its code serves its decision. A
-  boundary that holds many decisions that change independently doesn't get this, since its code
-  has to be sorted by decision before a change.
+- A module keeps the knowledge of its decision local, because all of its code serves that
+  decision. A boundary that holds many decisions that change independently doesn't. Its code has
+  to be sorted by decision before a change.
 - A child module counts as one item in its parent, since its decision is hidden from the parent
   too. Judge a parent by its own code, which should hold one decision, often how its children
   combine.
@@ -38,10 +38,12 @@ The knowledge is formal or informal:
   review or a bug finds the places that hold it. An assumption or a copy is informal for every
   change.
 
-Judge each place against the changes you expect to the decision. Informal knowledge in the module
-that hides the decision is cheap. In any other module, make it formal. Put it in a type, or in a
-lint where a type can't hold it. Where neither can, pin it with a test. A test shows that a change
-broke something, not where the decision is known, so it doesn't reduce the places that know it.
+Judge each place against the changes you expect to the decision. Informal knowledge is acceptable
+where its locality is high, meaning its places sit close together in code that serves the same
+decision. A change then finds them all with a short search. Anywhere else, make it formal. Put it
+in a type, or in a lint where a type can't hold it. Where neither can, pin it with a test. A test
+shows that a change broke something, not where the decision is known, so it doesn't reduce the
+places that know it.
 
 ### One place knows each decision
 
@@ -135,3 +137,4 @@ own.
 ## This project
 
 - `docs/agents/domain.md` says where the glossary lives and how to use and extend it.
+- `docs/conventions/testing.md` says where tests go and how they are named.
