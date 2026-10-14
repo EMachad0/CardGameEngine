@@ -81,6 +81,10 @@ interface that holds still when the decision moves.
   the domain is a decision, and gets a module like any other.
 - Passing data between modules is fine when its layout is a decision you expect to stay put. The
   module that builds the data keeps the decision that moves.
+- Make a decision its own module when its knowledge sits in more than one place, today or in
+  planned work, and an interface of questions and commands can replace that knowledge while asking
+  callers to know less than the data would. If only one place knows it, or the interface would
+  mirror the fields, leave it where it is.
 
 ## Rust
 
