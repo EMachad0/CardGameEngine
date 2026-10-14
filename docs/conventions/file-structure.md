@@ -21,6 +21,9 @@ code outside it can't copy the decision.
 - Informal knowledge inside a module is cheap, because all of its code serves its decision. A
   boundary that holds many decisions that change independently doesn't get this, since its code
   has to be sorted by decision before a change.
+- A child module counts as one item in its parent, since its decision is hidden from the parent
+  too. Judge a parent by its own code, which should hold one decision, often how its children
+  combine.
 
 Two pieces of code are coupled when one holds knowledge of a decision the other made. Changing the
 decision then forces a change wherever that knowledge is held, to keep the program correct. A call
@@ -94,6 +97,8 @@ files to open when they look for a decision or a place for new code.
 - A name passes when a reader, given any function, existing or new, can tell from the name alone
   whether it belongs. Check it on real functions. A name that most of them could fit fails, even
   when the glossary defines it.
+- Judge a name against its siblings, the other names a reader picks between at the same level. A
+  parent's name covers its children, and it passes when it rules out what its siblings hold.
 - When no name passes, the code holds several decisions, or one decision the domain has no word
   for yet. If a plausible change to one part leaves the others alone, they are separate
   decisions. Split them until each part has a name that passes. If they change together, name
