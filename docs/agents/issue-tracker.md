@@ -36,7 +36,7 @@ Category: bug
 
 - `Status:` holds one state from `docs/agents/triage-labels.md`. File a new issue as
   `needs-triage`, or as `ready-for-human` when the fix belongs in the learner's design-bearing
-  code. The roles in `docs/course/COURSE.md` say which code that is.
+  code. The roles in the course's `COURSE.md` say which code that is.
 - `Category:` is `bug` or `enhancement`.
 - Comments go at the bottom, under `## Comments`.
 

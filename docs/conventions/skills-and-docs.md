@@ -50,7 +50,8 @@ the format and the workflow.
 
 ### Course (`docs/course/`)
 
-The learner and the course plan. The game's design lives in the tests, the glossary and the ADRs.
+The learner and the course plan, one directory per course, listed in `docs/course/README.md`. The
+game's design lives in the tests, the glossary and the ADRs. Each course directory holds:
 
 - `COURSE.md`: the goal, how sessions work, the knowledge map, the course plan, the open threads,
   the dependency map and the sessions table. The knowledge map may cite the learner's code as

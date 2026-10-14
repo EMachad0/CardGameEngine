@@ -150,7 +150,9 @@ If you catch yourself asserting a fact he'd have to take on faith — foundation
 - A term: update `docs/CONTEXT.md` right then, as the `domain-modeling` skill says.
 - A decision that clears the bar in `docs/adr/README.md`: write the ADR and commit it right then, as that README says.
 
-Before asking the `researcher` to check a fact, look in `docs/course/verified-facts.md`. Add each fact it confirms there, with its source.
+`docs/course/README.md` says which course a session belongs to. Paths below are relative to that course's directory.
+
+Before asking the `researcher` to check a fact, look in the course's `verified-facts.md`. Add each fact it confirms there, with its source.
 
 ## Ending a session
 
@@ -158,20 +160,21 @@ A session ends when you and he agree it's finished. Then run the three steps bel
 
 This close-out overrides the git rules in `AGENTS.md` for this one commit. Don't wait for his review. His agreement to end the session is the approval.
 
-1. **Make the edits.** Update `docs/course/COURSE.md`: the knowledge map, the open threads, the sessions table, and anything else `docs/conventions/skills-and-docs.md` puts there. If the next session's log doesn't exist yet, create it as an empty file (`docs/course/sessions/NN-topic.md`), because `/md-log` only links an existing file.
+1. **Make the edits.** Update the course's `COURSE.md`: the knowledge map, the open threads, the sessions table, and anything else `docs/conventions/skills-and-docs.md` puts there. If the next session's log doesn't exist yet, create it as an empty file (`sessions/NN-topic.md`), because `/md-log` only links an existing file.
 2. **Write the closing message and commit in the same reply.** The text comes first. Summarize what changed in `COURSE.md`, then show how to start the next session:
 
    ```
    /new
    /name NN-topic
-   /md-log docs/course/sessions/NN-topic.md
-   continue the course
+   /md-log docs/course/<course>/sessions/NN-topic.md
+   continue the <course> course
    ```
 
    End the text by saying you're committing now. Don't say it's committed, because the commit hasn't run yet. The same reply then makes one bash call:
 
    ```bash
-   files="docs/course/COURSE.md docs/course/verified-facts.md docs/CONTEXT.md <this log> <next log>"
+   c=docs/course/<course>
+   files="$c/COURSE.md $c/verified-facts.md docs/CONTEXT.md <this log> <next log>"
    git add -- $files \
      && git commit -m "<message>" -- $files \
      && git status --porcelain -- $files

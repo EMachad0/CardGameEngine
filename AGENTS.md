@@ -1,7 +1,7 @@
 # Card game systems course
 
-A course on card game systems, taught one node at a time. `docs/course/COURSE.md` holds the goal,
-the session flow, the knowledge map and the course plan.
+Courses taught one node at a time, listed in `docs/course/README.md`. Each course's `COURSE.md`
+holds its goal, session flow, knowledge map and plan.
 
 ## Tech stack
 
@@ -22,8 +22,8 @@ workspace manifest, with members under `crates/`.
 These docs are not background. When one applies, read the whole thing before writing any code.
 They set the conventions you follow, not material for you to summarize.
 
-- Every session: `docs/course/COURSE.md`. It says who writes what in an exercise, and where the
-  learner's edge is.
+- Every session: the course's `COURSE.md`, picked by `docs/course/README.md`. It says who writes
+  what in an exercise, and where the learner's edge is.
 - Before creating or changing a doc, a skill, the glossary, an ADR or a file in `docs/course/`, or
   deciding where knowledge belongs: `docs/conventions/skills-and-docs.md`.
 - Before writing, moving or deleting any test, or designing code that has to be testable:
@@ -31,6 +31,8 @@ They set the conventions you follow, not material for you to summarize.
 - Before recording a bug or chore found outside the current task: `docs/agents/issue-tracker.md`.
 - Before adding, upgrading or removing a dependency, or changing the features a crate enables:
   `docs/conventions/dependencies.md`.
+- Before creating, splitting, moving or naming a module, a file or a crate, or deciding where new
+  code goes: `docs/conventions/file-structure.md`.
 
 ## Code comments
 
@@ -69,7 +71,7 @@ the code matches your intent. The work is not done until they are green.
 ## Git rules
 
 - Never commit your own code before I have reviewed it. Present the work for review first. The
-  per-node commit from `docs/course/COURSE.md` follows this rule too: my review is the gate.
+  per-node commit from the course's `COURSE.md` follows this rule too: my review is the gate.
 - Run the checks and confirm they pass before a commit that touches anything they read: Rust
   sources, a `Cargo.toml`, `Cargo.lock`, `clippy.toml`, `rust-toolchain.toml` or
   `.just/check.just`. Other commits skip them, and the skip needs no mention.
@@ -85,9 +87,8 @@ answer and picking wrong means rework, stop and ask me. Do not pick silently and
 assumption afterwards. Unknowns that touch one call site only are yours to decide. Anything
 shaping an interface, a schema, a stored format, or a policy is mine.
 
-Once the plan is settled, work test-first. In an exercise, the roles in `docs/course/COURSE.md`
-decide who writes what: I write the design-bearing code, and you write the tests against my API
-before I implement it. For code you own outright (scaffolding, tooling), use the `tdd` skill: red,
+Once the plan is settled, work test-first. In an exercise, the roles in the course's `COURSE.md`
+decide who writes what. For code you own outright (scaffolding, tooling), use the `tdd` skill: red,
 green, refactor. No permission checkpoints inside it.
 
 ## Agent skills
