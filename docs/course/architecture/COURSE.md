@@ -45,6 +45,43 @@ up.
 
 ## Knowledge map
 
+### Session 01b
+
+No retrieval quiz (01a ended minutes before). Probe: right on informal contracts in an interface
+(`health`'s `Some` for characters in play), on conjoined helpers (judged by independence, not
+length), and on privacy direction (only a type declared in a child hides its fields from the
+parent). The edge: he weighed an interface by its methods and contracts, not the data they hand
+out. Called `ObjectBag` deep despite `get_mut`, and left the meaning of `damage` out of the
+interface. On names he also flagged `actions.rs` and `resolve.rs` as vague; resolved as a
+refinement: a name is judged against the glossary, where both are narrow terms.
+
+Goals he picked: when a file becomes its own module, the doc's definition of module, the #13 and
+#15 reviews. He said he already holds split cost and interface measuring; I kept the second as a
+node because the probe missed it.
+
+- D1, data is interface: objected "why not say `Object` has its own interface, the `pub` fields?";
+  resolved as `Object`'s depth being zero and the returned type's interface being part of the
+  method's. Added unprompted that parameters count too. Quiz right (`Binder` after #15).
+- D2, depth: asked whether `entered_board` only renames `update_order`, then found the trade
+  himself: callers swap a policy for a fact they already know. Asked whether that reduces
+  complexity or increases depth (both). Quiz right.
+- D3, what a module is: derived that the privacy reading makes the `Location` edit look cheap,
+  against degree and locality. Claimed files can hide (they can't hide data in the parent), and
+  marked `game` as "all holders seen"; corrected by his own part 1. Rejected a definition that
+  depends on the reader's capacity ("agents can also read code"); resolved as one decision per
+  boundary. His rule, with "cannot be copied from outside" his own addition. Quiz right; noted
+  `object.rs` holds two decisions and hides one.
+- D4, file or module: mana pays, outcome doesn't (one writer, `set`/`get` mirror the field). His
+  first rule ("complexity outside decreases enough") was by feel; sharpened together, and he
+  questioned "narrower than its data" (counting items, not knowledge; conceded), "only one
+  place", "field and a file", and used "module" for the defined term. Quiz right, noting the
+  stack qualifies only if the order goes inside.
+- D4 exercise, no options: game creation as a builder (sound; check the roadmap for N players);
+  "Objects" as a module for triggers, modifiers and health (right decision, entity boundary: it
+  bundles three decisions and needs most of `Game`'s data, which he noticed); zones owning the
+  order of board entry (sound, a refactor candidate). Pattern: finds spread knowledge reliably,
+  draws the boundary around an entity rather than a decision.
+
 ### Session 01a
 
 Retrieval on session 01, 3 of 3: a unit assumed across crates is informal and must become formal;
@@ -152,10 +189,11 @@ Two roots carry the course. Every dependency is knowledge of a decision, and who
 can break its rules. Each guideline is derived from them so he can apply it to cases no doc
 anticipated. Socratic teaching, quiz checks, and a production exercise per node.
 
-1. Sessions 01 to 01b: coupling as shared knowledge, one place per decision, hiding decisions
-   (Parnas, done in 01a), then in 01b depth (Ousterhout) with the formal and informal interface,
-   what a module is (the audit's open question: child modules read a parent's private fields),
-   names that exclude, and the review of #13 and #15. Session 01c refactors under both nodes:
+1. Sessions 01 to 01c: coupling as shared knowledge, one place per decision, hiding decisions
+   (Parnas, done in 01a), then in 01b data as interface, depth, what a module is and file or
+   module (done). Session 01c: names that exclude (D5, short: a name is the first piece of the
+   interface, judged against the glossary), the review of #13 and #15, and the audit, rerun now
+   that "module" is defined. Session 01d refactors under all three:
    rework #10, #13, #14 and #15, and fix audit findings 8, 9, 11, 12 and likely 1.
 2. Session 02: ownership. An owner guards its invariants and an orchestrator coordinates owners;
    encapsulation vs OOP; aggregates (Evans, Vernon). Catherine West's nuance: one big state is
@@ -186,7 +224,8 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
     loading plus the IDs, with the IDs and the table in one module since they change together.
     #14 one walk over card text: rework lightly, moving the walk next to `CardDef` and
     destructuring exhaustively.
-  - Depth node: #13 `game/` split by question, #15 card definitions answer their kind questions.
+  - Session 01c: #13 `game/` split by question (files of `impl Game`, so one module by the doc;
+    `verb.rs` and `derived.rs` are vague), #15 card definitions answer their kind questions.
   - Session 02: #16 history private, #17 guarded effect stack, #18 modifiers answer stat questions.
   - Session 05: #11 printed card types in `cards/`.
 - Audit after node H (session 01a), reviewed by him. Four agent reports in
@@ -214,9 +253,15 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   14. Owner and side: `player_id` and the holding zone are two representations of one fact.
   15. Interaction state destructured with `unreachable!` in three modules.
   16. Checkpoints placed in three files (low confidence).
-- Doc feedback deferred from the audit: what a module is, given that child modules read a parent's
-  private fields (depth node); recognizing the coordinator, and state written by several modules
-  (session 02). Rerun the audit once "module" is defined.
+- Doc feedback deferred from the audit: recognizing the coordinator, and state written by several
+  modules (session 02). "Module" is defined (session 01b), so session 01c reruns the audit.
+- His D4 exercise ideas, for the 01d refactor or later: a builder for `Game` creation, so callers
+  know only what they set (check the card-game roadmap for N players first); a `Board` that keeps
+  its own entry order, replacing `Object.order` and the three sorts (audit finding 2; heroes and
+  graveyard order complicate it). His "Objects" module is the modifiers question of #18, session
+  02.
+- For #15's review: after it, `Binder` is `new` and `get`, and `get` hands out `&CardDef` with
+  `pub` fields, so `CardDef`'s whole shape stays in the interface (D1).
 - Exhaustive destructuring (a struct pattern with no `..`) for functions that must visit every
   field: proposed for the Rust list, his decision pending. The enforcing clippy lint is nightly
   only. See `research/01a-hiding-and-depth/exhaustive-destructuring.md`. Session 06 at the latest.
@@ -257,7 +302,7 @@ graph TD
   R4["Rust: &mut self reaches every field"]
 
   H["Hide decisions, not steps (done)"]
-  D["Deep modules, names that exclude"]
+  D["Data as interface, depth, what a module is (done); names that exclude"]
   O["Owners guard invariants, orchestrators coordinate"]
   A["Aggregates: the invariant draws the boundary"]
   PDV["Parse, don't validate: proofs as types, and when they go stale"]
@@ -309,8 +354,9 @@ graph TD
 | 00 | probe | Knowledge probe and plan | done (edge is production, not recognition; aggregates a gap; plan and doc layout agreed; three research reports) |
 | 01 | U1, U2, R1, OP | Coupling as shared knowledge, one place per decision | done (recognition solid, edge is deriving; two rules in `file-structure.md`; PRs made drafts) |
 | 01a | H | Hiding decisions, not steps; audit; review #10, #14 | done (derived H unaided; rule in `file-structure.md`; audit in two rounds, doc amended; #10 and #14 to rework; refactor moved to run per node) |
-| 01b | D | Depth, what a module is, names that exclude; audit; review #13, #15 | next |
-| 01c | refactor | Rework #10, #13, #14, #15; audit findings 8, 9, 11, 12, likely 1; PR of this branch to main | |
+| 01b | D1 to D4 | Data as interface, depth, what a module is, file or module | done (edge was data handed out; module defined as one decision behind an enforced boundary; two rules in `file-structure.md`; D5 onward split off) |
+| 01c | D5 | Names that exclude; review #13, #15; audit | next |
+| 01d | refactor | Rework #10, #13, #14, #15; audit findings 8, 9, 11, 12, likely 1; PR of this branch to main | |
 | 02 | R2, R4, O, A | Ownership and aggregates: untangling the god struct | |
 | 02a | refactor | #16, #17, #18 and the ownership findings | |
 | 02b | PDV | Parse, don't validate: `apply` and `legal_actions`, `ObjectId` by zone | |
