@@ -43,21 +43,29 @@ impl Game {
         pattern: TriggerPattern,
         event: &Event,
     ) -> bool {
-        match (pattern, event) {
-            (TriggerPattern::Died(subject), Event::Died { object_id }) => {
+        match pattern {
+            TriggerPattern::Died(subject) => {
+                let Event::Died { object_id } = event else {
+                    return false;
+                };
                 self.fulfill_trigger_subject(subject, trigger_owner, trigger_object, *object_id)
             }
-            (
-                TriggerPattern::Played(card_filter),
-                Event::Played {
+            TriggerPattern::Played(card_filter) => {
+                let Event::Played {
                     player_id,
                     object_id,
-                },
-            ) => self.fulfill_card_filter(trigger_owner, *player_id, *object_id, &card_filter),
-            (TriggerPattern::Damaged(subject), Event::Damaged { target, .. }) => {
+                } = event
+                else {
+                    return false;
+                };
+                self.fulfill_card_filter(trigger_owner, *player_id, *object_id, &card_filter)
+            }
+            TriggerPattern::Damaged(subject) => {
+                let Event::Damaged { target, .. } = event else {
+                    return false;
+                };
                 self.fulfill_trigger_subject(subject, trigger_owner, trigger_object, *target)
             }
-            (_, _) => false,
         }
     }
 

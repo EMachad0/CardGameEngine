@@ -1,6 +1,6 @@
 # Trigger matching lists every pattern
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 Branch: `trigger-matching`, new, from `main`. New draft PR with base `main`.
@@ -36,3 +36,7 @@ matching functions.
 - Adding a `TriggerPattern` or `TriggerSubject` variant fails the build where events are matched
   against it.
 - The checks pass, with `tests/spec/` unchanged.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/23
