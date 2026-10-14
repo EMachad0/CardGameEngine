@@ -1,4 +1,10 @@
+mod base;
+mod validity;
+
 use std::{collections::BTreeMap, sync::Arc};
+
+pub use base::static_card_definition;
+use validity::CardDefError;
 
 use crate::{
     cards::{
@@ -16,7 +22,13 @@ pub(crate) struct Binder {
 }
 
 impl Binder {
-    pub(crate) fn new(defs: Vec<CardDef>) -> Self {
+    pub(crate) fn built_in() -> Result<Self, CardDefError> {
+        let defs = base::definitions();
+        validity::validate(&defs)?;
+        Ok(Self::new(defs))
+    }
+
+    fn new(defs: Vec<CardDef>) -> Self {
         let mut map = BTreeMap::new();
         defs.into_iter().for_each(|def| {
             map.insert(def.id, def);
