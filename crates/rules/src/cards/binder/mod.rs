@@ -25,18 +25,15 @@ impl Binder {
     pub(crate) fn built_in() -> Result<Self, CardDefError> {
         let defs = sets::definitions();
         validity::validate(&defs)?;
-        Ok(Self::new(defs))
-    }
 
-    fn new(defs: Vec<CardDef>) -> Self {
         let mut map = BTreeMap::new();
         defs.into_iter().for_each(|def| {
             map.insert(def.id, def);
         });
 
-        Self {
+        Ok(Self {
             defs: Arc::new(map),
-        }
+        })
     }
 
     pub(crate) fn get(&self, def_id: DefId) -> &CardDef {
