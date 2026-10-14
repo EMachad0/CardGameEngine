@@ -12,6 +12,16 @@ you decide where new code goes.
 A decision is a choice the code makes where another was possible: a representation, a rule, a
 meaning, an order or a policy.
 
+A module is an enforced boundary that hides one decision, or a few that change together, so that
+code outside it can't copy the decision.
+
+- Data a module takes in or hands out is part of its interface: its layout, what each field means
+  and the rules for writing it. A decision whose data crosses the boundary isn't hidden, because
+  any caller can copy it.
+- Informal knowledge inside a module is cheap, because all of its code serves its decision. A
+  boundary that holds many decisions that change independently doesn't get this, since its code
+  has to be sorted by decision before a change.
+
 Two pieces of code are coupled when one holds knowledge of a decision the other made. Changing the
 decision then forces a change wherever that knowledge is held, to keep the program correct. A call
 or an import is one way to hold it. A copied rule, a relied-on meaning and a required call order
@@ -26,10 +36,9 @@ The knowledge is formal or informal:
   change.
 
 Judge each place against the changes you expect to the decision. Informal knowledge in the module
-that makes the decision is cheap, because whoever changes the decision is already editing that
-module. In any other module, make it formal. Put it in a type, or in a lint where a type can't hold
-it. Where neither can, pin it with a test. A test shows that a change broke something, not where
-the decision is known, so it doesn't reduce the places that know it.
+that hides the decision is cheap. In any other module, make it formal. Put it in a type, or in a
+lint where a type can't hold it. Where neither can, pin it with a test. A test shows that a change
+broke something, not where the decision is known, so it doesn't reduce the places that know it.
 
 ### One place knows each decision
 
@@ -74,6 +83,14 @@ interface that holds still when the decision moves.
   module that builds the data keeps the decision that moves.
 
 ## Rust
+
+### Modules
+
+- A module in the general sense is a `mod` whose private items include the data its decision is
+  stored in.
+- Privacy flows down the module tree: a child reads its parent's private fields, and a parent
+  can't read a child's. So child files that add `impl` blocks to their parent's type are part of
+  the parent's module, and a decision hides from the parent only in a type declared in a child.
 
 ### Making knowledge formal
 
