@@ -1,6 +1,6 @@
 # A binder holds only valid card definitions
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 Branch: `loader-split`, rebuilt from `main`. PR #10.
@@ -61,3 +61,7 @@ loading and the codes exposed.
 
 Besides the spec's format, say what each new module hides and what crosses its boundary, and
 which changes now fail the build when someone tries to store unvalidated definitions.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/10
