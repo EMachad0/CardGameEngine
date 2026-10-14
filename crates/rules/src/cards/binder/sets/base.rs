@@ -18,7 +18,7 @@ use crate::{
 
 use self::static_card_definition::*;
 
-pub(super) const PLACEHOLDER: DefId = DefId::new("placeholder");
+pub(in crate::cards::binder) const PLACEHOLDER: DefId = DefId::new("placeholder");
 
 impl Default for CardDef {
     fn default() -> Self {
@@ -82,7 +82,7 @@ def_ids!(
     DRUMMER = "base.drummer.v0",
 );
 
-pub(super) fn definitions() -> Vec<CardDef> {
+pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
     vec![
         CardDef {
             id: SPARK,

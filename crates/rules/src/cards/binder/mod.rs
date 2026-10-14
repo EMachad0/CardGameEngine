@@ -1,9 +1,9 @@
-mod base;
+mod sets;
 mod validity;
 
 use std::{collections::BTreeMap, sync::Arc};
 
-pub use base::static_card_definition;
+pub use sets::static_card_definition;
 use validity::CardDefError;
 
 use crate::{
@@ -23,7 +23,7 @@ pub(crate) struct Binder {
 
 impl Binder {
     pub(crate) fn built_in() -> Result<Self, CardDefError> {
-        let defs = base::definitions();
+        let defs = sets::definitions();
         validity::validate(&defs)?;
         Ok(Self::new(defs))
     }
