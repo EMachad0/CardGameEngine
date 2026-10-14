@@ -1,13 +1,12 @@
 use crate::{
     PickId,
     cards::{
-        binder::base::PLACEHOLDER,
+        binder::base::{PLACEHOLDER, static_card_definition::ALL_DEF_ID},
         definition::{CardDef, CardDefKind, CharacterSelector, DefId, MinionCardDef, TriggerDef},
         modifier::ModifierEffect,
     },
     choice::ChoiceId,
     effect::Effect,
-    static_card_definition::ALL_DEF_ID,
 };
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
