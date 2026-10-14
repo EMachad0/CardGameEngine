@@ -45,6 +45,36 @@ up.
 
 ## Knowledge map
 
+### Session 01c
+
+No retrieval quiz (01b ended minutes before, his call). Probe on names: picked `state_check.rs` as
+the name that excludes least, "because it is a step while the others are concepts", and passed
+`player.rs`. With 01b's flags on `actions` and `resolve`, the edge: he sorted names by word
+category (operation and step words bad, domain nouns good), not by what they exclude.
+
+- D5 derivation: said a name tells "decisions for this subject live here"; his test, "does the
+  name reflect the decision it holds", sharpened into exclusion (inclusion tells A where to look,
+  exclusion when to stop). Quiz right (`turn` and `rules` fail), checking real functions himself.
+  Said "no name passes" means independent decisions; added: or one decision with no term yet,
+  told apart by the change test. Rule in his words; he removed the examples, asked for "existing
+  or new" over "codebase", and pointed the project line at `docs/agents/domain.md`.
+- Raised two doc gaps himself: every parent fails the name test (resolved: judge a name against
+  its siblings), and every parent fails the one-decision clause (resolved: a child module counts
+  as one item, a parent is judged by its own code). Both committed.
+- #13 names exercise (too big, my fault; he did part): `verb` and `derived` right, with
+  `history_from_event` as a counterexample to `derived`. Split `derived` by noun into Mana,
+  Stats, Auras and Modifiers; the change test gives two parts. Judged `resolve` and `filter` by
+  size and "unrelated"; both pass, and the misplaced functions are `scan_characters_with_filter`
+  and `emit`. The entity habit from D4 persists, now as splitting by noun.
+- `verb.rs` exercise, no options: a zones module owning zones, stamps and in-zone order behind
+  `deck_to_hand`-style moves (sound), a damage module (sound, fatigue joins it), and an
+  intermediate coordinator for move consequences. I dismissed the coordinator; he pushed back
+  that nesting is allowed, and I conceded: nesting the zones module inside it enforces that only
+  it moves cards. Emitting needs most of `Game`, the open problem.
+- Verdicts: #13 close ("a middle step" to an undesired pattern, with duplicate names like
+  `action.rs` and `game/actions.rs`); #15 merge after a light rework (one exhaustive kind-flag
+  match, his agreement), commented on the PR. Named the definitions table: Binder, in the glossary.
+
 ### Session 01b
 
 No retrieval quiz (01a ended minutes before). Probe: right on informal contracts in an interface
@@ -191,10 +221,10 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
 
 1. Sessions 01 to 01c: coupling as shared knowledge, one place per decision, hiding decisions
    (Parnas, done in 01a), then in 01b data as interface, depth, what a module is and file or
-   module (done). Session 01c: names that exclude (D5, short: a name is the first piece of the
-   interface, judged against the glossary), the review of #13 and #15, and the audit, rerun now
-   that "module" is defined. Session 01d refactors under all three:
-   rework #10, #13, #14 and #15, and fix audit findings 8, 9, 11, 12 and likely 1.
+   module, then in 01c names that exclude, nesting, and the #13 and #15 verdicts (done).
+   Session 01d: the audit, rerun against the doc as it stands (module defined, names, nesting),
+   then his review of the list. Session 01e refactors under all of it: rework #10, #14 and #15,
+   close #13 and rebase the stack onto #11, and fix audit findings 8, 9, 11, 12 and likely 1.
 2. Session 02: ownership. An owner guards its invariants and an orchestrator coordinates owners;
    encapsulation vs OOP; aggregates (Evans, Vernon). Catherine West's nuance: one big state is
    fine, implicit reach and unowned invariants are the problem. Open with his own question: does
@@ -224,8 +254,13 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
     loading plus the IDs, with the IDs and the table in one module since they change together.
     #14 one walk over card text: rework lightly, moving the walk next to `CardDef` and
     destructuring exhaustively.
-  - Session 01c: #13 `game/` split by question (files of `impl Game`, so one module by the doc;
-    `verb.rs` and `derived.rs` are vague), #15 card definitions answer their kind questions.
+  - Session 01c, reviewed. #13: close. Its files of `impl Game` add names without boundaries,
+    and `verb`, `derived` and the duplicate pairs (`action.rs` and `game/actions.rs`, two
+    `filter.rs`, two `trigger`) fail the name test. Closing it means rebasing #14 to #18 onto #11.
+    My default, unless he objects: carry its visibility narrowing, `ApplyError` next to
+    `IllegalAction`, and `History` and `Trigger` under `game` into the PRs that build the real
+    modules. #15: merge after a light rework, one exhaustive match on `CardDefKind` returning the
+    kind flag so `filter.rs` stops chaining `||` (finding 11). Commented on the PR.
   - Session 02: #16 history private, #17 guarded effect stack, #18 modifiers answer stat questions.
   - Session 05: #11 printed card types in `cards/`.
 - Audit after node H (session 01a), reviewed by him. Four agent reports in
@@ -254,14 +289,23 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   15. Interaction state destructured with `unreachable!` in three modules.
   16. Checkpoints placed in three files (low confidence).
 - Doc feedback deferred from the audit: recognizing the coordinator, and state written by several
-  modules (session 02). "Module" is defined (session 01b), so session 01c reruns the audit.
-- His D4 exercise ideas, for the 01d refactor or later: a builder for `Game` creation, so callers
+  modules (session 02). Session 01d reruns the audit.
+- His `verb.rs` design (session 01c), for the 01e refactor or session 02: a zones module owning
+  the zones, the stamps and in-zone order behind moves such as `deck_to_hand` (maybe deepening
+  `zones.rs`); a damage module, with fatigue calling it; and an intermediate coordinator for the
+  consequences of a move (events, pushes, their order), with the zones module as its child so
+  only it can move cards. Open: `emit` needs most of `Game`, so the coordinator would hand events
+  back or take an emitter. Needs a name; "actions" collides with the glossary.
+- The `derived.rs` split: by the change test, stats and cost with `modifiers` are one decision
+  with no term yet (#18's bet), and auras are another. He proposed four noun modules.
+- His D4 exercise ideas, for the 01e refactor or later: a builder for `Game` creation, so callers
   know only what they set (check the card-game roadmap for N players first); a `Board` that keeps
   its own entry order, replacing `Object.order` and the three sorts (audit finding 2; heroes and
   graveyard order complicate it). His "Objects" module is the modifiers question of #18, session
   02.
-- For #15's review: after it, `Binder` is `new` and `get`, and `get` hands out `&CardDef` with
-  `pub` fields, so `CardDef`'s whole shape stays in the interface (D1).
+- After #15, `get` still hands out `&CardDef` with `pub` fields, read in `game/` for
+  `play_effects`, `choices`, `mana_cost`, `triggers` and `modifier_effects` (D1). Not judged in
+  01c; the audit should weigh it.
 - Exhaustive destructuring (a struct pattern with no `..`) for functions that must visit every
   field: proposed for the Rust list, his decision pending. The enforcing clippy lint is nightly
   only. See `research/01a-hiding-and-depth/exhaustive-destructuring.md`. Session 06 at the latest.
@@ -302,7 +346,7 @@ graph TD
   R4["Rust: &mut self reaches every field"]
 
   H["Hide decisions, not steps (done)"]
-  D["Data as interface, depth, what a module is (done); names that exclude"]
+  D["Data as interface, depth, what a module is, names that exclude (done)"]
   O["Owners guard invariants, orchestrators coordinate"]
   A["Aggregates: the invariant draws the boundary"]
   PDV["Parse, don't validate: proofs as types, and when they go stale"]
@@ -355,8 +399,9 @@ graph TD
 | 01 | U1, U2, R1, OP | Coupling as shared knowledge, one place per decision | done (recognition solid, edge is deriving; two rules in `file-structure.md`; PRs made drafts) |
 | 01a | H | Hiding decisions, not steps; audit; review #10, #14 | done (derived H unaided; rule in `file-structure.md`; audit in two rounds, doc amended; #10 and #14 to rework; refactor moved to run per node) |
 | 01b | D1 to D4 | Data as interface, depth, what a module is, file or module | done (edge was data handed out; module defined as one decision behind an enforced boundary; two rules in `file-structure.md`; D5 onward split off) |
-| 01c | D5 | Names that exclude; review #13, #15; audit | next |
-| 01d | refactor | Rework #10, #13, #14, #15; audit findings 8, 9, 11, 12, likely 1; PR of this branch to main | |
+| 01c | D5 | Names that exclude; review #13, #15 | done (edge was sorting names by word category; name and nesting rules in `file-structure.md`, project section started; #13 close, #15 light rework; Binder in the glossary; audit split off) |
+| 01d | audit | Audit against the doc as it stands; his review of the findings | next |
+| 01e | refactor | Rework #10, #14, #15; close #13 and rebase the stack; audit findings 8, 9, 11, 12, likely 1; PR of this branch to main | |
 | 02 | R2, R4, O, A | Ownership and aggregates: untangling the god struct | |
 | 02a | refactor | #16, #17, #18 and the ownership findings | |
 | 02b | PDV | Parse, don't validate: `apply` and `legal_actions`, `ObjectId` by zone | |

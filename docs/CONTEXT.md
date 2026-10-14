@@ -48,6 +48,10 @@ _Avoid_: avatar
 A card as printed: its name, cost, kind, stats and text. Every copy of the card shares it.
 _Avoid_: template, prototype
 
+**Binder**:
+The card definitions a game can use, each found by its ID.
+_Avoid_: card table, card database, catalog
+
 **Object**:
 One card in one game. Two copies of the same card are two objects.
 _Avoid_: instance, entity
