@@ -86,6 +86,21 @@ interface that holds still when the decision moves.
   callers to know less than the data would. If only one place knows it, or the interface would
   mirror the fields, leave it where it is.
 
+### Names exclude
+
+A module's name is the first part of its interface a reader sees. Readers use it to pick which
+files to open when they look for a decision or a place for new code.
+
+- A name passes when a reader, given any function, existing or new, can tell from the name alone
+  whether it belongs. Check it on real functions. A name that most of them could fit fails, even
+  when the glossary defines it.
+- When no name passes, the code holds several decisions, or one decision the domain has no word
+  for yet. If a plausible change to one part leaves the others alone, they are separate
+  decisions. Split them until each part has a name that passes. If they change together, name
+  the concept and add the term to the glossary.
+- Take names from the glossary, the vocabulary that developers and domain experts share and keep
+  precise.
+
 ## Rust
 
 ### Modules
@@ -111,3 +126,7 @@ own.
   When several filters together decide what each variant means, give that decision one exhaustive
   match.
 - A clippy `disallowed_methods` or `disallowed_types` ban, for "only this place may call that".
+
+## This project
+
+- `docs/agents/domain.md` says where the glossary lives and how to use and extend it.
