@@ -12,8 +12,8 @@ you decide where new code goes.
 A decision is a choice the code makes where another was possible: a representation, a rule, a
 meaning, an order or a policy.
 
-A module is an enforced boundary that hides one decision, or a few that change together, so that
-code outside it can't copy the decision.
+A module is an enforced boundary that hides one decision, so that code outside it can't copy it.
+Decisions that change together count as one.
 
 - Data a module takes in or hands out is part of its interface: its layout, what each field means
   and the rules for writing it. A decision whose data crosses the boundary isn't hidden, because
