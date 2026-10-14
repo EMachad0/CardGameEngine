@@ -196,9 +196,8 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use crate::{
-        cards::binder::base,
+        cards::binder::base::{self, static_card_definition::*},
         effect::EffectSequence,
-        static_card_definition::*,
         trigger::{TriggerPattern, TriggerSubject},
     };
 

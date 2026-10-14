@@ -13,9 +13,10 @@ use crate::{
     choice::{AmountBound, CharacterChoice, ChoiceId, EffectAmount},
     effect::{Effect, EffectSequence, ZoneMove},
     history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter},
-    static_card_definition::*,
     trigger::{TriggerPattern, TriggerSubject},
 };
+
+use self::static_card_definition::*;
 
 pub(super) const PLACEHOLDER: DefId = DefId::new("placeholder");
 
