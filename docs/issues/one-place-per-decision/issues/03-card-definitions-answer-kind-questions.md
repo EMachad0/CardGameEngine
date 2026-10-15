@@ -1,6 +1,6 @@
 # Card definitions answer their kind questions
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 Blocked by: 02
@@ -85,3 +85,7 @@ mirror the fields, and nothing can write through a shared reference.
   methods, ticket 02's walk and the in-play test that ticket 04 replaces.
 - Adding a `CardDefKind` variant fails the build at every kind question and at the walk.
 - The checks pass, with `tests/spec/` unchanged.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/15
