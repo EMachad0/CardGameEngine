@@ -49,8 +49,7 @@ A card as printed: its name, cost, kind, stats and text. Every copy of the card 
 _Avoid_: template, prototype
 
 **Printed**:
-What a card definition states, before buffs, auras, cost changes or damage. A card's printed cost,
-attack and health.
+What a card definition states, static, independent of context.
 _Avoid_: base, original
 
 **Binder**:
@@ -114,7 +113,7 @@ The cards a player has in play, in order from left to right.
 _Avoid_: battlefield, field, play area
 
 **Graveyard**:
-A player's cards that died, newest on top.
+A zone where a player puts his dead minions.
 _Avoid_: discard pile, cemetery
 
 ### Turns
