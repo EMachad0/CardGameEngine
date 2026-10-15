@@ -116,9 +116,35 @@ files to open when they look for a decision or a place for new code.
 
 - A module in the general sense is a `mod` whose private items include the data its decision is
   stored in.
-- Privacy flows down the module tree: a child reads its parent's private fields, and a parent
-  can't read a child's. So child files that add `impl` blocks to their parent's type are part of
-  the parent's module, and a decision hides from the parent only in a type declared in a child.
+- Privacy flows down the module tree: a child reads its parent's private items, and a parent
+  can't read a child's. So code in a parent is open to every child, and child files that add
+  `impl` blocks to their parent's type are part of the parent's module.
+- Keep definitions in leaf modules, so that every module can hide its decision. A module with
+  children is a directory whose `mod.rs` holds only `mod` declarations. A leaf's private items are
+  hidden from its siblings and its parent, and siblings share only what they mark `pub(super)`.
+  Clippy's `self_named_module_files` and `definition_in_module_root` check both.
+- A directory's own code, such as its main type or how its children combine, goes in a leaf named
+  for that decision. A leaf named like its directory claims everything its siblings hold, so its
+  name fails.
+
+### Paths
+
+From any place in the code, only one path to a definition is allowed.
+
+- Inside the crate, import a definition from the module that defines it, spelled from `crate::`.
+  `super::` and `self::` are a second spelling of the same path. The exception is `use super::*;`
+  in a test module.
+- Don't re-export inside the crate. A re-export hides which module owns an item, and that is part
+  of the module's interface, not a decision.
+- The public API is one leaf, `prelude.rs`, holding the crate's whole `pub use` list. `lib.rs`
+  holds only `mod` declarations. With `unreachable_pub` on, a `pub` item the prelude doesn't list
+  fails the checks.
+- Nothing inside the crate imports through the prelude. Other crates import from it by name,
+  never with a glob, since a glob next to another crate's prelude makes shared names ambiguous.
+  rust-analyzer ranks paths through a module named `prelude` last, so its auto-import suggests the
+  defining path.
+- Visibility can't hide the prelude from its own crate, and Clippy bans items, not paths. A text
+  search in the checks enforces these rules.
 
 ### Making knowledge formal
 
