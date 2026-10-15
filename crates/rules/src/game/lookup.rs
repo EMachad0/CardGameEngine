@@ -2,8 +2,7 @@
 
 use crate::{
     cards::{
-        definition::{CardDef, DefId},
-        filter::CharacterKindFilter,
+        definition::{CardDef, CharacterKind, DefId},
         modifier::{Modifier, ModifierEffect, Modifiers},
         object::{Object, ObjectId},
     },
@@ -62,8 +61,8 @@ impl Game {
         let card_def = self.card_def(object_id);
 
         let is_in_play = match card_def.character_kind() {
-            Some(CharacterKindFilter::Heroes) => self.hero_id(obj.player_id) == object_id,
-            Some(CharacterKindFilter::Minions) => self
+            Some(CharacterKind::Hero) => self.hero_id(obj.player_id) == object_id,
+            Some(CharacterKind::Minion) => self
                 .get_player(obj.player_id)
                 .zones
                 .board

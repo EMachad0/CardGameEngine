@@ -2,9 +2,8 @@ use enumset::EnumSet;
 
 use crate::{
     cards::{
-        filter::{
-            CardFilter, CardKindFilter, CharacterFilter, CharacterKindFilter, fulfill_side_filter,
-        },
+        definition::{CardKind, CharacterKind},
+        filter::{CardFilter, CharacterFilter, fulfill_side_filter},
         object::ObjectId,
     },
     choice::{CharacterChoice, ChoiceId},
@@ -94,14 +93,14 @@ impl Game {
     fn fulfill_character_kind_filter(
         &self,
         object_id: ObjectId,
-        kind: EnumSet<CharacterKindFilter>,
+        kind: EnumSet<CharacterKind>,
     ) -> bool {
         self.card_def(object_id)
             .character_kind()
             .is_some_and(|character_kind| kind.contains(character_kind))
     }
 
-    fn fulfill_card_kind_filter(&self, object_id: ObjectId, kind: EnumSet<CardKindFilter>) -> bool {
+    fn fulfill_card_kind_filter(&self, object_id: ObjectId, kind: EnumSet<CardKind>) -> bool {
         kind.contains(self.card_def(object_id).card_kind())
     }
 

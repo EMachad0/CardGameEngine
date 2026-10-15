@@ -4,10 +4,10 @@ use crate::{
     cards::{
         binder::sets::base::static_card_definition::*,
         definition::{
-            CardDef, CardDefKind, CharacterSelector, DefId, HeroCardDef, MinionCardDef,
-            PlayerSelector, SpellCardDef, TriggerDef,
+            CardDef, CardDefKind, CardKind, CharacterKind, CharacterSelector, DefId, HeroCardDef,
+            MinionCardDef, PlayerSelector, SpellCardDef, TriggerDef,
         },
-        filter::{CardFilter, CardKindFilter, CharacterFilter, CharacterKindFilter, Side},
+        filter::{CardFilter, CharacterFilter, Side},
         modifier::ModifierEffect,
     },
     choice::{AmountBound, CharacterChoice, ChoiceId, EffectAmount, PickId},
@@ -89,7 +89,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             mana_cost: 1,
             play_effects: EffectSequence(vec![Effect::Damage {
                 selector: CharacterSelector::All(CharacterFilter {
-                    kind: EnumSet::only(CharacterKindFilter::Heroes),
+                    kind: EnumSet::only(CharacterKind::Hero),
                     side: EnumSet::only(Side::Enemy),
                 }),
                 amount: 1.into(),
@@ -103,7 +103,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             mana_cost: 2,
             play_effects: EffectSequence(vec![Effect::Damage {
                 selector: CharacterSelector::All(CharacterFilter {
-                    kind: EnumSet::only(CharacterKindFilter::Heroes),
+                    kind: EnumSet::only(CharacterKind::Hero),
                     side: EnumSet::only(Side::Enemy),
                 }),
                 amount: 2.into(),
@@ -117,7 +117,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             mana_cost: 1,
             play_effects: EffectSequence(vec![Effect::Damage {
                 selector: CharacterSelector::Random(CharacterFilter {
-                    kind: EnumSet::only(CharacterKindFilter::Heroes),
+                    kind: EnumSet::only(CharacterKind::Hero),
                     side: EnumSet::all(),
                 }),
                 amount: 3.into(),
@@ -222,7 +222,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             play_effects: EffectSequence(vec![
                 Effect::Damage {
                     selector: CharacterSelector::All(CharacterFilter {
-                        kind: EnumSet::only(CharacterKindFilter::Heroes),
+                        kind: EnumSet::only(CharacterKind::Hero),
                         side: EnumSet::only(Side::Enemy),
                     }),
                     amount: 1.into(),
@@ -241,7 +241,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             mana_cost: 1,
             play_effects: EffectSequence(vec![Effect::Damage {
                 selector: CharacterSelector::Random(CharacterFilter {
-                    kind: EnumSet::only(CharacterKindFilter::Minions),
+                    kind: EnumSet::only(CharacterKind::Minion),
                     side: EnumSet::only(Side::Enemy),
                 }),
                 amount: 2.into(),
@@ -260,7 +260,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             choices: vec![CharacterChoice {
                 id: ChoiceId(0),
                 filter: CharacterFilter {
-                    kind: EnumSet::only(CharacterKindFilter::Minions),
+                    kind: EnumSet::only(CharacterKind::Minion),
                     side: EnumSet::all(),
                 },
                 count: 1.into(),
@@ -288,7 +288,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                 CharacterChoice {
                     id: ChoiceId(0),
                     filter: CharacterFilter {
-                        kind: EnumSet::only(CharacterKindFilter::Minions),
+                        kind: EnumSet::only(CharacterKind::Minion),
                         side: EnumSet::all(),
                     },
                     count: 1.into(),
@@ -298,7 +298,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                 CharacterChoice {
                     id: ChoiceId(1),
                     filter: CharacterFilter {
-                        kind: EnumSet::only(CharacterKindFilter::Minions),
+                        kind: EnumSet::only(CharacterKind::Minion),
                         side: EnumSet::only(Side::Friendly),
                     },
                     count: 1.into(),
@@ -320,7 +320,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             choices: vec![CharacterChoice {
                 id: ChoiceId(0),
                 filter: CharacterFilter {
-                    kind: EnumSet::only(CharacterKindFilter::Minions),
+                    kind: EnumSet::only(CharacterKind::Minion),
                     side: EnumSet::all(),
                 },
                 count: 2.into(),
@@ -348,7 +348,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                 CharacterChoice {
                     id: ChoiceId(0),
                     filter: CharacterFilter {
-                        kind: EnumSet::only(CharacterKindFilter::Minions),
+                        kind: EnumSet::only(CharacterKind::Minion),
                         side: EnumSet::all(),
                     },
                     count: 1.into(),
@@ -358,7 +358,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                 CharacterChoice {
                     id: ChoiceId(1),
                     filter: CharacterFilter {
-                        kind: EnumSet::only(CharacterKindFilter::Heroes),
+                        kind: EnumSet::only(CharacterKind::Hero),
                         side: EnumSet::all(),
                     },
                     count: 1.into(),
@@ -377,7 +377,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                 pattern: TriggerPattern::Died(TriggerSubject::Itself),
                 effects: EffectSequence(vec![Effect::Buff {
                     selector: CharacterSelector::All(CharacterFilter {
-                        kind: EnumSet::only(CharacterKindFilter::Minions),
+                        kind: EnumSet::only(CharacterKind::Minion),
                         side: EnumSet::only(Side::Friendly),
                     }),
                     effect: ModifierEffect::BuffHealth { amount: 2.into() },
@@ -392,7 +392,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             mana_cost: 3,
             triggers: vec![TriggerDef {
                 pattern: TriggerPattern::Died(TriggerSubject::Character(CharacterFilter {
-                    kind: EnumSet::only(CharacterKindFilter::Minions),
+                    kind: EnumSet::only(CharacterKind::Minion),
                     side: EnumSet::only(Side::Friendly),
                 })),
                 effects: EffectSequence(vec![Effect::Draw {
@@ -409,7 +409,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             mana_cost: 3,
             triggers: vec![TriggerDef {
                 pattern: TriggerPattern::Played(CardFilter {
-                    kind: EnumSet::only(CardKindFilter::Spells),
+                    kind: EnumSet::only(CardKind::Spell),
                     side: EnumSet::only(Side::Friendly),
                 }),
                 effects: EffectSequence(vec![Effect::Summon {
@@ -446,7 +446,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                 pattern: TriggerPattern::Died(TriggerSubject::Itself),
                 effects: EffectSequence(vec![Effect::Damage {
                     selector: CharacterSelector::All(CharacterFilter {
-                        kind: EnumSet::only(CharacterKindFilter::Minions),
+                        kind: EnumSet::only(CharacterKind::Minion),
                         side: EnumSet::all(),
                     }),
                     amount: 1.into(),
@@ -461,12 +461,12 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             mana_cost: 2,
             triggers: vec![TriggerDef {
                 pattern: TriggerPattern::Died(TriggerSubject::Character(CharacterFilter {
-                    kind: EnumSet::only(CharacterKindFilter::Minions),
+                    kind: EnumSet::only(CharacterKind::Minion),
                     side: EnumSet::all(),
                 })),
                 effects: EffectSequence(vec![Effect::Damage {
                     selector: CharacterSelector::All(CharacterFilter {
-                        kind: EnumSet::only(CharacterKindFilter::Heroes),
+                        kind: EnumSet::only(CharacterKind::Hero),
                         side: EnumSet::only(Side::Enemy),
                     }),
                     amount: 1.into(),
@@ -482,7 +482,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             play_effects: EffectSequence(vec![
                 Effect::Damage {
                     selector: CharacterSelector::All(CharacterFilter {
-                        kind: EnumSet::only(CharacterKindFilter::Minions),
+                        kind: EnumSet::only(CharacterKind::Minion),
                         side: EnumSet::all(),
                     }),
                     amount: 1.into(),
@@ -533,7 +533,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             mana_cost: 2,
             play_effects: EffectSequence(vec![Effect::Buff {
                 selector: CharacterSelector::All(CharacterFilter {
-                    kind: EnumSet::only(CharacterKindFilter::Minions),
+                    kind: EnumSet::only(CharacterKind::Minion),
                     side: EnumSet::only(Side::Friendly),
                 }),
                 effect: ModifierEffect::BuffHealth { amount: 1.into() },

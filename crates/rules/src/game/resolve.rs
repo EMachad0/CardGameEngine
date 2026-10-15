@@ -7,8 +7,10 @@
 use crate::{
     action::{Action, IllegalAction},
     cards::{
-        definition::{CharacterSelector, PlayerSelector, PlayerSelectorFilter},
-        filter::{CardKindFilter, CharacterKindFilter, fulfill_side_filter},
+        definition::{
+            CardKind, CharacterKind, CharacterSelector, PlayerSelector, PlayerSelectorFilter,
+        },
+        filter::fulfill_side_filter,
         modifier::Modifier,
         object::ObjectId,
     },
@@ -300,7 +302,7 @@ impl Game {
                     matches!(
                         &entry.kind,
                         HistoryKind::CardPlayed { object }
-                            if self.binder.get(object.def_id).card_kind() == CardKindFilter::Spells
+                            if self.binder.get(object.def_id).card_kind() == CardKind::Spell
                     )
                 })
                 .count(),
@@ -317,7 +319,7 @@ impl Game {
                         &entry.kind,
                         HistoryKind::CharacterDied { object }
                             if self.binder.get(object.def_id).character_kind()
-                                == Some(CharacterKindFilter::Minions)
+                                == Some(CharacterKind::Minion)
                     )
                 })
                 .count(),

@@ -1,12 +1,9 @@
 use enumset::EnumSet;
 
-use crate::ids::PlayerId;
-
-#[derive(Debug, enumset::EnumSetType)]
-pub enum CharacterKindFilter {
-    Heroes,
-    Minions,
-}
+use crate::{
+    cards::definition::{CardKind, CharacterKind},
+    ids::PlayerId,
+};
 
 #[derive(Debug, enumset::EnumSetType)]
 pub enum Side {
@@ -14,22 +11,15 @@ pub enum Side {
     Enemy,
 }
 
-#[derive(Debug, enumset::EnumSetType)]
-pub enum CardKindFilter {
-    Spells,
-    Minions,
-    Heroes,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CardFilter {
-    pub kind: EnumSet<CardKindFilter>,
+    pub kind: EnumSet<CardKind>,
     pub side: EnumSet<Side>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CharacterFilter {
-    pub kind: EnumSet<CharacterKindFilter>,
+    pub kind: EnumSet<CharacterKind>,
     pub side: EnumSet<Side>,
 }
 

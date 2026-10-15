@@ -2,7 +2,7 @@ use enumset::EnumSet;
 
 use crate::{
     cards::{
-        filter::{CardKindFilter, CharacterFilter, CharacterKindFilter, Side},
+        filter::{CharacterFilter, Side},
         modifier::ModifierEffect,
     },
     choice::{CharacterChoice, ChoiceId},
@@ -48,19 +48,19 @@ impl CardDef {
         }
     }
 
-    pub(crate) fn card_kind(&self) -> CardKindFilter {
+    pub(crate) fn card_kind(&self) -> CardKind {
         match self.kind {
-            CardDefKind::Spell(_) => CardKindFilter::Spells,
-            CardDefKind::Minion(_) => CardKindFilter::Minions,
-            CardDefKind::Hero(_) => CardKindFilter::Heroes,
+            CardDefKind::Spell(_) => CardKind::Spell,
+            CardDefKind::Minion(_) => CardKind::Minion,
+            CardDefKind::Hero(_) => CardKind::Hero,
         }
     }
 
-    pub(crate) fn character_kind(&self) -> Option<CharacterKindFilter> {
+    pub(crate) fn character_kind(&self) -> Option<CharacterKind> {
         match self.kind {
             CardDefKind::Spell(_) => None,
-            CardDefKind::Minion(_) => Some(CharacterKindFilter::Minions),
-            CardDefKind::Hero(_) => Some(CharacterKindFilter::Heroes),
+            CardDefKind::Minion(_) => Some(CharacterKind::Minion),
+            CardDefKind::Hero(_) => Some(CharacterKind::Hero),
         }
     }
 
@@ -122,6 +122,19 @@ pub enum CardDefKind {
     Spell(SpellCardDef),
     Minion(MinionCardDef),
     Hero(HeroCardDef),
+}
+
+#[derive(Debug, enumset::EnumSetType)]
+pub enum CardKind {
+    Spell,
+    Minion,
+    Hero,
+}
+
+#[derive(Debug, enumset::EnumSetType)]
+pub enum CharacterKind {
+    Hero,
+    Minion,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
