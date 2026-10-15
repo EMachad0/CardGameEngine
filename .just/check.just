@@ -28,7 +28,7 @@ paths:
 
     report "Import from rules::prelude by name, not with a glob:" \
         "$(find crates -name '*.rs' -print | sort | while read -r file; do
-            tr -s '[:space:]' ' ' < "$file" \
+            sed 's://.*$::' "$file" | tr -s '[:space:]' ' ' \
                 | grep -Eq "${boundary}rules::([^;]*[^[:alnum:]_])?prelude::(\*|\{[^;]*\*)" \
                 && echo "$file"
         done)"
