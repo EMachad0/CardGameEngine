@@ -126,11 +126,11 @@ impl Game {
             .expect("object not in board");
 
         if self.card_def(object_id).goes_to_graveyard() {
-            self.emtomb(player_id, object_id, obs);
+            self.entomb(player_id, object_id, obs);
         }
     }
 
-    pub(crate) fn emtomb(
+    pub(crate) fn entomb(
         &mut self,
         player_id: PlayerId,
         object_id: ObjectId,
