@@ -268,6 +268,14 @@ mod tests {
         }
     }
 
+    fn replace_rally_banner_friendly_auras(defs: &mut [CardDef], auras: Vec<ModifierEffect>) {
+        let banner = defs.iter_mut().find(|def| def.id == RALLY_BANNER).unwrap();
+        let CardDefKind::Minion(minion) = &mut banner.kind else {
+            panic!("Rally Banner is a minion");
+        };
+        minion.friendly_aura_effects = auras;
+    }
+
     #[test]
     fn a_trigger_effect_naming_a_choice_is_rejected() {
         let mut defs = base::definitions();
@@ -287,14 +295,95 @@ mod tests {
         let ping_choice = defs.iter().find(|def| def.id == PING).unwrap().choices[0];
         let banner = defs.iter_mut().find(|def| def.id == RALLY_BANNER).unwrap();
         banner.choices.push(ping_choice);
-        let CardDefKind::Minion(minion) = &mut banner.kind else {
-            panic!("Rally Banner is a minion");
-        };
-        minion.friendly_aura_effects = vec![ModifierEffect::GrantTrigger(chosen_damage_trigger())];
+        replace_rally_banner_friendly_auras(
+            &mut defs,
+            vec![ModifierEffect::GrantTrigger(chosen_damage_trigger())],
+        );
 
         assert_eq!(
             validate(&defs),
             Err(CardDefError::ChoiceInTrigger(RALLY_BANNER, ChoiceId(0)))
+        );
+    }
+
+    #[test]
+    fn a_trigger_granted_by_a_modifier_effect_naming_a_choice_is_rejected() {
+        let mut defs = base::definitions();
+        let ping = defs.iter_mut().find(|def| def.id == PING).unwrap();
+        ping.modifier_effects
+            .push(ModifierEffect::GrantTrigger(chosen_damage_trigger()));
+
+        assert_eq!(
+            validate(&defs),
+            Err(CardDefError::ChoiceInTrigger(PING, ChoiceId(0)))
+        );
+    }
+
+    #[test]
+    fn a_trigger_granted_by_a_buff_naming_a_choice_is_rejected() {
+        let mut defs = base::definitions();
+        play_effects_of(&mut defs, PING).push(Effect::Buff {
+            selector: CharacterSelector::OwnerHero,
+            effect: ModifierEffect::GrantTrigger(chosen_damage_trigger()),
+        });
+
+        assert_eq!(
+            validate(&defs),
+            Err(CardDefError::ChoiceInTrigger(PING, ChoiceId(0))),
+            "the buff resolves during play, but the trigger it grants resolves with no draft"
+        );
+    }
+
+    #[test]
+    fn a_trigger_granted_by_an_added_aura_naming_a_choice_is_rejected() {
+        let mut defs = base::definitions();
+        play_effects_of(&mut defs, PING).push(Effect::AddFriendlyAura {
+            selector: CharacterSelector::OwnerHero,
+            effect: ModifierEffect::GrantTrigger(chosen_damage_trigger()),
+        });
+
+        assert_eq!(
+            validate(&defs),
+            Err(CardDefError::ChoiceInTrigger(PING, ChoiceId(0)))
+        );
+    }
+
+    #[test]
+    fn a_trigger_granted_inside_a_granted_trigger_naming_a_choice_is_rejected() {
+        let mut defs = base::definitions();
+        let ping_choice = defs.iter().find(|def| def.id == PING).unwrap().choices[0];
+        let banner = defs.iter_mut().find(|def| def.id == RALLY_BANNER).unwrap();
+        banner.choices.push(ping_choice);
+        replace_rally_banner_friendly_auras(
+            &mut defs,
+            vec![ModifierEffect::GrantTrigger(TriggerDef {
+                pattern: TriggerPattern::Damaged(TriggerSubject::Itself),
+                effects: EffectSequence(vec![Effect::Buff {
+                    selector: CharacterSelector::Itself,
+                    effect: ModifierEffect::GrantTrigger(chosen_damage_trigger()),
+                }]),
+            })],
+        );
+
+        assert_eq!(
+            validate(&defs),
+            Err(CardDefError::ChoiceInTrigger(RALLY_BANNER, ChoiceId(0)))
+        );
+    }
+
+    #[test]
+    fn a_buff_in_play_effects_may_choose_whom_it_grants_a_trigger_to() {
+        let mut defs = base::definitions();
+        let deathrattle = defs.iter().find(|def| def.id == HOARDER).unwrap().triggers[0].clone();
+        play_effects_of(&mut defs, PING).push(Effect::Buff {
+            selector: CharacterSelector::Chosen(ChoiceId(0)),
+            effect: ModifierEffect::GrantTrigger(deathrattle),
+        });
+
+        assert_eq!(
+            validate(&defs),
+            Ok(()),
+            "the buff's own selector resolves during play, where the choice is drafted"
         );
     }
 
@@ -305,6 +394,12 @@ mod tests {
             .unwrap()
             .play_effects
             .0
+    }
+
+    fn hoarder_trigger_with_an_unresolved_pick(defs: &[CardDef]) -> TriggerDef {
+        let mut trigger = defs.iter().find(|def| def.id == HOARDER).unwrap().triggers[0].clone();
+        trigger.effects.0.truncate(1);
+        trigger
     }
 
     #[test]
@@ -357,18 +452,30 @@ mod tests {
     #[test]
     fn a_granted_triggers_pick_must_be_resolved_too() {
         let mut defs = base::definitions();
-        let mut deathrattle =
-            defs.iter().find(|def| def.id == HOARDER).unwrap().triggers[0].clone();
-        deathrattle.effects.0.truncate(1);
-        let banner = defs.iter_mut().find(|def| def.id == RALLY_BANNER).unwrap();
-        let CardDefKind::Minion(minion) = &mut banner.kind else {
-            panic!("Rally Banner is a minion");
-        };
-        minion.friendly_aura_effects = vec![ModifierEffect::GrantTrigger(deathrattle)];
+        let deathrattle = hoarder_trigger_with_an_unresolved_pick(&defs);
+        replace_rally_banner_friendly_auras(
+            &mut defs,
+            vec![ModifierEffect::GrantTrigger(deathrattle)],
+        );
 
         assert_eq!(
             validate(&defs),
             Err(CardDefError::PickNotResolved(RALLY_BANNER, PickId(0)))
+        );
+    }
+
+    #[test]
+    fn a_pick_in_a_trigger_granted_by_a_buff_must_be_resolved_too() {
+        let mut defs = base::definitions();
+        let deathrattle = hoarder_trigger_with_an_unresolved_pick(&defs);
+        play_effects_of(&mut defs, DRUMMER).push(Effect::Buff {
+            selector: CharacterSelector::Itself,
+            effect: ModifierEffect::GrantTrigger(deathrattle),
+        });
+
+        assert_eq!(
+            validate(&defs),
+            Err(CardDefError::PickNotResolved(DRUMMER, PickId(0)))
         );
     }
 }
