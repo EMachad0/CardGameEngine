@@ -52,21 +52,12 @@ impl Game {
         asking: PlayerId,
         filter: &CharacterFilter,
     ) -> Vec<ObjectId> {
-        let mut characters = Vec::new();
-        characters.extend(
-            self.players
-                .iter()
-                .filter(|player| {
-                    self.fulfill_character_filter(asking, player.id, player.zones.hero, filter)
-                })
-                .map(|player| player.zones.hero),
-        );
-        characters.extend(self.players.iter().flat_map(|player| {
-            player.zones.board.as_slice().iter().filter(|object_id| {
-                self.fulfill_character_filter(asking, player.id, **object_id, filter)
+        self.characters_in_play()
+            .filter(|&object_id| {
+                let owner = self.objects.get(object_id).player_id;
+                self.fulfill_character_filter(asking, owner, object_id, filter)
             })
-        }));
-        characters
+            .collect()
     }
 
     pub(crate) fn fulfill_character_filter(

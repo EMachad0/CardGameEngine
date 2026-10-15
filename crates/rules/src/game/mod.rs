@@ -217,14 +217,7 @@ impl Game {
     }
 
     pub(crate) fn board_characters(&self) -> Vec<ObjectId> {
-        let heroes = self.players.iter().map(|p| p.zones.hero);
-        let minions = self
-            .players()
-            .into_iter()
-            .flat_map(|p| self.player_board(p))
-            .cloned();
-
-        let mut characters = heroes.chain(minions).collect::<Vec<_>>();
+        let mut characters = self.characters_in_play().collect::<Vec<_>>();
         characters.sort_by_key(|o| self.objects.get(*o).order);
         characters
     }
