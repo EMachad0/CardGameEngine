@@ -1,6 +1,6 @@
 # Definitions live in leaf modules
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 Blocked by: #24 merged
@@ -40,3 +40,7 @@ Splitting `game`. Any rename beyond what a moved definition needs.
 - The toolchain is 1.99.0, and `definition_in_module_root` is denied workspace-wide.
 - `game/mod.rs` is the only exemption, through `expect`.
 - The checks pass, with `tests/spec/` unchanged.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/26
