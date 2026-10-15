@@ -4,6 +4,10 @@
 version = "3.25.0"
 backend = "cargo:bacon"
 
+[[tools."cargo:critcmp"]]
+version = "0.1.8"
+backend = "cargo:critcmp"
+
 [[tools.gh]]
 version = "2.89.0"
 backend = "aqua:cli/cli"

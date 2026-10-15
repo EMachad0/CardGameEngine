@@ -1,0 +1,51 @@
+name: Bench
+
+on:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      # The checkout is the PR's merge commit. Its first parent is the base, its second the PR head.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - uses: jdx/mise-action@v5
+        with:
+          install_args: just cargo:critcmp
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: "true"
+      - run: |
+          just bench::compare HEAD^1 > table.txt
+          cat table.txt
+      # A fork PR's token can't write comments, so its table stays in the log above.
+      - if: github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          {
+            echo '### Benchmarks'
+            echo
+            echo "\`base\` is $(git rev-parse --short HEAD^1), \`head\` is $(git rev-parse --short HEAD^2)."
+            echo
+            echo '```text'
+            cat table.txt
+            echo '```'
+          } > comment.md
+          gh pr comment "$PR" --edit-last --create-if-none --body-file comment.md

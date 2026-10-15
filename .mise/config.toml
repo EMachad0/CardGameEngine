@@ -12,6 +12,7 @@ gh = "latest"
 worktrunk = "latest"
 # Not in mise's registry.
 "cargo:bacon" = "latest"
+"cargo:critcmp" = "latest"
 
 [hooks]
 enter = [

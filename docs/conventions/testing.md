@@ -132,6 +132,10 @@ compare directly.
 `cargo bench -p rules -- --test` runs each one once as a smoke test. The checks don't run benches,
 but clippy with `--all-targets` lints them.
 
+`just bench::compare <ref>` benches `<ref>` and the working tree on one machine and prints a
+critcmp table of both. CI runs it on every pull request against the base branch and posts the
+table as a PR comment, updated on each push. A regression doesn't fail CI.
+
 ## References
 
 - `docs/course/README.md`: the courses, each with its exercise roles in its `COURSE.md`.
