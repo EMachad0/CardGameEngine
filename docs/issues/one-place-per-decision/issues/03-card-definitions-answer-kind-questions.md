@@ -38,7 +38,8 @@ exists. Port it by intent, not by cherry-pick:
 
 - `CardDef` answers `health`, `attack`, `has_board_presence`, the two aura lists and
   `choice(id)`. `Binder` keeps ticket 01's constructor and `get`, and nothing else.
-- `game/` reaches a definition through one private helper, `Game::card_def(object_id)`.
+- `game/` reaches a definition through one helper, `Game::card_def(object_id)`, next to
+  `Game::def_id` in `game/lookup.rs` and no wider than `pub(super)`.
 - `Trigger` holds its whole `TriggerDef` instead of copying the pattern and effects.
 - Renames:
   - `Trigger.source` and `Modifier.source` become `granted_by`. For a granted trigger the

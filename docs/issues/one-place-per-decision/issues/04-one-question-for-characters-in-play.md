@@ -12,7 +12,7 @@ Branch: `characters-in-play`, new, from `card-def-kinds` after ticket 03. New dr
 Which objects are characters in play? Today the answer is every player's hero plus every object
 on a board, and three places compute it on their own:
 
-- `Game::board_characters` in `game.rs`: heroes, then each board, sorted by order of play. These
+- `Game::board_characters` in `game/mod.rs`: heroes, then each board, sorted by order of play. These
   are the listeners `emit` matches triggers against.
 - `Game::scan_characters_with_filter` in `game/condition.rs`: heroes in seat order, then each
   board in seat and board order, filtered. These are the targets for `All`, `Random` and draft
@@ -28,7 +28,8 @@ second can be built on the first."
 ## What to build
 
 - One function in `game` answers membership. Where it ends up belongs to a later split of
-  `game`, so give it no module of its own.
+  `game`, so give it no module of its own. Put it in one of `game`'s child files, not in
+  `game/mod.rs`.
 - `board_characters`, `scan_characters_with_filter` and the in-play test in `health` build on it.
 - Keep both orders exactly. A random pick draws from the candidate list by index, so any change
   to the order of targets changes seeded games, even when every test still passes.

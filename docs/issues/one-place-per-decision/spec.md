@@ -39,13 +39,16 @@ The learner authorized this effort to run without him.
 | Ticket | Branch | Base | PR | Blocked by |
 |---|---|---|---|---|
 | 01 | `loader-split` | `main` | #10 | |
-| 02 | `grammar-walk` | `loader-split` | #14 | 01 |
+| 02 | `grammar-walk` | `main`, once 07 is merged | #14 | 01, 06, 07 |
 | 03 | `card-def-kinds` | `grammar-walk` | #15 | 02 |
 | 04 | `characters-in-play` | `card-def-kinds` | new | 03 |
-| 05 | `trigger-matching` | `main` | new | |
+| 05 | `trigger-matching` | `main` | #23 | |
+| 06 | `leaf-definitions` | `main`, once #24 is merged | new | |
+| 07 | `one-path` | `main`, once #10 and 06 are merged | new | 01, 06 |
 
-01 and 05 run in parallel. 02, 03 and 04 each start once the ticket before has pushed and
-finished its review loop.
+01 and 05 are merged or in review. 06 starts once #24 is merged, and 07 once #10 and 06 are
+merged. 02 starts once 07 is merged, so the checks cover its layout and its imports. 03 and 04
+each start once the ticket before has pushed and finished its review loop.
 
 Branches 01 to 03 hold earlier drafts, built on layouts that are gone. Rebuild each from its new
 base and reuse what fits. The old commits stay reachable from `origin/modifiers-stats`:
@@ -95,6 +98,11 @@ After the checks pass, run rounds of review with subagents:
   or the course.
 - Names come from the glossary. A new module name must pass the doc's name test against its
   siblings.
+- Definitions live in leaf modules, and a `mod.rs` holds only `mod` declarations. `game/mod.rs`
+  is exempt until `game` is split, so add no definitions to it.
+- One path to each definition: import from the defining module, spelled from `crate::`; no
+  re-exports inside the crate; nothing inside the crate imports through `prelude`. The Rust
+  section of `file-structure.md` says why for both rules.
 - Don't touch what another ticket owns, and don't fix what you notice outside your ticket. List
   it under "Left out".
 
