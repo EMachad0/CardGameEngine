@@ -118,32 +118,26 @@ impl Game {
     pub(crate) fn death_rattles(&self, object_id: ObjectId) -> Vec<Trigger> {
         self.triggers(object_id)
             .into_iter()
-            .filter(|t| matches!(t.pattern, TriggerPattern::Died(TriggerSubject::Itself)))
+            .filter(|t| matches!(t.def.pattern, TriggerPattern::Died(TriggerSubject::Itself)))
             .collect()
     }
 
     pub(crate) fn triggers(&self, object_id: ObjectId) -> Vec<Trigger> {
-        let def = self.card_def(object_id).triggers.iter().map(|td| Trigger {
-            source: object_id,
-            pattern: td.pattern,
-            effects: td.effects.clone(),
+        let printed = self.card_def(object_id).triggers.iter().map(|td| Trigger {
+            granted_by: object_id,
+            def: td.clone(),
         });
-        let mut modifiers = self
-            .modifiers(object_id)
-            .as_slice()
-            .iter()
-            .filter_map(|m| match &m.effect {
-                ModifierEffect::GrantTrigger(trigger) => Some(Trigger {
-                    source: m.source,
-                    pattern: trigger.pattern,
-                    effects: trigger.effects.clone(),
-                }),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-        modifiers.extend(def);
-        modifiers.sort_by_key(|t| self.objects.get(t.source).order);
-        modifiers
+        let modifiers = self.modifiers(object_id);
+        let from_modifiers = modifiers.as_slice().iter().filter_map(|m| match &m.effect {
+            ModifierEffect::GrantTrigger(trigger) => Some(Trigger {
+                granted_by: m.granted_by,
+                def: trigger.clone(),
+            }),
+            _ => None,
+        });
+        let mut triggers = from_modifiers.chain(printed).collect::<Vec<_>>();
+        triggers.sort_by_key(|t| self.objects.get(t.granted_by).order);
+        triggers
     }
 
     fn modifiers(&self, object_id: ObjectId) -> Modifiers {
@@ -153,7 +147,7 @@ impl Game {
             .modifier_effects
             .iter()
             .map(|e| Modifier {
-                source: object_id,
+                granted_by: object_id,
                 effect: e.clone(),
             })
             .collect::<Vec<_>>();
@@ -191,7 +185,7 @@ impl Game {
             .friendly_aura_effects()
             .iter()
             .map(|e| Modifier {
-                source: object_id,
+                granted_by: object_id,
                 effect: e.clone(),
             })
             .collect::<Vec<_>>();
@@ -206,7 +200,7 @@ impl Game {
             .hostile_aura_effects()
             .iter()
             .map(|e| Modifier {
-                source: object_id,
+                granted_by: object_id,
                 effect: e.clone(),
             })
             .collect::<Vec<_>>();
