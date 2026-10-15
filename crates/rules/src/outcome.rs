@@ -1,4 +1,4 @@
-use crate::PlayerId;
+use crate::ids::PlayerId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Outcome {

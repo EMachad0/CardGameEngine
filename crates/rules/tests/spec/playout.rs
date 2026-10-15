@@ -3,11 +3,11 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use pretty_assertions::assert_eq;
-use rules::static_card_definition::{
+use rules::prelude::static_card_definition::{
     BARRACKS, BLAST, BOLT, CAPTAIN, CROSSFIRE, FORAGE, GIANT, PING, RECRUIT, SHOVE, SPARK,
     TWIN_SHOT, WILD_BOLT,
 };
-use rules::{Action, DefId, Game, ObjectId, Outcome, PlayerId, Rng};
+use rules::prelude::{Action, DefId, Game, ObjectId, Outcome, PlayerId, Rng};
 
 use crate::model::{BoardModel, damage_per_chosen_target, expected_cost, is_spell};
 use crate::support::*;

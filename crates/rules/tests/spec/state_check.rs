@@ -1,8 +1,8 @@
 //! The state check at the end of every `apply`.
 
 use pretty_assertions::assert_eq;
-use rules::static_card_definition::{BLAST, CAPTAIN, MEDIC, RECRUIT};
-use rules::{Game, Outcome};
+use rules::prelude::static_card_definition::{BLAST, CAPTAIN, MEDIC, RECRUIT};
+use rules::prelude::{Game, Outcome};
 
 use crate::support::*;
 

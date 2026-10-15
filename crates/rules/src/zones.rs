@@ -2,7 +2,7 @@
 
 use std::collections::VecDeque;
 
-use crate::ObjectId;
+use crate::cards::object::ObjectId;
 use crate::rng::Rng;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -131,9 +131,9 @@ mod tests {
 
     use pretty_assertions::assert_eq;
 
+    use crate::cards::binder::sets::base::static_card_definition::SPARK;
     use crate::cards::object::ObjectBag;
     use crate::ids::PlayerId;
-    use crate::static_card_definition::SPARK;
 
     fn ids<const N: usize>() -> [ObjectId; N] {
         let mut bag = ObjectBag::default();

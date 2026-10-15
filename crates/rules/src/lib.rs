@@ -1,13 +1,7 @@
 //! Rules core: a deterministic card game state machine.
 //!
-//! The public API is the `pub use` list below. Every other item is
-//! `pub(crate)` or narrower, so changing one can't break a caller.
-//!
-//! Layout:
-//! - `ids`, `action`, `cards`, `event`: public data types.
-//! - `observer`: the `Observer` trait and the `Views` handle it receives.
-//! - `rng`, `turn`, `zones`: types whose fields are private to their module.
-//! - `game`: `Game` and its methods, and `View`. Its child modules can read `Game`'s private fields.
+//! The public API is what the one public module lists. Every other module is
+//! private, so no other crate can reach an item it leaves out.
 
 mod action;
 mod cards;
@@ -19,24 +13,8 @@ mod history;
 mod ids;
 mod observer;
 mod outcome;
+pub mod prelude;
 mod rng;
 mod trigger;
 mod turn;
 mod zones;
-
-pub use action::{Action, IllegalAction};
-pub use cards::{
-    binder::static_card_definition,
-    definition::{CardDef, DefId},
-    object::ObjectId,
-};
-pub use choice::{ChoiceId, PickId};
-pub use event::Event;
-pub use game::{
-    ApplyError, Game,
-    view::{BoardCard, DraftView, Face, HandCard, HeroCard, PlayerView, RevealedCard, View},
-};
-pub use ids::PlayerId;
-pub use observer::{Observer, Views};
-pub use outcome::Outcome;
-pub use rng::Rng;

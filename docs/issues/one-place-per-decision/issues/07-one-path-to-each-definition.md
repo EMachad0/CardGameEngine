@@ -1,6 +1,6 @@
 # One path to each definition
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 Blocked by: 01, 06
@@ -63,3 +63,7 @@ crates import from it by name, never with a glob; a text search in the checks en
 - The new recipe runs in `check::all`, fails on each of the three patterns when you plant one,
   and passes on the branch. Say in the PR body how you checked each pattern.
 - The checks pass, with `tests/spec/` changed only in its imports.
+
+## Answer
+
+PR #27: https://github.com/EMachad0/CardGameEngine/pull/27

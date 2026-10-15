@@ -1,4 +1,4 @@
-use crate::{PlayerId, cards::object::Object};
+use crate::{cards::object::Object, ids::PlayerId};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum HistoryKind {

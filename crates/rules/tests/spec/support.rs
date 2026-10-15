@@ -4,8 +4,8 @@
 use std::collections::BTreeSet;
 
 use pretty_assertions::assert_eq;
-use rules::static_card_definition::{BOLT, RECRUIT};
-use rules::{
+use rules::prelude::static_card_definition::{BOLT, RECRUIT};
+use rules::prelude::{
     Action, ApplyError, ChoiceId, DefId, Event, Game, IllegalAction, ObjectId, Observer, PlayerId,
     PlayerView, View, Views,
 };

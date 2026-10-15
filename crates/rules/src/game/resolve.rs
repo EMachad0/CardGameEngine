@@ -4,21 +4,20 @@
 //! Every action that reaches this module is already in `legal_actions`, so
 //! nothing here re-checks legality.
 
-use super::Game;
-
 use crate::{
-    IllegalAction, ObjectId, Observer, Views,
-    action::Action,
+    action::{Action, IllegalAction},
     cards::{
         definition::{CharacterSelector, PlayerSelector, PlayerSelectorFilter},
         filter::fulfill_side_filter,
         modifier::Modifier,
+        object::ObjectId,
     },
     choice::{ChoiceTarget, EffectAmount, PickTarget},
     effect::Effect,
-    game::PlayerInteractionState,
+    game::{Game, player::PlayerInteractionState},
     history::{HistoryKind, HistoryQuery, HistoryQueryKind, PlayerFilter},
     ids::PlayerId,
+    observer::{Observer, Views},
 };
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]

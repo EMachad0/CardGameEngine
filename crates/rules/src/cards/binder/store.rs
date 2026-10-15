@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, sync::Arc};
 use crate::{
     cards::{
         binder::{
-            sets,
+            sets::base,
             validity::{self, CardDefError},
         },
         definition::{CardDef, CardDefKind, DefId, TriggerDef},
@@ -21,7 +21,7 @@ pub(crate) struct Binder {
 
 impl Binder {
     pub(crate) fn built_in() -> Result<Self, CardDefError> {
-        let defs = sets::definitions();
+        let defs = base::definitions();
         validity::validate(&defs)?;
 
         let mut map = BTreeMap::new();

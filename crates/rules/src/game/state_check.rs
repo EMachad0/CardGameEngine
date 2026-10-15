@@ -1,4 +1,10 @@
-use crate::{Event, Game, ObjectId, Observer, Outcome, Views};
+use crate::{
+    cards::object::ObjectId,
+    event::Event,
+    game::Game,
+    observer::{Observer, Views},
+    outcome::Outcome,
+};
 
 impl Game {
     pub(crate) fn check_state(&mut self, obs: &mut impl Observer) {

@@ -1,8 +1,8 @@
 use enumset::EnumSet;
 
 use crate::{
-    PickId,
     cards::{
+        binder::sets::base::static_card_definition::*,
         definition::{
             CardDef, CardDefKind, CharacterSelector, DefId, HeroCardDef, MinionCardDef,
             PlayerSelector, SpellCardDef, TriggerDef,
@@ -10,13 +10,11 @@ use crate::{
         filter::{CardFilter, CardKindFilter, CharacterFilter, CharacterKindFilter, Side},
         modifier::ModifierEffect,
     },
-    choice::{AmountBound, CharacterChoice, ChoiceId, EffectAmount},
+    choice::{AmountBound, CharacterChoice, ChoiceId, EffectAmount, PickId},
     effect::{Effect, EffectSequence, ZoneMove},
     history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter},
     trigger::{TriggerPattern, TriggerSubject},
 };
-
-use self::static_card_definition::*;
 
 pub(in crate::cards::binder) const PLACEHOLDER: DefId = DefId::new("placeholder");
 

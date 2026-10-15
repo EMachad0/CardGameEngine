@@ -1,11 +1,11 @@
 //! Card text that reacts to events, and when it resolves.
 
 use pretty_assertions::assert_eq;
-use rules::static_card_definition::{
+use rules::prelude::static_card_definition::{
     BLAST, BOLT, BOMBER, DRILLMASTER, GRAVEDIGGER, MEDIC, MOURNER, PING, RALLY_BANNER, RECRUIT,
     SQUIRE, TWIN_SHOT,
 };
-use rules::{Event, Game, ObjectId, Outcome};
+use rules::prelude::{Event, Game, ObjectId, Outcome};
 
 use crate::support::*;
 

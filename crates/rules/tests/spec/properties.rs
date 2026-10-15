@@ -3,7 +3,7 @@
 use std::ops::Range;
 
 use pretty_assertions::assert_eq;
-use rules::Game;
+use rules::prelude::Game;
 
 use crate::playout::{checked_playout, random_playout, sample_deck};
 use crate::support::{Recorder, observe, players};

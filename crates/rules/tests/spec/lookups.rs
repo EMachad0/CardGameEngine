@@ -3,8 +3,8 @@
 use std::collections::BTreeSet;
 
 use pretty_assertions::assert_eq;
-use rules::static_card_definition::{BLAST, RECRUIT, SPARK};
-use rules::{Game, ObjectId};
+use rules::prelude::static_card_definition::{BLAST, RECRUIT, SPARK};
+use rules::prelude::{Game, ObjectId};
 
 use crate::support::*;
 

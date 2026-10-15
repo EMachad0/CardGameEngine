@@ -2,8 +2,8 @@
 //! is played.
 
 use pretty_assertions::assert_eq;
-use rules::Action;
-use rules::static_card_definition::{CROSSFIRE, PING, SHOVE, TWIN_SHOT};
+use rules::prelude::Action;
+use rules::prelude::static_card_definition::{CROSSFIRE, PING, SHOVE, TWIN_SHOT};
 
 use crate::support::*;
 

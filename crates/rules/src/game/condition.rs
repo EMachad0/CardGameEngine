@@ -1,11 +1,15 @@
 use enumset::EnumSet;
 
 use crate::{
-    Game, ObjectId, PlayerId,
-    cards::filter::{
-        CardFilter, CardKindFilter, CharacterFilter, CharacterKindFilter, fulfill_side_filter,
+    cards::{
+        filter::{
+            CardFilter, CardKindFilter, CharacterFilter, CharacterKindFilter, fulfill_side_filter,
+        },
+        object::ObjectId,
     },
     choice::{CharacterChoice, ChoiceId},
+    game::Game,
+    ids::PlayerId,
 };
 
 impl Game {

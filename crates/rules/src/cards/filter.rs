@@ -1,6 +1,6 @@
 use enumset::EnumSet;
 
-use crate::PlayerId;
+use crate::ids::PlayerId;
 
 #[derive(Debug, enumset::EnumSetType)]
 pub enum CharacterKindFilter {
