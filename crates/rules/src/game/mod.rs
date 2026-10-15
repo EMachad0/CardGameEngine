@@ -16,7 +16,7 @@ pub(crate) mod view;
 mod zone_move;
 
 use crate::action::Action;
-use crate::cards::{binder::Binder, loader::CardDefLoader, object::ObjectBag};
+use crate::cards::{binder::Binder, object::ObjectBag};
 use crate::effect::{PendingEffect, ResolvingEffect};
 use crate::game::player::{Player, PlayerInteractionState};
 use crate::history::History;
@@ -57,8 +57,7 @@ impl Game {
         let rng = Rng::new(seed);
 
         // may explode not sure how to handle yet
-        let defs = CardDefLoader.load_and_validate().unwrap();
-        let binder = Binder::new(defs);
+        let binder = Binder::built_in().unwrap();
 
         let mut objects = ObjectBag::default();
 

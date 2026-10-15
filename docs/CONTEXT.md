@@ -52,6 +52,10 @@ _Avoid_: template, prototype
 The card definitions a game can use, each found by its ID.
 _Avoid_: card table, card database, catalog
 
+**Set**:
+A group of card definitions released together, such as the base set.
+_Avoid_: expansion, edition
+
 **Object**:
 One card in one game. Two copies of the same card are two objects.
 _Avoid_: instance, entity

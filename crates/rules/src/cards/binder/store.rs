@@ -2,6 +2,10 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use crate::{
     cards::{
+        binder::{
+            sets,
+            validity::{self, CardDefError},
+        },
         definition::{CardDef, CardDefKind, DefId, TriggerDef},
         modifier::ModifierEffect,
     },
@@ -16,21 +20,28 @@ pub(crate) struct Binder {
 }
 
 impl Binder {
-    pub(crate) fn new(defs: Vec<CardDef>) -> Self {
+    pub(crate) fn built_in() -> Result<Self, CardDefError> {
+        let defs = sets::definitions();
+        validity::validate(&defs)?;
+
         let mut map = BTreeMap::new();
         defs.into_iter().for_each(|def| {
             map.insert(def.id, def);
         });
 
-        Self {
+        Ok(Self {
             defs: Arc::new(map),
-        }
+        })
     }
 
     pub(crate) fn get(&self, def_id: DefId) -> &CardDef {
         self.defs.get(&def_id).expect("card def not found")
     }
+}
 
+// Questions about one definition's fields and kind. None of them depends on how definitions are
+// stored.
+impl Binder {
     pub(crate) fn health(&self, def_id: DefId) -> Option<i32> {
         match &self.get(def_id).kind {
             CardDefKind::Spell(_spell_card_def) => None,

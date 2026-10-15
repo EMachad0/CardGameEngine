@@ -3,7 +3,6 @@ use enumset::EnumSet;
 use crate::{
     cards::{
         filter::{CharacterFilter, Side},
-        loader::PLACEHOLDER,
         modifier::ModifierEffect,
     },
     choice::{CharacterChoice, ChoiceId},
@@ -30,21 +29,6 @@ pub struct CardDef {
     pub play_effects: EffectSequence,
     pub triggers: Vec<TriggerDef>,
     pub choices: Vec<CharacterChoice>,
-}
-
-impl Default for CardDef {
-    fn default() -> Self {
-        Self {
-            id: PLACEHOLDER,
-            name: Default::default(),
-            kind: CardDefKind::Minion(MinionCardDef::new(1, 1)),
-            mana_cost: Default::default(),
-            modifier_effects: Default::default(),
-            play_effects: Default::default(),
-            triggers: Default::default(),
-            choices: Default::default(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
