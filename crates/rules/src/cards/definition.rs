@@ -23,7 +23,7 @@ impl DefId {
 pub struct CardDef {
     pub id: DefId,
     pub name: String,
-    pub kind: CardDefKind,
+    pub kind: CardKindDef,
     pub mana_cost: u8,
     pub modifier_effects: Vec<ModifierEffect>,
     pub play_effects: EffectSequence,
@@ -34,81 +34,81 @@ pub struct CardDef {
 impl CardDef {
     pub(crate) fn health(&self) -> Option<i32> {
         match &self.kind {
-            CardDefKind::Spell(_) => None,
-            CardDefKind::Minion(minion) => Some(minion.health),
-            CardDefKind::Hero(hero) => Some(hero.health),
+            CardKindDef::Spell(_) => None,
+            CardKindDef::Minion(minion) => Some(minion.health),
+            CardKindDef::Hero(hero) => Some(hero.health),
         }
     }
 
     pub(crate) fn attack(&self) -> Option<i32> {
         match &self.kind {
-            CardDefKind::Spell(_) => None,
-            CardDefKind::Minion(minion) => Some(minion.attack),
-            CardDefKind::Hero(_) => None,
+            CardKindDef::Spell(_) => None,
+            CardKindDef::Minion(minion) => Some(minion.attack),
+            CardKindDef::Hero(_) => None,
         }
     }
 
     pub(crate) fn card_kind(&self) -> CardKind {
         match self.kind {
-            CardDefKind::Spell(_) => CardKind::Spell,
-            CardDefKind::Minion(_) => CardKind::Minion,
-            CardDefKind::Hero(_) => CardKind::Hero,
+            CardKindDef::Spell(_) => CardKind::Spell,
+            CardKindDef::Minion(_) => CardKind::Minion,
+            CardKindDef::Hero(_) => CardKind::Hero,
         }
     }
 
     pub(crate) fn character_kind(&self) -> Option<CharacterKind> {
         match self.kind {
-            CardDefKind::Spell(_) => None,
-            CardDefKind::Minion(_) => Some(CharacterKind::Minion),
-            CardDefKind::Hero(_) => Some(CharacterKind::Hero),
+            CardKindDef::Spell(_) => None,
+            CardKindDef::Minion(_) => Some(CharacterKind::Minion),
+            CardKindDef::Hero(_) => Some(CharacterKind::Hero),
         }
     }
 
     pub(crate) fn has_board_presence(&self) -> bool {
         match self.kind {
-            CardDefKind::Spell(_) => false,
-            CardDefKind::Minion(_) => true,
-            CardDefKind::Hero(_) => false,
+            CardKindDef::Spell(_) => false,
+            CardKindDef::Minion(_) => true,
+            CardKindDef::Hero(_) => false,
         }
     }
 
     pub(crate) fn receives_auras(&self) -> bool {
         match self.kind {
-            CardDefKind::Spell(_) => false,
-            CardDefKind::Minion(_) => true,
-            CardDefKind::Hero(_) => false,
+            CardKindDef::Spell(_) => false,
+            CardKindDef::Minion(_) => true,
+            CardKindDef::Hero(_) => false,
         }
     }
 
     pub(crate) fn leaves_zone_on_death(&self) -> bool {
         match self.kind {
-            CardDefKind::Spell(_) => true,
-            CardDefKind::Minion(_) => true,
-            CardDefKind::Hero(_) => false,
+            CardKindDef::Spell(_) => true,
+            CardKindDef::Minion(_) => true,
+            CardKindDef::Hero(_) => false,
         }
     }
 
     pub(crate) fn goes_to_graveyard(&self) -> bool {
         match self.kind {
-            CardDefKind::Spell(_) => true,
-            CardDefKind::Minion(_) => true,
-            CardDefKind::Hero(_) => false,
+            CardKindDef::Spell(_) => true,
+            CardKindDef::Minion(_) => true,
+            CardKindDef::Hero(_) => false,
         }
     }
 
     pub(crate) fn friendly_aura_effects(&self) -> &[ModifierEffect] {
         match &self.kind {
-            CardDefKind::Spell(_) => &[],
-            CardDefKind::Minion(minion) => &minion.friendly_aura_effects,
-            CardDefKind::Hero(_) => &[],
+            CardKindDef::Spell(_) => &[],
+            CardKindDef::Minion(minion) => &minion.friendly_aura_effects,
+            CardKindDef::Hero(_) => &[],
         }
     }
 
     pub(crate) fn hostile_aura_effects(&self) -> &[ModifierEffect] {
         match &self.kind {
-            CardDefKind::Spell(_) => &[],
-            CardDefKind::Minion(minion) => &minion.hostile_aura_effects,
-            CardDefKind::Hero(_) => &[],
+            CardKindDef::Spell(_) => &[],
+            CardKindDef::Minion(minion) => &minion.hostile_aura_effects,
+            CardKindDef::Hero(_) => &[],
         }
     }
 
@@ -118,7 +118,7 @@ impl CardDef {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CardDefKind {
+pub enum CardKindDef {
     Spell(SpellCardDef),
     Minion(MinionCardDef),
     Hero(HeroCardDef),

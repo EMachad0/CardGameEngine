@@ -4,7 +4,7 @@ use crate::{
     cards::{
         binder::sets::base::static_card_definition::*,
         definition::{
-            CardDef, CardDefKind, CardKind, CharacterKind, CharacterSelector, DefId, HeroCardDef,
+            CardDef, CardKind, CardKindDef, CharacterKind, CharacterSelector, DefId, HeroCardDef,
             MinionCardDef, PlayerSelector, SpellCardDef, TriggerDef,
         },
         filter::{CardFilter, CharacterFilter, Side},
@@ -23,7 +23,7 @@ impl Default for CardDef {
         Self {
             id: PLACEHOLDER,
             name: Default::default(),
-            kind: CardDefKind::Minion(MinionCardDef::new(1, 1)),
+            kind: CardKindDef::Minion(MinionCardDef::new(1, 1)),
             mana_cost: Default::default(),
             modifier_effects: Default::default(),
             play_effects: Default::default(),
@@ -85,7 +85,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
         CardDef {
             id: SPARK,
             name: "Spark".to_string(),
-            kind: CardDefKind::Spell(SpellCardDef),
+            kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 1,
             play_effects: EffectSequence(vec![Effect::Damage {
                 selector: CharacterSelector::All(CharacterFilter {
@@ -99,7 +99,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
         CardDef {
             id: BOLT,
             name: "Bolt".to_string(),
-            kind: CardDefKind::Spell(SpellCardDef),
+            kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 2,
             play_effects: EffectSequence(vec![Effect::Damage {
                 selector: CharacterSelector::All(CharacterFilter {
@@ -113,7 +113,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
         CardDef {
             id: WILD_BOLT,
             name: "Wild Bolt".to_string(),
-            kind: CardDefKind::Spell(SpellCardDef),
+            kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 1,
             play_effects: EffectSequence(vec![Effect::Damage {
                 selector: CharacterSelector::Random(CharacterFilter {
@@ -127,7 +127,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
         CardDef {
             id: BLAST,
             name: "Blast".to_string(),
-            kind: CardDefKind::Spell(SpellCardDef),
+            kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 3,
             play_effects: EffectSequence(vec![Effect::Damage {
                 selector: CharacterSelector::All(CharacterFilter::all()),
@@ -138,7 +138,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
         CardDef {
             id: FORAGE,
             name: "Forage".to_string(),
-            kind: CardDefKind::Spell(SpellCardDef),
+            kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 1,
             play_effects: EffectSequence(vec![
                 Effect::Reveal {
@@ -157,14 +157,14 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
         CardDef {
             id: RECRUIT,
             name: "Recruit".to_string(),
-            kind: CardDefKind::Minion(MinionCardDef::new(2, 2)),
+            kind: CardKindDef::Minion(MinionCardDef::new(2, 2)),
             mana_cost: 2,
             ..Default::default()
         },
         CardDef {
             id: CAPTAIN,
             name: "Captain".to_string(),
-            kind: CardDefKind::Minion(MinionCardDef {
+            kind: CardKindDef::Minion(MinionCardDef {
                 health: 1,
                 attack: 1,
                 friendly_aura_effects: vec![
@@ -179,7 +179,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
         CardDef {
             id: GIANT,
             name: "Giant".to_string(),
-            kind: CardDefKind::Minion(MinionCardDef::new(5, 5)),
+            kind: CardKindDef::Minion(MinionCardDef::new(5, 5)),
             mana_cost: 8,
             modifier_effects: vec![ModifierEffect::ReduceManaCost {
                 amount: EffectAmount::History(HistoryQuery {
@@ -193,20 +193,20 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
         CardDef {
             id: HERO,
             name: "Hero".to_string(),
-            kind: CardDefKind::Hero(HeroCardDef { health: 10 }),
+            kind: CardKindDef::Hero(HeroCardDef { health: 10 }),
             ..Default::default()
         },
         CardDef {
             id: SQUIRE,
             name: "Squire".to_string(),
-            kind: CardDefKind::Minion(MinionCardDef::new(1, 1)),
+            kind: CardKindDef::Minion(MinionCardDef::new(1, 1)),
             mana_cost: 1,
             ..Default::default()
         },
         CardDef {
             id: BARRACKS,
             name: "Barracks".to_string(),
-            kind: CardDefKind::Spell(SpellCardDef),
+            kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 2,
             play_effects: EffectSequence(vec![Effect::Summon {
                 selector: PlayerSelector::Owner,
@@ -217,7 +217,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
         CardDef {
             id: ZAP,
             name: "Zap".to_string(),
-            kind: CardDefKind::Spell(SpellCardDef),
+            kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 2,
             play_effects: EffectSequence(vec![
                 Effect::Damage {
@@ -237,7 +237,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
         CardDef {
             id: STRAY_SHOT,
             name: "Stray Shot".to_string(),
-            kind: CardDefKind::Spell(SpellCardDef),
+            kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 1,
             play_effects: EffectSequence(vec![Effect::Damage {
                 selector: CharacterSelector::Random(CharacterFilter {
@@ -251,7 +251,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
         CardDef {
             id: PING,
             name: "Ping".to_string(),
-            kind: CardDefKind::Spell(SpellCardDef),
+            kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 1,
             play_effects: EffectSequence(vec![Effect::Damage {
                 selector: CharacterSelector::Chosen(ChoiceId(0)),
@@ -272,7 +272,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
         CardDef {
             id: SHOVE,
             name: "Shove".to_string(),
-            kind: CardDefKind::Spell(SpellCardDef),
+            kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 1,
             play_effects: EffectSequence(vec![
                 Effect::Damage {
@@ -311,7 +311,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
         CardDef {
             id: TWIN_SHOT,
             name: "Twin Shot".to_string(),
-            kind: CardDefKind::Spell(SpellCardDef),
+            kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 2,
             play_effects: EffectSequence(vec![Effect::Damage {
                 selector: CharacterSelector::Chosen(ChoiceId(0)),
@@ -332,7 +332,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
         CardDef {
             id: CROSSFIRE,
             name: "Crossfire".to_string(),
-            kind: CardDefKind::Spell(SpellCardDef),
+            kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 2,
             play_effects: EffectSequence(vec![
                 Effect::Damage {
@@ -371,7 +371,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
         CardDef {
             id: MEDIC,
             name: "Medic".to_string(),
-            kind: CardDefKind::Minion(MinionCardDef::new(1, 1)),
+            kind: CardKindDef::Minion(MinionCardDef::new(1, 1)),
             mana_cost: 2,
             triggers: vec![TriggerDef {
                 pattern: TriggerPattern::Died(TriggerSubject::Itself),
@@ -388,7 +388,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
         CardDef {
             id: MOURNER,
             name: "Mourner".to_string(),
-            kind: CardDefKind::Minion(MinionCardDef::new(1, 3)),
+            kind: CardKindDef::Minion(MinionCardDef::new(1, 3)),
             mana_cost: 3,
             triggers: vec![TriggerDef {
                 pattern: TriggerPattern::Died(TriggerSubject::Character(CharacterFilter {
@@ -405,7 +405,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
         CardDef {
             id: DRILLMASTER,
             name: "Drillmaster".to_string(),
-            kind: CardDefKind::Minion(MinionCardDef::new(2, 3)),
+            kind: CardKindDef::Minion(MinionCardDef::new(2, 3)),
             mana_cost: 3,
             triggers: vec![TriggerDef {
                 pattern: TriggerPattern::Played(CardFilter {
@@ -422,7 +422,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
         CardDef {
             id: RALLY_BANNER,
             name: "Rally Banner".to_string(),
-            kind: CardDefKind::Minion(MinionCardDef {
+            kind: CardKindDef::Minion(MinionCardDef {
                 attack: 0,
                 health: 5,
                 friendly_aura_effects: vec![ModifierEffect::GrantTrigger(TriggerDef {
@@ -440,7 +440,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
         CardDef {
             id: BOMBER,
             name: "Bomber".to_string(),
-            kind: CardDefKind::Minion(MinionCardDef::new(1, 1)),
+            kind: CardKindDef::Minion(MinionCardDef::new(1, 1)),
             mana_cost: 2,
             triggers: vec![TriggerDef {
                 pattern: TriggerPattern::Died(TriggerSubject::Itself),
@@ -457,7 +457,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
         CardDef {
             id: GRAVEDIGGER,
             name: "Gravedigger".to_string(),
-            kind: CardDefKind::Minion(MinionCardDef::new(2, 2)),
+            kind: CardKindDef::Minion(MinionCardDef::new(2, 2)),
             mana_cost: 2,
             triggers: vec![TriggerDef {
                 pattern: TriggerPattern::Died(TriggerSubject::Character(CharacterFilter {
@@ -477,7 +477,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
         CardDef {
             id: SWEEP,
             name: "Sweep".to_string(),
-            kind: CardDefKind::Spell(SpellCardDef),
+            kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 2,
             play_effects: EffectSequence(vec![
                 Effect::Damage {
@@ -507,7 +507,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
         CardDef {
             id: HOARDER,
             name: "Hoarder".to_string(),
-            kind: CardDefKind::Minion(MinionCardDef::new(1, 1)),
+            kind: CardKindDef::Minion(MinionCardDef::new(1, 1)),
             mana_cost: 1,
             triggers: vec![TriggerDef {
                 pattern: TriggerPattern::Died(TriggerSubject::Itself),
@@ -529,7 +529,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
         CardDef {
             id: DRUMMER,
             name: "Drummer".to_string(),
-            kind: CardDefKind::Minion(MinionCardDef::new(1, 1)),
+            kind: CardKindDef::Minion(MinionCardDef::new(1, 1)),
             mana_cost: 2,
             play_effects: EffectSequence(vec![Effect::Buff {
                 selector: CharacterSelector::All(CharacterFilter {

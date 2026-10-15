@@ -182,7 +182,7 @@ mod tests {
     use crate::{
         cards::{
             binder::sets::base::{self, static_card_definition::*},
-            definition::{CardDefKind, TriggerDef},
+            definition::{CardKindDef, TriggerDef},
             modifier::ModifierEffect,
         },
         effect::EffectSequence,
@@ -259,7 +259,7 @@ mod tests {
 
     fn replace_rally_banner_friendly_auras(defs: &mut [CardDef], auras: Vec<ModifierEffect>) {
         let banner = defs.iter_mut().find(|def| def.id == RALLY_BANNER).unwrap();
-        let CardDefKind::Minion(minion) = &mut banner.kind else {
+        let CardKindDef::Minion(minion) = &mut banner.kind else {
             panic!("Rally Banner is a minion");
         };
         minion.friendly_aura_effects = auras;
