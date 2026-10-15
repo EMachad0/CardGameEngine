@@ -1,6 +1,6 @@
 # One walk over a card's effect sequences
 
-Status: ready-for-agent
+Status: resolved
 Category: bug
 Type: task
 Blocked by: 01, 06, 07
@@ -73,3 +73,7 @@ changes, so `tests/spec/` stays unchanged.
 - A new `CardDef` field, a new field on a kind payload or on `TriggerDef`, a new `Effect` or
   `ModifierEffect` variant, or a new field on an existing variant fails the build at the walk.
 - The new tests fail on 01's code and pass here, and the checks pass.
+
+## Answer
+
+PR #14: https://github.com/EMachad0/CardGameEngine/pull/14

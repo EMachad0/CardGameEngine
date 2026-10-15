@@ -1,8 +1,8 @@
 use crate::{
     cards::{
         binder::sets::base::{PLACEHOLDER, static_card_definition::ALL_DEF_ID},
-        definition::{CardDef, CardDefKind, CharacterSelector, DefId, MinionCardDef, TriggerDef},
-        modifier::ModifierEffect,
+        definition::{CardDef, CharacterSelector, DefId},
+        sequences::{SequenceOrigin, effect_sequences},
     },
     choice::{ChoiceId, PickId},
     effect::Effect,
@@ -77,9 +77,13 @@ fn validate_choice_duplicates(defs: &[CardDef]) -> Result<(), CardDefError> {
     Ok(())
 }
 
+/// Rejects a play effect that names a choice the card doesn't declare.
 fn validate_choice_not_found(defs: &[CardDef]) -> Result<(), CardDefError> {
     for def in defs {
-        let effects = def.play_effects.as_slice().iter();
+        let effects = effect_sequences(def)
+            .into_iter()
+            .filter(|sequence| resolves_with_draft(sequence.origin))
+            .flat_map(|sequence| sequence.effects);
         for choice_id in effects.filter_map(chosen_id) {
             if !def.choices.iter().any(|choice| choice.id == choice_id) {
                 return Err(CardDefError::ChoiceNotFound(def.id, choice_id));
@@ -108,61 +112,42 @@ fn chosen_id(effect: &Effect) -> Option<ChoiceId> {
     }
 }
 
+/// Rejects a trigger effect that names a choice, whether the trigger is printed or granted. A
+/// trigger resolves with no draft to read the choice from.
 fn validate_choice_on_trigger(defs: &[CardDef]) -> Result<(), CardDefError> {
     for def in defs {
-        for trigger in def.triggers.iter() {
-            if let Some(choice_id) = choice_on_trigger(trigger) {
-                return Err(CardDefError::ChoiceInTrigger(def.id, choice_id));
-            }
-        }
-
-        if let CardDefKind::Minion(MinionCardDef {
-            friendly_aura_effects,
-            hostile_aura_effects,
-            ..
-        }) = &def.kind
-        {
-            let auras = friendly_aura_effects
-                .iter()
-                .chain(hostile_aura_effects.iter());
-            for modifier_effect in auras {
-                if let ModifierEffect::GrantTrigger(trigger) = modifier_effect
-                    && let Some(choice_id) = choice_on_trigger(trigger)
-                {
-                    return Err(CardDefError::ChoiceInTrigger(def.id, choice_id));
-                }
-            }
+        let mut effects = effect_sequences(def)
+            .into_iter()
+            .filter(|sequence| !resolves_with_draft(sequence.origin))
+            .flat_map(|sequence| sequence.effects);
+        if let Some(choice_id) = effects.find_map(chosen_id) {
+            return Err(CardDefError::ChoiceInTrigger(def.id, choice_id));
         }
     }
     Ok(())
 }
 
-fn choice_on_trigger(trigger: &TriggerDef) -> Option<ChoiceId> {
-    trigger.effects.as_slice().iter().find_map(chosen_id)
+/// Whether a sequence resolves with the choices made in the card's draft.
+fn resolves_with_draft(origin: SequenceOrigin) -> bool {
+    match origin {
+        SequenceOrigin::Play => true,
+        SequenceOrigin::Trigger => false,
+    }
 }
 
+/// Rejects a card whose effect sequences, triggers included, resolve a pick with no `Reveal`
+/// before it, or reveal cards they never resolve.
 fn validate_picks(defs: &[CardDef]) -> Result<(), CardDefError> {
     for def in defs {
-        validate_pick_order(def.id, def.play_effects.as_slice())?;
-        for trigger in def.triggers.iter() {
-            validate_pick_order(def.id, trigger.effects.as_slice())?;
-        }
-        if let CardDefKind::Minion(MinionCardDef {
-            friendly_aura_effects,
-            hostile_aura_effects,
-            ..
-        }) = &def.kind
-        {
-            for modifier_effect in friendly_aura_effects.iter().chain(hostile_aura_effects) {
-                if let ModifierEffect::GrantTrigger(trigger) = modifier_effect {
-                    validate_pick_order(def.id, trigger.effects.as_slice())?;
-                }
-            }
+        for sequence in effect_sequences(def) {
+            validate_pick_order(def.id, sequence.effects)?;
         }
     }
     Ok(())
 }
 
+/// Pairs each `ResolvePick` with an earlier `Reveal` of the same pick. Revealed cards sit in no
+/// zone until their pick resolves.
 fn validate_pick_order(def_id: DefId, effects: &[Effect]) -> Result<(), CardDefError> {
     let mut unresolved = Vec::new();
     for effect in effects {
@@ -195,7 +180,11 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use crate::{
-        cards::binder::sets::base::{self, static_card_definition::*},
+        cards::{
+            binder::sets::base::{self, static_card_definition::*},
+            definition::{CardDefKind, TriggerDef},
+            modifier::ModifierEffect,
+        },
         effect::EffectSequence,
         trigger::{TriggerPattern, TriggerSubject},
     };
@@ -268,6 +257,14 @@ mod tests {
         }
     }
 
+    fn replace_rally_banner_friendly_auras(defs: &mut [CardDef], auras: Vec<ModifierEffect>) {
+        let banner = defs.iter_mut().find(|def| def.id == RALLY_BANNER).unwrap();
+        let CardDefKind::Minion(minion) = &mut banner.kind else {
+            panic!("Rally Banner is a minion");
+        };
+        minion.friendly_aura_effects = auras;
+    }
+
     #[test]
     fn a_trigger_effect_naming_a_choice_is_rejected() {
         let mut defs = base::definitions();
@@ -287,14 +284,95 @@ mod tests {
         let ping_choice = defs.iter().find(|def| def.id == PING).unwrap().choices[0];
         let banner = defs.iter_mut().find(|def| def.id == RALLY_BANNER).unwrap();
         banner.choices.push(ping_choice);
-        let CardDefKind::Minion(minion) = &mut banner.kind else {
-            panic!("Rally Banner is a minion");
-        };
-        minion.friendly_aura_effects = vec![ModifierEffect::GrantTrigger(chosen_damage_trigger())];
+        replace_rally_banner_friendly_auras(
+            &mut defs,
+            vec![ModifierEffect::GrantTrigger(chosen_damage_trigger())],
+        );
 
         assert_eq!(
             validate(&defs),
             Err(CardDefError::ChoiceInTrigger(RALLY_BANNER, ChoiceId(0)))
+        );
+    }
+
+    #[test]
+    fn a_trigger_granted_by_a_modifier_effect_naming_a_choice_is_rejected() {
+        let mut defs = base::definitions();
+        let ping = defs.iter_mut().find(|def| def.id == PING).unwrap();
+        ping.modifier_effects
+            .push(ModifierEffect::GrantTrigger(chosen_damage_trigger()));
+
+        assert_eq!(
+            validate(&defs),
+            Err(CardDefError::ChoiceInTrigger(PING, ChoiceId(0)))
+        );
+    }
+
+    #[test]
+    fn a_trigger_granted_by_a_buff_naming_a_choice_is_rejected() {
+        let mut defs = base::definitions();
+        play_effects_of(&mut defs, PING).push(Effect::Buff {
+            selector: CharacterSelector::OwnerHero,
+            effect: ModifierEffect::GrantTrigger(chosen_damage_trigger()),
+        });
+
+        assert_eq!(
+            validate(&defs),
+            Err(CardDefError::ChoiceInTrigger(PING, ChoiceId(0))),
+            "the buff resolves during play, but the trigger it grants resolves with no draft"
+        );
+    }
+
+    #[test]
+    fn a_trigger_granted_by_an_added_aura_naming_a_choice_is_rejected() {
+        let mut defs = base::definitions();
+        play_effects_of(&mut defs, PING).push(Effect::AddFriendlyAura {
+            selector: CharacterSelector::OwnerHero,
+            effect: ModifierEffect::GrantTrigger(chosen_damage_trigger()),
+        });
+
+        assert_eq!(
+            validate(&defs),
+            Err(CardDefError::ChoiceInTrigger(PING, ChoiceId(0)))
+        );
+    }
+
+    #[test]
+    fn a_trigger_granted_inside_a_granted_trigger_naming_a_choice_is_rejected() {
+        let mut defs = base::definitions();
+        let ping_choice = defs.iter().find(|def| def.id == PING).unwrap().choices[0];
+        let banner = defs.iter_mut().find(|def| def.id == RALLY_BANNER).unwrap();
+        banner.choices.push(ping_choice);
+        replace_rally_banner_friendly_auras(
+            &mut defs,
+            vec![ModifierEffect::GrantTrigger(TriggerDef {
+                pattern: TriggerPattern::Damaged(TriggerSubject::Itself),
+                effects: EffectSequence(vec![Effect::Buff {
+                    selector: CharacterSelector::Itself,
+                    effect: ModifierEffect::GrantTrigger(chosen_damage_trigger()),
+                }]),
+            })],
+        );
+
+        assert_eq!(
+            validate(&defs),
+            Err(CardDefError::ChoiceInTrigger(RALLY_BANNER, ChoiceId(0)))
+        );
+    }
+
+    #[test]
+    fn a_buff_in_play_effects_may_choose_whom_it_grants_a_trigger_to() {
+        let mut defs = base::definitions();
+        let deathrattle = defs.iter().find(|def| def.id == HOARDER).unwrap().triggers[0].clone();
+        play_effects_of(&mut defs, PING).push(Effect::Buff {
+            selector: CharacterSelector::Chosen(ChoiceId(0)),
+            effect: ModifierEffect::GrantTrigger(deathrattle),
+        });
+
+        assert_eq!(
+            validate(&defs),
+            Ok(()),
+            "the buff's own selector resolves during play, where the choice is drafted"
         );
     }
 
@@ -305,6 +383,12 @@ mod tests {
             .unwrap()
             .play_effects
             .0
+    }
+
+    fn hoarder_trigger_with_an_unresolved_pick(defs: &[CardDef]) -> TriggerDef {
+        let mut trigger = defs.iter().find(|def| def.id == HOARDER).unwrap().triggers[0].clone();
+        trigger.effects.0.truncate(1);
+        trigger
     }
 
     #[test]
@@ -357,18 +441,30 @@ mod tests {
     #[test]
     fn a_granted_triggers_pick_must_be_resolved_too() {
         let mut defs = base::definitions();
-        let mut deathrattle =
-            defs.iter().find(|def| def.id == HOARDER).unwrap().triggers[0].clone();
-        deathrattle.effects.0.truncate(1);
-        let banner = defs.iter_mut().find(|def| def.id == RALLY_BANNER).unwrap();
-        let CardDefKind::Minion(minion) = &mut banner.kind else {
-            panic!("Rally Banner is a minion");
-        };
-        minion.friendly_aura_effects = vec![ModifierEffect::GrantTrigger(deathrattle)];
+        let deathrattle = hoarder_trigger_with_an_unresolved_pick(&defs);
+        replace_rally_banner_friendly_auras(
+            &mut defs,
+            vec![ModifierEffect::GrantTrigger(deathrattle)],
+        );
 
         assert_eq!(
             validate(&defs),
             Err(CardDefError::PickNotResolved(RALLY_BANNER, PickId(0)))
+        );
+    }
+
+    #[test]
+    fn a_pick_in_a_trigger_granted_by_a_buff_must_be_resolved_too() {
+        let mut defs = base::definitions();
+        let deathrattle = hoarder_trigger_with_an_unresolved_pick(&defs);
+        play_effects_of(&mut defs, DRUMMER).push(Effect::Buff {
+            selector: CharacterSelector::Itself,
+            effect: ModifierEffect::GrantTrigger(deathrattle),
+        });
+
+        assert_eq!(
+            validate(&defs),
+            Err(CardDefError::PickNotResolved(DRUMMER, PickId(0)))
         );
     }
 }
