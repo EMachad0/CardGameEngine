@@ -5,6 +5,10 @@
 //! - `player`: one player's resources, zones and pending choice.
 //! - `resolve`: the mutation half of `apply`.
 //! - `lookup`: attack, health and cost, computed on read.
+#![expect(
+    clippy::definition_in_module_root,
+    reason = "the child modules read Game's private fields, which a leaf would hide from them"
+)]
 
 mod condition;
 mod lookup;

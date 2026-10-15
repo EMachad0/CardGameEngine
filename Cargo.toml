@@ -16,6 +16,7 @@ unreachable_pub = "warn"
 disallowed_types = "deny"
 disallowed_methods = "deny"
 self_named_module_files = "deny"
+definition_in_module_root = "deny"
 
 [profile.test]
 opt-level = 1
