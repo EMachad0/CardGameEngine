@@ -23,7 +23,7 @@ up.
 - Every session opens with a short retrieval quiz on the previous session's nodes, unless he did
   that session just before.
 - Roles. He learns the concepts and makes every decision about the rules. The agent drafts the docs
-  and the lint rules, and does the refactor. He reviews all of it before it's committed.
+  and the lint rules, and writes the refactor tickets. He reviews all of it before it's merged.
 - Each node ends with a production exercise: he draws a split on real code with no options offered.
   When a node settles, he states the rule and the agent drafts it into the doc section it belongs
   to. The doc grows one node at a time.
@@ -32,20 +32,45 @@ up.
   mistakes he could really make.
 - No new card game features for this course. A concept with no problem in today's code becomes an
   open thread and waits until the card game course creates the problem.
-- General and Rust concepts come first, the project section last. The refactor PRs already open
-  are drafts. Each is reviewed after the node it exercises, then merged, reworked or closed. The
-  open threads say which node each one waits for.
+- General and Rust concepts come first, the project section last. Draft PRs closed in 01e get
+  redone after the node that reviews them. The open threads say which node each one waits for.
 - After each node, the agent audits the crate against the doc as it stands, with no code changes.
   He reviews the list, and the findings go in the open threads. An audit is one pass and needn't
   find everything, since refactors surface the rest (his call, 01d). Auditors get the card-game
   course plan and open threads as the roadmap, since the repo has none.
 - The refactor runs while the knowledge is fresh (his call, session 01a, revising his first pick of
-  refactoring at the end). After a teaching session, a refactor session reworks the PRs its nodes
-  judged and fixes the audit findings whose home those nodes settle. Findings whose home depends on
-  a later node wait for it. The agent does the work, he reviews it.
+  refactoring at the end). After a teaching session, a refactor session turns the findings whose
+  home its nodes settle into tickets: `docs/issues/<effort>/`, with a `spec.md` every agent shares
+  (his call, 01e). Findings whose home depends on a later node wait for it.
+- AFK agents work the tickets, one PR each. They review their work with subagents in a loop and
+  state their intentions in the PR body. He checks the intentions against the code and merges. A
+  choice of theirs he disagrees with marks a gap in the convention docs, which goes back into the
+  doc (01e).
 - End at a node boundary, not mid-node. Commit once per node.
 
 ## Knowledge map
+
+### Session 01e
+
+No retrieval quiz (his call). The refactor was planned in-session, then he moved it to tickets for
+AFK agents. Seven tickets in `docs/issues/one-place-per-decision/`, merged as #10, #14, #15, #23,
+#24, #26, #27 and #28. His review: the intentions matched the code. Where he disagreed with an
+agent, the conventions were silent, as with local variable names and the module layout. He accepted
+the agents' glossary terms Set, Printed and Graveyard.
+
+- Module layout: he raised it himself ("rules about how to use rust modules are not clear
+  enough"), preferring `foo/mod.rs` with code in named files, and asked whether `foo/mod.rs` with
+  `foo/foo.rs` works ("a bit confusing to me"). Researched. His rule: "by keeping definitions only
+  on leafs we make so modules are always capable of hiding their decisions", which ties the file
+  layout to the module definition from 01b. Picked a leaf named for the directory's own decision
+  over `foo/foo.rs`, and enforcement now: Rust 1.99, `definition_in_module_root`, `game/mod.rs`
+  exempt through `expect`.
+- Paths: he set the goal "never two ways to reach the same definition", then caught that lib.rs's
+  public re-exports are a second path inside the crate. He proposed the public API as one module
+  banned from internal use, and asked for a critical review because it goes against a convention
+  ("but I like it"). The review called it a weak convention. Adopted as `prelude.rs` with named
+  imports only, no root re-exports, imports from the defining module spelled from `crate::` (my
+  addition, accepted), and a text check in `check::all`.
 
 ### Session 01d
 
@@ -250,15 +275,14 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
 1. Sessions 01 to 01c: coupling as shared knowledge, one place per decision, hiding decisions
    (Parnas, done in 01a), then in 01b data as interface, depth, what a module is and file or
    module, then in 01c names that exclude, nesting, and the #13 and #15 verdicts (done).
-   Session 01d: the audit rerun in two rounds, the second with the roadmap (done). Session 01e
-   refactors under all of it: rework #10, #14 and #15, close #13 and rebase the stack onto #11,
-   and fix findings 10, 11, 14, 15 and likely 3. At its start he picks whether 7, 12 and the
-   names that don't wait for the `game` split join it.
+   Session 01d: the audit rerun in two rounds, the second with the roadmap (done). Session 01e:
+   the refactor as AFK tickets, plus the Rust rules for module layout and paths (done).
 2. Session 02: ownership. An owner guards its invariants and an orchestrator coordinates owners;
    encapsulation vs OOP; aggregates (Evans, Vernon). Catherine West's nuance: one big state is
    fine, implicit reach and unowned invariants are the problem. Open with his own question: does
    the module owning `effect_stack` and `resolving_effect` need to apply effects, or only decide
-   which comes next? Session 02a refactors under it: #16, #17, #18 and the ownership findings.
+   which comes next? Session 02a writes the tickets for it: #16, #17 and #18 redone from their
+   branches, and the ownership findings.
    Session 02b, its own node: parse, don't validate (Alexis King, 2019). A check's result carried
    forward as a type, not an assumption; who can build the proof, and when it goes stale. Material:
    `apply` checking `legal_actions` then `apply_action` relying on `expect` and `unreachable!`; an
@@ -277,24 +301,17 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
 
 ## Open threads
 
-- The refactor PRs are drafts in a stack. #9 (clippy ban by public path) is merged, and #10 now
-  targets main. Each waits for its node's review, and they merge bottom-up.
-  - Session 01a, node H, reviewed. #10 loader split: rework into one loading module that exposes
-    loading plus the IDs, with the IDs and the table in one module since they change together.
-    #14 one walk over card text: rework lightly, moving the walk next to `CardDef` and
-    destructuring exhaustively.
-  - Session 01c, reviewed. #13: close. Its files of `impl Game` add names without boundaries,
-    and `verb`, `derived` and the duplicate pairs (`action.rs` and `game/actions.rs`, two
-    `filter.rs`, two `trigger`) fail the name test. Closing it means rebasing #14 to #18 onto #11.
-    My default, unless he objects: carry its visibility narrowing, `ApplyError` next to
-    `IllegalAction`, and `History` and `Trigger` under `game` into the PRs that build the real
-    modules. #15: merge after a light rework, one exhaustive match on `CardDefKind` returning the
-    kind flag so `filter.rs` stops chaining `||` (finding 14). Commented on the PR.
-  - Session 02: #16 history private, #17 guarded effect stack, #18 modifiers answer stat questions.
-  - Session 05: #11 printed card types in `cards/`.
+- Closed draft PRs, redone after their node from branches kept on the remote. Session 02a: #16
+  history private (`history-private`), #17 guarded effect stack (`effect-stack`), #18 modifiers
+  answer stat questions (`modifiers-stats`). Session 05: #11 printed card types in `cards/`
+  (`cards-vocabulary`). #13 is closed for good (`game-by-question`); its visibility narrowing,
+  `ApplyError` next to `IllegalAction`, and `History` and `Trigger` under `game` go into the PRs
+  that build the real modules, unless he objects.
 - Audit after D5 (session 01d), reviewed by him. It replaces the 01a list, whose reports stay in
   `research/01a-hiding-and-depth/`. Reports in `research/01d-audit/audit-1.md` to `audit-4.md`;
   3 and 4 had the roadmap. The refactor works from this list. 01a's numbers are in parentheses.
+  Fixed in 01e: 3 (#28, with both hero bugs left as they were), 10 (#14), 11 and 23 (#10),
+  14 (#15), 15 (#23), and 22 in part (#10; `CardDef` is still public, now through the prelude).
   1. `game` is one module holding about fifteen independent decisions. Child types with private
      fields; `game` keeps the coordinator. Session 02.
   2. Death pass reports one death at a time, against ADR 0012: the Mourner bug, live (4). Filed
@@ -331,17 +348,17 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
 
   Names every auditor failed: `game`, `cards`, `choice`, `ids`, `turn`, `cards::definition`,
   `cards::modifier` (not in the glossary), and `condition`, `lookup`, `resolve`, `triggering` and
-  `zone_move` under `game/`. Split: `loader` (3 of 4); `filter`, `history` (not in the glossary)
-  and `static_card_definition` (2 each); `effect`, `trigger` and `player` (1 each).
+  `zone_move` under `game/`. Split: `loader` (3 of 4, gone since #10); `filter`, `history` (not
+  in the glossary) and `static_card_definition` (2 each); `effect`, `trigger` and `player` (1
+  each). Names new since 01e, not audited: `binder/store`, `binder/sets/base`,
+  `binder/validity`, `cards/sequences`, `prelude`.
 
   Routed elsewhere: ObjectIds name hidden cards (a card-game thread already). Board auras reach
   minions in every zone, the hand included (`lookup.rs:158`), a rules question for the card-game
   course.
 - Doc feedback deferred to session 02: a decision with no data of its own, or one that needs
   another module's data (four auditors); procedure versus domain order, and checkpoints (two).
-- Main moved since this branch forked: CLAUDE.md became AGENTS.md (#20), `docs/issues/` arrived
-  (#19), and #9 changed `clippy.toml`. This branch edits CLAUDE.md, so the 01e PR rebases first.
-- His `verb.rs` design (session 01c), for the 01e refactor or session 02: a zones module owning
+- His `verb.rs` design (session 01c), for session 02: a zones module owning
   the zones, the stamps and in-zone order behind moves such as `deck_to_hand` (maybe deepening
   `zones.rs`); a damage module, with fatigue calling it; and an intermediate coordinator for the
   consequences of a move (events, pushes, their order), with the zones module as its child so
@@ -349,21 +366,30 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   back or take an emitter. Needs a name; "actions" collides with the glossary.
 - The `derived.rs` split: by the change test, stats and cost with `modifiers` are one decision
   with no term yet (#18's bet), and auras are another. He proposed four noun modules.
-- His D4 exercise ideas, for the 01e refactor or later: a builder for `Game` creation, so callers
+- His D4 exercise ideas, for session 02 or later: a builder for `Game` creation, so callers
   know only what they set (check the card-game roadmap for N players first); a `Board` that keeps
   its own entry order, replacing `Object.order` and the three sorts (audit finding 4; heroes and
   graveyard order complicate it). His "Objects" module is the modifiers question of #18, session
   02.
-- After #15, `get` still hands out `&CardDef` with `pub` fields, read in `game/` for
-  `play_effects`, `choices`, `mana_cost`, `triggers` and `modifier_effects` (D1). The 01d audit
-  ran on main, without #15; finding 22 is the public half. Weigh `get` at #15's rework in 01e.
+- `Binder::get` kept handing out `&CardDef` in #15, my call when he left the tickets to me: every
+  interpreter reads card text as data (ADR 0004), and accessors would mirror the fields. Revisit
+  if he disagrees, at the latest in session 04 with finding 22.
 - Exhaustive destructuring (a struct pattern with no `..`) for functions that must visit every
-  field: proposed for the Rust list, his decision pending. The enforcing clippy lint is nightly
-  only. See `research/01a-hiding-and-depth/exhaustive-destructuring.md`. Session 06 at the latest.
+  field: #14's walk in `cards/sequences.rs` uses it, per his 01a verdict. Adding it to the Rust
+  list is still his decision. The enforcing clippy lint is nightly only. See
+  `research/01a-hiding-and-depth/exhaustive-destructuring.md`. Session 06 at the latest.
+- `Event` and `Observer` collide with names in Bevy 0.20's prelude. Named prelude imports keep
+  that a nuisance, not an error. Renaming is a domain call for the Bevy session (03); `Viewer`
+  is taken in the glossary. See `research/01e-module-layout/prelude-review.md`.
+- Local variable names: he disagreed with some of the agents' names in 01e, and no convention
+  covers them. Session 05, with naming.
+- rust-analyzer ranks paths through `prelude` last only in builds since 2026-04-26. Before then,
+  auto-import suggests `crate::prelude::X`, and `check::paths` catches it.
 - The "several filters decide together" sentence sits in the Rust section; he isn't sure
   `file-structure.md` is its home. Revisit in session 06.
-- The Rust section of `file-structure.md` started early with "Making knowledge formal". Session 06
-  extends it.
+- The Rust section of `file-structure.md` started early with "Making knowledge formal", and 01e
+  added "Modules" (leaf definitions) and "Paths" (one path, the prelude). Session 06 extends it
+  with crates, errors and enforcement.
 - "Own effects resolve after the reactions they cause": his design is one command next to the
   resolution loop, taking the whole batch, since `kill` pushes every death rattle before any
   `Died`. Compare it with #17 at that PR's review in session 02.
@@ -380,7 +406,8 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   `research/01-coupling-and-hiding/sources.md` (Ousterhout's book text, GOOS ch. 20, Acton,
   Page-Jones's later books) need checking before being quoted as exact. Unverified Rust items:
   Cargo's crate-cycle ban, and scoping `clippy::disallowed_*` to one module with `#[allow]`. Verify
-  before session 06 teaches them.
+  before session 06 teaches them. Verified in 01e: `disallowed_types` bans an item at every path,
+  so it can't ban one path.
 - Bevy names changed since 0.17: buffered events are `Message`s, `Event` is for observers, 0.20 is
   current. Use these names in session 03.
 
@@ -405,6 +432,7 @@ graph TD
   P["Ports, anti-corruption layers, contract tests"]
   T["Tests as design feedback"]
   F["Feature-first, shared code, naming"]
+  RM["Rust modules: leaf definitions, one path, the prelude (done)"]
   RS["Rust: crates, visibility, errors"]
   E["Enforcement: lints and checks"]
   DOCS["Docs: general, Rust, project; then the refactor"]
@@ -431,6 +459,8 @@ graph TD
   P-->T
   H-->F
   D-->F
+  D-->RM
+  RM-->RS
   D-->RS
   R3-->RS
   RS-->E
@@ -452,9 +482,9 @@ graph TD
 | 01b | D1 to D4 | Data as interface, depth, what a module is, file or module | done (edge was data handed out; module defined as one decision behind an enforced boundary; two rules in `file-structure.md`; D5 onward split off) |
 | 01c | D5 | Names that exclude; review #13, #15 | done (edge was sorting names by word category; name and nesting rules in `file-structure.md`, project section started; #13 close, #15 light rework; Binder in the glossary; audit split off) |
 | 01d | audit | Audit against the doc as it stands; his review of the findings | done (two rounds, roadmap in the second; locality replaces "cheap", decisions that change together count as one, files of public types; 23 findings replace the 01a list) |
-| 01e | refactor | Rework #10, #14, #15; close #13 and rebase the stack; findings 10, 11, 14, 15, likely 3; PR of this branch to main | next |
-| 02 | R2, R4, O, A | Ownership and aggregates: untangling the god struct | |
-| 02a | refactor | #16, #17, #18 and the ownership findings | |
+| 01e | refactor, RM | Refactor as AFK tickets; Rust module layout and paths | done (seven tickets merged, intentions matched the code; findings 3, 10, 11, 14, 15, 23 fixed; leaf definitions and one path per definition through `prelude.rs` in `file-structure.md`, enforced by Clippy on Rust 1.99 and `check::paths`; #11, #13, #16 to #18 closed) |
+| 02 | R2, R4, O, A | Ownership and aggregates: untangling the god struct | next |
+| 02a | refactor | Tickets: #16, #17, #18 redone, and the ownership findings | |
 | 02b | PDV | Parse, don't validate: `apply` and `legal_actions`, `ObjectId` by zone | |
 | 03 | DOD | Data-oriented design, ECS organization, the rules core beside Bevy | |
 | 04 | R3, P, T | Ports, anti-corruption layers, contract tests, tests as feedback | |
