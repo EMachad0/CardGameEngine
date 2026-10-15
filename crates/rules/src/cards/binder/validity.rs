@@ -85,7 +85,7 @@ fn validate_choice_not_found(defs: &[CardDef]) -> Result<(), CardDefError> {
             .filter(|sequence| resolves_with_draft(sequence.origin))
             .flat_map(|sequence| sequence.effects);
         for choice_id in effects.filter_map(chosen_id) {
-            if !def.choices.iter().any(|choice| choice.id == choice_id) {
+            if def.choice(choice_id).is_none() {
                 return Err(CardDefError::ChoiceNotFound(def.id, choice_id));
             }
         }

@@ -136,8 +136,7 @@ impl Game {
                         continue;
                     }
 
-                    let def_id = self.def_id(object_id);
-                    match self.binder.choices(def_id).is_empty() {
+                    match self.card_def(object_id).choices.is_empty() {
                         true => {
                             actions.push(Action::Play { object_id });
                         }
@@ -163,9 +162,8 @@ impl Game {
                 of_object_id,
                 chosen,
             } => {
-                let def_id = self.def_id(*of_object_id);
                 let mut all_choices_fulfilled = true;
-                for choice in self.binder.choices(def_id) {
+                for choice in &self.card_def(*of_object_id).choices {
                     let chosen_for_choice_count = chosen
                         .iter()
                         .filter(|(_, choice_id)| choice.id == *choice_id)
