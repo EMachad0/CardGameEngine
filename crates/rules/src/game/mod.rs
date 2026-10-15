@@ -216,7 +216,7 @@ impl Game {
         self.get_player(player_id).zones.board.as_slice()
     }
 
-    pub(crate) fn board_characters(&self) -> Vec<ObjectId> {
+    fn characters_in_order_of_play(&self) -> Vec<ObjectId> {
         let mut characters = self.characters_in_play().collect::<Vec<_>>();
         characters.sort_by_key(|o| self.objects.get(*o).order);
         characters

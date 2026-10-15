@@ -18,7 +18,7 @@ impl Game {
             reason = "the one place that reports an event"
         )]
         obs.event(&event);
-        for object_id in self.board_characters().into_iter() {
+        for object_id in self.characters_in_order_of_play().into_iter() {
             let obj = self.objects.get(object_id);
             self.enqueue_triggers(obj.player_id, object_id, &event);
         }
