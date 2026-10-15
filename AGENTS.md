@@ -13,7 +13,8 @@ workspace manifest, with members under `crates/`.
 - `just` lists all recipes. The root justfile imports the `.just/` modules.
 - `just wk::new_ui <branch>` creates a worktree off origin/main and opens a zellij dev tab. It
   wraps worktrunk. `wk::new` skips the tab; `wk::list` and `wk::rm` inspect or remove.
-- `just check::all` runs `cargo fmt --all --check`, then
+- `just check::all` runs `cargo fmt --all --check`, then `check::paths`, a text search for the
+  import path rules in `docs/conventions/file-structure.md`, then
   `cargo clippy --workspace --all-targets -- -D warnings`, then `cargo test --workspace`. "The
   checks" below means this recipe.
 
