@@ -1,4 +1,8 @@
-use crate::{Event, Game, PlayerId, View};
+use crate::{
+    event::Event,
+    game::{Game, view::View},
+    ids::PlayerId,
+};
 
 pub struct Views<'g>(&'g Game);
 

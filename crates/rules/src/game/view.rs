@@ -1,8 +1,13 @@
 //! What one player can see. `Game::view` is the one definition of it.
 
 use crate::{
-    DefId, Game, ObjectId, Outcome, PlayerId,
-    game::{Player, PlayerInteractionState},
+    cards::{definition::DefId, object::ObjectId},
+    game::{
+        Game,
+        player::{Player, PlayerInteractionState},
+    },
+    ids::PlayerId,
+    outcome::Outcome,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

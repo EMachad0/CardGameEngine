@@ -2,8 +2,8 @@
 //! boards. The playout checks compare the core against it, so a wrong value in
 //! the core can't check itself.
 
-use rules::DefId;
-use rules::static_card_definition::{
+use rules::prelude::DefId;
+use rules::prelude::static_card_definition::{
     BARRACKS, BLAST, BOLT, CAPTAIN, CROSSFIRE, FORAGE, GIANT, PING, RECRUIT, SHOVE, SPARK, SQUIRE,
     TWIN_SHOT, WILD_BOLT,
 };

@@ -1,11 +1,11 @@
 //! What `apply` reports to its observer.
 
 use pretty_assertions::assert_eq;
-use rules::static_card_definition::{
+use rules::prelude::static_card_definition::{
     BARRACKS, BLAST, BOLT, CAPTAIN, DRILLMASTER, FORAGE, PING, RECRUIT, SPARK, TWIN_SHOT,
     WILD_BOLT, ZAP,
 };
-use rules::{Action, Event, Game, ObjectId, Outcome, PlayerId, View};
+use rules::prelude::{Action, Event, Game, ObjectId, Outcome, PlayerId, View};
 
 use crate::support::*;
 

@@ -1,4 +1,7 @@
-use crate::{ObjectId, cards::definition::TriggerDef, choice::EffectAmount};
+use crate::{
+    cards::{definition::TriggerDef, object::ObjectId},
+    choice::EffectAmount,
+};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(crate) struct Modifiers(Vec<Modifier>);

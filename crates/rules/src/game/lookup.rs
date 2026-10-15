@@ -1,12 +1,14 @@
 //! Attack, health and cost, computed on read from history and printed data.
 
 use crate::{
-    DefId, Game, ObjectId, PlayerId,
     cards::{
+        definition::DefId,
         modifier::{Modifier, ModifierEffect, Modifiers},
-        object::Object,
+        object::{Object, ObjectId},
     },
     effect::Effect,
+    game::Game,
+    ids::PlayerId,
     trigger::{Trigger, TriggerPattern, TriggerSubject},
 };
 

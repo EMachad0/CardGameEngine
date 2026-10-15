@@ -1,10 +1,10 @@
 //! Setup: the shuffle, the opening deal and the first turn.
 
 use pretty_assertions::{assert_eq, assert_ne};
-use rules::static_card_definition::{
+use rules::prelude::static_card_definition::{
     BLAST, BOLT, CAPTAIN, FORAGE, GIANT, HERO, RECRUIT, SPARK, WILD_BOLT,
 };
-use rules::{Action, DefId, Game, ObjectId};
+use rules::prelude::{Action, DefId, Game, ObjectId};
 
 use crate::support::*;
 

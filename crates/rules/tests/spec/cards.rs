@@ -3,11 +3,11 @@
 use std::collections::BTreeSet;
 
 use pretty_assertions::{assert_eq, assert_ne};
-use rules::static_card_definition::{
+use rules::prelude::static_card_definition::{
     BARRACKS, BLAST, BOLT, CAPTAIN, DRUMMER, FORAGE, GIANT, HOARDER, RECRUIT, SPARK, SQUIRE,
     STRAY_SHOT, SWEEP, WILD_BOLT, ZAP,
 };
-use rules::{Action, Event, Game, ObjectId};
+use rules::prelude::{Action, Event, Game, ObjectId};
 
 use crate::support::*;
 

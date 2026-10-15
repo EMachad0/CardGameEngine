@@ -2,8 +2,8 @@
 //! leaves the game unchanged.
 
 use pretty_assertions::assert_eq;
-use rules::static_card_definition::{BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK};
-use rules::{Action, ApplyError, Game, IllegalAction, Outcome};
+use rules::prelude::static_card_definition::{BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK};
+use rules::prelude::{Action, ApplyError, Game, IllegalAction, Outcome};
 
 use crate::support::*;
 

@@ -1,11 +1,10 @@
 use crate::{
-    PickId,
     cards::{
-        binder::sets::{ALL_DEF_ID, PLACEHOLDER},
+        binder::sets::base::{PLACEHOLDER, static_card_definition::ALL_DEF_ID},
         definition::{CardDef, CardDefKind, CharacterSelector, DefId, MinionCardDef, TriggerDef},
         modifier::ModifierEffect,
     },
-    choice::ChoiceId,
+    choice::{ChoiceId, PickId},
     effect::Effect,
 };
 
@@ -196,19 +195,19 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use crate::{
-        cards::binder::sets::{self, static_card_definition::*},
+        cards::binder::sets::base::{self, static_card_definition::*},
         effect::EffectSequence,
         trigger::{TriggerPattern, TriggerSubject},
     };
 
     #[test]
     fn the_built_in_table_is_valid() {
-        assert_eq!(validate(&sets::definitions()), Ok(()));
+        assert_eq!(validate(&base::definitions()), Ok(()));
     }
 
     #[test]
     fn a_constant_missing_from_the_table_is_not_found() {
-        let mut defs = sets::definitions();
+        let mut defs = base::definitions();
         defs.retain(|def| def.id != SPARK);
 
         assert_eq!(validate(&defs), Err(CardDefError::NotFound(SPARK)));
@@ -216,7 +215,7 @@ mod tests {
 
     #[test]
     fn two_defs_with_one_id_are_a_duplicate() {
-        let mut defs = sets::definitions();
+        let mut defs = base::definitions();
         let bolt = defs.iter().find(|def| def.id == BOLT).unwrap().clone();
         defs.push(bolt);
 
@@ -225,7 +224,7 @@ mod tests {
 
     #[test]
     fn a_def_left_with_the_placeholder_id_is_rejected() {
-        let mut defs = sets::definitions();
+        let mut defs = base::definitions();
         defs.push(CardDef::default());
 
         assert_eq!(
@@ -237,7 +236,7 @@ mod tests {
 
     #[test]
     fn two_choices_with_one_id_on_a_card_are_a_duplicate() {
-        let mut defs = sets::definitions();
+        let mut defs = base::definitions();
         let ping = defs.iter_mut().find(|def| def.id == PING).unwrap();
         ping.choices.push(ping.choices[0]);
 
@@ -249,7 +248,7 @@ mod tests {
 
     #[test]
     fn an_effect_naming_an_undeclared_choice_is_not_found() {
-        let mut defs = sets::definitions();
+        let mut defs = base::definitions();
         let ping = defs.iter_mut().find(|def| def.id == PING).unwrap();
         ping.choices.clear();
 
@@ -271,7 +270,7 @@ mod tests {
 
     #[test]
     fn a_trigger_effect_naming_a_choice_is_rejected() {
-        let mut defs = sets::definitions();
+        let mut defs = base::definitions();
         let ping = defs.iter_mut().find(|def| def.id == PING).unwrap();
         ping.triggers.push(chosen_damage_trigger());
 
@@ -284,7 +283,7 @@ mod tests {
 
     #[test]
     fn a_granted_trigger_effect_naming_a_choice_is_rejected() {
-        let mut defs = sets::definitions();
+        let mut defs = base::definitions();
         let ping_choice = defs.iter().find(|def| def.id == PING).unwrap().choices[0];
         let banner = defs.iter_mut().find(|def| def.id == RALLY_BANNER).unwrap();
         banner.choices.push(ping_choice);
@@ -310,7 +309,7 @@ mod tests {
 
     #[test]
     fn a_pick_resolved_with_no_reveal_is_not_found() {
-        let mut defs = sets::definitions();
+        let mut defs = base::definitions();
         play_effects_of(&mut defs, FORAGE).remove(0);
 
         assert_eq!(
@@ -321,7 +320,7 @@ mod tests {
 
     #[test]
     fn a_pick_resolved_before_its_reveal_is_not_found() {
-        let mut defs = sets::definitions();
+        let mut defs = base::definitions();
         play_effects_of(&mut defs, FORAGE).swap(0, 1);
 
         assert_eq!(
@@ -333,7 +332,7 @@ mod tests {
 
     #[test]
     fn a_pick_revealed_and_never_resolved_is_rejected() {
-        let mut defs = sets::definitions();
+        let mut defs = base::definitions();
         play_effects_of(&mut defs, FORAGE).truncate(1);
 
         assert_eq!(
@@ -345,7 +344,7 @@ mod tests {
 
     #[test]
     fn a_triggers_pick_must_be_resolved_too() {
-        let mut defs = sets::definitions();
+        let mut defs = base::definitions();
         let hoarder = defs.iter_mut().find(|def| def.id == HOARDER).unwrap();
         hoarder.triggers[0].effects.0.truncate(1);
 
@@ -357,7 +356,7 @@ mod tests {
 
     #[test]
     fn a_granted_triggers_pick_must_be_resolved_too() {
-        let mut defs = sets::definitions();
+        let mut defs = base::definitions();
         let mut deathrattle =
             defs.iter().find(|def| def.id == HOARDER).unwrap().triggers[0].clone();
         deathrattle.effects.0.truncate(1);

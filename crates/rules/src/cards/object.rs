@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    DefId, PlayerId,
-    cards::modifier::Modifiers,
+    cards::{definition::DefId, modifier::Modifiers},
     choice::{ChoiceTarget, PickTarget},
+    ids::PlayerId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

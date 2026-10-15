@@ -4,11 +4,11 @@ use std::hint::black_box;
 use std::ops::Range;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use rules::static_card_definition::{
+use rules::prelude::static_card_definition::{
     BLAST, BOLT, CAPTAIN, CROSSFIRE, FORAGE, GIANT, PING, RECRUIT, SHOVE, SPARK, TWIN_SHOT,
     WILD_BOLT,
 };
-use rules::{Action, DefId, Game, PlayerId, Rng};
+use rules::prelude::{Action, DefId, Game, PlayerId, Rng};
 
 const MAX_STEPS: usize = 5_000;
 const STAGE_SEED: u64 = 0;

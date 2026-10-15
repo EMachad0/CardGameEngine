@@ -1,8 +1,11 @@
 use crate::{
-    Event, Game, ObjectId, Observer, PickId, PlayerId, Views,
-    choice::PickTarget,
+    cards::object::ObjectId,
+    choice::{PickId, PickTarget},
     effect::{PendingEffect, ZoneMove},
-    game::PlayerInteractionState,
+    event::Event,
+    game::{Game, player::PlayerInteractionState},
+    ids::PlayerId,
+    observer::{Observer, Views},
 };
 
 impl Game {

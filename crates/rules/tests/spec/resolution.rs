@@ -1,10 +1,10 @@
 //! A card or trigger that pauses for a pick, and what waits for it.
 
 use pretty_assertions::assert_eq;
-use rules::static_card_definition::{
+use rules::prelude::static_card_definition::{
     BOMBER, DRUMMER, HOARDER, MOURNER, RALLY_BANNER, RECRUIT, SWEEP,
 };
-use rules::{Action, Event, Game, PlayerId};
+use rules::prelude::{Action, Event, Game, PlayerId};
 
 use crate::support::*;
 
