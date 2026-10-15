@@ -2,7 +2,7 @@
 
 use crate::{
     cards::{
-        definition::{CardDef, CharacterKind, DefId},
+        definition::{CardDef, DefId},
         modifier::{Modifier, ModifierEffect, Modifiers},
         object::{Object, ObjectId},
     },
@@ -27,6 +27,15 @@ impl Game {
 
     pub fn hero_id(&self, player_id: PlayerId) -> ObjectId {
         self.get_player(player_id).zones.hero
+    }
+
+    pub(super) fn characters_in_play(&self) -> impl Iterator<Item = ObjectId> {
+        let heroes = self.players.iter().map(|player| player.zones.hero);
+        let minions = self
+            .players
+            .iter()
+            .flat_map(|player| player.zones.board.as_slice().iter().copied());
+        heroes.chain(minions)
     }
 
     pub fn mana_cost(&self, object_id: ObjectId) -> Option<u8> {
@@ -60,15 +69,9 @@ impl Game {
         let obj = self.object(object_id);
         let card_def = self.card_def(object_id);
 
-        let is_in_play = match card_def.character_kind() {
-            Some(CharacterKind::Hero) => self.hero_id(obj.player_id) == object_id,
-            Some(CharacterKind::Minion) => self
-                .get_player(obj.player_id)
-                .zones
-                .board
-                .contains(&object_id),
-            None => false,
-        };
+        let is_in_play = self
+            .characters_in_play()
+            .any(|character| character == object_id);
 
         is_in_play.then(|| {
             let printed_health = card_def

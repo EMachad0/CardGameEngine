@@ -1,6 +1,6 @@
 # One question answers which characters are in play
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 Blocked by: 03
@@ -54,3 +54,7 @@ Two latent bugs sit in this code. Both change behavior, and the course fixes the
 - One function knows which objects are characters in play, and the three places ask it.
 - Every listener list and every candidate list comes out in the same order as before.
 - The checks pass, with `tests/spec/` unchanged.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/28

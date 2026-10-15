@@ -6,8 +6,8 @@ Category: bug
 ADR 0012 says the state check removes every dead object together, then emits a `Died` for each in
 order of play, so a removed object hears no other death. `Game::kill` in
 `crates/rules/src/game/zone_move.rs` breaks this. Its second loop calls `destroy` and then `emit`
-one object at a time, and `emit` matches against `board_characters()`. An object later in the pass
-is still on the board when `emit` matches an earlier object's `Died`.
+one object at a time, and `emit` matches against `characters_in_order_of_play()`. An object later
+in the pass is still on the board when `emit` matches an earlier object's `Died`.
 
 ## Reproduce
 
@@ -25,9 +25,9 @@ needs a twin with the Recruit older than the Mourner. That twin should fail toda
 
 ## Related, latent
 
-`kill` never removes a dead hero from the board, and `board_characters()` always includes heroes.
-On the hero's own `Died`, `emit` would match its `Died(Itself)` triggers a second time, after
-`kill` already queued them. No hero has triggers yet.
+`kill` never removes a dead hero from the board, and `characters_in_order_of_play()` always
+includes heroes. On the hero's own `Died`, `emit` would match its `Died(Itself)` triggers a second
+time, after `kill` already queued them. No hero has triggers yet.
 
 The fix changes behavior and sits in design-bearing code, so it is built test-first under the
 course roles.
