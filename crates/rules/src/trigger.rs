@@ -1,16 +1,13 @@
-use crate::{
-    cards::{
-        filter::{CardFilter, CharacterFilter},
-        object::ObjectId,
-    },
-    effect::EffectSequence,
+use crate::cards::{
+    definition::TriggerDef,
+    filter::{CardFilter, CharacterFilter},
+    object::ObjectId,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Trigger {
-    pub source: ObjectId,
-    pub pattern: TriggerPattern,
-    pub effects: EffectSequence,
+    pub granted_by: ObjectId,
+    pub def: TriggerDef,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -7,7 +7,9 @@
 use crate::{
     action::{Action, IllegalAction},
     cards::{
-        definition::{CharacterSelector, PlayerSelector, PlayerSelectorFilter},
+        definition::{
+            CardKind, CharacterKind, CharacterSelector, PlayerSelector, PlayerSelectorFilter,
+        },
         filter::fulfill_side_filter,
         modifier::Modifier,
         object::ObjectId,
@@ -72,10 +74,9 @@ impl Game {
                     else {
                         unreachable!();
                     };
-                    let def_id = self.def_id(of_object_id);
                     let choice_ids = self
-                        .binder
-                        .choices(def_id)
+                        .card_def(of_object_id)
+                        .choices
                         .iter()
                         .map(|c| c.id)
                         .collect::<Vec<_>>();
@@ -196,7 +197,7 @@ impl Game {
                 for target in targets.into_iter() {
                     let object = self.objects.get_mut(target);
                     object.modifiers.add(Modifier {
-                        source,
+                        granted_by: source,
                         effect: effect.clone(),
                     });
                 }
@@ -206,7 +207,7 @@ impl Game {
                 for target in targets.into_iter() {
                     let object = self.objects.get_mut(target);
                     object.friendly_aura.add(Modifier {
-                        source,
+                        granted_by: source,
                         effect: effect.clone(),
                     });
                 }
@@ -250,11 +251,11 @@ impl Game {
                 .curr_effect()
                 .expect("An unfinished ResolvingEffect have effects to apply")
                 .clone();
-            let object_id = resolving.object_id;
+            let source = resolving.source;
             resolving.advance();
 
-            let owner = self.objects.get(object_id).player_id;
-            self.apply_effect(owner, object_id, &effect, obs);
+            let owner = self.objects.get(source).player_id;
+            self.apply_effect(owner, source, &effect, obs);
             obs.checkpoint(Views::new(self));
         }
         if let Some(resolving) = &mut self.resolving_effect
@@ -300,7 +301,8 @@ impl Game {
                 .filter(|entry| {
                     matches!(
                         &entry.kind,
-                        HistoryKind::CardPlayed { object } if self.binder.is_spell(object.def_id)
+                        HistoryKind::CardPlayed { object }
+                            if self.binder.get(object.def_id).card_kind() == CardKind::Spell
                     )
                 })
                 .count(),
@@ -312,7 +314,14 @@ impl Game {
                     }
                     crate::history::TurnFilter::All => true,
                 })
-                .filter(|entry| matches!(&entry.kind, HistoryKind::CharacterDied { object } if self.binder.is_minion(object.def_id)))
+                .filter(|entry| {
+                    matches!(
+                        &entry.kind,
+                        HistoryKind::CharacterDied { object }
+                            if self.binder.get(object.def_id).character_kind()
+                                == Some(CharacterKind::Minion)
+                    )
+                })
                 .count(),
         };
         u8::try_from(count).unwrap_or(u8::MAX)

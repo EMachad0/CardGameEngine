@@ -77,8 +77,7 @@ impl Game {
         self.emit(event, obs);
 
         obs.checkpoint(Views::new(self));
-        let def_id = self.def_id(object_id);
-        if self.binder.has_board_presence(def_id) {
+        if self.card_def(object_id).has_board_presence() {
             self.summon(player_id, object_id, obs);
             obs.checkpoint(Views::new(self));
         }
@@ -99,16 +98,15 @@ impl Game {
         for &object_id in object_ids.iter() {
             for death_rattle in self.death_rattles(object_id).into_iter() {
                 self.effect_stack.push(PendingEffect {
-                    object_id,
-                    effects: death_rattle.effects,
+                    source: object_id,
+                    effects: death_rattle.def.effects,
                 });
             }
         }
 
         for &object_id in object_ids.iter() {
             let object = self.objects.get(object_id);
-            let is_hero = self.binder.is_hero(object.def_id);
-            if !is_hero {
+            if self.card_def(object_id).leaves_zone_on_death() {
                 self.destroy(object.player_id, object_id, obs);
             }
             self.emit(Event::Died { object_id }, obs);
@@ -127,12 +125,12 @@ impl Game {
             .remove(object_id)
             .expect("object not in board");
 
-        if self.binder.has_deck_presence(self.def_id(object_id)) {
-            self.emtomb(player_id, object_id, obs);
+        if self.card_def(object_id).goes_to_graveyard() {
+            self.entomb(player_id, object_id, obs);
         }
     }
 
-    pub(crate) fn emtomb(
+    pub(crate) fn entomb(
         &mut self,
         player_id: PlayerId,
         object_id: ObjectId,

@@ -2,7 +2,7 @@
 
 use crate::{
     cards::{
-        definition::DefId,
+        definition::{CardDef, CharacterKind, DefId},
         modifier::{Modifier, ModifierEffect, Modifiers},
         object::{Object, ObjectId},
     },
@@ -21,6 +21,10 @@ impl Game {
         self.object(object_id).def_id
     }
 
+    pub(super) fn card_def(&self, object_id: ObjectId) -> &CardDef {
+        self.binder.get(self.def_id(object_id))
+    }
+
     pub fn hero_id(&self, player_id: PlayerId) -> ObjectId {
         self.get_player(player_id).zones.hero
     }
@@ -32,7 +36,7 @@ impl Game {
             .hand
             .contains(&object_id)
             .then(|| {
-                let def = self.binder.mana_cost(obj.def_id);
+                let printed_cost = self.card_def(object_id).mana_cost;
                 let neg_modifiers = self
                     .modifiers(object_id)
                     .as_slice()
@@ -43,7 +47,7 @@ impl Game {
                     })
                     .map(|a| self.effect_amount(&a, obj.player_id))
                     .sum::<u8>();
-                def.saturating_sub(neg_modifiers)
+                printed_cost.saturating_sub(neg_modifiers)
             })
     }
 
@@ -54,22 +58,21 @@ impl Game {
 
     pub fn health(&self, object_id: ObjectId) -> Option<i32> {
         let obj = self.object(object_id);
+        let card_def = self.card_def(object_id);
 
-        let is_in_play_hero =
-            self.binder.is_hero(obj.def_id) && self.hero_id(obj.player_id) == object_id;
-        let is_in_play_minion = self.binder.is_minion(obj.def_id)
-            && self
+        let is_in_play = match card_def.character_kind() {
+            Some(CharacterKind::Hero) => self.hero_id(obj.player_id) == object_id,
+            Some(CharacterKind::Minion) => self
                 .get_player(obj.player_id)
                 .zones
                 .board
-                .contains(&object_id);
-
-        let is_in_play = is_in_play_hero || is_in_play_minion;
+                .contains(&object_id),
+            None => false,
+        };
 
         is_in_play.then(|| {
-            let def = self
-                .binder
-                .health(obj.def_id)
+            let printed_health = card_def
+                .health()
                 .expect("in play objects always have health");
             let modifiers = self
                 .modifiers(object_id)
@@ -82,7 +85,7 @@ impl Game {
                 .map(|a| self.effect_amount(&a, obj.player_id) as i32)
                 .sum::<i32>();
             let damage = obj.damage as i32;
-            def + modifiers - damage
+            printed_health + modifiers - damage
         })
     }
 
@@ -93,9 +96,9 @@ impl Game {
             .board
             .contains(&object_id)
             .then(|| {
-                let def = self
-                    .binder
-                    .attack(obj.def_id)
+                let printed_attack = self
+                    .card_def(object_id)
+                    .attack()
                     .expect("board objects always have attack");
                 let modifiers = self
                     .modifiers(object_id)
@@ -107,57 +110,50 @@ impl Game {
                     })
                     .map(|a| self.effect_amount(&a, obj.player_id) as i32)
                     .sum::<i32>();
-                def + modifiers
+                printed_attack + modifiers
             })
     }
 
     pub(crate) fn death_rattles(&self, object_id: ObjectId) -> Vec<Trigger> {
         self.triggers(object_id)
             .into_iter()
-            .filter(|t| matches!(t.pattern, TriggerPattern::Died(TriggerSubject::Itself)))
+            .filter(|t| matches!(t.def.pattern, TriggerPattern::Died(TriggerSubject::Itself)))
             .collect()
     }
 
     pub(crate) fn triggers(&self, object_id: ObjectId) -> Vec<Trigger> {
-        let obj = self.object(object_id);
-        let def = self.binder.triggers(obj.def_id).iter().map(|td| Trigger {
-            source: object_id,
-            pattern: td.pattern,
-            effects: td.effects.clone(),
+        let printed = self.card_def(object_id).triggers.iter().map(|td| Trigger {
+            granted_by: object_id,
+            def: td.clone(),
         });
-        let mut modifiers = self
-            .modifiers(object_id)
-            .as_slice()
-            .iter()
-            .filter_map(|m| match &m.effect {
-                ModifierEffect::GrantTrigger(trigger) => Some(Trigger {
-                    source: m.source,
-                    pattern: trigger.pattern,
-                    effects: trigger.effects.clone(),
-                }),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-        modifiers.extend(def);
-        modifiers.sort_by_key(|t| self.objects.get(t.source).order);
-        modifiers
+        let modifiers = self.modifiers(object_id);
+        let from_modifiers = modifiers.as_slice().iter().filter_map(|m| match &m.effect {
+            ModifierEffect::GrantTrigger(trigger) => Some(Trigger {
+                granted_by: m.granted_by,
+                def: trigger.clone(),
+            }),
+            _ => None,
+        });
+        let mut triggers = from_modifiers.chain(printed).collect::<Vec<_>>();
+        triggers.sort_by_key(|t| self.objects.get(t.granted_by).order);
+        triggers
     }
 
     fn modifiers(&self, object_id: ObjectId) -> Modifiers {
         let obj = self.object(object_id);
-        let modifiers = self
-            .binder
-            .modifier_effects(obj.def_id)
+        let card_def = self.card_def(object_id);
+        let modifiers = card_def
+            .modifier_effects
             .iter()
             .map(|e| Modifier {
-                source: object_id,
+                granted_by: object_id,
                 effect: e.clone(),
             })
             .collect::<Vec<_>>();
         let mut modifiers = Modifiers::new(modifiers);
         modifiers.extend(obj.modifiers.clone());
 
-        if self.binder.is_minion(obj.def_id) {
+        if card_def.receives_auras() {
             for other_player_id in self.players().into_iter() {
                 for other_object_id in self.player_board(other_player_id).iter().copied() {
                     if object_id == other_object_id {
@@ -178,18 +174,17 @@ impl Game {
     }
 
     pub(crate) fn play_effects(&self, object_id: ObjectId) -> &[Effect] {
-        let obj = self.object(object_id);
-        self.binder.play_effects(obj.def_id)
+        self.card_def(object_id).play_effects.as_slice()
     }
 
     pub(crate) fn friendly_aura(&self, object_id: ObjectId) -> Modifiers {
         let obj = self.object(object_id);
         let modifiers = self
-            .binder
-            .friendly_aura_effects(obj.def_id)
+            .card_def(object_id)
+            .friendly_aura_effects()
             .iter()
             .map(|e| Modifier {
-                source: object_id,
+                granted_by: object_id,
                 effect: e.clone(),
             })
             .collect::<Vec<_>>();
@@ -199,13 +194,12 @@ impl Game {
     }
 
     pub(crate) fn hostile_aura(&self, object_id: ObjectId) -> Modifiers {
-        let obj = self.object(object_id);
         let modifiers = self
-            .binder
-            .hostile_aura_effects(obj.def_id)
+            .card_def(object_id)
+            .hostile_aura_effects()
             .iter()
             .map(|e| Modifier {
-                source: object_id,
+                granted_by: object_id,
                 effect: e.clone(),
             })
             .collect::<Vec<_>>();

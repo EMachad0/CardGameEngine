@@ -23,7 +23,7 @@ impl DefId {
 pub struct CardDef {
     pub id: DefId,
     pub name: String,
-    pub kind: CardDefKind,
+    pub kind: CardKindDef,
     pub mana_cost: u8,
     pub modifier_effects: Vec<ModifierEffect>,
     pub play_effects: EffectSequence,
@@ -31,11 +31,110 @@ pub struct CardDef {
     pub choices: Vec<CharacterChoice>,
 }
 
+impl CardDef {
+    pub(crate) fn health(&self) -> Option<i32> {
+        match &self.kind {
+            CardKindDef::Spell(_) => None,
+            CardKindDef::Minion(minion) => Some(minion.health),
+            CardKindDef::Hero(hero) => Some(hero.health),
+        }
+    }
+
+    pub(crate) fn attack(&self) -> Option<i32> {
+        match &self.kind {
+            CardKindDef::Spell(_) => None,
+            CardKindDef::Minion(minion) => Some(minion.attack),
+            CardKindDef::Hero(_) => None,
+        }
+    }
+
+    pub(crate) fn card_kind(&self) -> CardKind {
+        match self.kind {
+            CardKindDef::Spell(_) => CardKind::Spell,
+            CardKindDef::Minion(_) => CardKind::Minion,
+            CardKindDef::Hero(_) => CardKind::Hero,
+        }
+    }
+
+    pub(crate) fn character_kind(&self) -> Option<CharacterKind> {
+        match self.kind {
+            CardKindDef::Spell(_) => None,
+            CardKindDef::Minion(_) => Some(CharacterKind::Minion),
+            CardKindDef::Hero(_) => Some(CharacterKind::Hero),
+        }
+    }
+
+    pub(crate) fn has_board_presence(&self) -> bool {
+        match self.kind {
+            CardKindDef::Spell(_) => false,
+            CardKindDef::Minion(_) => true,
+            CardKindDef::Hero(_) => false,
+        }
+    }
+
+    pub(crate) fn receives_auras(&self) -> bool {
+        match self.kind {
+            CardKindDef::Spell(_) => false,
+            CardKindDef::Minion(_) => true,
+            CardKindDef::Hero(_) => false,
+        }
+    }
+
+    pub(crate) fn leaves_zone_on_death(&self) -> bool {
+        match self.kind {
+            CardKindDef::Spell(_) => true,
+            CardKindDef::Minion(_) => true,
+            CardKindDef::Hero(_) => false,
+        }
+    }
+
+    pub(crate) fn goes_to_graveyard(&self) -> bool {
+        match self.kind {
+            CardKindDef::Spell(_) => true,
+            CardKindDef::Minion(_) => true,
+            CardKindDef::Hero(_) => false,
+        }
+    }
+
+    pub(crate) fn friendly_aura_effects(&self) -> &[ModifierEffect] {
+        match &self.kind {
+            CardKindDef::Spell(_) => &[],
+            CardKindDef::Minion(minion) => &minion.friendly_aura_effects,
+            CardKindDef::Hero(_) => &[],
+        }
+    }
+
+    pub(crate) fn hostile_aura_effects(&self) -> &[ModifierEffect] {
+        match &self.kind {
+            CardKindDef::Spell(_) => &[],
+            CardKindDef::Minion(minion) => &minion.hostile_aura_effects,
+            CardKindDef::Hero(_) => &[],
+        }
+    }
+
+    pub(crate) fn choice(&self, id: ChoiceId) -> Option<&CharacterChoice> {
+        self.choices.iter().find(|choice| choice.id == id)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CardDefKind {
+pub enum CardKindDef {
     Spell(SpellCardDef),
     Minion(MinionCardDef),
     Hero(HeroCardDef),
+}
+
+#[derive(Debug, enumset::EnumSetType)]
+pub enum CardKind {
+    Spell,
+    Minion,
+    Hero,
+}
+
+#[derive(Debug, enumset::EnumSetType)]
+pub enum CharacterKind {
+    Hero,
+    Minion,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

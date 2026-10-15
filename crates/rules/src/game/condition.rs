@@ -2,9 +2,8 @@ use enumset::EnumSet;
 
 use crate::{
     cards::{
-        filter::{
-            CardFilter, CardKindFilter, CharacterFilter, CharacterKindFilter, fulfill_side_filter,
-        },
+        definition::{CardKind, CharacterKind},
+        filter::{CardFilter, CharacterFilter, fulfill_side_filter},
         object::ObjectId,
     },
     choice::{CharacterChoice, ChoiceId},
@@ -43,7 +42,7 @@ impl Game {
         chosen_count: u8,
     ) -> bool {
         let obj = self.objects.get(object_id);
-        let choice = self.binder.choice(obj.def_id, choice_id).unwrap();
+        let choice = self.card_def(object_id).choice(choice_id).unwrap();
         let count = self.effect_amount(&choice.count, obj.player_id);
         choice.bound.is_satisfied(chosen_count, count)
     }
@@ -94,18 +93,15 @@ impl Game {
     fn fulfill_character_kind_filter(
         &self,
         object_id: ObjectId,
-        kind: EnumSet<CharacterKindFilter>,
+        kind: EnumSet<CharacterKind>,
     ) -> bool {
-        let def_id = self.objects.get(object_id).def_id;
-        kind.contains(CharacterKindFilter::Heroes) && self.binder.is_hero(def_id)
-            || kind.contains(CharacterKindFilter::Minions) && self.binder.is_minion(def_id)
+        self.card_def(object_id)
+            .character_kind()
+            .is_some_and(|character_kind| kind.contains(character_kind))
     }
 
-    fn fulfill_card_kind_filter(&self, object_id: ObjectId, kind: EnumSet<CardKindFilter>) -> bool {
-        let def_id = self.objects.get(object_id).def_id;
-        kind.contains(CardKindFilter::Heroes) && self.binder.is_hero(def_id)
-            || kind.contains(CardKindFilter::Minions) && self.binder.is_minion(def_id)
-            || kind.contains(CardKindFilter::Spells) && self.binder.is_spell(def_id)
+    fn fulfill_card_kind_filter(&self, object_id: ObjectId, kind: EnumSet<CardKind>) -> bool {
+        kind.contains(self.card_def(object_id).card_kind())
     }
 
     pub(super) fn can_finish_choices(
@@ -114,7 +110,7 @@ impl Game {
         chosen: &mut Vec<(ObjectId, ChoiceId)>,
     ) -> bool {
         let mut any_unfulfiled = false;
-        for choice in self.binder.choices(self.def_id(object_id)) {
+        for choice in &self.card_def(object_id).choices {
             let chosen_for_choice_count = chosen
                 .iter()
                 .filter(|(_, choice_id)| choice.id == *choice_id)

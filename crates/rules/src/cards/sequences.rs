@@ -1,6 +1,6 @@
 use crate::{
     cards::{
-        definition::{CardDef, CardDefKind, HeroCardDef, MinionCardDef, SpellCardDef, TriggerDef},
+        definition::{CardDef, CardKindDef, HeroCardDef, MinionCardDef, SpellCardDef, TriggerDef},
         modifier::ModifierEffect,
     },
     effect::{Effect, EffectSequence},
@@ -42,8 +42,8 @@ pub(super) fn effect_sequences(def: &CardDef) -> Vec<Sequence<'_>> {
         collect_modifier(&mut sequences, modifier_effect);
     }
     match kind {
-        CardDefKind::Spell(SpellCardDef) => {}
-        CardDefKind::Minion(MinionCardDef {
+        CardKindDef::Spell(SpellCardDef) => {}
+        CardKindDef::Minion(MinionCardDef {
             attack: _,
             health: _,
             friendly_aura_effects,
@@ -53,7 +53,7 @@ pub(super) fn effect_sequences(def: &CardDef) -> Vec<Sequence<'_>> {
                 collect_modifier(&mut sequences, modifier_effect);
             }
         }
-        CardDefKind::Hero(HeroCardDef { health: _ }) => {}
+        CardKindDef::Hero(HeroCardDef { health: _ }) => {}
     }
     sequences
 }
@@ -133,7 +133,7 @@ mod tests {
         CardDef {
             id: DefId::new("test.spell.v0"),
             name: "Spell".to_string(),
-            kind: CardDefKind::Spell(SpellCardDef),
+            kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 1,
             modifier_effects: Vec::new(),
             play_effects: EffectSequence::default(),
@@ -147,7 +147,7 @@ mod tests {
         hostile_aura_effects: Vec<ModifierEffect>,
     ) -> CardDef {
         CardDef {
-            kind: CardDefKind::Minion(MinionCardDef {
+            kind: CardKindDef::Minion(MinionCardDef {
                 attack: 1,
                 health: 1,
                 friendly_aura_effects,
