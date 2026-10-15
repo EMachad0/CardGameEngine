@@ -1,8 +1,8 @@
 use crate::{
     cards::{
         binder::sets::base::{PLACEHOLDER, static_card_definition::ALL_DEF_ID},
-        definition::{CardDef, CardDefKind, CharacterSelector, DefId, MinionCardDef, TriggerDef},
-        modifier::ModifierEffect,
+        definition::{CardDef, CharacterSelector, DefId},
+        sequences::{SequenceOrigin, effect_sequences},
     },
     choice::{ChoiceId, PickId},
     effect::Effect,
@@ -79,7 +79,10 @@ fn validate_choice_duplicates(defs: &[CardDef]) -> Result<(), CardDefError> {
 
 fn validate_choice_not_found(defs: &[CardDef]) -> Result<(), CardDefError> {
     for def in defs {
-        let effects = def.play_effects.as_slice().iter();
+        let effects = effect_sequences(def)
+            .into_iter()
+            .filter(|sequence| resolves_with_draft(sequence.origin))
+            .flat_map(|sequence| sequence.effects);
         for choice_id in effects.filter_map(chosen_id) {
             if !def.choices.iter().any(|choice| choice.id == choice_id) {
                 return Err(CardDefError::ChoiceNotFound(def.id, choice_id));
@@ -110,54 +113,28 @@ fn chosen_id(effect: &Effect) -> Option<ChoiceId> {
 
 fn validate_choice_on_trigger(defs: &[CardDef]) -> Result<(), CardDefError> {
     for def in defs {
-        for trigger in def.triggers.iter() {
-            if let Some(choice_id) = choice_on_trigger(trigger) {
-                return Err(CardDefError::ChoiceInTrigger(def.id, choice_id));
-            }
-        }
-
-        if let CardDefKind::Minion(MinionCardDef {
-            friendly_aura_effects,
-            hostile_aura_effects,
-            ..
-        }) = &def.kind
-        {
-            let auras = friendly_aura_effects
-                .iter()
-                .chain(hostile_aura_effects.iter());
-            for modifier_effect in auras {
-                if let ModifierEffect::GrantTrigger(trigger) = modifier_effect
-                    && let Some(choice_id) = choice_on_trigger(trigger)
-                {
-                    return Err(CardDefError::ChoiceInTrigger(def.id, choice_id));
-                }
-            }
+        let mut effects = effect_sequences(def)
+            .into_iter()
+            .filter(|sequence| !resolves_with_draft(sequence.origin))
+            .flat_map(|sequence| sequence.effects);
+        if let Some(choice_id) = effects.find_map(chosen_id) {
+            return Err(CardDefError::ChoiceInTrigger(def.id, choice_id));
         }
     }
     Ok(())
 }
 
-fn choice_on_trigger(trigger: &TriggerDef) -> Option<ChoiceId> {
-    trigger.effects.as_slice().iter().find_map(chosen_id)
+fn resolves_with_draft(origin: SequenceOrigin) -> bool {
+    match origin {
+        SequenceOrigin::Play => true,
+        SequenceOrigin::Trigger => false,
+    }
 }
 
 fn validate_picks(defs: &[CardDef]) -> Result<(), CardDefError> {
     for def in defs {
-        validate_pick_order(def.id, def.play_effects.as_slice())?;
-        for trigger in def.triggers.iter() {
-            validate_pick_order(def.id, trigger.effects.as_slice())?;
-        }
-        if let CardDefKind::Minion(MinionCardDef {
-            friendly_aura_effects,
-            hostile_aura_effects,
-            ..
-        }) = &def.kind
-        {
-            for modifier_effect in friendly_aura_effects.iter().chain(hostile_aura_effects) {
-                if let ModifierEffect::GrantTrigger(trigger) = modifier_effect {
-                    validate_pick_order(def.id, trigger.effects.as_slice())?;
-                }
-            }
+        for sequence in effect_sequences(def) {
+            validate_pick_order(def.id, sequence.effects)?;
         }
     }
     Ok(())
@@ -195,7 +172,11 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use crate::{
-        cards::binder::sets::base::{self, static_card_definition::*},
+        cards::{
+            binder::sets::base::{self, static_card_definition::*},
+            definition::{CardDefKind, TriggerDef},
+            modifier::ModifierEffect,
+        },
         effect::EffectSequence,
         trigger::{TriggerPattern, TriggerSubject},
     };
