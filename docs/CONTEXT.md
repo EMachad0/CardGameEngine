@@ -48,6 +48,11 @@ _Avoid_: avatar
 A card as printed: its name, cost, kind, stats and text. Every copy of the card shares it.
 _Avoid_: template, prototype
 
+**Printed**:
+What a card definition states, before buffs, auras, cost changes or damage. A card's printed cost,
+attack and health.
+_Avoid_: base, original
+
 **Binder**:
 The card definitions a game can use, each found by its ID.
 _Avoid_: card table, card database, catalog
@@ -107,6 +112,10 @@ The cards a player holds and can play.
 **Board**:
 The cards a player has in play, in order from left to right.
 _Avoid_: battlefield, field, play area
+
+**Graveyard**:
+A player's cards that died, newest on top.
+_Avoid_: discard pile, cemetery
 
 ### Turns
 
