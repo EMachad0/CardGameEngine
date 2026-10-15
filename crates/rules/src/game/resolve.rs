@@ -249,11 +249,11 @@ impl Game {
                 .curr_effect()
                 .expect("An unfinished ResolvingEffect have effects to apply")
                 .clone();
-            let object_id = resolving.object_id;
+            let source = resolving.source;
             resolving.advance();
 
-            let owner = self.objects.get(object_id).player_id;
-            self.apply_effect(owner, object_id, &effect, obs);
+            let owner = self.objects.get(source).player_id;
+            self.apply_effect(owner, source, &effect, obs);
             obs.checkpoint(Views::new(self));
         }
         if let Some(resolving) = &mut self.resolving_effect

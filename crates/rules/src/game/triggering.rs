@@ -36,7 +36,10 @@ impl Game {
         } in self.triggers(object_id)
         {
             if self.fulfill_trigger_pattern(player_id, object_id, pattern, event) {
-                self.effect_stack.push(PendingEffect { object_id, effects });
+                self.effect_stack.push(PendingEffect {
+                    source: object_id,
+                    effects,
+                });
             }
         }
     }

@@ -98,7 +98,7 @@ impl Game {
         for &object_id in object_ids.iter() {
             for death_rattle in self.death_rattles(object_id).into_iter() {
                 self.effect_stack.push(PendingEffect {
-                    object_id,
+                    source: object_id,
                     effects: death_rattle.def.effects,
                 });
             }
