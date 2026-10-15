@@ -77,6 +77,7 @@ fn validate_choice_duplicates(defs: &[CardDef]) -> Result<(), CardDefError> {
     Ok(())
 }
 
+/// Rejects a play effect that names a choice the card doesn't declare.
 fn validate_choice_not_found(defs: &[CardDef]) -> Result<(), CardDefError> {
     for def in defs {
         let effects = effect_sequences(def)
@@ -111,6 +112,8 @@ fn chosen_id(effect: &Effect) -> Option<ChoiceId> {
     }
 }
 
+/// Rejects a trigger effect that names a choice, whether the trigger is printed or granted. A
+/// trigger resolves with no draft to read the choice from.
 fn validate_choice_on_trigger(defs: &[CardDef]) -> Result<(), CardDefError> {
     for def in defs {
         let mut effects = effect_sequences(def)
@@ -124,6 +127,7 @@ fn validate_choice_on_trigger(defs: &[CardDef]) -> Result<(), CardDefError> {
     Ok(())
 }
 
+/// Whether a sequence resolves with the choices made in the card's draft.
 fn resolves_with_draft(origin: SequenceOrigin) -> bool {
     match origin {
         SequenceOrigin::Play => true,
@@ -131,6 +135,8 @@ fn resolves_with_draft(origin: SequenceOrigin) -> bool {
     }
 }
 
+/// Rejects a card whose effect sequences, triggers included, resolve a pick with no `Reveal`
+/// before it, or reveal cards they never resolve.
 fn validate_picks(defs: &[CardDef]) -> Result<(), CardDefError> {
     for def in defs {
         for sequence in effect_sequences(def) {
@@ -140,6 +146,8 @@ fn validate_picks(defs: &[CardDef]) -> Result<(), CardDefError> {
     Ok(())
 }
 
+/// Pairs each `ResolvePick` with an earlier `Reveal` of the same pick. Revealed cards sit in no
+/// zone until their pick resolves.
 fn validate_pick_order(def_id: DefId, effects: &[Effect]) -> Result<(), CardDefError> {
     let mut unresolved = Vec::new();
     for effect in effects {

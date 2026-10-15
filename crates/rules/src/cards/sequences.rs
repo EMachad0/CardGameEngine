@@ -6,18 +6,22 @@ use crate::{
     effect::{Effect, EffectSequence},
 };
 
+/// Whether a sequence is the card's play effects or a trigger's effects.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum SequenceOrigin {
     Play,
     Trigger,
 }
 
+/// One effect sequence on a card, and where it comes from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct Sequence<'a> {
     pub(super) origin: SequenceOrigin,
     pub(super) effects: &'a [Effect],
 }
 
+/// Every effect sequence on a card, play effects first. Triggers granted through modifier effects,
+/// auras, `Buff` and `AddFriendlyAura` count too, at any depth.
 pub(super) fn effect_sequences(def: &CardDef) -> Vec<Sequence<'_>> {
     let CardDef {
         id: _,
