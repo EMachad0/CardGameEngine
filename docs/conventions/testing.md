@@ -133,8 +133,9 @@ compare directly.
 but clippy with `--all-targets` lints them.
 
 `just bench::compare <ref>` benches `<ref>` and the working tree on one machine and prints a
-critcmp table of both. CI runs it on every pull request against the base branch and posts the
-table as a PR comment, updated on each push. A regression doesn't fail CI.
+markdown table of both, with criterion's verdict for each bench. CI runs it on every pull request
+against the base branch and posts the table as a PR comment, updated on each push. A regression
+doesn't fail CI.
 
 ## References
 

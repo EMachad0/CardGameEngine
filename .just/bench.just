@@ -1,7 +1,7 @@
 # Benchmark comparisons. Recipes run from the repo root.
 set working-directory := '..'
 
-[doc("Bench a git ref and the working tree on this machine, and print a critcmp table")]
+[doc("Bench a git ref and the working tree on this machine, and print a markdown report")]
 compare base:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -11,10 +11,13 @@ compare base:
     git worktree add --quiet --detach "$scratch/base" "{{base}}"
     export CRITERION_HOME="$scratch/criterion"
     bench() {
-        cargo bench --workspace --bench '*' -- --save-baseline "$1" >&2
+        local out="$1"
+        shift
+        cargo bench --workspace --bench '*' -- --color never "$@" 2>&1 | tee "$out" >&2
     }
+    touch "$scratch/base.txt"
     if compgen -G "$scratch/base/crates/*/benches/*.rs" > /dev/null; then
-        (cd "$scratch/base" && bench base)
+        (cd "$scratch/base" && bench "$scratch/base.txt" --save-baseline base)
     fi
-    bench head
-    mise exec -- critcmp --target-dir "$scratch" base head
+    bench "$scratch/head.txt" --baseline-lenient base
+    awk -f .just/bench-report.awk "$scratch/base.txt" "$scratch/head.txt"

@@ -26,14 +26,14 @@ jobs:
           fetch-depth: 2
       - uses: jdx/mise-action@v5
         with:
-          install_args: just cargo:critcmp
+          install_args: just
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: "true"
       - run: |
-          just bench::compare HEAD^1 > table.txt
-          cat table.txt
-      # A fork PR's token can't write comments, so its table stays in the log above.
+          just bench::compare HEAD^1 > report.md
+          cat report.md
+      # A fork PR's token can't write comments, so its report stays in the log above.
       - if: github.event.pull_request.head.repo.full_name == github.repository
         env:
           GH_TOKEN: ${{ github.token }}
@@ -42,10 +42,8 @@ jobs:
           {
             echo '### Benchmarks'
             echo
-            echo "\`base\` is $(git rev-parse --short HEAD^1), \`head\` is $(git rev-parse --short HEAD^2)."
+            echo "\`base\` $(git rev-parse --short HEAD^1) · \`head\` $(git rev-parse --short HEAD^2)"
             echo
-            echo '```text'
-            cat table.txt
-            echo '```'
+            cat report.md
           } > comment.md
           gh pr comment "$PR" --edit-last --create-if-none --body-file comment.md
