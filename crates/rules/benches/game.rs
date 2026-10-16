@@ -41,18 +41,7 @@ fn bench_eq(c: &mut Criterion) {
 
 fn bench_legal_actions(c: &mut Criterion) {
     let mut group = c.benchmark_group("legal_actions");
-    for (stage, game) in stages() {
-        let p = decider(&game);
-        group.bench_with_input(BenchmarkId::from_parameter(stage), &game, |b, game| {
-            b.iter(|| black_box(game).legal_actions(black_box(p)))
-        });
-    }
-    group.finish();
-}
-
-fn bench_legal_actions_drafting(c: &mut Criterion) {
-    let mut group = c.benchmark_group("legal_actions_drafting");
-    for (stage, game) in drafting_stages() {
+    for (stage, game) in stages().into_iter().chain(drafting_stages()) {
         let p = decider(&game);
         group.bench_with_input(BenchmarkId::from_parameter(stage), &game, |b, game| {
             b.iter(|| black_box(game).legal_actions(black_box(p)))
@@ -84,7 +73,6 @@ criterion_group!(
     bench_clone,
     bench_eq,
     bench_legal_actions,
-    bench_legal_actions_drafting,
     bench_playout
 );
 criterion_main!(benches);

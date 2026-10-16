@@ -19,10 +19,10 @@ has_counts() {
             > /dev/null
 }
 gungraun_version() {
-    cargo pkgid gungraun 2> /dev/null | sed 's/.*@//'
+    { cargo pkgid --locked gungraun 2> /dev/null || true; } | sed 's/.*@//'
 }
 counts() {
-    cargo bench --workspace --bench '*_counts' -- --output-format=json > "$1"
+    cargo bench --locked --workspace --bench '*_counts' -- --output-format=json > "$1"
 }
 
 # gungraun-runner has to match the gungraun library, and it is installed for the head's.

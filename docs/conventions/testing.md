@@ -147,20 +147,21 @@ two things that criterion doesn't:
 
 - Its setup makes the measured call once first. Otherwise the count includes the allocator's cold
   start.
-- Its benchmark function defines no closure. A generic function instantiated with such a closure
-  matches gungraun's collection toggle, and the count silently skips everything it runs. Pass a
-  helper from `support.rs` instead.
+- Its benchmark function defines no closure. A generic call instantiated with such a closure
+  matches gungraun's collection toggle, and the count silently skips everything that call runs.
+  Pass a helper from `support.rs` instead.
 
-`just bench::compare <ref>` counts `<ref>` and the working tree and prints a markdown table of
-both. It needs Linux with Valgrind, gungraun-runner and jq. When the two sides lock different
-gungraun versions, it counts only the working tree, since gungraun-runner must match the library.
+`just bench::compare <ref>` counts `<ref>` and the working tree, over every bench whose name ends
+in `_counts`, and prints a markdown table of both. It needs Linux with Valgrind, gungraun-runner and
+jq. When the two sides lock different gungraun versions, it counts only the working tree, since
+gungraun-runner must match the library.
 
 `just bench::docker_compare <ref>` runs `compare` in a Linux x86_64 container. Valgrind on arm64
 misses part of a count, so an Apple-silicon Mac counts under emulation. The first run builds the
-image, which takes minutes. Under QEMU, the emulator Colima uses by default, a build now and then
-crashes the linker or deadlocks cargo, and a rerun is the only fix. The container's glibc and
-Valgrind differ from CI's, and under emulation two builds of the same code can differ slightly, so
-compare container counts only with each other.
+image, which takes minutes. Under QEMU, the emulator Colima uses by default, builds often crash
+the linker or deadlock cargo, and only some reruns get through. The container's glibc and Valgrind
+differ from CI's, and under emulation two builds of the same code can differ slightly, so compare
+container counts only with each other.
 
 CI runs `just bench::compare` on every pull request that touches the code, against the base
 branch, and posts the table as a PR comment, updated on each push. A regression doesn't fail CI.

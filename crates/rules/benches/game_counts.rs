@@ -2,7 +2,8 @@
 //!
 //! Each setup makes the measured call once before the count starts, so the allocator is warm.
 //! A generic call instantiated with a closure defined inside a benchmark function matches
-//! gungraun's collection toggle and stops the count, so benchmark functions define no closures.
+//! gungraun's collection toggle, and the count skips everything that call runs, so benchmark
+//! functions define no closures.
 
 mod support;
 
@@ -83,16 +84,9 @@ fn eq(games: (Game, Game)) -> (Game, Game) {
 #[bench::early(args = ("early"), setup = warm_legal_actions)]
 #[bench::mid(args = ("mid"), setup = warm_legal_actions)]
 #[bench::late(args = ("late"), setup = warm_legal_actions)]
-fn legal_actions(input: (Game, PlayerId)) -> Game {
-    let (game, p) = input;
-    drop(black_box(black_box(&game).legal_actions(black_box(p))));
-    game
-}
-
-#[library_benchmark]
 #[bench::idle(args = ("idle"), setup = warm_legal_actions)]
 #[bench::open(args = ("open"), setup = warm_legal_actions)]
-fn legal_actions_drafting(input: (Game, PlayerId)) -> Game {
+fn legal_actions(input: (Game, PlayerId)) -> Game {
     let (game, p) = input;
     drop(black_box(black_box(&game).legal_actions(black_box(p))));
     game
@@ -109,14 +103,7 @@ fn playout(deck: DeckFn) {
 
 library_benchmark_group!(
     name = game,
-    benchmarks = [
-        new,
-        clone,
-        eq,
-        legal_actions,
-        legal_actions_drafting,
-        playout
-    ]
+    benchmarks = [new, clone, eq, legal_actions, playout]
 );
 
 main!(library_benchmark_groups = game);

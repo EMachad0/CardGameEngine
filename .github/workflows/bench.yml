@@ -2,7 +2,7 @@ name: Bench
 
 on:
   pull_request:
-    # Only changes that can move a count.
+    # Only changes that can move a count or change the report.
     paths:
       - "crates/**"
       - "Cargo.toml"
@@ -52,7 +52,7 @@ jobs:
           {
             echo '### Benchmarks'
             echo
-            echo "\`base\` $(git rev-parse --short HEAD^1) · \`head\` $(git rev-parse --short HEAD^2)"
+            echo "\`base\` $(git rev-parse --short HEAD^1) · \`head\` $(git rev-parse --short HEAD^2) merged into \`base\`"
             echo
             cat report.md
           } > comment.md
