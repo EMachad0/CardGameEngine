@@ -103,14 +103,27 @@ data can break it.
 An owner is a module that privately owns all the data an invariant mentions, so it keeps the
 invariant through every command on its interface. Data tied by an invariant shares one owner.
 
-- A module that keeps an invariant over data it doesn't privately own is weak. Not breaking the
-  invariant becomes informal knowledge in every other possible writer.
 - Handing out write access to the data makes the invariant breakable from outside.
 - Merge owners only for an invariant the domain needs. A rule nothing depends on unnecessarily grows
   its owner.
 - An owner answers questions about its own data.
 - A decision that combines several owners' data gets its own module with no data, under their
   lowest common ancestor. Inside one of the owners, it would make that owner depend on the others.
+
+### Rules no owner guards
+
+A rule has no owner when its data can't share one, such as data outside the program's state, or
+when the domain lets it be false for a while and a pass restores it at known points. A rule a pass
+restores isn't an invariant.
+
+A rule no owner guards has a keeper, the one module whose code keeps it, such as a command that
+makes the rule's writes together or the module that decides when its pass runs. The keeper must be
+the only code that can make the writes the rule is about. Any other code that can make them holds
+"go through the keeper" as informal knowledge, so a keeper is weaker than an owner. Give a rule an
+owner whenever its data can share one.
+
+- Read the rule as implications, if A then B. A write that makes A true without B breaks it, so
+  restrict A and leave B open. A rule that also runs the other way restricts both.
 
 ### Names exclude
 
