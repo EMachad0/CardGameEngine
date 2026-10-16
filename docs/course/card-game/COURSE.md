@@ -178,6 +178,7 @@ Understand card game systems well enough to design MTG, Hearthstone, or Yu-Gi-Oh
 - Naming: `PendingEffect.object_id` and `ResolvingEffect.object_id` were agreed as `source_id`; a granted `Trigger.source` is the aura's source and is used only to sort.
 - Untested speculative branches in `rules` (`HistoryQueryKind::MinionDied`, whose scope and turn filters no card reads, `HistoryKind::CharacterEntered`, written and never read, `PlayerFilter::Active`, `TurnFilter::Current`, hostile auras, `has_deck_presence`, `Player.playing`, `PlayerSelector::All` and `Random`, `CharacterSelector::Itself` and `OwnerHero`, `Effect::AddFriendlyAura`, `TriggerPattern::Damaged` with a filter, `CardKindFilter::Minions` and `Heroes`). The 04a ones are kept by his choice. Cut them or give each a test card when its session comes.
 - Hand to board keeps the `ObjectId` and the bag keeps objects forever, so a "+500 until end of turn" in `obj.modifiers` would survive a bounce. Raise this when bounce arrives (the zone-reset table).
+- `setup` draws and runs `start_turn` with no drain and no state check, so triggers matched during setup wait on the effect stack until the first `apply`. No card triggers at setup or at turn start yet. Decide with the first one (architecture audit, session 02b).
 
 ## Dependency map
 
