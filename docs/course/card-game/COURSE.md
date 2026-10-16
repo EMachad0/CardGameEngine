@@ -8,7 +8,7 @@ Understand card game systems well enough to design MTG, Hearthstone, or Yu-Gi-Oh
 
 - Teaching follows the `teach` skill, `.agents/skills/teach/SKILL.md`.
 - One pi session per course session. Start with `/new`, `/name NN-topic`, `/md-log docs/course/card-game/sessions/NN-topic.md` (the file must exist first), then "continue the card-game course".
-- Every session opens with a short retrieval quiz on the previous session's nodes, and adjusts the knowledge map below if something didn't stick.
+- Only the first session of a topic (06, 07, not 06b) opens with a short retrieval quiz. It may ask about any earlier session's nodes, such as 05 and 06 to 06d for 07, and adjusts the knowledge map below if something didn't stick.
 - Roles in exercises. First we agree on the design in discussion. The learner writes the design-bearing code (types, traits, key function signatures and bodies). The agent writes scaffolding and tests against that API, then reviews. Tests come before the implementation. He sees little learning value in typing out plain data types, so the agent drafts those, such as `Event` and `View`, for him to edit. Design choices and bodies stay his.
 - End at a node boundary, not mid-node. Commit once per node.
 
@@ -246,10 +246,10 @@ graph TD
 | 04b | E, G | Exercise: targeting draft | done (green: 20 unit + 142 spec; ADR 0009 and 0010; choices on the card, `Draft`/`Choose`/`Cancel`/`Play`, a look-ahead search; Ping, Twin Shot, Crossfire, Shove; drafting benches; `4bb2960`) |
 | 05 | F | Triggers, replacements, statics | done (green: 21 unit + 168 spec; ADRs 0011, 0012, 0014; triggers derived on read, one `emit`, a stack, collect then commit; Medic, Mourner, Drillmaster, Rally Banner, Bomber, Gravedigger; a clippy ban on `Observer::event`) |
 | 06 | R4, G | Resolution loop: pausable resolution and the decider | done (green: 26 unit + 177 spec; ADR 0015; the resolving effect apart from the effect stack, one loop, per-player pending picks with a derived decider, `Reveal` and `ResolvePick` by pick id with load checks, minions enter before their play effects; Sweep, Hoarder, Drummer; five research reports and a prototype) |
-| 06b | G | Named results and composable reveals, the first nesting effect (`If`) and frames | next, after his refactor PRs. Opens with the retrieval quiz on 06 (where pauses happen, the two units of time, the derived decider). |
+| 06b | G | Named results and composable reveals, the first nesting effect (`If`) and frames | next, after his refactor PRs. |
 | 06c | G | Choices inside triggers and remembered choices | |
 | 06d | G | Simultaneous picks | |
-| 07 | R5, T | Scenario DSL, replays, determinism trap, invariant fuzzing | |
+| 07 | R5, T | Scenario DSL, replays, determinism trap, invariant fuzzing | Its retrieval quiz covers 06 (where pauses happen, the two units of time, the derived decider). |
 | 08 | K | YGO chain: spell speed, right to act, LIFO, SEGOC, missing the timing | |
 | app | H | Card files, validation, text generation, editor (design session) | |
 | app | I | Headless CLI + agent protocol (design session) | |
