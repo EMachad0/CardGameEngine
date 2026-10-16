@@ -93,6 +93,24 @@ interface that holds still when the decision moves.
   callers to know less than the data would. If only one place knows it, or the interface would
   mirror the fields, leave it where it is.
 
+### Owners guard invariants
+
+An invariant is a decision about stored data that holds whenever code outside its module can see
+it. Inside one of the module's functions it may be false for a while. Any code that can write the
+data can break it.
+
+An owner is a module that privately owns all the data an invariant mentions, so it keeps the
+invariant through every command on its interface. Data tied by an invariant shares one owner.
+
+- A module that keeps an invariant over data it doesn't privately own is weak. Not breaking the
+  invariant becomes informal knowledge in every other possible writer.
+- Handing out write access to the data makes the invariant breakable from outside.
+- Merge owners only for an invariant the domain needs. A rule nothing depends on unnecessarily grows
+  its owner.
+- An owner answers questions about its own data.
+- A decision that combines several owners' data gets its own module with no data, under their
+  lowest common ancestor. Inside one of the owners, it would make that owner depend on the others.
+
 ### Names exclude
 
 A module's name is the first part of its interface a reader sees. Readers use it to pick which
@@ -126,6 +144,9 @@ files to open when they look for a decision or a place for new code.
 - A directory's own code, such as its main type or how its children combine, goes in a leaf named
   for that decision. A leaf named like its directory claims everything its siblings hold, so its
   name fails.
+- A module with no data holds free functions that take what they read as parameters. A struct
+  earns its place only when it holds borrows that several of the functions share, or implements a
+  trait.
 
 ### Paths
 
