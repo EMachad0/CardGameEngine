@@ -1,0 +1,54 @@
+name: Bench
+
+# Runs on main record the baseline that each pull request is compared against. Both filters list
+# only the changes that can move a measurement.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - ".github/workflows/bench.yml"
+  pull_request:
+    paths:
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - ".github/workflows/bench.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Authenticates the upload to CodSpeed through OIDC.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+      # The runner's rustup installs the toolchain from rust-toolchain.toml.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: "true"
+      # cargo-codspeed is released in step with the compat crate, so it follows the locked version.
+      - run: |
+          version="$(cargo pkgid codspeed-criterion-compat | sed 's/.*@//')"
+          cargo install --locked cargo-codspeed --version "$version"
+      - run: cargo codspeed build -p rules
+      - uses: CodSpeedHQ/action@v5
+        with:
+          mode: simulation
+          run: cargo codspeed run
