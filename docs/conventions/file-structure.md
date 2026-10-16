@@ -119,8 +119,9 @@ restores isn't an invariant.
 A rule no owner guards has a keeper, the one module whose code keeps it, such as a command that
 makes the rule's writes together or the module that decides when its pass runs. The keeper must be
 the only code that can make the writes the rule is about. Any other code that can make them holds
-"go through the keeper" as informal knowledge, so a keeper is weaker than an owner. Give a rule an
-owner whenever its data can share one.
+"go through the keeper" as informal knowledge, so a keeper is weaker than an owner. For a rule a
+pass restores, the write to restrict is running the pass. Give a rule an owner whenever its data can
+share one.
 
 - Read the rule as implications, if A then B. A write that makes A true without B breaks it, so
   restrict A and leave B open. A rule that also runs the other way restricts both.
@@ -203,9 +204,10 @@ No visibility opens an item to one sibling only. `pub(super)` opens it to the pa
 subtree, and `pub(in path)` accepts only an ancestor. So a keeper that must be the only caller of a
 command picks its tool by where the command lives.
 
+- A command whose only rightful caller shares its file is private.
 - Enforce the rule through nesting when the command has one rightful caller and no reason to live
-  anywhere else. Its module and the keeper's share a parent whose subtree serves only the
-  keeper's decision, and the command is `pub(super)`.
+  anywhere else. Its module and the keeper's share a parent that holds only the keeper and the
+  commands it guards, and the command is `pub(super)`.
 - A token earns its place when the command has to live outside the keeper's subtree. The command
   takes a value with a private field, which only the keeper's subtree can build.
 - A Clippy ban fits when neither the tree nor a signature should carry the rule. An `#[expect]`
