@@ -20,8 +20,9 @@ up.
 - One pi session per course session. Start with `/new`, `/name NN-topic`,
   `/md-log docs/course/architecture/sessions/NN-topic.md` (the file must exist first), then
   "continue the architecture course".
-- Every session opens with a short retrieval quiz on the previous session's nodes, unless he did
-  that session just before.
+- Only the first session of a topic (02, 03, not 02a) opens with a short retrieval quiz. It may ask
+  about any earlier session's nodes, such as 01 to 01e and 02 to 02e for 03. Skip it when he did
+  the previous session just before.
 - Roles. He learns the concepts and makes every decision about the rules. The agent drafts the docs
   and the lint rules, and writes the refactor tickets. He reviews all of it before it's merged.
 - Each node ends with a production exercise: he draws a split on real code with no options offered.
