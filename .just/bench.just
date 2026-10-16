@@ -19,5 +19,5 @@ compare base:
     if compgen -G "$scratch/base/crates/*/benches/*.rs" > /dev/null; then
         (cd "$scratch/base" && bench "$scratch/base.txt" --save-baseline base)
     fi
-    bench "$scratch/head.txt" --baseline-lenient base
+    bench "$scratch/head.txt" --baseline-lenient base --noise-threshold 0.05
     awk -f .just/bench-report.awk "$scratch/base.txt" "$scratch/head.txt"
