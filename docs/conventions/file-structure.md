@@ -32,6 +32,9 @@ decision then forces a change wherever that knowledge is held, to keep the progr
 or an import is one way to hold it. A copied rule, a relied-on meaning and a required call order
 are others, and none of them needs a call.
 
+Coupling costs as much as the decision changes. Knowledge of a decision that never changes costs
+no edits, however many places hold it.
+
 The knowledge is formal or informal:
 
 - Knowledge is formal for a change when that change fails the build at every place that holds it.
@@ -68,11 +71,9 @@ Before drawing a boundary, list the decisions the code makes. Build modules arou
 especially the ones likely to change or hard to get right. Each module hides its decision behind an
 interface that holds still when the decision moves.
 
-- Judge whether a decision is likely to change by reasoning about the domain: what other systems
-  in it already vary, what the roadmap plans, and what comes from outside your control, such as a
-  file format, a provider's API or a regulation. Merge the decisions that change together. Leave
-  stable, easy decisions where they are. A decision that never changes costs no edits, however
-  many places know it.
+- Judge whether a decision is likely to change by reasoning about the domain. Look at what other
+  systems in it already vary, what the roadmap plans, and what comes from outside your control.
+  Merge the decisions that change together. Leave stable, easy decisions where they are.
 - An interface is made of decisions too, the ones its callers know. Hiding one decision exposes
   others, so expose the ones you expect to stay put. No design makes every decision cheap to
   change.
