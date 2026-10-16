@@ -54,8 +54,9 @@ The learner and the course plan, one directory per course, listed in `docs/cours
 game's design lives in the tests, the glossary and the ADRs. Each course directory holds:
 
 - `COURSE.md`: the goal, how sessions work, the knowledge map, the course plan, the open threads,
-  the dependency map and the sessions table. The knowledge map may cite the learner's code as
-  evidence of what he holds and misses.
+  the dependency map and the sessions table. The knowledge map says what the learner holds and
+  misses now, grouped by topic, with the evidence. It may cite his code. A session rewrites the
+  entries it changes in place and adds no section of its own, since its log keeps the story.
 - `verified-facts.md`: facts checked against a source, each with that source.
 - `sessions/`: one log per session, never edited after the session ends.
 - `research/`: researcher reports, kept in full.

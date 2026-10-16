@@ -50,258 +50,149 @@ up.
 
 ## Knowledge map
 
-### Session 02
+### Background
 
-No retrieval quiz (01e closed minutes before). Goals he picked: untangle `Game`, his effect stack
-question, West's view, decisions that need other modules' data. He skipped aggregates and
-`verb.rs`; the aggregate idea came in as node 2. He asked to split session 02 like 01, and to keep
-the refactor in its own session after the teaching.
+- Years of Rails, where the framework's layer-first layout always answered "where does this go". His
+  Game Boy Color emulator has the same god struct (`App`) as `Game` here (00).
+- Pain points he named: what should be its own module, "very small data structs with the full
+  state and every behaviour on a single super struct", and visibility across files, where he
+  promotes a module to a crate or ends with `pub(crate)` everywhere (00).
+- Across strands, recognition is solid and production with no options is the edge. He finds spread
+  knowledge reliably but misses some of its holders (00, 01, 01a, 02).
 
-Probe: right on who can break `order` (all of `game/` through `get_mut`, not today's five
-callers), `&mut self` at a call site (his note: he often rewrites code because he can't read one
-field and write another), private `Player` fields, how much of `draw` goes in `Zones` (judged by
-the data each design forces the owner to hold), layout against write access ("not sure being a
-big state is good or bad"), and a rule restored by a pass (objected: how is the call enforced?).
-"I don't know" on what makes data share an owner ("I think its 4 but I would not have come with it
-on my own"). Missed trigger matching: one owner of objects, zones and binder, the session 00
-belief as "a decision lives with the data it reads". Asked how a reader gets its data, and for
-Matsakis's four workarounds.
+### Coupling and hiding decisions
 
-The researcher found West doesn't advocate the all-public tree: data hiding is "NOT generally
-useful" at application scale, kept for invariants in the small. The plan's summary of her was
-mine and wrong. He wants her case kept: "this is good to not interpret those as truths".
+- Holds dependency as knowledge of a decision, formal or informal, and one place per decision.
+  Recognized a dependency with no call, check then apply as a split by steps, and `Game` as deep
+  outside with no inner boundaries before being taught (01). Authored the locality rule for
+  informal knowledge, correcting a framing of "place" as undefined, and added that an order
+  forced by a data dependency is formal (01d).
+- Derived Parnas unaided: list the decisions, build around the likely to change, and why steps
+  leak ("the step code ceases to exist and only the representation is kept alive"; a check
+  predicts the act, so it copies its rule) (01a). Resolved his boss's "every decision is likely to
+  change" as: an interface is made of decisions too, so something must be bet stable. Judges
+  likelihood by domain reasoning; git history is rarely useful to him.
+- Prefers one command that takes knowledge away from callers over a token that makes an order
+  formal, unprompted (01).
+- Raised "parse, don't validate" himself, with `ObjectId` in hand vs in play (01a).
+- Edge: inventories miss holders and guards. Missed `kill` as a third holder of reaction order,
+  the resolution loop's `!is_pending_interaction()` as what makes "pick only while idle" true,
+  and that `kill` pushes every death rattle before any `Died`, so a per-object helper would
+  reorder simultaneous deaths (01). Missed that a new `CardDef` field is informal for the
+  validator walk (01a).
+- Edge: producing the hiding interface. In the validator exercise he named the card text's shape
+  as the decision but missed the live gap until pointed at it, and his first proposals mirrored
+  the shape (`Binder`-style accessors, a flat `get_effects` losing sequences, storage labels such
+  as aura) or went against his own stability filter (a DI trait for stable rules). His payload
+  idea was sound (01a).
+- Could come back: judging formal vs informal by "could this have a bug" instead of "does the
+  build catch it" (01). Replays: thought they need only a seedable, repeatable generator, not the
+  exact sequence (01).
 
-- Node 1, invariant to owner (Meyer): derived unaided, the interface as the boundary. Quiz right
-  (`mana_mut`), tied to 01b's "can't be copied from outside".
-- Node 2, the invariant draws the boundary: derived that neither owner can keep order of play,
-  that the guarantee is informal in every caller, and "private write to that module". Quiz right,
-  noun and action traps included. Exercise too big (my fault, as in 01c), cut to "never in two
-  places": missed `pick_targets`; designed one location owner for all players with one move
-  command ("board is full" checks go there), so a steal reuses it, holding only the revealed
-  cards of a pending pick. Rule in his words: dropped "need not share" as deciding nothing, wrote
-  the false-invariant sentence, cut "such as a mutable reference" as too Rust.
-- Node 3, reading isn't owning: said a reader inside an owner can't break it "as it only reads".
-  I argued possible writers; he corrected me that `&self` can't write, and I conceded: the reason
-  is dependencies. Proposed the lowest common ancestor of the owners unprompted. Challenged "no
-  data" against a method on `Game`; settled by the parent rule, `&self` hiding what it reads, and
-  the borrow pain. Quiz right. The Rust rule for modules with no data is his call. Exercise
-  (`emit`) moved to 02a.
+### Interfaces, depth and modules
 
-### Session 01e
+- Diagnosed at once that the `game/` files hide nothing from each other, and knew deep modules
+  as an idea, not the book (00). Right on informal contracts in an interface (`health`'s `Some`
+  for characters in play) and on judging conjoined helpers by independence, not length (01b).
+- Holds data as interface, including what it means and parameters (his addition), and depth as
+  what callers no longer know: found the `entered_board` trade himself, callers swap a policy for
+  a fact they already know (01b). Before D1 he weighed an interface by its methods and called
+  `ObjectBag` deep despite `get_mut`.
+- Holds the module definition as one decision behind an enforced boundary; "cannot be copied from
+  outside" is his addition (01b). Rejected a definition that depends on the reader's capacity.
+  Holds that a rule over public data can be copied, so `loader` wasn't a module, and that files of
+  only public types hide nothing (01d). Noted that `object.rs` holds two decisions and hides one.
+- File or module: mana pays, outcome doesn't (one writer, `set`/`get` mirror the field); the
+  effect stack qualifies only if its order goes inside (01b).
+- Edge: draws the boundary around an entity or noun rather than a decision. His "Objects" module
+  bundled triggers, modifiers and health and needed most of `Game`'s data, which he noticed
+  (01b); he split `derived` by noun into Mana, Stats, Auras and Modifiers where the change test
+  gives two (01c). The 02 location owner was drawn by an invariant, so this may be fading.
+- Could come back: claimed files can hide data (01b), and misread `Game::health` as the `match`
+  on card kind, which lives in `Binder::health` (01).
 
-No retrieval quiz (his call). The refactor was planned in-session, then he moved it to tickets for
-AFK agents. Seven tickets in `docs/issues/one-place-per-decision/`, merged as #10, #14, #15, #23,
-#24, #26, #27 and #28. His review: the intentions matched the code. Where he disagreed with an
-agent, the conventions were silent, as with local variable names and the module layout. He accepted
-the agents' glossary terms Set, Printed and Graveyard.
+### Ownership and invariants
 
-- Module layout: he raised it himself ("rules about how to use rust modules are not clear
-  enough"), preferring `foo/mod.rs` with code in named files, and asked whether `foo/mod.rs` with
-  `foo/foo.rs` works ("a bit confusing to me"). Researched. His rule: "by keeping definitions only
-  on leafs we make so modules are always capable of hiding their decisions", which ties the file
-  layout to the module definition from 01b. Picked a leaf named for the directory's own decision
-  over `foo/foo.rs`, and enforcement now: Rust 1.99, `definition_in_module_root`, `game/mod.rs`
-  exempt through `expect`.
-- Paths: he set the goal "never two ways to reach the same definition", then caught that lib.rs's
-  public re-exports are a second path inside the crate. He proposed the public API as one module
-  banned from internal use, and asked for a critical review because it goes against a convention
-  ("but I like it"). The review called it a weak convention. Adopted as `prelude.rs` with named
-  imports only, no root re-exports, imports from the defining module spelled from `crate::` (my
-  addition, accepted), and a text check in `check::all`.
+- Probe right (02): all of `game/` can break `order` through `get_mut`, not just today's callers;
+  `&mut self` at a call site; private `Player` fields; how much of `draw` goes in `Zones`, judged
+  by the data each design forces the owner to hold. Unsure whether "being a big state is good or
+  bad". Asked how a pass's call is enforced, how a reader gets its data, and for Matsakis's four
+  workarounds. Often rewrites code because he can't read one field while writing another.
+- Node 1, invariant to owner (Meyer): derived unaided, the interface as the boundary; quiz right
+  (`mana_mut`), tied to "can't be copied from outside" (02).
+- Node 2, the invariant draws the boundary (aggregates): derived that neither owner can keep order
+  of play, that the guarantee is then informal in every caller, and "private write to that
+  module". Quiz right, noun and action traps included. In the exercise he designed the location
+  owner but missed `pick_targets`. Probe before it: "I don't know" on what makes data share an
+  owner ("I think its 4 but I would not have come with it on my own") (02).
+- Node 3, reading isn't owning: right that `&self` can't write; proposed the lowest common
+  ancestor unprompted; challenged "no data" against a method on `Game`, settled by the parent
+  rule, `&self` hiding what it reads, and borrow pain. Quiz right (02).
+- Edge: the reader-owns habit, "a decision lives with the data it reads". It made him put trigger
+  matching in one owner of objects, zones and binder (02 probe), and say a reader inside an owner
+  can't break it "as it only reads" (node 3). It traces to his 00 belief that a module must own
+  every behavior that touches its data. Fixed in quizzes, not yet in production: the `emit`
+  exercise is still owed.
+- 00 beliefs, probably resolved: a method on `Player` makes it "an object rather than data", and
+  fear of delegation boilerplate on `Game`.
 
-### Session 01d
+### Names
 
-No retrieval quiz (his call). The audit ran in two rounds of two agents, with reports in
-`research/01d-audit/`. Round 1 had no roadmap. Round 2 added the card-game course plan and open
-threads as one, his idea, to compare and to prepare later audits. Every report took `game` as one
-module and led with it holding about fifteen independent decisions.
+- Holds names as exclusion: a name passes when a reader can tell from it alone whether a function
+  belongs (01c). Quiz right (`turn` and `rules` fail), checking real functions himself. Added that
+  "no name passes" can also mean one decision with no term yet. Raised himself that every parent
+  fails the name test and the one-decision clause.
+- Right on `verb` and `derived` failing, with `history_from_event` as a counterexample (01c).
+- Edge: judging names by a proxy. First by a rule in his head, applied "but I am not sure why or
+  where it came from" (00, 01); then by word category, picking `state_check.rs` as excluding least
+  "because it is a step while the others are concepts" (01c); then by size and "unrelated", which
+  passed `resolve` and `filter` and missed `scan_characters_with_filter` and `emit` (01c). Not
+  tested since.
 
-- I framed the first doc gap as "place" being undefined. He corrected it: a place is code you have
-  to edit, as the doc says. The real gap was two sentences on cheap informal knowledge that
-  disagreed for copies inside `game`. He drafted three versions, rejected his own second ("what I
-  said is not true"), and landed on locality: informal knowledge is acceptable where its places
-  sit close together, so changes stay cheap; a module keeps its decision local by definition;
-  informal knowledge is inevitable, as statement order shows. Added: an order forced by a data
-  dependency is formal.
-- Asked whether a module holding more than one decision should change the text. Resolved as
-  "decisions that change together count as one", which matches the names section.
-- Rejected doc additions that fix no shown gap, asking "why do we need this change?" (`impl`
-  files, tuple matches; I conceded both), and text owned elsewhere: "private", the glossary's
-  scope, a misplaced-function rule, and the roadmap's location (a course plan is not a roadmap).
-  On `loader` his reading held: a rule over public data can be copied, so it isn't a module.
-  Added: files of only public types hide nothing; the project section points to `testing.md`.
-- Audit 4 passed the five `update_order` calls as local. His answer: prefer formal over informal,
-  which the doc already says.
-- The Mourner bug was found by 2 of 4 auditors, the interaction state's `unreachable!` sites by
-  none. He's fine with misses: changes made in steps surface other issues.
+### Rust modules and visibility
 
-### Session 01c
+- Visibility syntax is solid: `pub(super)` reaches the parent's whole subtree, and the facade
+  setup (private `mod`, `pub(crate) use`, `pub(super)` helpers). His gap is "general concepts from
+  the literature", not syntax (00). Holds the privacy direction: only a child's type hides fields
+  from the parent (01b).
+- Authored leaf definitions, tying layout to the module definition: "by keeping definitions only
+  on leafs we make so modules are always capable of hiding their decisions" (01e). Set the goal of
+  one path per definition and caught `lib.rs`'s re-exports as a second path; proposed the public
+  API as one module banned from internal use (01e).
 
-No retrieval quiz (01b ended minutes before, his call). Probe on names: picked `state_check.rs` as
-the name that excludes least, "because it is a step while the others are concepts", and passed
-`player.rs`. With 01b's flags on `actions` and `resolve`, the edge: he sorted names by word
-category (operation and step words bad, domain nouns good), not by what they exclude.
+### Other architecture topics, probed only
 
-- D5 derivation: said a name tells "decisions for this subject live here"; his test, "does the
-  name reflect the decision it holds", sharpened into exclusion (inclusion tells A where to look,
-  exclusion when to stop). Quiz right (`turn` and `rules` fail), checking real functions himself.
-  Said "no name passes" means independent decisions; added: or one decision with no term yet,
-  told apart by the change test. Rule in his words; he removed the examples, asked for "existing
-  or new" over "codebase", and pointed the project line at `docs/agents/domain.md`.
-- Raised two doc gaps himself: every parent fails the name test (resolved: judge a name against
-  its siblings), and every parent fails the one-decision clause (resolved: a child module counts
-  as one item, a parent is judged by its own code). Both committed.
-- #13 names exercise (too big, my fault; he did part): `verb` and `derived` right, with
-  `history_from_event` as a counterexample to `derived`. Split `derived` by noun into Mana,
-  Stats, Auras and Modifiers; the change test gives two parts. Judged `resolve` and `filter` by
-  size and "unrelated"; both pass, and the misplaced functions are `scan_characters_with_filter`
-  and `emit`. The entity habit from D4 persists, now as splitting by noun.
-- `verb.rs` exercise, no options: a zones module owning zones, stamps and in-zone order behind
-  `deck_to_hand`-style moves (sound), a damage module (sound, fatigue joins it), and an
-  intermediate coordinator for move consequences. I dismissed the coordinator; he pushed back
-  that nesting is allowed, and I conceded: nesting the zones module inside it enforces that only
-  it moves cards. Emitting needs most of `Game`, the open problem.
-- Verdicts: #13 close ("a middle step" to an undesired pattern, with duplicate names like
-  `action.rs` and `game/actions.rs`); #15 merge after a light rework (one exhaustive kind-flag
-  match, his agreement), commented on the PR. Named the definitions table: Binder, in the glossary.
+- DDD: "I don't know" on aggregates (object graph and use case both "could make sense"), now taught
+  as node 2. Recognized the bounded context but couldn't produce it. Anti-corruption layer was new
+  as a term (00).
+- Ports and adapters right, with the reason (dependencies point inward). Errors in the port's
+  terms right; raised the coupling between core variants and `sqlx` errors. Contract tests right
+  by reasoning, never heard of them (00).
+- Wrapping libraries: owned copies absorb syntax changes, not model changes (00).
+- Feature-first right on a facade between features. ECS right on declared access, grouping by
+  access pattern ("what changes together stays together") and a single writer (00).
+- Tests: setup pain is design feedback, pointing to a narrower signature (00).
+- Asked what data-oriented and data-driven design say, and whether Parnas still holds (01a).
 
-### Session 01b
+### How he learns
 
-No retrieval quiz (01a ended minutes before). Probe: right on informal contracts in an interface
-(`health`'s `Some` for characters in play), on conjoined helpers (judged by independence, not
-length), and on privacy direction (only a type declared in a child hides its fields from the
-parent). The edge: he weighed an interface by its methods and contracts, not the data they hand
-out. Called `ObjectBag` deep despite `get_mut`, and left the meaning of `damage` out of the
-interface. On names he also flagged `actions.rs` and `resolve.rs` as vague; resolved as a
-refinement: a name is judged against the glossary, where both are narrow terms.
-
-Goals he picked: when a file becomes its own module, the doc's definition of module, the #13 and
-#15 reviews. He said he already holds split cost and interface measuring; I kept the second as a
-node because the probe missed it.
-
-- D1, data is interface: objected "why not say `Object` has its own interface, the `pub` fields?";
-  resolved as `Object`'s depth being zero and the returned type's interface being part of the
-  method's. Added unprompted that parameters count too. Quiz right (`Binder` after #15).
-- D2, depth: asked whether `entered_board` only renames `update_order`, then found the trade
-  himself: callers swap a policy for a fact they already know. Asked whether that reduces
-  complexity or increases depth (both). Quiz right.
-- D3, what a module is: derived that the privacy reading makes the `Location` edit look cheap,
-  against degree and locality. Claimed files can hide (they can't hide data in the parent), and
-  marked `game` as "all holders seen"; corrected by his own part 1. Rejected a definition that
-  depends on the reader's capacity ("agents can also read code"); resolved as one decision per
-  boundary. His rule, with "cannot be copied from outside" his own addition. Quiz right; noted
-  `object.rs` holds two decisions and hides one.
-- D4, file or module: mana pays, outcome doesn't (one writer, `set`/`get` mirror the field). His
-  first rule ("complexity outside decreases enough") was by feel; sharpened together, and he
-  questioned "narrower than its data" (counting items, not knowledge; conceded), "only one
-  place", "field and a file", and used "module" for the defined term. Quiz right, noting the
-  stack qualifies only if the order goes inside.
-- D4 exercise, no options: game creation as a builder (sound; check the roadmap for N players);
-  "Objects" as a module for triggers, modifiers and health (right decision, entity boundary: it
-  bundles three decisions and needs most of `Game`'s data, which he noticed); zones owning the
-  order of board entry (sound, a refactor candidate). Pattern: finds spread knowledge reliably,
-  draws the boundary around an entity rather than a decision.
-
-### Session 01a
-
-Retrieval on session 01, 3 of 3: a unit assumed across crates is informal and must become formal;
-Undying gets one `is_dead` question, not a constant or a floored `health`; one `transfer` command
-beats a token that makes the order formal.
-
-Taught node H (Parnas) by derivation. He derived "list the decisions, build around the likely to
-change" unaided, and why steps leak: "the step code ceases to exist and only the representation is
-kept alive", plus that a check predicts the act, so it copies the act's rule. He pushed back with
-his boss's "every decision is likely to change"; resolved as: an interface is made of decisions
-too, so something must be bet stable. Quizzes right: billing filter, reconciliation split.
-
-- Validator exercise, no options, about 10 minutes for the follow-up (first part untimed): named
-  the card text's shape as the decision, with formal and informal per change (rename vs new
-  field). Missed the live gap until pointed at it. First proposals hid the wrong thing:
-  `Binder`-style accessors mirror the shape, a DI trait for rules he had rated stable went against
-  his own filter, a flat `get_effects` lost sequences, and storage labels (aura) leaked the shape
-  back. His payload idea was sound; I had misread it and conceded.
-- His rule: "Build modules around decisions, especially the ones likely to change or hard to get
-  right", with steps as the coordinator's job. Committed with bullets from the session.
-- Audit, two rounds of two agents, reports in `research/01a-hiding-and-depth/`. His doc calls:
-  define a decision on its own, not by change; git history is rarely useful, domain reasoning
-  comes first; no ranking rule; no load-time validation clause.
-- PR review: #10 rework (spotted that the IDs and the table change together, wants one loading
-  module); #14 light rework. Missed that a new `CardDef` field is informal for the walk. Mixed up
-  #10 with #13's new `game/` files.
-- Asked what DOD and data-driven design say, and whether Parnas is still relevant (researched:
-  extended and qualified, never superseded). Raised "parse, don't validate" himself, including
-  `ObjectId` in hand vs in play.
-
-### Session 01
-
-Probe, all right on real code: a dependency with no call (the in-play rule, the meaning of
-`order`), check then apply as a split by steps, `Game` deep outside with no inner boundaries, and
-`queries.rs` as a vague name. His note on the naming question: he applied the rule from session
-00 "but I am not sure why or where it came from". So recognition holds on these strands, and the
-edge is deriving the rules and producing with them.
-
-Taught: the definition of a dependency (Page-Jones), the compiler checks only types and
-signatures, every dependency is knowledge of a decision in formal or informal form, one place
-knows each decision. Both rules are in `file-structure.md`, in his words, edited.
-
-- Replays: he said they depend on the generator being seedable and repeatable. Corrected: they
-  depend on the exact sequence, so a swap to another repeatable generator breaks them too.
-- `Location` card kind: he thought `Game::health` uses a `match`. It's `Binder::health` that does;
-  the in-play test uses `is_hero` and `is_minion` booleans.
-- Decision inventory, no options, 22 minutes: three decisions, all about ordering or state.
-  Reactions resolve above the card's own effects; a pick happens only while idle; an `ObjectId`
-  always resolves. Missed `kill` as a third holder of the first, and the resolution loop's
-  `!is_pending_interaction()` as what makes the second true. Judged formal versus informal by
-  "could `insert` have a bug", not by "does the compiler check it".
-- One place exercise, 15 minutes: chose a command over a query, and unprompted set one command
-  that pushes and emits against a token that makes the order formal, noting that the token leaves
-  the knowledge in every caller. Missed that `kill` pushes every death rattle before any `Died`,
-  so a per-object helper would change the order of simultaneous deaths.
-- His rule edits: tests also find informal breakage; informal knowledge is cheap inside a module;
-  no example where it isn't practical; "still knows the decision".
-
-### Session 00 probe
-
-Background: deep Rails, so "where does this go" was always answered by the framework's layer-first
-layout. His Game Boy Color emulator has the same god struct (`App`) as `Game` here.
-
-Pain points he picked: splitting a growing module, code two features share, layer-first vs
-feature-first, naming. In his own words: what should be its own module; splitting data from
-behavior without OOP leaves "very small data structs with the full state and every behaviour on a
-single super struct"; visibility once a module spans several files, where he either promotes it to
-a crate to see the boundary or ends with `pub(crate)` everywhere.
-
-Probe results:
-- Rust visibility: solid. `pub(super)` reaches the parent's whole subtree, and he picked the facade
-  setup (private `mod`, `pub(crate) use` re-export, `pub(super)` helpers). His note: the gap is
-  "general concepts from the literature", not syntax.
-- Information hiding: diagnosed the `game/` split at once (every file reads `Game`'s fields, so the
-  files hide nothing from each other). Deep modules: right, had heard the idea, not the book.
-- DDD: "I don't know" on aggregates (his note: object graph and use case both "could make sense").
-  Recognized the bounded context but picked "I don't know" because he "could not come with a
-  similar answer on my own". Anti-corruption layer was new as a term.
-- Ports and adapters: right, with the reason ("deps point inwards and the core does not depend on
-  stack code"). Errors in the port's terms: right. His note raised the coupling between core
-  variants and `sqlx` errors; answered as one-way semantic coupling that the core's needs drive.
-  Contract tests: right by reasoning, never heard of them.
-- Wrapping libraries: my first question was ambiguous (re-exported vs owned mirror structs) and was
-  regraded. The clear version was right: owned copies absorb syntax changes, not model changes.
-- Feature-first: right on a facade between features. ECS: right on declared access, grouping by
-  access pattern (his note: "what changes together stays together") and a single writer. He
-  pushed back, correctly, that my first ECS question tested the mechanism, not how to organize
-  components and systems.
-- Naming: placed `can_attack` in `lookup.rs` by a rule from the contents ("lookup is derived
-  information of the objects"). Regraded: his rule is good, but it lives in his head, not in the
-  names, and `fulfill_character_filter` (also derived from objects) sits in `condition.rs`.
-- Tests and structure: right that setup pain is design feedback (a narrower signature).
-
-The edge is production, not recognition. Asked to break up `Game` with no options (10 minutes):
-`Rng` apart (not card-game specific), `Binder` apart (immutable), and he rejected a `GlobalState`
-of `TurnOrder` and `Outcome` because it doesn't deepen anything. All three are sound. He stalled on
-a resolution module: owning `effect_stack` and `resolving_effect` seemed to require access to
-`binder`, `objects`, `outcome` and `players`, so the interface looked huge. Two beliefs block him:
-a module must own every behavior that touches its data, and a method on a small struct such as
-`Player` makes it "an object rather than data". He also feared delegation boilerplate on `Game`.
+- Derives well from open questions and says "I don't know" when he couldn't have produced an
+  answer alone, even if he'd recognize it (00, 02). Treat a right quiz as recognition only.
+- Pushes back with concrete counterexamples, and is often right: nesting the zones module inside
+  the coordinator (01c), `&self` can't write (02), `impl` files and tuple matches as doc additions
+  fixing no shown gap (01d). Misreading his idea is a real risk (his payload idea, 01a).
+- Phrasings that failed: an ambiguous wrapping question, an ECS question testing the mechanism
+  instead of organization (00), "narrower than its data", which counted items, not knowledge
+  (01b), and "place" framed as undefined (01d).
+- Rule drafting: first drafts come by feel and sharpen in discussion (01b); he rewrites and
+  rejects his own drafts (01d). Cuts wording that decides nothing, examples, and Rust terms from
+  the General section (01c, 02). Rejects doc text that fixes no shown gap or is owned elsewhere.
+- Wants research on convention questions, critical review of his own proposals even when he likes
+  them (01e), and sources not taken as truths (West, 02).
+- Timings: a decision inventory took 22 minutes, a one-place exercise 15, the validator follow-up
+  about 10, and breaking up `Game` stalled at 10 (00, 01, 01a).
+- In review he spots data that changes together (IDs and the table in #10, 01a) but can mix up
+  which PR added which files.
 
 ## Course plan
 

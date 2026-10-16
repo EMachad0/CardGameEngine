@@ -143,6 +143,14 @@ If you catch yourself asserting a fact he'd have to take on faith — foundation
 - Argue specifics with him, and concede when he's right.
 - For a comparison across engines, run one `researcher` per engine.
 
+## Keeping the context small
+
+Everything you read stays in the context for the rest of the session, and the longer the context, the worse you recall what's in it. Read what the next step needs, when it needs it. Still read in full the docs `AGENTS.md` requires.
+
+- Learn the code through an `Explore` subagent. Give it the session's topic and what you need to know, and ask for a brief with paths and line numbers. Read code yourself only when a node or an exercise works on it, and only the part it needs.
+- Search the course's `verified-facts.md` and `docs/CONTEXT.md` for the fact or term at hand instead of reading them whole.
+- Open research reports and past session logs only for a question `COURSE.md` doesn't answer, and read only the matching part.
+
 ## Recording what a session settles
 
 `docs/conventions/skills-and-docs.md` says where each finding goes. Two kinds are written the moment they settle, not at the end:
@@ -152,7 +160,7 @@ If you catch yourself asserting a fact he'd have to take on faith — foundation
 
 `docs/course/README.md` says which course a session belongs to. Paths below are relative to that course's directory.
 
-Before asking the `researcher` to check a fact, look in the course's `verified-facts.md`. Add each fact it confirms there, with its source.
+Before asking the `researcher` to check a fact, search the course's `verified-facts.md`. Add each fact it confirms there, with its source.
 
 ## Ending a session
 
