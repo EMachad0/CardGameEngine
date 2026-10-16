@@ -17,7 +17,7 @@ docker_compare base:
         -t "$image" -f .just/bench.Dockerfile .just > /dev/null
     git_common_dir="$(cd "$(git rev-parse --git-common-dir)" && pwd)"
     docker run --rm --platform linux/amd64 --security-opt seccomp=unconfined \
-        -v "$PWD:$PWD" -v "$git_common_dir:$git_common_dir" -w "$PWD" \
+        -v "$PWD:$PWD:ro" -v "$git_common_dir:$git_common_dir:ro" -w "$PWD" \
         -v card-game-bench-target:/bench/target -e CARGO_TARGET_DIR=/bench/target \
         -v card-game-bench-registry:/root/.cargo/registry \
         "$image" bash .just/bench-compare.sh "{{base}}"

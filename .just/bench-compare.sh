@@ -6,15 +6,11 @@ set -euo pipefail
 base_ref="$1"
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$PWD/target}"
 scratch="$CARGO_TARGET_DIR/bench-compare"
-cleanup() {
-    git worktree remove --force "$scratch/base" 2> /dev/null || true
-    rm -rf "$scratch"
-    git worktree prune
-}
-cleanup
-trap cleanup EXIT
-mkdir -p "$scratch"
-git worktree add --quiet --detach "$scratch/base" "$base_ref"
+rm -rf "$scratch"
+trap 'rm -rf "$scratch"' EXIT
+mkdir -p "$scratch/base"
+# An export, not a worktree, so the run leaves the repository's git state alone.
+git archive "$base_ref" | tar -x -C "$scratch/base"
 export GUNGRAUN_HOME="$scratch/gungraun"
 
 has_counts() {
