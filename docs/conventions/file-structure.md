@@ -197,6 +197,20 @@ own.
   match.
 - A clippy `disallowed_methods` or `disallowed_types` ban, for "only this place may call that".
 
+### Restricting callers
+
+No visibility opens an item to one sibling only. `pub(super)` opens it to the parent's whole
+subtree, and `pub(in path)` accepts only an ancestor. So a keeper that must be the only caller of a
+command picks its tool by where the command lives.
+
+- Enforce the rule through nesting when the command has one rightful caller and no reason to live
+  anywhere else. Its module and the keeper's share a parent whose subtree serves only the
+  keeper's decision, and the command is `pub(super)`.
+- A token earns its place when the command has to live outside the keeper's subtree. The command
+  takes a value with a private field, which only the keeper's subtree can build.
+- A Clippy ban fits when neither the tree nor a signature should carry the rule. An `#[expect]`
+  marks each rightful call.
+
 ## This project
 
 - `docs/agents/domain.md` says where the glossary lives and how to use and extend it.
