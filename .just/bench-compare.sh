@@ -9,6 +9,7 @@ scratch="$CARGO_TARGET_DIR/bench-compare"
 cleanup() {
     git worktree remove --force "$scratch/base" 2> /dev/null || true
     rm -rf "$scratch"
+    git worktree prune
 }
 cleanup
 trap cleanup EXIT
@@ -21,14 +22,28 @@ has_counts() {
         | jq -e '[.packages[].targets[] | select(.name | endswith("_counts"))] | length > 0' \
             > /dev/null
 }
+gungraun_version() {
+    cargo pkgid gungraun 2> /dev/null | sed 's/.*@//'
+}
 counts() {
     cargo bench --workspace --bench '*_counts' -- --output-format=json > "$1"
 }
 
+# gungraun-runner has to match the gungraun library, and it is installed for the head's.
+head_version="$(gungraun_version)"
+base_version="$(cd "$scratch/base" && gungraun_version)"
+note=""
 : > "$scratch/base.json"
-if (cd "$scratch/base" && has_counts); then
-    (cd "$scratch/base" && counts "$scratch/base.json")
+if [ -n "$base_version" ] && (cd "$scratch/base" && has_counts); then
+    if [ "$base_version" = "$head_version" ]; then
+        (cd "$scratch/base" && counts "$scratch/base.json")
+    else
+        note="The base uses gungraun $base_version and the head $head_version, so the base isn't counted."
+    fi
 fi
 counts "$scratch/head.json"
+if [ -n "$note" ]; then
+    printf '%s\n\n' "$note"
+fi
 jq -n -r --slurpfile base "$scratch/base.json" --slurpfile head "$scratch/head.json" \
     -f .just/bench-report.jq

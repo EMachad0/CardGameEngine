@@ -52,5 +52,5 @@ else
                     elif .status == "improved" then " 🟢" else "" end) end)
             + " | \(if .cycles then (.cycles | percent) else "" end) |"),
     "",
-    "_Base and Head are instruction counts from one run under Callgrind. The same code gives the same counts, so a change comes from the code. Marked at ±\(threshold)% of instructions._"
+    "_Base and Head are instruction counts from one run under Callgrind. Marked at ±\(threshold)%._"
 end

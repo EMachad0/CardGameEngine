@@ -1,4 +1,4 @@
-//! Fixtures shared by the `game` and `game_counts` benches, so both measure the same games.
+//! Decks and seeded game states to measure.
 
 use std::ops::Range;
 
@@ -12,7 +12,7 @@ const MAX_STEPS: usize = 5_000;
 pub(crate) const STAGE_SEED: u64 = 0;
 pub(crate) const PLAYOUT_SEEDS: Range<u64> = 0..10;
 
-pub(crate) type Deck = fn() -> Vec<DefId>;
+pub(crate) type DeckFn = fn() -> Vec<DefId>;
 
 pub(crate) fn sample_deck() -> Vec<DefId> {
     vec![
@@ -28,14 +28,14 @@ pub(crate) fn drafting_deck() -> Vec<DefId> {
     deck
 }
 
-pub(crate) fn new_game(deck: Deck, seed: u64) -> Game {
+pub(crate) fn new_game(deck: DeckFn, seed: u64) -> Game {
     Game::new(seed, [deck(), deck()])
 }
 
 /// Plays `seed`'s game with `deck` for both players to the end, picking uniformly
 /// among both players' listed actions, and calls `visit` on every state that still
 /// has a decision.
-fn play_out(deck: Deck, seed: u64, mut visit: impl FnMut(&Game)) -> Game {
+fn play_out(deck: DeckFn, seed: u64, mut visit: impl FnMut(&Game)) -> Game {
     let mut game = new_game(deck, seed);
     let mut picker = Rng::new(seed);
     for _ in 0..MAX_STEPS {
@@ -56,7 +56,7 @@ fn play_out(deck: Deck, seed: u64, mut visit: impl FnMut(&Game)) -> Game {
 }
 
 /// `play_out` without a visitor.
-pub(crate) fn play_to_end(deck: Deck, seed: u64) -> Game {
+pub(crate) fn play_to_end(deck: DeckFn, seed: u64) -> Game {
     play_out(deck, seed, |_| {})
 }
 

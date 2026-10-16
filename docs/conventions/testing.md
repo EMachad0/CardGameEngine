@@ -123,14 +123,15 @@ linted. An editor that runs clippy without the flag hides every test lint.
 Benchmarks live in `crates/<crate>/benches/`. Like crate tests, they use only the crate's public
 interface. They can't import `tests/`, so the benches of a crate share their fixtures through
 `benches/support.rs`, which each bench declares with `mod support;`. The crate sets
-`autobenches = false` and lists each bench, so `support.rs` is not a bench of its own.
+`autobenches = false` and lists each bench, so `support.rs` is not a bench of its own. Every bench
+uses every fixture, or the other bench flags it as dead code.
 
 Each measurement comes in two harnesses, under the same names:
 
 - `benches/game.rs` uses criterion and measures wall-clock time. Shared CI runners swing it by
   10% and more, so it runs locally only.
 - `benches/game_counts.rs` uses gungraun and counts instructions under Valgrind's Callgrind, in
-  one run. Counts repeat exactly on any machine of one architecture, so CI compares them.
+  one run. The counts repeated exactly across CI's runners, so CI compares them.
 
 A bench may pin a seed, because it measures and asserts nothing. A rules change that shifts the
 RNG stream also changes the pinned game, so numbers from before and after such a change don't
@@ -138,8 +139,8 @@ compare directly.
 
 `cargo bench -p rules --bench game` runs the criterion benches and reports the change since the
 last run. `-- clone` after it runs the benches whose name contains `clone`, and `-- --test` runs
-each one once as a smoke test. The checks don't run benches, but clippy with `--all-targets` lints
-them.
+each one once as a smoke test. A plain `cargo bench` also runs `game_counts`, which fails without
+gungraun-runner. The checks don't run benches, but clippy with `--all-targets` lints them.
 
 Callgrind counts only inside the benchmark function, which runs once, so a gungraun bench needs
 two things that criterion doesn't:
@@ -151,17 +152,18 @@ two things that criterion doesn't:
   helper from `support.rs` instead.
 
 `just bench::compare <ref>` counts `<ref>` and the working tree and prints a markdown table of
-both. It needs Linux with Valgrind, gungraun-runner and jq. `just bench::docker_compare <ref>`
-runs it in a Linux x86_64 container, the platform CI counts on. The first run builds the image,
-which takes minutes under emulation on an Apple-silicon Mac, and emulation now and then crashes the
-linker, which a rerun fixes. Valgrind on arm64 misses part of a count, so don't count natively
-there. Counts from the container are close to CI's but not equal,
-since its glibc and Valgrind differ, so compare them only with each other. Under emulation the same
-code can also move by up to 0.01% in instructions and 0.4% in estimated cycles, where CI repeats
-exactly.
+both. It needs Linux with Valgrind, gungraun-runner and jq. When the two sides lock different
+gungraun versions, it counts only the working tree, since gungraun-runner must match the library.
 
-CI runs `just bench::compare` on every pull request against the base branch and posts the table
-as a PR comment, updated on each push. A regression doesn't fail CI.
+`just bench::docker_compare <ref>` runs `compare` in a Linux x86_64 container. Valgrind on arm64
+misses part of a count, so an Apple-silicon Mac counts under emulation. The first run builds the
+image, which takes minutes. Under QEMU, the emulator Colima uses by default, a build now and then
+crashes the linker or deadlocks cargo, and a rerun is the only fix. The container's glibc and
+Valgrind differ from CI's, and under emulation two builds of the same code can differ slightly, so
+compare container counts only with each other.
+
+CI runs `just bench::compare` on every pull request that touches the code, against the base
+branch, and posts the table as a PR comment, updated on each push. A regression doesn't fail CI.
 
 ## References
 

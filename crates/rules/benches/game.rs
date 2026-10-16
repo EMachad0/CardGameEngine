@@ -6,14 +6,16 @@ use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use support::{
-    Deck, PLAYOUT_SEEDS, STAGE_SEED, decider, drafting_deck, drafting_stages, new_game,
+    DeckFn, PLAYOUT_SEEDS, STAGE_SEED, decider, drafting_deck, drafting_stages, new_game,
     play_to_end, sample_deck, stages,
 };
 
 fn bench_new(c: &mut Criterion) {
-    c.bench_function("new", |b| {
+    let mut group = c.benchmark_group("new");
+    group.bench_function("sample", |b| {
         b.iter(|| new_game(sample_deck, black_box(STAGE_SEED)))
     });
+    group.finish();
 }
 
 fn bench_clone(c: &mut Criterion) {
@@ -60,13 +62,14 @@ fn bench_legal_actions_drafting(c: &mut Criterion) {
 }
 
 fn bench_playout(c: &mut Criterion) {
-    let seeds = PLAYOUT_SEEDS;
     let mut group = c.benchmark_group("playout");
-    for (prefix, deck) in [("", sample_deck as Deck), ("drafting_", drafting_deck)] {
-        let id = format!("{prefix}seeds_{}_to_{}", seeds.start, seeds.end - 1);
+    for (id, deck) in [
+        ("sample", sample_deck as DeckFn),
+        ("drafting", drafting_deck),
+    ] {
         group.bench_function(id, |b| {
             b.iter(|| {
-                for seed in seeds.clone() {
+                for seed in PLAYOUT_SEEDS {
                     black_box(play_to_end(deck, black_box(seed)));
                 }
             })

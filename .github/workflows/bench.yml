@@ -2,6 +2,14 @@ name: Bench
 
 on:
   pull_request:
+    # Only changes that can move a count.
+    paths:
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - ".just/bench*"
+      - ".github/workflows/bench.yml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -35,7 +43,7 @@ jobs:
       - run: |
           just bench::compare HEAD^1 > report.md
           cat report.md
-      # A fork PR's token can't write comments, so its report stays in the log above.
+      # A fork PR's token can't write comments.
       - if: github.event.pull_request.head.repo.full_name == github.repository
         env:
           GH_TOKEN: ${{ github.token }}
