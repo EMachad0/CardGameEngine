@@ -156,7 +156,9 @@ runs it in a Linux x86_64 container, the platform CI counts on. The first run bu
 which takes minutes under emulation on an Apple-silicon Mac, and emulation now and then crashes the
 linker, which a rerun fixes. Valgrind on arm64 misses part of a count, so don't count natively
 there. Counts from the container are close to CI's but not equal,
-since its glibc and Valgrind differ, so compare them only with each other.
+since its glibc and Valgrind differ, so compare them only with each other. Under emulation the same
+code can also move by up to 0.01% in instructions and 0.4% in estimated cycles, where CI repeats
+exactly.
 
 CI runs `just bench::compare` on every pull request against the base branch and posts the table
 as a PR comment, updated on each push. A regression doesn't fail CI.

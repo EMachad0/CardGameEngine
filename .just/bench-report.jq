@@ -52,5 +52,5 @@ else
                     elif .status == "improved" then " 🟢" else "" end) end)
             + " | \(if .cycles then (.cycles | percent) else "" end) |"),
     "",
-    "_Base and Head are instruction counts from one run under Callgrind, which repeat exactly for one build. Building base and head in different directories moves them by up to 0.01%, and estimated cycles by up to 0.4%. Marked at ±\(threshold)% of instructions._"
+    "_Base and Head are instruction counts from one run under Callgrind. The same code gives the same counts, so a change comes from the code. Marked at ±\(threshold)% of instructions._"
 end
