@@ -75,6 +75,10 @@ up.
   likelihood by domain reasoning; git history is rarely useful to him.
 - Prefers one command that takes knowledge away from callers over a token that makes an order
   formal, unprompted (01).
+- Authored "dependency cost depends on stability" after reading the 02 owners rule as a fixed
+  cost. The doc already held it in the boundary section, so it moved to the coupling section in
+  his words (02a). Applied the stability test to his own design once asked for a forecast:
+  queries that vary per card overturned his narrow history entry (02a).
 - Raised "parse, don't validate" himself, with `ObjectId` in hand vs in play (01a).
 - Edge: inventories miss holders and guards. Missed `kill` as a third holder of reaction order,
   the resolution loop's `!is_pending_interaction()` as what makes "pick only while idle" true,
@@ -132,8 +136,25 @@ up.
 - Edge: the reader-owns habit, "a decision lives with the data it reads". It made him put trigger
   matching in one owner of objects, zones and binder (02 probe), and say a reader inside an owner
   can't break it "as it only reads" (node 3). It traces to his 00 belief that a module must own
-  every behavior that touches its data. Fixed in quizzes, not yet in production: the `emit`
-  exercise is still owed.
+  every behavior that touches its data. Fixed in quizzes (02a retrieval included) and in
+  production: in the `emit` exercise counting went into the history owner as a question about
+  its own data (02a). Probably resolved.
+- `emit` exercise (02a): found unprompted a second invariant, every reported event has an entry,
+  kept by `emit` as the one command that reports. Missed the effect stack in `emit`'s writes ("I
+  thought emit would return the PendingEffects"). Proposed a `Binder` clone inside `History`
+  ("cheap to clone"), the card-game mirror habit in a new form, and named only representation
+  and build-order costs, not the dependency. "I don't know" on counting without the binder,
+  then produced three options (a filter closure, `&[CardDef]`, a narrow entry) and picked the
+  narrow entry. Accepted the stats snapshot: "it changes what changes affect it".
+- West (02a): had watched the talk. Found unaided that her systems are the doc's modules with no
+  data. Called "depends on all of the types" a disagreement, though it is her own problem that
+  ECS fixes. Said an ECS system knows the component's "interface, which is formal", missing that
+  it knows the layout and that formal still costs an edit per place. Claimed hiding makes "any
+  required change" cheaper, against the doc's "no design makes every decision cheap". Rejected
+  her library and application split, in line with the doc's test. Quiz right on the real
+  disagreement, hiding a representation that no invariant ties. Verdict on one big state: "not
+  necessarily bad, the problem arises if code start depending on state that changes often",
+  missing the write side.
 - 00 beliefs, probably resolved: a method on `Player` makes it "an object rather than data", and
   fear of delegation boilerplate on `Game`.
 
@@ -184,7 +205,9 @@ up.
   fixing no shown gap (01d). Misreading his idea is a real risk (his payload idea, 01a).
 - Phrasings that failed: an ambiguous wrapping question, an ECS question testing the mechanism
   instead of organization (00), "narrower than its data", which counted items, not knowledge
-  (01b), and "place" framed as undefined (01d).
+  (01b), "place" framed as undefined (01d), "bet", which he asked to drop, "its interface"
+  read as today's, and a leading question ("a design without the binder?") that pushed him off
+  his right option (02a).
 - Rule drafting: first drafts come by feel and sharpen in discussion (01b); he rewrites and
   rejects his own drafts (01d). Cuts wording that decides nothing, examples, and Rust terms from
   the General section (01c, 02). Rejects doc text that fixes no shown gap or is owned elsewhere.
@@ -207,9 +230,8 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
    Session 01d: the audit rerun in two rounds, the second with the roadmap (done). Session 01e:
    the refactor as AFK tickets, plus the Rust rules for module layout and paths (done).
 2. Sessions 02 to 02e: ownership. 02 settled invariant to owner, the invariant draws the boundary
-   (aggregates), and reading isn't owning (done). 02a: node 3's exercise, redrawing `emit`, then
-   West's argument against data hiding at application scale, her real position in
-   `verified-facts.md`, for him to judge against the doc. 02b: rules restored by a pass and the one
+   (aggregates), and reading isn't owning (done). 02a: node 3's exercise, redrawing `emit`, and
+   West's argument (done). 02b: `emit`'s parameter list across its callers, rules restored by a pass and the one
    module that runs it (Vernon's "whose job is it"), the coordinator (order of steps, no rules),
    and his question: does the module owning `effect_stack` and `resolving_effect` apply effects,
    or only decide which comes next? 02c: untangle `Game`, production with no options, then the
@@ -299,12 +321,23 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   resolution context, not object or player data (extends finding 9), for 02b.
 - `check_state` is `pub(crate)` with two calls in `resolve.rs`; one module should decide when the
   pass runs. He asked how a pass's call is enforced. Session 02b.
+- The history owner, drawn in 02a for #16's redo in 02d (extends finding 13). Private entries
+  hold the player, turn, `DefId`, kind and a snapshot of attack, health and cost at that moment,
+  replacing the `Object` clones. `record` is called only by `emit`. `count(query, asking, active,
+  turn, &Binder) -> u8` holds one arm per query and depends on the binder, whose `get` is
+  stable. A query over printed facts or a snapshot stat is one arm; a new stat also changes the
+  snapshot. `HistoryQuery` is card text, so runtime context goes in parameters or the type
+  becomes `HistoryQueryDef`, decided at the ticket. Take the snapshot before the dead leave the
+  board (ADR 0012). Check the ADR bar when it is built.
 - His `verb.rs` design (session 01c), for sessions 02a to 02c: a zones module owning
   the zones, the stamps and in-zone order behind moves such as `deck_to_hand` (maybe deepening
   `zones.rs`); a damage module, with fatigue calling it; and an intermediate coordinator for the
   consequences of a move (events, pushes, their order), with the zones module as its child so
   only it can move cards. Open: `emit` needs most of `Game`, so the coordinator would hand events
-  back or take an emitter. Needs a name; "actions" collides with the glossary.
+  back or take an emitter. 02a drew `emit` as a module with no data that writes history, the
+  effect stack and the observer, and reads objects, the binder, turn order, locations and the
+  event: three `&mut` and five `&` through about fifteen callers. The order of its steps is
+  procedure. Session 02b. Needs a name; "actions" collides with the glossary.
 - The `derived.rs` split: by the change test, stats and cost with `modifiers` are one decision
   with no term yet (#18's bet), and auras are another. He proposed four noun modules.
 - His D4 exercise ideas, for session 02c or later: a builder for `Game` creation, so callers
@@ -335,7 +368,8 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   `Died`. Compare it with #17 at that PR's review in session 02d.
 - For the teach skill: ask derivation steps open-ended, not as a quiz, since options let him
   eliminate; size each production exercise to one invariant or one decision, since 01c's names
-  exercise and 02's owners exercise were too big. Propose the edits to him for review.
+  exercise and 02's owners exercise were too big; keep "bet" out of session text, at his
+  request (02a). Propose the edits to him for review.
 - `fulfill_character_filter` is half narrow already: the side check is a free function in
   `cards/filter.rs`, while the kind check goes from object to definition to `binder`. Material for
   sessions 02c and 04.
@@ -367,7 +401,7 @@ graph TD
   H["Hide decisions, not steps (done)"]
   D["Data as interface, depth, what a module is, names that exclude (done)"]
   O["Owners guard invariants, the invariant draws the boundary, reading isn't owning (done)"]
-  W["West: data hiding at application scale"]
+  W["West: data hiding at application scale (done)"]
   C["Rules restored by a pass, the coordinator, the effect stack"]
   PDV["Parse, don't validate: proofs as types, and when they go stale"]
   DOD["Data-oriented design and ECS"]
@@ -428,8 +462,8 @@ graph TD
 | 01d | audit | Audit against the doc as it stands; his review of the findings | done (two rounds, roadmap in the second; locality replaces "cheap", decisions that change together count as one, files of public types; 23 findings replace the 01a list) |
 | 01e | refactor, RM | Refactor as AFK tickets; Rust module layout and paths | done (seven tickets merged, intentions matched the code; findings 3, 10, 11, 14, 15, 23 fixed; leaf definitions and one path per definition through `prelude.rs` in `file-structure.md`, enforced by Clippy on Rust 1.99 and `check::paths`; #11, #13, #16 to #18 closed) |
 | 02 | R2, R4, O | Ownership: invariant to owner, the invariant draws the boundary, reading isn't owning | done (edge was deriving what makes data share an owner, and the reader-owns habit; three rules in General and one in Rust in `file-structure.md`; location owner designed; West's real position researched; exercise too big again) |
-| 02a | O exercise, W | Redraw `emit`; West's argument against data hiding | next |
-| 02b | C | Rules restored by a pass, the coordinator, his effect stack question | |
+| 02a | O exercise, W | Redraw `emit`; West's argument against data hiding | done (retrieval 3 of 3; `emit` drawn as a module with no data; history owner with a stats snapshot after his own forecast overturned his narrow entry; "coupling costs as much as the decision changes" moved to the coupling section; West's real disagreement is hiding a representation no invariant ties, doc unchanged) |
+| 02b | C | Rules restored by a pass, the coordinator, his effect stack question | next |
 | 02c | untangle, audit | Untangle `Game`, no options; audit against the doc | |
 | 02d | refactor | Tickets: the untangling, the findings, #16 to #18 redone | |
 | 02e | PDV | Parse, don't validate: `apply` and `legal_actions`, `ObjectId` by zone | |
