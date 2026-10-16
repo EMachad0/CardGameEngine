@@ -164,12 +164,13 @@ Before asking the `researcher` to check a fact, search the course's `verified-fa
 
 ## Ending a session
 
-A session ends when you and he agree it's finished. Then run the three steps below in order, with no review stop between them.
+A session ends when you and he agree it's finished. Then run the four steps below in order, with no review stop between them.
 
 This close-out overrides the git rules in `AGENTS.md` for this one commit. Don't wait for his review. His agreement to end the session is the approval.
 
-1. **Make the edits.** Update the course's `COURSE.md`: the knowledge map, the open threads, the sessions table, and anything else `docs/conventions/skills-and-docs.md` puts there. If the next session's log doesn't exist yet, create it as an empty file (`sessions/NN-topic.md`), because `/md-log` only links an existing file.
-2. **Write the closing message and commit in the same reply.** The text comes first. Summarize what changed in `COURSE.md`, then show how to start the next session:
+md-log appends a reply's text to the session log when the reply ends, before the reply's tool calls run. Text written after the commit would show up as a session diff. So the close-out writes all its text in its first reply, and every reply after that is tool calls only.
+
+1. **Open with the closing message.** The first reply of the close-out holds the full closing text, then starts the edits with its tool calls. The text summarizes what you're changing in `COURSE.md`, then shows how to start the next session:
 
    ```
    /new
@@ -178,7 +179,9 @@ This close-out overrides the git rules in `AGENTS.md` for this one commit. Don't
    continue the <course> course
    ```
 
-   End the text by saying you're committing now. Don't say it's committed, because the commit hasn't run yet. The same reply then makes one bash call:
+   The start block is required in every close-out, even when he hasn't asked for it. A one-line opener such as "Now the close-out edits" doesn't count as the closing message. End the text by saying you're committing once the edits are in. Don't say it's committed, because the commit hasn't run yet.
+2. **Make the edits, with no text.** Update the course's `COURSE.md`: the knowledge map, the open threads, the sessions table, and anything else `docs/conventions/skills-and-docs.md` puts there. If the next session's log doesn't exist yet, create it as an empty file, named as in the start block, because `/md-log` only links an existing file.
+3. **Commit, with no text.** One bash call:
 
    ```bash
    c=docs/course/<course>
@@ -188,8 +191,8 @@ This close-out overrides the git rules in `AGENTS.md` for this one commit. Don't
      && git status --porcelain -- $files
    ```
 
-   md-log appends a reply's text to the session log when the reply ends, and that happens before the reply's tool calls run. So the closing text is already in the log when the commit runs. Follow the message style in `git log`, e.g. `Close session 04: effects as data, targeting draft design; session log; prepare 04a log`.
-3. **After the commit, write nothing.** If the commit succeeded and the status output is empty, end the turn with no text at all. md-log appends any text you write, and it would show up as a session diff after the commit. No question, no quiz. If the commit failed or the status lists a file, say so. The diff can't be avoided then, and he needs to know.
+   Follow the message style in `git log`, e.g. `Close session 04: effects as data, targeting draft design; session log; prepare 04a log`.
+4. **After the commit, write nothing.** If the commit succeeded and the status output is empty, end the turn with no text at all. No question, no quiz. If the commit failed or the status lists a file, say so. The diff can't be avoided then, and he needs to know.
 
 Stage only those files. Exercise code and anything else in his working tree still follow the `AGENTS.md` git rules.
 
