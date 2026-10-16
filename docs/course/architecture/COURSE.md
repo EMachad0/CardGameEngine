@@ -50,6 +50,43 @@ up.
 
 ## Knowledge map
 
+### Session 02
+
+No retrieval quiz (01e closed minutes before). Goals he picked: untangle `Game`, his effect stack
+question, West's view, decisions that need other modules' data. He skipped aggregates and
+`verb.rs`; the aggregate idea came in as node 2. He asked to split session 02 like 01, and to keep
+the refactor in its own session after the teaching.
+
+Probe: right on who can break `order` (all of `game/` through `get_mut`, not today's five
+callers), `&mut self` at a call site (his note: he often rewrites code because he can't read one
+field and write another), private `Player` fields, how much of `draw` goes in `Zones` (judged by
+the data each design forces the owner to hold), layout against write access ("not sure being a
+big state is good or bad"), and a rule restored by a pass (objected: how is the call enforced?).
+"I don't know" on what makes data share an owner ("I think its 4 but I would not have come with it
+on my own"). Missed trigger matching: one owner of objects, zones and binder, the session 00
+belief as "a decision lives with the data it reads". Asked how a reader gets its data, and for
+Matsakis's four workarounds.
+
+The researcher found West doesn't advocate the all-public tree: data hiding is "NOT generally
+useful" at application scale, kept for invariants in the small. The plan's summary of her was
+mine and wrong. He wants her case kept: "this is good to not interpret those as truths".
+
+- Node 1, invariant to owner (Meyer): derived unaided, the interface as the boundary. Quiz right
+  (`mana_mut`), tied to 01b's "can't be copied from outside".
+- Node 2, the invariant draws the boundary: derived that neither owner can keep order of play,
+  that the guarantee is informal in every caller, and "private write to that module". Quiz right,
+  noun and action traps included. Exercise too big (my fault, as in 01c), cut to "never in two
+  places": missed `pick_targets`; designed one location owner for all players with one move
+  command ("board is full" checks go there), so a steal reuses it, holding only the revealed
+  cards of a pending pick. Rule in his words: dropped "need not share" as deciding nothing, wrote
+  the false-invariant sentence, cut "such as a mutable reference" as too Rust.
+- Node 3, reading isn't owning: said a reader inside an owner can't break it "as it only reads".
+  I argued possible writers; he corrected me that `&self` can't write, and I conceded: the reason
+  is dependencies. Proposed the lowest common ancestor of the owners unprompted. Challenged "no
+  data" against a method on `Game`; settled by the parent rule, `&self` hiding what it reads, and
+  the borrow pain. Quiz right. The Rust rule for modules with no data is his call. Exercise
+  (`emit`) moved to 02a.
+
 ### Session 01e
 
 No retrieval quiz (his call). The refactor was planned in-session, then he moved it to tickets for
@@ -277,13 +314,16 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
    module, then in 01c names that exclude, nesting, and the #13 and #15 verdicts (done).
    Session 01d: the audit rerun in two rounds, the second with the roadmap (done). Session 01e:
    the refactor as AFK tickets, plus the Rust rules for module layout and paths (done).
-2. Session 02: ownership. An owner guards its invariants and an orchestrator coordinates owners;
-   encapsulation vs OOP; aggregates (Evans, Vernon). Catherine West's nuance: one big state is
-   fine, implicit reach and unowned invariants are the problem. Open with his own question: does
-   the module owning `effect_stack` and `resolving_effect` need to apply effects, or only decide
-   which comes next? Session 02a writes the tickets for it: #16, #17 and #18 redone from their
-   branches, and the ownership findings.
-   Session 02b, its own node: parse, don't validate (Alexis King, 2019). A check's result carried
+2. Sessions 02 to 02e: ownership. 02 settled invariant to owner, the invariant draws the boundary
+   (aggregates), and reading isn't owning (done). 02a: node 3's exercise, redrawing `emit`, then
+   West's argument against data hiding at application scale, her real position in
+   `verified-facts.md`, for him to judge against the doc. 02b: rules restored by a pass and the one
+   module that runs it (Vernon's "whose job is it"), the coordinator (order of steps, no rules),
+   and his question: does the module owning `effect_stack` and `resolving_effect` apply effects,
+   or only decide which comes next? 02c: untangle `Game`, production with no options, then the
+   audit. 02d writes the tickets: the untangling, the findings, and #16, #17 and #18 redone from
+   their branches.
+   Session 02e, its own node: parse, don't validate (Alexis King, 2019). A check's result carried
    forward as a type, not an assumption; who can build the proof, and when it goes stale. Material:
    `apply` checking `legal_actions` then `apply_action` relying on `expect` and `unreachable!`; an
    `ObjectId` in hand and one in play sharing a type, with `health`, `attack` and `mana_cost`
@@ -301,7 +341,7 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
 
 ## Open threads
 
-- Closed draft PRs, redone after their node from branches kept on the remote. Session 02a: #16
+- Closed draft PRs, redone after their node from branches kept on the remote. Session 02d: #16
   history private (`history-private`), #17 guarded effect stack (`effect-stack`), #18 modifiers
   answer stat questions (`modifiers-stats`). Session 05: #11 printed card types in `cards/`
   (`cards-vocabulary`). #13 is closed for good (`game-by-question`); its visibility narrowing,
@@ -313,7 +353,7 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   Fixed in 01e: 3 (#28, with both hero bugs left as they were), 10 (#14), 11 and 23 (#10),
   14 (#15), 15 (#23), and 22 in part (#10; `CardDef` is still public, now through the prelude).
   1. `game` is one module holding about fifteen independent decisions. Child types with private
-     fields; `game` keeps the coordinator. Session 02.
+     fields; `game` keeps the coordinator. Session 02c.
   2. Death pass reports one death at a time, against ADR 0012: the Mourner bug, live (4). Filed
      on main as `docs/issues/dying-mourner-hears-older-death.md`.
   3. Characters in play computed in four or five places. One scan answers "all", random and draft
@@ -357,8 +397,17 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   minions in every zone, the hand included (`lookup.rs:158`), a rules question for the card-game
   course.
 - Doc feedback deferred to session 02: a decision with no data of its own, or one that needs
-  another module's data (four auditors); procedure versus domain order, and checkpoints (two).
-- His `verb.rs` design (session 01c), for session 02: a zones module owning
+  another module's data (four auditors), answered in 02 by "a decision that combines several
+  owners' data gets its own module with no data". Procedure versus domain order, and checkpoints
+  (two), wait for 02b.
+- The location owner (session 02, node 2), for 02c: one owner across all players holding the hero,
+  hand, deck, board, graveyard, a pending pick's revealed cards and the entry order, behind one
+  move command. It replaces `Object.order` and the three sorts (finding 4) and settles finding 17's
+  holding zone. `pick_targets`, `choice_targets`, and `PendingPick`'s `source` and `pick_id` are
+  resolution context, not object or player data (extends finding 9), for 02b.
+- `check_state` is `pub(crate)` with two calls in `resolve.rs`; one module should decide when the
+  pass runs. He asked how a pass's call is enforced. Session 02b.
+- His `verb.rs` design (session 01c), for sessions 02a to 02c: a zones module owning
   the zones, the stamps and in-zone order behind moves such as `deck_to_hand` (maybe deepening
   `zones.rs`); a damage module, with fatigue calling it; and an intermediate coordinator for the
   consequences of a move (events, pushes, their order), with the zones module as its child so
@@ -366,11 +415,10 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   back or take an emitter. Needs a name; "actions" collides with the glossary.
 - The `derived.rs` split: by the change test, stats and cost with `modifiers` are one decision
   with no term yet (#18's bet), and auras are another. He proposed four noun modules.
-- His D4 exercise ideas, for session 02 or later: a builder for `Game` creation, so callers
-  know only what they set (check the card-game roadmap for N players first); a `Board` that keeps
-  its own entry order, replacing `Object.order` and the three sorts (audit finding 4; heroes and
-  graveyard order complicate it). His "Objects" module is the modifiers question of #18, session
-  02.
+- His D4 exercise ideas, for session 02c or later: a builder for `Game` creation, so callers
+  know only what they set (check the card-game roadmap for N players first). His `Board` entry
+  order became the location owner above. His "Objects" module is the modifiers question of #18,
+  session 02d.
 - `Binder::get` kept handing out `&CardDef` in #15, my call when he left the tickets to me: every
   interpreter reads card text as data (ADR 0004), and accessors would mirror the fields. Revisit
   if he disagrees, at the latest in session 04 with finding 22.
@@ -392,14 +440,15 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   with crates, errors and enforcement.
 - "Own effects resolve after the reactions they cause": his design is one command next to the
   resolution loop, taking the whole batch, since `kill` pushes every death rattle before any
-  `Died`. Compare it with #17 at that PR's review in session 02.
+  `Died`. Compare it with #17 at that PR's review in session 02d.
 - For the teach skill: ask derivation steps open-ended, not as a quiz, since options let him
-  eliminate. Propose the edit to him for review.
+  eliminate; size each production exercise to one invariant or one decision, since 01c's names
+  exercise and 02's owners exercise were too big. Propose the edits to him for review.
 - `fulfill_character_filter` is half narrow already: the side check is a free function in
   `cards/filter.rs`, while the kind check goes from object to definition to `binder`. Material for
-  sessions 02 and 04.
+  sessions 02c and 04.
 - One damage function (card-game open thread: fatigue bypasses `Game::damage`) is the single-writer
-  idea. Session 02 or 03.
+  idea. Session 02c or 03.
 - Error placement: `ApplyError`, `CardDefError` and the loader's validation errors, against Sabrina
   Jewson's "near their unit of fallibility". Session 06.
 - Quotes flagged secondary in `research/00-scope/literature.md` and
@@ -425,8 +474,9 @@ graph TD
 
   H["Hide decisions, not steps (done)"]
   D["Data as interface, depth, what a module is, names that exclude (done)"]
-  O["Owners guard invariants, orchestrators coordinate"]
-  A["Aggregates: the invariant draws the boundary"]
+  O["Owners guard invariants, the invariant draws the boundary, reading isn't owning (done)"]
+  W["West: data hiding at application scale"]
+  C["Rules restored by a pass, the coordinator, the effect stack"]
   PDV["Parse, don't validate: proofs as types, and when they go stale"]
   DOD["Data-oriented design and ECS"]
   P["Ports, anti-corruption layers, contract tests"]
@@ -445,13 +495,15 @@ graph TD
   R2-->O
   R4-->O
   D-->O
-  O-->A
+  O-->W
+  O-->C
   R1-->PDV
-  O-->PDV
+  C-->PDV
   PDV-->DOD
   PDV-->P
   PDV-->DOCS
-  A-->DOD
+  W-->DOD
+  C-->DOD
   R1-->DOD
   R3-->P
   D-->P
@@ -464,7 +516,7 @@ graph TD
   D-->RS
   R3-->RS
   RS-->E
-  A-->DOCS
+  C-->DOCS
   DOD-->DOCS
   P-->DOCS
   T-->DOCS
@@ -483,9 +535,12 @@ graph TD
 | 01c | D5 | Names that exclude; review #13, #15 | done (edge was sorting names by word category; name and nesting rules in `file-structure.md`, project section started; #13 close, #15 light rework; Binder in the glossary; audit split off) |
 | 01d | audit | Audit against the doc as it stands; his review of the findings | done (two rounds, roadmap in the second; locality replaces "cheap", decisions that change together count as one, files of public types; 23 findings replace the 01a list) |
 | 01e | refactor, RM | Refactor as AFK tickets; Rust module layout and paths | done (seven tickets merged, intentions matched the code; findings 3, 10, 11, 14, 15, 23 fixed; leaf definitions and one path per definition through `prelude.rs` in `file-structure.md`, enforced by Clippy on Rust 1.99 and `check::paths`; #11, #13, #16 to #18 closed) |
-| 02 | R2, R4, O, A | Ownership and aggregates: untangling the god struct | next |
-| 02a | refactor | Tickets: #16, #17, #18 redone, and the ownership findings | |
-| 02b | PDV | Parse, don't validate: `apply` and `legal_actions`, `ObjectId` by zone | |
+| 02 | R2, R4, O | Ownership: invariant to owner, the invariant draws the boundary, reading isn't owning | done (edge was deriving what makes data share an owner, and the reader-owns habit; three rules in General and one in Rust in `file-structure.md`; location owner designed; West's real position researched; exercise too big again) |
+| 02a | O exercise, W | Redraw `emit`; West's argument against data hiding | next |
+| 02b | C | Rules restored by a pass, the coordinator, his effect stack question | |
+| 02c | untangle, audit | Untangle `Game`, no options; audit against the doc | |
+| 02d | refactor | Tickets: the untangling, the findings, #16 to #18 redone | |
+| 02e | PDV | Parse, don't validate: `apply` and `legal_actions`, `ObjectId` by zone | |
 | 03 | DOD | Data-oriented design, ECS organization, the rules core beside Bevy | |
 | 04 | R3, P, T | Ports, anti-corruption layers, contract tests, tests as feedback | |
 | 05 | F | Feature-first, shared code, naming | |
