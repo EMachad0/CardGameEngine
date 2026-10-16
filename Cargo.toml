@@ -6,6 +6,7 @@ members = ["crates/rules"]
 thiserror = { version = "2.0.21" }
 enumset = { version = "1.1.14" }
 criterion = { version = "0.8.2" }
+gungraun = { version = "0.20.0" }
 pretty_assertions = { version = "1.4.1" }
 
 [workspace.lints.rust]
@@ -20,3 +21,7 @@ definition_in_module_root = "deny"
 
 [profile.test]
 opt-level = 1
+
+# Gungraun finds each benchmark function by its symbol.
+[profile.bench]
+debug = true

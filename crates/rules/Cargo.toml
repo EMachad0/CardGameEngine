@@ -2,6 +2,8 @@
 name = "rules"
 version = "0.1.0"
 edition = "2024"
+# benches/support.rs is a module of each bench, not a bench of its own.
+autobenches = false
 
 [dependencies]
 enumset = { workspace = true }
@@ -9,10 +11,15 @@ thiserror = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
+gungraun = { workspace = true }
 pretty_assertions = { workspace = true }
 
 [[bench]]
 name = "game"
+harness = false
+
+[[bench]]
+name = "game_counts"
 harness = false
 
 [lints]

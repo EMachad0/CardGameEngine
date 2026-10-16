@@ -30,6 +30,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: "true"
+      # Installs Valgrind and the gungraun-runner version that matches the gungraun dependency.
+      - uses: gungraun/setup-gungraun@v1
       - run: |
           just bench::compare HEAD^1 > report.md
           cat report.md
