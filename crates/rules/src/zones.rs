@@ -1,8 +1,8 @@
 //! Which zone holds each object, and order of play. Every player has a hero and
 //! four zones: a hand, a deck, a board and a graveyard. `Deck` is ordered top
 //! first, `Hand` oldest first and `Board` left to right. An object is in one zone
-//! at a time, or in none. Order of play is the order of each object's latest
-//! entry into a zone.
+//! at a time, or in none. Order of play orders objects by when each last entered
+//! a zone, or took its place as a hero.
 
 use std::collections::{BTreeMap, VecDeque};
 
@@ -319,7 +319,6 @@ mod tests {
 
     use crate::cards::binder::sets::base::static_card_definition::SPARK;
     use crate::cards::object::ObjectBag;
-    use crate::ids::PlayerId;
 
     fn ids<const N: usize>() -> [ObjectId; N] {
         let mut bag = ObjectBag::default();
@@ -448,5 +447,10 @@ mod tests {
 
         assert_eq!(zones.deck(player), [next]);
         zones.add_to_hand(player, top);
+        assert_eq!(
+            zones.hand(player),
+            [top],
+            "a card in no zone must be free to enter a hand",
+        );
     }
 }
