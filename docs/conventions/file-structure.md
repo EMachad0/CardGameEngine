@@ -165,6 +165,10 @@ is then formal, and the later steps have nothing left to assume.
 
 - A question that answers "maybe" to callers who already know the answer repeats the check on
   every call. Take the parsed type instead, and answer plainly.
+- The code that can build or write the parsed type is the code trusted to keep its guarantee. When
+  the type's shape rules out every wrong value, no code can build a wrong one, and nothing needs
+  trusting. Prefer shape wherever the guarantee fits a layout. A relation between values doesn't,
+  so the type needs an owner that keeps the guarantee as an invariant.
 
 ### Names exclude
 
