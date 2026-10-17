@@ -1,8 +1,9 @@
-//! Which zone holds each object. Every player has a hero, a hand, a deck, a board
-//! and a graveyard. `Deck` is ordered top first, `Hand` oldest first and `Board`
-//! left to right. An object is in one zone at a time, or in none.
+//! Which zone holds each object, and order of play. Every player has a hero, a
+//! hand, a deck, a board and a graveyard. `Deck` is ordered top first, `Hand`
+//! oldest first and `Board` left to right. An object is in one zone at a time, or
+//! in none. Order of play is the order of each object's latest entry into a zone.
 
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
 
 use crate::cards::object::ObjectId;
 use crate::ids::PlayerId;
@@ -138,6 +139,9 @@ impl PlayerZones {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Zones {
     players: Vec<PlayerZones>,
+    /// Each object's latest entry into a zone, counted in entries.
+    entered: BTreeMap<ObjectId, u64>,
+    entries: u64,
 }
 
 impl Zones {
@@ -145,11 +149,13 @@ impl Zones {
     pub(crate) fn new(players: impl IntoIterator<Item = (ObjectId, Vec<ObjectId>)>) -> Self {
         let mut zones = Self {
             players: Vec::new(),
+            entered: BTreeMap::new(),
+            entries: 0,
         };
         for (hero, deck) in players {
-            zones.assert_in_no_zone(hero);
+            zones.enter(hero);
             for &card in &deck {
-                zones.assert_in_no_zone(card);
+                zones.enter(card);
             }
             zones.players.push(PlayerZones {
                 hero,
@@ -202,6 +208,21 @@ impl Zones {
         heroes.chain(minions)
     }
 
+    /// Where a character's triggers come among those one event matches.
+    pub(crate) fn match_order(&self, character: ObjectId) -> impl Ord + use<> {
+        self.order_of_play(character)
+    }
+
+    /// Where a death comes among the deaths of one state check pass.
+    pub(crate) fn death_order(&self, dead: ObjectId) -> impl Ord + use<> {
+        self.order_of_play(dead)
+    }
+
+    /// Where a trigger comes among one object's triggers, by the object that granted it.
+    pub(crate) fn grant_order(&self, granted_by: ObjectId) -> impl Ord + use<> {
+        self.order_of_play(granted_by)
+    }
+
     pub(crate) fn shuffle_deck(&mut self, player_id: PlayerId, rng: &mut Rng) {
         self.player_mut(player_id).deck.shuffle(rng);
     }
@@ -211,6 +232,7 @@ impl Zones {
         let player = self.player_mut(player_id);
         let card = player.deck.pop_front()?;
         player.hand.add(card);
+        self.stamp(card);
         Some(card)
     }
 
@@ -240,33 +262,47 @@ impl Zones {
 
     /// Puts a card in no zone at the end of the hand.
     pub(crate) fn add_to_hand(&mut self, player_id: PlayerId, object_id: ObjectId) {
-        self.assert_in_no_zone(object_id);
+        self.enter(object_id);
         self.player_mut(player_id).hand.add(object_id);
     }
 
     /// Puts a card in no zone on the bottom of the deck.
     pub(crate) fn bury(&mut self, player_id: PlayerId, object_id: ObjectId) {
-        self.assert_in_no_zone(object_id);
+        self.enter(object_id);
         self.player_mut(player_id).deck.push_back(object_id);
     }
 
     /// Puts a card in no zone at the right end of the board.
     pub(crate) fn enter_board(&mut self, player_id: PlayerId, object_id: ObjectId) {
-        self.assert_in_no_zone(object_id);
+        self.enter(object_id);
         self.player_mut(player_id).board.add(object_id);
     }
 
     /// Puts a card in no zone on top of the graveyard.
     pub(crate) fn entomb(&mut self, player_id: PlayerId, object_id: ObjectId) {
-        self.assert_in_no_zone(object_id);
+        self.enter(object_id);
         self.player_mut(player_id).graveyard.add(object_id);
     }
 
-    fn assert_in_no_zone(&self, object_id: ObjectId) {
+    /// Stamps an object in no zone for the zone it is about to enter.
+    fn enter(&mut self, object_id: ObjectId) {
         assert!(
             !self.players.iter().any(|player| player.holds(&object_id)),
             "an object enters a zone only from no zone",
         );
+        self.stamp(object_id);
+    }
+
+    fn stamp(&mut self, object_id: ObjectId) {
+        self.entered.insert(object_id, self.entries);
+        self.entries += 1;
+    }
+
+    fn order_of_play(&self, object_id: ObjectId) -> u64 {
+        *self
+            .entered
+            .get(&object_id)
+            .expect("every object enters a zone when it is made")
     }
 
     fn player(&self, player_id: PlayerId) -> &PlayerZones {
@@ -370,5 +406,50 @@ mod tests {
         assert_eq!(hand.remove(b), None);
 
         assert_eq!(hand.as_slice(), [a]);
+    }
+
+    #[test]
+    fn order_of_play_follows_each_objects_latest_entry_into_a_zone() {
+        let [hero, first, second] = ids();
+        let player = PlayerId::new(0);
+        let mut zones = Zones::new([(hero, vec![first, second])]);
+
+        zones.draw(player);
+        zones.draw(player);
+        for card in [second, first] {
+            zones.take_from_hand(player, card);
+            zones.enter_board(player, card);
+        }
+
+        let mut deaths = vec![first, hero, second];
+        deaths.sort_by_key(|&o| zones.death_order(o));
+        assert_eq!(
+            deaths,
+            [hero, second, first],
+            "the card that entered the board last must come last",
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "an object enters a zone only from no zone")]
+    fn an_object_in_a_zone_cannot_enter_another() {
+        let [hero, card] = ids();
+        let player = PlayerId::new(0);
+        let mut zones = Zones::new([(hero, vec![card])]);
+
+        zones.draw(player);
+        zones.enter_board(player, card);
+    }
+
+    #[test]
+    fn a_revealed_card_is_in_no_zone_until_it_enters_one() {
+        let [hero, top, next] = ids();
+        let player = PlayerId::new(0);
+        let mut zones = Zones::new([(hero, vec![top, next])]);
+
+        assert_eq!(zones.reveal(player, 1), [top]);
+        zones.bury(player, top);
+
+        assert_eq!(zones.deck(player), [next, top]);
     }
 }

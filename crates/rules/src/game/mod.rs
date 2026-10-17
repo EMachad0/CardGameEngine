@@ -225,7 +225,7 @@ impl Game {
 
     fn characters_in_order_of_play(&self) -> Vec<ObjectId> {
         let mut characters = self.zones.characters_in_play().collect::<Vec<_>>();
-        characters.sort_by_key(|o| self.objects.get(*o).order);
+        characters.sort_by_key(|&o| self.zones.match_order(o));
         characters
     }
 

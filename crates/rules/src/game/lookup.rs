@@ -122,7 +122,7 @@ impl Game {
             _ => None,
         });
         let mut triggers = from_modifiers.chain(printed).collect::<Vec<_>>();
-        triggers.sort_by_key(|t| self.objects.get(t.granted_by).order);
+        triggers.sort_by_key(|t| self.zones.grant_order(t.granted_by));
         triggers
     }
 

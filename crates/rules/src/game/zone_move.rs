@@ -32,7 +32,6 @@ impl Game {
                     object_id,
                 };
                 self.emit(event, obs);
-                self.objects.update_order(object_id);
             } else {
                 let hero_id = self.zones.hero(player_id);
                 let damage = 1;
@@ -129,7 +128,6 @@ impl Game {
         object_id: ObjectId,
         _obs: &mut impl Observer,
     ) {
-        self.objects.update_order(object_id);
         self.zones.entomb(player_id, object_id);
     }
 
@@ -200,7 +198,6 @@ impl Game {
         obs: &mut impl Observer,
     ) {
         self.zones.add_to_hand(player_id, object_id);
-        self.objects.update_order(object_id);
         let event = Event::AddedToHand {
             player_id,
             object_id,
@@ -215,7 +212,6 @@ impl Game {
         obs: &mut impl Observer,
     ) {
         self.zones.bury(player_id, object_id);
-        self.objects.update_order(object_id);
         let event = Event::Buried {
             player_id,
             object_id,
@@ -229,7 +225,6 @@ impl Game {
         object_id: ObjectId,
         obs: &mut impl Observer,
     ) {
-        self.objects.update_order(object_id);
         let event = Event::BoardEntered {
             player_id,
             object_id,
