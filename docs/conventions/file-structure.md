@@ -95,15 +95,26 @@ interface that holds still when the decision moves.
 ### Orders between steps
 
 An order between two steps belongs to whoever decides it. To find out who, swap the two steps and
-reason over every state the program can reach.
+reason over every state the program can reach. An order kept at several sites looks free at each,
+since the others still hold it. Swap it at every site together. Two runs of one step, such as two
+iterations of a loop, count as two steps.
 
 - If nothing observable changes, the order is free and carries no decision.
 - If the swap doesn't compile, the second step takes the first one's output. The order is forced
-  by data and carries no decision.
+  by data and carries no decision. Output passed through stored state forces nothing, since the
+  swap compiles.
 - If a step gets input its contract rules out, the order is a precondition of that step. Take it
   away from callers with one command of the callee's, such as one that validates input and then
   stores it.
 - If every step keeps its contract and the behavior changes, the order is an order rule.
+
+A state is reachable when some input the module accepts produces it, whether or not a caller sends
+that input today. A caller can send a new accepted input without touching the module, so nothing
+prompts a review of it. Widening what the module accepts is a change to the module.
+
+Output counts as observable. An output belongs to the step that outputs it, so the order of the
+outputs changes with the order of the steps, and the two are one decision. Steps that leave the
+same state either way still have an order rule when their outputs show their order.
 
 An order that carries no decision can sit anywhere, the coordinator included.
 
@@ -139,6 +150,8 @@ pass. Give a rule an owner whenever its data can share one.
 
 - Read the rule as implications, if A then B. A write that makes A true without B breaks it, so
   restrict A and leave B open. A rule that also runs the other way restricts both.
+- An order rule, X before Y, reads as "if Y runs, X ran first", so restrict Y. When Y must also
+  follow every X, the rule runs both ways.
 
 ### Names exclude
 
