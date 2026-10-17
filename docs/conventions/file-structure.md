@@ -10,7 +10,8 @@ you decide where new code goes.
 ### Coupling is shared knowledge of a decision
 
 A decision is a choice the code makes where another was possible: a representation, a rule, a
-meaning, an order or a policy.
+meaning, an order or a policy. A rule is a decision about what the program must do or what its data
+must hold.
 
 A module is an enforced boundary that hides one decision, so that code outside it can't copy it.
 Decisions that change together count as one.
@@ -31,6 +32,9 @@ Two pieces of code are coupled when one holds knowledge of a decision the other 
 decision then forces a change wherever that knowledge is held, to keep the program correct. A call
 or an import is one way to hold it. A copied rule, a relied-on meaning and a required call order
 are others, and none of them needs a call.
+
+Coupling costs as much as the decision changes. Knowledge of a decision that never changes costs
+no edits, however many places hold it.
 
 The knowledge is formal or informal:
 
@@ -68,11 +72,9 @@ Before drawing a boundary, list the decisions the code makes. Build modules arou
 especially the ones likely to change or hard to get right. Each module hides its decision behind an
 interface that holds still when the decision moves.
 
-- Judge whether a decision is likely to change by reasoning about the domain: what other systems
-  in it already vary, what the roadmap plans, and what comes from outside your control, such as a
-  file format, a provider's API or a regulation. Merge the decisions that change together. Leave
-  stable, easy decisions where they are. A decision that never changes costs no edits, however
-  many places know it.
+- Judge whether a decision is likely to change by reasoning about the domain. Look at what other
+  systems in it already vary, what the roadmap plans, and what comes from outside your control.
+  Merge the decisions that change together. Leave stable, easy decisions where they are.
 - An interface is made of decisions too, the ones its callers know. Hiding one decision exposes
   others, so expose the ones you expect to stay put. No design makes every decision cheap to
   change.
@@ -82,16 +84,39 @@ interface that holds still when the decision moves.
   interface needs separate steps, keep them as entry points, and move each rule they share into
   one module that both ask.
 - Steps still run, inside one coordinator that calls the modules in order. It knows the order and
-  nothing about any format. An order belongs to whoever decides it. When it is a precondition of
-  the callee, such as validating input before storing it, take it away from callers with one
-  command. When it is the procedure itself, it lives in the coordinator. An order that is a rule of
-  the domain is a decision, and gets a module like any other.
+  nothing about any format. It holds only orders that carry no decision, so it holds no rules.
 - Passing data between modules is fine when its layout is a decision you expect to stay put. The
   module that builds the data keeps the decision that moves.
 - Make a decision its own module when its knowledge sits in more than one place, today or in
   planned work, and an interface of questions and commands can replace that knowledge while asking
   callers to know less than the data would. If only one place knows it, or the interface would
   mirror the fields, leave it where it is.
+
+### Orders between steps
+
+An order between two steps belongs to whoever decides it. To find out who, swap the two steps and
+reason over every state the program can reach. An order kept at several sites looks free at each,
+since the others still hold it. Swap it at every site together. Two runs of one step, such as two
+iterations of a loop, count as two steps.
+
+- If nothing observable changes, the order is free and carries no decision.
+- If the swap doesn't compile, the second step takes the first one's output. The order is forced
+  by data and carries no decision. Output passed through stored state forces nothing, since the
+  swap compiles.
+- If a step gets input its contract rules out, the order is a precondition of that step. Take it
+  away from callers with one command of the callee's, such as one that validates input and then
+  stores it.
+- If every step keeps its contract and the behavior changes, the order is an order rule.
+
+A state is reachable when some input the module accepts produces it, whether or not a caller sends
+that input today. A caller can send a new accepted input without touching the module, so nothing
+prompts a review of it. Widening what the module accepts is a change to the module.
+
+Output counts as observable. An output belongs to the step that outputs it, so the order of the
+outputs changes with the order of the steps, and the two are one decision. Steps that leave the
+same state either way still have an order rule when their outputs show their order.
+
+An order that carries no decision can sit anywhere, the coordinator included.
 
 ### Owners guard invariants
 
@@ -102,14 +127,34 @@ data can break it.
 An owner is a module that privately owns all the data an invariant mentions, so it keeps the
 invariant through every command on its interface. Data tied by an invariant shares one owner.
 
-- A module that keeps an invariant over data it doesn't privately own is weak. Not breaking the
-  invariant becomes informal knowledge in every other possible writer.
 - Handing out write access to the data makes the invariant breakable from outside.
 - Merge owners only for an invariant the domain needs. A rule nothing depends on unnecessarily grows
   its owner.
 - An owner answers questions about its own data.
 - A decision that combines several owners' data gets its own module with no data, under their
   lowest common ancestor. Inside one of the owners, it would make that owner depend on the others.
+
+### Rules no owner guards
+
+A rule has no owner when its data can't share one, such as data outside the program's state, or
+when the domain lets it be false for a while and a pass restores it at known points. A rule a pass
+restores isn't an invariant. Neither is an order rule, since no stored data records the order its
+steps ran in.
+
+A rule no owner guards has a keeper, the one module whose code keeps it, such as a command that
+makes the rule's writes together, the command that runs an order rule's steps, or the module that
+decides when its pass runs. The keeper must be the only code that can make the writes the rule is
+about. Any other code that can make them holds "go through the keeper" as informal knowledge, so a
+keeper is weaker than an owner. For a rule a pass restores, the write to restrict is running the
+pass. Give a rule an owner whenever its data can share one.
+
+- Read the rule as implications, if A then B. A write that makes A true without B breaks it, so
+  restrict A and leave B open. A rule that also runs the other way restricts both.
+- An order rule, X before Y, reads as "if Y runs, X ran first", so restrict Y. When Y must also
+  follow every X, the rule runs both ways.
+- A rule about one value of a shared command restricts who can build that value. The restriction
+  goes in the command's input, not in a type it hands out, since readers outside may build that
+  type too.
 
 ### Names exclude
 
@@ -146,7 +191,8 @@ files to open when they look for a decision or a place for new code.
   name fails.
 - A module with no data holds free functions that take what they read as parameters. A struct
   earns its place only when it holds borrows that several of the functions share, or implements a
-  trait.
+  trait. It also earns it when many callers would pass the same parameters. One function builds it
+  from the owners, so only that function knows what the module reads and writes.
 
 ### Paths
 
@@ -182,6 +228,26 @@ own.
   When several filters together decide what each variant means, give that decision one exhaustive
   match.
 - A clippy `disallowed_methods` or `disallowed_types` ban, for "only this place may call that".
+
+### Restricting callers
+
+No visibility opens an item to one sibling only. `pub(super)` opens it to the parent's whole
+subtree, and `pub(in path)` accepts only an ancestor. So a keeper that must be the only caller of a
+command picks its tool by where the command lives.
+
+- A command whose only rightful caller shares its file is private.
+- Enforce the rule through nesting when the command has one rightful caller and no reason to live
+  anywhere else. Its module and the keeper's share a parent that holds only the keeper and the
+  commands it guards, and the command is `pub(super)`. When a guarded command keeps a rule of its
+  own, its module is the parent of the commands it guards, so a chain of keepers nests one level
+  per link.
+- A token earns its place when the command has to live outside the keeper's subtree. The command
+  takes a value with a private field, which only the keeper's subtree can build.
+- A Clippy ban fits when neither the tree nor a signature should carry the rule. An `#[expect]`
+  marks each rightful call.
+- For a rule about one value of a shared command, put the token inside the value: the variant
+  holds a type with a private field. When the command's input is also public output, decouple
+  them. An internal input type carries the token, and the command builds the public type from it.
 
 ## This project
 
