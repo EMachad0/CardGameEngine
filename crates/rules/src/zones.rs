@@ -1,6 +1,6 @@
-//! Which zone holds each object, and order of play. Every player has a hero, a
-//! hand, a deck, a board and a graveyard. `Deck` is ordered top first, `Hand`
-//! oldest first and `Board` left to right. An object is in one zone at a time, or
+//! Which zone holds each object, and order of play. Every player has a hero and
+//! four zones: a hand, a deck, a board and a graveyard. `Deck` is ordered top
+//! first, `Hand` oldest first and `Board` left to right. An object is in one zone at a time, or
 //! in none. Order of play is the order of each object's latest entry into a zone.
 
 use std::collections::{BTreeMap, VecDeque};
@@ -139,7 +139,7 @@ impl PlayerZones {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Zones {
     players: Vec<PlayerZones>,
-    /// Each object's latest entry into a zone, counted in entries.
+    /// The value of `entries` when each object last entered a zone.
     entered: BTreeMap<ObjectId, u64>,
     entries: u64,
 }
@@ -260,25 +260,25 @@ impl Zones {
         self.player_mut(player_id).board.remove(object_id)
     }
 
-    /// Puts a card in no zone at the end of the hand.
+    /// Puts a card that is in no zone at the end of the hand.
     pub(crate) fn add_to_hand(&mut self, player_id: PlayerId, object_id: ObjectId) {
         self.enter(object_id);
         self.player_mut(player_id).hand.add(object_id);
     }
 
-    /// Puts a card in no zone on the bottom of the deck.
+    /// Puts a card that is in no zone on the bottom of the deck.
     pub(crate) fn bury(&mut self, player_id: PlayerId, object_id: ObjectId) {
         self.enter(object_id);
         self.player_mut(player_id).deck.push_back(object_id);
     }
 
-    /// Puts a card in no zone at the right end of the board.
+    /// Puts a card that is in no zone at the right end of the board.
     pub(crate) fn enter_board(&mut self, player_id: PlayerId, object_id: ObjectId) {
         self.enter(object_id);
         self.player_mut(player_id).board.add(object_id);
     }
 
-    /// Puts a card in no zone on top of the graveyard.
+    /// Puts a card that is in no zone on top of the graveyard.
     pub(crate) fn entomb(&mut self, player_id: PlayerId, object_id: ObjectId) {
         self.enter(object_id);
         self.player_mut(player_id).graveyard.add(object_id);
@@ -448,6 +448,7 @@ mod tests {
         let mut zones = Zones::new([(hero, vec![top, next])]);
 
         assert_eq!(zones.reveal(player, 1), [top]);
+        assert_eq!(zones.deck(player), [next]);
         zones.bury(player, top);
 
         assert_eq!(zones.deck(player), [next, top]);
