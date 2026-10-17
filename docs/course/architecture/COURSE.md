@@ -45,9 +45,14 @@ up.
 - The refactor runs while the knowledge is fresh (his call, session 01a, revising his first pick of
   refactoring at the end). After a teaching session, a refactor session turns the findings whose
   home its nodes settle into tickets: `docs/issues/<effort>/`, with a `spec.md` every agent shares
-  (his call, 01e). Findings whose home depends on a later node wait for it.
-- AFK agents work the tickets, one PR each. They review their work with subagents in a loop and
-  state their intentions in the PR body. He checks the intentions against the code and merges. A
+  (his call, 01e). Findings whose home depends on a later node wait for it. A ticket states the
+  problem, the code that shows it and the rule it breaks, never a shape, and carries only the
+  rulings he cares about. Applying settled rules to existing code is the agent's part, with no
+  exercise (his calls, 02e).
+- AFK agents work the tickets, one PR each, one ticket at a time. They run one to five review
+  rounds with subagents and state their intentions in the PR body. A behavior change is allowed
+  when the PR justifies it, except a rules change or a known bug, which the card game course
+  decides (his call, 02e). He checks the intentions against the code and merges. A
   choice of theirs he disagrees with marks a gap in the convention docs, which goes back into the
   doc (01e).
 - End at a node boundary, not mid-node. Commit once per node.
@@ -298,6 +303,12 @@ up.
   code instead of concepts" (02d). Asks me to state a rule when he holds the idea but not the
   wording, then rewrites my draft (G1). Accepts doc text that answers an auditor's confusion even
   when he finds it inferable (G2).
+- Rejected the 02e untangling exercises, classifying `Player`'s fields and judging a drafted tree:
+  "I dont see the value to me here". He expected the agent to refactor. Then rejected a central
+  untangling design: "why not let the agent solve each ticket on their own". Of four rulings I
+  carried into the tickets, he kept only that matching stays with reporting. On behavior changes:
+  "well justified, but I wouldnt ban it". The names and noun-boundary strands stay untested since
+  01c.
 
 ## Course plan
 
@@ -318,10 +329,11 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
    decision) and the stack owner, which picks what resolves next and applies nothing (done). 02d:
    the 02c audit's gaps, a chain of keepers nesting one level per link (26), restricting one value
    of a shared command (30), `emit`'s parameters as one struct of borrows; checkpoints wait for a
-   shell (done). 02e: untangle `Game`, then the audit. Material in
-   `research/02b-pass-and-coordinator/scope.md` (Evans's application layer, Forge and XMage, Dahan
-   and Bogard, Newman and the Process Manager) and `research/02c-coordinator/`. 02f writes the tickets: the untangling, the findings, and #16, #17 and
-   #18 redone from their branches. Session 02g, its own node: parse, don't validate (Alexis King,
+   shell (done). 02e: the untangling as ten tickets in `docs/issues/untangle-game/`, which
+   state problems and leave the shape to the agents, with no exercise and no audit (done, PR #37).
+   02f: review the untangling PRs as they land, and put the doc gaps they surface into the doc.
+   Unused material: `research/02b-pass-and-coordinator/scope.md` (Forge and XMage, the Process
+   Manager). Session 02g, its own node: parse, don't validate (Alexis King,
    2019). A check's result carried forward as a type, not an assumption; who can build the proof,
    and when it goes stale. Material:
    `apply` checking `legal_actions` then `apply_action` relying on `expect` and `unreachable!`; an
@@ -340,9 +352,10 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
 
 ## Open threads
 
-- Closed draft PRs, redone after their node from branches kept on the remote. Session 02f: #16
-  history private (`history-private`), #17 guarded effect stack (`effect-stack`), #18 modifiers
-  answer stat questions (`modifiers-stats`). Session 05: #11 printed card types in `cards/`
+- Closed draft PRs, redone after their node from branches kept on the remote. Ticketed in 02e in
+  `docs/issues/untangle-game/`: #16 history private (`history-private`) in ticket 03, #17 guarded
+  effect stack (`effect-stack`) in 04, #18 modifiers answer stat questions (`modifiers-stats`) in
+  08. Session 05: #11 printed card types in `cards/`
   (`cards-vocabulary`). #13 is closed for good (`game-by-question`); its visibility narrowing,
   `ApplyError` next to `IllegalAction`, and `History` and `Trigger` under `game` go into the PRs
   that build the real modules, unless he objects.
@@ -351,6 +364,10 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   3 and 4 had the roadmap. Findings 24 to 32 come from the 02b audit against the keeper and
   restricting-callers rules, in `research/02b-pass-and-coordinator/audit-1.md` and `audit-2.md`,
   reviewed by him. The refactor works from this list. 01a's numbers are in parentheses.
+  Ticketed in 02e in `docs/issues/untangle-game/`: 1, 4 to 9, 13, 16, 19, 21 and 24 to 30, with
+  32 as a fact in ticket 03. Not ticketed: 2, the hero bugs of 3, 9's uncleared answers and reused
+  pick ID, and 18 (card-game bugs); 17's two owner sources (a rules question, left alone in ticket
+  01); 12 (02g); 20 and 31 (checkpoints); 22 (session 04).
   Fixed in 01e: 3 (#28, with both hero bugs left as they were), 10 (#14), 11 and 23 (#10),
   14 (#15), 15 (#23), and 22 in part (#10; `CardDef` is still public, now through the prelude).
   1. `game` is one module holding about fifteen independent decisions. Child types with private
@@ -439,13 +456,16 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   audit's gap G3 were settled in 02c by "Orders between steps". Checkpoints (two) wait for a shell (31).
 - The 02c audit, `research/02c-coordinator/audit-1.md`, checked and reviewed in 02d. Gaps G1 to
   G7 are settled in `file-structure.md` (G4 needed no change). Its orders O1 to O8 and the free
-  orders feed the 02e audit and the tickets. My check corrected it: `draw` emits before
+  orders feed the 02f review of the untangling PRs. 02e ran no audit, since each agent reports doc
+  gaps in its PR. My check corrected it: `draw` emits before
   `update_order`; the `damage` matcher is `fulfill_trigger_pattern` (`triggering.rs:47-78`), not
   `condition.rs:63-72`; History stores object clones at `Died`, `Played` and `BoardEntered`, so
   the `summon` and `kill` swaps change what it stores, though nothing reads it. Orders it missed:
   `TurnStarted` before the mana refill (`mod.rs:255`), `entomb` stamping before the add
   (`zone_move.rs:139-143`), `remove_dead` sorting by `order` (`state_check.rs:48`), and Pick and
   Draft checkpointing in `apply_action` while Play does it in `play`.
+- The design threads from here to the D4 ideas stayed out of the untangling tickets, so the agents
+  find the shape (his call, 02e). Compare each PR against its thread at the 02f review.
 - The stack owner (02c), for 02e and #17's redo in 02f. Private `effect_stack` and
   `resolving_effect`. `next_effect() -> Next { Effect(ObjectId, Effect), Finished, Empty }` reads
   and advances in one command. It returns `Finished` at every boundary between resolving effects,
@@ -518,7 +538,8 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   request (02a); check a surprising quiz miss for a misclick before probing around it (02b); keep exercises at the
   level of concepts, with no signatures or code, and probe only what the knowledge map doesn't
   already show (02c); probe concepts, never facts about the code, and define shorthand such as
-  "ladder" or drop it (02d). Propose the edits to him for review.
+  "ladder" or drop it (02d); don't turn applying settled rules to existing code into an exercise
+  (02e). Propose the edits to him for review.
 - `fulfill_character_filter` is half narrow already: the side check is a free function in
   `cards/filter.rs`, while the kind check goes from object to definition to `binder`. Material for
   sessions 02e and 04.
@@ -627,9 +648,9 @@ graph TD
 | 02b | K | Keepers: rules no owner guards, restricting callers in Rust | done (probe right but for a misclick; "Rules no owner guards" in General with his implication rule; "Restricting callers" in Rust from his three sentences; nesting designed for `check_state`; two audits, findings 24 to 32; ADR 0015 in glossary terms; coordinator topics moved to 02c) |
 | 02c | ORD, STK | Orders between steps; the stack owner | done (probe 5 of 5, which he called retesting; swap test from his experiment, the callee's contract found after the `apply` case; "Orders between steps" in `file-structure.md`, rule defined, "of the domain" dropped; per-object death rattle helper again in production; stack owner with a `Next` enum; push keeper drafted; exercises moved to the level of concepts; audit unreviewed) |
 | 02d | C | Review the 02c audit; where `apply` lives, `emit`'s parameters, one event variant, checkpoints | done (a probe on code facts he objected to, then 2 of 2 on concepts; gaps G1 to G7 settled in `file-structure.md`, among them output as observable and reachable by accepted input; chained keepers nest one level per link; a rule about one value restricts who builds it, the token in an internal input; a struct of borrows for many callers; checkpoints wait for a shell; his exercise designs are not settled designs) |
-| 02e | untangle, audit | Untangle `Game`; audit against the doc | next |
-| 02f | refactor | Tickets: the untangling, the findings, #16 to #18 redone | |
-| 02g | PDV | Parse, don't validate: `apply` and `legal_actions`, `ObjectId` by zone | |
+| 02e | untangle | Untangle `Game` as tickets | done (exercises dropped at his call, since applying settled rules is the agent's part; ten tickets in `docs/issues/untangle-game/` state problems, not shapes, and carry one ruling, matching stays with reporting; one ticket at a time, one to five review rounds; behavior changes allowed when justified, except rules changes and known bugs; no audit; PR #37) |
+| 02f | review | Review the untangling PRs; the doc gaps they surface | |
+| 02g | PDV | Parse, don't validate: `apply` and `legal_actions`, `ObjectId` by zone | next |
 | 03 | DOD | Data-oriented design, ECS organization, the rules core beside Bevy | |
 | 04 | R3, P, T | Ports, anti-corruption layers, contract tests, tests as feedback | |
 | 05 | F | Feature-first, shared code, naming | |
