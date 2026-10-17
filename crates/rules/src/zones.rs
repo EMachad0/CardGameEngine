@@ -4,7 +4,7 @@
 //! at a time, or in none. Order of play orders objects by when each last entered
 //! a zone, or took its place as a hero.
 
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::VecDeque;
 
 use crate::cards::object::ObjectId;
 use crate::ids::PlayerId;
@@ -140,8 +140,9 @@ impl PlayerZones {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Zones {
     players: Vec<PlayerZones>,
-    /// The value of `next_stamp` when each object last entered a zone.
-    entered: BTreeMap<ObjectId, u64>,
+    /// The value of `next_stamp` when each object last entered a zone, sorted by
+    /// object.
+    entered: Vec<(ObjectId, u64)>,
     next_stamp: u64,
 }
 
@@ -150,7 +151,7 @@ impl Zones {
     pub(crate) fn new(players: impl IntoIterator<Item = (ObjectId, Vec<ObjectId>)>) -> Self {
         let mut zones = Self {
             players: Vec::new(),
-            entered: BTreeMap::new(),
+            entered: Vec::new(),
             next_stamp: 0,
         };
         for (hero, deck) in players {
@@ -291,15 +292,19 @@ impl Zones {
             !self.players.iter().any(|player| player.holds(&object_id)),
             "an object enters a zone only from no zone",
         );
-        self.entered.insert(object_id, self.next_stamp);
+        match self.entered.binary_search_by_key(&object_id, |&(o, _)| o) {
+            Ok(idx) => self.entered[idx].1 = self.next_stamp,
+            Err(idx) => self.entered.insert(idx, (object_id, self.next_stamp)),
+        }
         self.next_stamp += 1;
     }
 
     fn order_of_play(&self, object_id: ObjectId) -> u64 {
-        *self
+        let idx = self
             .entered
-            .get(&object_id)
-            .expect("every object enters a zone when it is made")
+            .binary_search_by_key(&object_id, |&(o, _)| o)
+            .expect("every object enters a zone when it is made");
+        self.entered[idx].1
     }
 
     fn player(&self, player_id: PlayerId) -> &PlayerZones {
