@@ -191,7 +191,8 @@ files to open when they look for a decision or a place for new code.
   name fails.
 - A module with no data holds free functions that take what they read as parameters. A struct
   earns its place only when it holds borrows that several of the functions share, or implements a
-  trait.
+  trait. It also earns it when many callers would pass the same parameters. One function builds it
+  from the owners, so only that function knows what the module reads and writes.
 
 ### Paths
 
