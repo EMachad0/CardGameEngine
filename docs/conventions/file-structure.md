@@ -169,6 +169,14 @@ is then formal, and the later steps have nothing left to assume.
   the type's shape rules out every wrong value, no code can build a wrong one, and nothing needs
   trusting. Prefer shape wherever the guarantee fits a layout. A relation between values doesn't,
   so the type needs an owner that keeps the guarantee as an invariant.
+- A parsed type holds facts about data as the check read it. Each fact stays true until something
+  writes the data it is about, so one type can carry facts with different reaches. A fact about
+  data nothing writes never goes stale, and its type can be stored and passed anywhere.
+- Keep each fact true wherever its type can go. Either the type stops writes to the data while it
+  exists, or it never leaves the command that checked it, and no step of that command writes the
+  data before the step that uses the fact.
+- Don't hand a parsed type to code that can keep it while the data changes, or use it on other
+  data. Take that code's input plain, and parse it where it arrives.
 
 ### Names exclude
 
@@ -242,6 +250,9 @@ own.
   When several filters together decide what each variant means, give that decision one exhaustive
   match.
 - A clippy `disallowed_methods` or `disallowed_types` ban, for "only this place may call that".
+- A proof that borrows the data it describes, so the borrow checker keeps it fresh. A shared
+  borrow allows only reads while the proof lives. An exclusive borrow sends every write through
+  the proof, as `HashMap`'s `OccupiedEntry` does.
 
 ### Restricting callers
 
