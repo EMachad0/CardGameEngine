@@ -158,7 +158,7 @@ impl Questions {
             .retain(|answer| answer.object_id != object_id);
         let idx = self
             .choice_answers
-            .partition_point(|answer| answer.object_id < object_id);
+            .partition_point(|answer| answer.object_id <= object_id);
         let answers = choice_ids.iter().map(|&choice_id| ChoiceAnswer {
             object_id,
             choice_id,
@@ -436,7 +436,7 @@ mod tests {
     }
 
     #[test]
-    fn a_question_to_one_player_is_pending_for_all() {
+    fn one_players_question_keeps_the_game_waiting() {
         let [card] = ids();
         let mut questions = Questions::default();
 
