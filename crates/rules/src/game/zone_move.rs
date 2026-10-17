@@ -139,6 +139,10 @@ impl Game {
         count: u8,
         obs: &mut impl Observer,
     ) {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the one reveal, which posts the revealed cards as a pending pick"
+        )]
         let options = self.zones.reveal(player_id, count);
         let event = Event::Revealed {
             player_id,
