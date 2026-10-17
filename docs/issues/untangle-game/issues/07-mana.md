@@ -27,14 +27,11 @@ into one module that both ask." "An owner answers questions about its own data."
 
 - The refill runs after `TurnStarted` is reported, and the payment before `play`.
 
-## Leave alone
-
-- The legality check followed by `expect` in `apply_action`. See the spec's "Left for later
-  sessions".
-
 ## Out of scope
 
 - How a card's cost is computed (`mana_cost` and its modifiers): ticket 08.
+- The payment relying on the legality check, through `expect` and a subtraction with no guard:
+  ticket 11.
 
 ## Done when
 

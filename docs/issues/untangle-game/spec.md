@@ -5,8 +5,8 @@
 `Game`, in `crates/rules/src/game/`, is one module that holds about fifteen decisions. Every child
 file of `game` reads its fields and most of them write them, so no decision is hidden from the
 others. Apply `docs/conventions/file-structure.md` to it. Each ticket takes one decision out of
-the tangle, behind the boundary the doc calls for. When the last ticket merges, `game/mod.rs`
-holds only `mod` declarations.
+the tangle, behind the boundary the doc calls for. When ticket 10 merges, `game/mod.rs` holds only
+`mod` declarations. Tickets 11 and 12 then carry two checks' results forward as types.
 
 A ticket describes a problem: what is wrong, where the code shows it, and which rule of the doc it
 breaks. It doesn't give the fix. The shape is yours, within the doc. Every ticket is a refactor,
@@ -58,6 +58,8 @@ reviewing it.
 | 08 | `stats-and-modifiers` | 07 |
 | 09 | `draft-walk` | 08 |
 | 10 | `game-leaf` | 09 |
+| 11 | `legal-actions` | 10 |
+| 12 | `card-text` | 11 |
 
 ## Workflow
 
@@ -128,11 +130,6 @@ A behavior change is allowed when it is well justified. Make none by accident.
 
 The course takes these on later. Keep each as it is, even where your ticket's code touches it.
 
-- `Game::apply` checks `legal_actions`, and then `apply_action` relies on that check through
-  `expect` and `unreachable!`. The same holds for `ObjectId`: one in hand and one in play share a
-  type, so `health`, `attack` and `mana_cost` return `Option` on every call.
-- The card validators in `cards/binder/validity.rs` copy resolution's rules, such as `Chosen`
-  needing a draft and `ResolvePick` needing a `Reveal`.
 - The prelude exports `CardDef`, which nothing outside the crate uses.
 
 ## Known bugs to leave alone
