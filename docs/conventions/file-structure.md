@@ -156,6 +156,16 @@ pass. Give a rule an owner whenever its data can share one.
   goes in the command's input, not in a type it hands out, since readers outside may build that
   type too.
 
+### Parse, don't validate
+
+A check validates when it returns nothing, or hands back the type it was given. What it learned is
+lost, and every later step that relies on it holds "the check passed" as informal knowledge. A
+check parses when it returns what it learned in a new type that later steps take. That knowledge
+is then formal, and the later steps have nothing left to assume.
+
+- A question that answers "maybe" to callers who already know the answer repeats the check on
+  every call. Take the parsed type instead, and answer plainly.
+
 ### Names exclude
 
 A module's name is the first part of its interface a reader sees. Readers use it to pick which
