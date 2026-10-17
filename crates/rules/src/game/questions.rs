@@ -1,5 +1,5 @@
 //! What each player is asked, and what each card was answered. A player has at most one
-//! question: a draft while playing a card, or a pending pick while one resolves. A revealed card
+//! question: a draft while playing a card, or a pending pick while a card resolves. A revealed card
 //! sits in a pending pick's options until picked, then in its pick's answer.
 
 use crate::cards::object::ObjectId;
@@ -143,7 +143,7 @@ impl Questions {
     /// Drops the player's draft, if any. Panics if they have a pending pick.
     pub(super) fn cancel(&mut self, player_id: PlayerId) {
         if let Ok(idx) = self.slot(player_id) {
-            self.assert_no_pick(idx);
+            self.assert_droppable(idx);
             self.pending.remove(idx);
         }
     }
@@ -233,7 +233,7 @@ impl Questions {
     fn ask(&mut self, player_id: PlayerId, question: Question) {
         match self.slot(player_id) {
             Ok(idx) => {
-                self.assert_no_pick(idx);
+                self.assert_droppable(idx);
                 self.pending[idx].1 = question;
             }
             Err(idx) => self.pending.insert(idx, (player_id, question)),
@@ -246,10 +246,13 @@ impl Questions {
             .map(|idx| self.pending.remove(idx).1)
     }
 
-    /// A pending pick holds its revealed cards, so only `pick` may close it.
-    fn assert_no_pick(&self, idx: usize) {
+    fn assert_droppable(&self, idx: usize) {
+        let holds_revealed_cards = match &self.pending[idx].1 {
+            Question::Pick(_) => true,
+            Question::Draft(_) => false,
+        };
         assert!(
-            !matches!(self.pending[idx].1, Question::Pick(_)),
+            !holds_revealed_cards,
             "a pending pick closes only when the player picks",
         );
     }

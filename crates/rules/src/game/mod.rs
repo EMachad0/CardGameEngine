@@ -171,27 +171,27 @@ impl Game {
                 );
             }
             Some(Question::Draft(draft)) => {
-                let of_object_id = draft.object_id();
+                let object_id = draft.object_id();
                 let chosen = draft.chosen();
                 let mut all_choices_fulfilled = true;
-                for choice in &self.card_def(of_object_id).choices {
+                for choice in &self.card_def(object_id).choices {
                     let chosen_for_choice_count = chosen
                         .iter()
                         .filter(|(_, choice_id)| choice.id == *choice_id)
                         .count();
                     if self.check_choice_count_fulfilled(
-                        of_object_id,
+                        object_id,
                         choice.id,
                         chosen_for_choice_count as u8,
                     ) {
                         continue;
                     }
 
-                    let candidates = self.scan_for_valid_choices(of_object_id, choice, chosen);
+                    let candidates = self.scan_for_valid_choices(object_id, choice, chosen);
                     for candidate in candidates.into_iter() {
                         let mut chosen = chosen.to_vec();
                         chosen.push((candidate, choice.id));
-                        if self.can_finish_choices(of_object_id, &mut chosen) {
+                        if self.can_finish_choices(object_id, &mut chosen) {
                             actions.push(Action::Choose {
                                 choice_id: choice.id,
                                 object_id: candidate,
@@ -202,13 +202,9 @@ impl Game {
                     break;
                 }
                 if all_choices_fulfilled {
-                    actions.push(Action::Play {
-                        object_id: of_object_id,
-                    });
+                    actions.push(Action::Play { object_id });
                 }
-                actions.push(Action::Cancel {
-                    object_id: of_object_id,
-                });
+                actions.push(Action::Cancel { object_id });
             }
         }
         actions
