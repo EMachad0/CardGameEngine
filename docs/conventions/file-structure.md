@@ -234,7 +234,9 @@ command picks its tool by where the command lives.
 - A command whose only rightful caller shares its file is private.
 - Enforce the rule through nesting when the command has one rightful caller and no reason to live
   anywhere else. Its module and the keeper's share a parent that holds only the keeper and the
-  commands it guards, and the command is `pub(super)`.
+  commands it guards, and the command is `pub(super)`. When a guarded command keeps a rule of its
+  own, its module is the parent of the commands it guards, so a chain of keepers nests one level
+  per link.
 - A token earns its place when the command has to live outside the keeper's subtree. The command
   takes a value with a private field, which only the keeper's subtree can build.
 - A Clippy ban fits when neither the tree nor a signature should carry the rule. An `#[expect]`
