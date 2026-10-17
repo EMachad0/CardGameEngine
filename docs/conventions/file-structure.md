@@ -10,7 +10,8 @@ you decide where new code goes.
 ### Coupling is shared knowledge of a decision
 
 A decision is a choice the code makes where another was possible: a representation, a rule, a
-meaning, an order or a policy.
+meaning, an order or a policy. A rule is a decision about what the program must do or what its data
+must hold.
 
 A module is an enforced boundary that hides one decision, so that code outside it can't copy it.
 Decisions that change together count as one.
@@ -83,16 +84,28 @@ interface that holds still when the decision moves.
   interface needs separate steps, keep them as entry points, and move each rule they share into
   one module that both ask.
 - Steps still run, inside one coordinator that calls the modules in order. It knows the order and
-  nothing about any format. An order belongs to whoever decides it. When it is a precondition of
-  the callee, such as validating input before storing it, take it away from callers with one
-  command. When it is the procedure itself, it lives in the coordinator. An order that is a rule of
-  the domain is a decision, and gets a module like any other.
+  nothing about any format. It holds only orders that carry no decision, so it holds no rules.
 - Passing data between modules is fine when its layout is a decision you expect to stay put. The
   module that builds the data keeps the decision that moves.
 - Make a decision its own module when its knowledge sits in more than one place, today or in
   planned work, and an interface of questions and commands can replace that knowledge while asking
   callers to know less than the data would. If only one place knows it, or the interface would
   mirror the fields, leave it where it is.
+
+### Orders between steps
+
+An order between two steps belongs to whoever decides it. To find out who, swap the two steps and
+reason over every state the program can reach.
+
+- If nothing observable changes, the order is free and carries no decision.
+- If the swap doesn't compile, the second step takes the first one's output. The order is forced
+  by data and carries no decision.
+- If a step gets input its contract rules out, the order is a precondition of that step. Take it
+  away from callers with one command of the callee's, such as one that validates input and then
+  stores it.
+- If every step keeps its contract and the behavior changes, the order is an order rule.
+
+An order that carries no decision can sit anywhere, the coordinator included.
 
 ### Owners guard invariants
 
@@ -114,14 +127,15 @@ invariant through every command on its interface. Data tied by an invariant shar
 
 A rule has no owner when its data can't share one, such as data outside the program's state, or
 when the domain lets it be false for a while and a pass restores it at known points. A rule a pass
-restores isn't an invariant.
+restores isn't an invariant. Neither is an order rule, since no stored data records the order its
+steps ran in.
 
 A rule no owner guards has a keeper, the one module whose code keeps it, such as a command that
-makes the rule's writes together or the module that decides when its pass runs. The keeper must be
-the only code that can make the writes the rule is about. Any other code that can make them holds
-"go through the keeper" as informal knowledge, so a keeper is weaker than an owner. For a rule a
-pass restores, the write to restrict is running the pass. Give a rule an owner whenever its data can
-share one.
+makes the rule's writes together, the command that runs an order rule's steps, or the module that
+decides when its pass runs. The keeper must be the only code that can make the writes the rule is
+about. Any other code that can make them holds "go through the keeper" as informal knowledge, so a
+keeper is weaker than an owner. For a rule a pass restores, the write to restrict is running the
+pass. Give a rule an owner whenever its data can share one.
 
 - Read the rule as implications, if A then B. A write that makes A true without B breaks it, so
   restrict A and leave B open. A rule that also runs the other way restricts both.
