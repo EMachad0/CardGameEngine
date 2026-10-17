@@ -1,6 +1,6 @@
 # A card's questions and the player's answers have an owner
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 Blocked by: 01
@@ -59,3 +59,7 @@ means, give that decision one exhaustive match."
   cards sit.
 - No match over the kinds of question ends in `_` where it decides something for every kind.
 - The checks pass, and the PR justifies every behavior change.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/40
