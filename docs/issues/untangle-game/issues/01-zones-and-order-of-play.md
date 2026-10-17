@@ -55,6 +55,8 @@ two share an answer today."
   only in the source's `pick_targets` until `ResolvePick` moves them, in no zone. Ticket 02 owns
   them, with the pending pick and its answer.
 - Who may remove the dead from the board: ticket 06.
+- Questions that check an object's zone again after the caller found it there (`mana_cost`,
+  `health`, `attack`): ticket 08, which builds on your boundary.
 - `Object.choice_targets` and `Object.pick_targets`: ticket 02. `Object.damage`,
   `Object.modifiers` and `Object.friendly_aura`: ticket 08.
 

@@ -22,10 +22,18 @@ the stats come from is open to every child of `game`.
   its `Buff` and `AddFriendlyAura` arms.
 - `Object.damage` is a `pub` field. `damage` in `game/zone_move.rs` writes it, and so does the
   fatigue branch of `draw`. `health` reads it.
+- `mana_cost`, `health` and `attack` return `Option`, with `None` when the object isn't in its
+  owner's hand, in play, or on the board. Every caller in `src` already knows the zone and
+  `expect`s the answer: `legal_actions` and `hand_card` in `game/view.rs` walk the hand,
+  `find_dead` in `game/state_check.rs` and `board_card` walk the board, and `hero_health` asks
+  about a hero. The three are also public, where an ID from outside the crate can name any
+  object, and `tests/spec/` asserts their `None`.
 
 From the doc's Rust section: "When several filters together decide what each variant means, give
 that decision one exhaustive match." From the general section: "Decisions that change together
-count as one." "Data tied by an invariant shares one owner."
+count as one." "Data tied by an invariant shares one owner." "A question that answers "maybe" to
+callers who already know the answer repeats the check on every call. Take the parsed type instead,
+and answer plainly."
 
 ## Facts to work with
 
@@ -33,17 +41,21 @@ count as one." "Data tied by an invariant shares one owner."
   in the doc. Reuse only what fits the doc as it stands.
 - The glossary has terms for Buff, Aura, Cost, Health and Damage, but none for modifiers as a
   whole. Flag any name you need under "Names".
+- Ticket 01's boundary decides which zone holds an object. It is on main to build on.
 
 ## Leave alone
 
 - Every stat value, including `hostile_aura` holding only printed modifiers, and `mana_cost`
-  returning `None` outside the owner's hand.
+  having no answer for a card outside its owner's hand.
 - Fatigue adding damage outside `Game::damage`. See the spec's known bugs.
-- The `Option` returns of `health`, `attack` and `mana_cost`. See the spec's "Left for later
-  sessions".
+
+## Out of scope
+
+- `CardDef::health` and `CardDef::attack` returning `Option` by card kind: ticket 12.
 
 ## Done when
 
 - One exhaustive match decides what each modifier variant does to the stats.
 - Only the boundary you build can add a modifier or an aura to an object, or damage it.
+- A caller that found an object in a zone reads its stats without the zone being checked again.
 - The checks pass, and the PR justifies every behavior change.

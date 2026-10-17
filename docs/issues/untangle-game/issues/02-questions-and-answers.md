@@ -45,12 +45,13 @@ means, give that decision one exhaustive match."
   first answer. See the spec's known bugs.
 - The pending pick sits on the player whose deck was revealed, so that player picks. Who should
   pick is a rules question.
-- The `let ... else { unreachable!() }` in `apply_action` and `pick` rely on `legal_actions`. See
-  the spec's "Left for later sessions".
 
 ## Out of scope
 
 - Walking a card's choices to list candidates, and `AmountBound::is_satisfied`: ticket 09.
+- The `let ... else { unreachable!() }` in `apply_action` and `pick`, which rely on
+  `legal_actions`: ticket 11.
+- The `expect("Choice not fulfilled")` in `resolve_character_selector`: ticket 12.
 
 ## Done when
 

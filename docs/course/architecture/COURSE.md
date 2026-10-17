@@ -69,7 +69,8 @@ up.
 - Across strands, recognition is solid and production with no options is the edge. He finds spread
   knowledge reliably but misses some of its holders (00, 01, 01a, 02, and in 02b the second call of
   `check_state`). The 02c probe went 5 of 5 again, and the 02d probe, on concepts the map had no
-  evidence for, 2 of 2.
+  evidence for, 2 of 2. The 02g probe: one right, one "I don't know", a misclick, a slip and the
+  edge.
 
 ### Coupling and hiding decisions
 
@@ -110,7 +111,8 @@ up.
 - Probe (02c), all right: `play`'s push before `Played` as a domain rule with his own reason, the
   merged `kill` loops (missed in 01), the stack not applying effects, formal knowledge still
   costing an edit per place (missed with West, 02a), and a private-field payload for `Died`.
-- Raised "parse, don't validate" himself, with `ObjectId` in hand vs in play (01a).
+- Raised "parse, don't validate" himself, with `ObjectId` in hand vs in play (01a). Taught in
+  02g, see Checks and proofs.
 - Edge: inventories miss holders and guards. Missed `kill` as a third holder of reaction order,
   the resolution loop's `!is_pending_interaction()` as what makes "pick only while idle" true,
   and that `kill` pushes every death rattle before any `Died`, so a per-object helper would
@@ -221,6 +223,39 @@ up.
 - 00 beliefs, probably resolved: a method on `Player` makes it "an object rather than data", and
   fear of delegation boilerplate on `Game`.
 
+### Checks and proofs
+
+- Probe (02g): right that 18 callers `expect`ing an `Option` hold the earlier check informally.
+  "I don't know" on what a private-field `Funded` proves at use, noting it "depends on the
+  signature of Funded", so he saw that freshness depends on what the proof holds. Right on the
+  `&mut Ledger` proof after a misclick, adding that a `check_funds` taking `&mut` is misnamed. Called
+  the private-constructor `NonEmpty` airtight, missing that its own module can skip `new`: a slip
+  he explained himself.
+- Edge found in the probe: where a proof's reach ends. He let the shell keep a `LegalAction` and
+  `apply` skip the check, "thinking the point of a proof is that apply no longer checks", while his
+  note already ruled out proofs from another game and kept ones. Asked "then what is the point":
+  the check stays, the assumptions after it go.
+- Node 1, validate or parse: derived unaided the type the check returns and `balance` takes. Quiz
+  right on a validator returning the type it took. Asked whether a map lookup should hand its
+  value forward, fearing a bigger check and `unsafe`: the lookup is the check, `OccupiedEntry` the
+  std proof, and an owner's one `expect` (`ObjectBag::get`) the local fallback.
+- Node 2, shape or owner: quiz right on which guarantees a layout holds. Stated "who builds the
+  type is the one that guard its guarantes ... a check that is proven by shape can always be
+  trusted".
+- Node 3, reach: derived "only valid until that data changes, for the guarantee to hold the check
+  must prevent the data to be changed", missing a reach that ends before the first write. Quiz
+  right on which proofs can be stored, calling the wording confusing. In the `apply` exercise he
+  first put references in the parsed Play, dropped before the executor writes; after one question,
+  "&mut or owned values", objecting that extracting values makes a bad interface (answers to
+  stable questions, not layouts). Couldn't word the rule, so I drafted it.
+- Node 4, `ObjectId`: proposed the settled design, a zone-module function returning a proof that
+  callers pass forward, but first as `HandObjectId(&ObjectId)`, borrowing the ID. Then a unique
+  `HandObject` every move consumes, which I misread. Wanted to borrow one element of a zone (Rust
+  borrows per variable and field, so ownership or a runtime check). Asked why a view borrows the
+  whole game, which it shouldn't. Quiz right on what a trigger stores.
+- Edge: borrow mechanics inside a proof's design, what it borrows and that a borrow can't reach
+  into a write. The rest is recognition plus the rules he stated.
+
 ### Names
 
 - Holds names as exclusion: a name passes when a reader can tell from it alone whether a function
@@ -309,6 +344,10 @@ up.
   carried into the tickets, he kept only that matching stays with reporting. On behavior changes:
   "well justified, but I wouldnt ban it". The names and noun-boundary strands stay untested since
   01c.
+- In 02g he lost the thread at "the other version of your design", with nothing quoted
+  ("conversation is hard to follow when it is not clear what u are refering too"), and I misread
+  his consumed-proof design until he corrected it. He cancelled a quiz to ask a question first. He
+  asked me to word the node 3 rule and to suggest node 4's.
 
 ## Course plan
 
@@ -339,7 +378,8 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
    `apply` checking `legal_actions` then `apply_action` relying on `expect` and `unreachable!`; an
    `ObjectId` in hand and one in play sharing a type, with `health`, `attack` and `mana_cost`
    returning `Option` on every call. He found the `ObjectId` case and finds its fix not obvious.
-   Session 03 shows ECS queries as the ECS take on it, session 04 applies it at the boundary.
+   Session 03 shows ECS queries as the ECS take on it, session 04 applies it at the boundary. Done in 02g; material in
+   `research/02g-parse-dont-validate/scope.md`, findings in tickets 08, 11 and 12.
 3. Session 03: data-oriented design and ECS organization (component granularity, single writer,
    plugins per feature), and the rules core beside Bevy (elevator-core's bridge).
 4. Session 04: ports, anti-corruption layers, errors at the port, contract tests, tests as design
@@ -367,7 +407,8 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   Ticketed in 02e in `docs/issues/untangle-game/`: 1, 4 to 9, 13, 16, 19, 21 and 24 to 30, with
   32 as a fact in ticket 03. Not ticketed: 2, the hero bugs of 3, 9's uncleared answers and reused
   pick ID, and 18 (card-game bugs); 17's two owner sources (a rules question, left alone in ticket
-  01); 12 (02g); 20 and 31 (checkpoints); 22 (session 04).
+  01); 20 and 31 (checkpoints); 22 (session 04). Ticketed in 02g, PR #38: 12 and 35 in ticket 12,
+  33 in ticket 11, 34 in ticket 08. Merge #38 before ticket 01 launches.
   Fixed in 01e: 3 (#28, with both hero bugs left as they were), 10 (#14), 11 and 23 (#10),
   14 (#15), 15 (#23), and 22 in part (#10; `CardDef` is still public, now through the prelude).
   1. `game` is one module holding about fifteen independent decisions. Child types with private
@@ -438,6 +479,15 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
       Refines 20.
   32. `emit` reports `Died` after removal, and `health` is `None` off the board, so `kill` takes
       the history snapshot and it travels with the report. For #16's redo.
+  33. `apply` checks `legal_actions` for a `bool`, and `apply_action` relies on it through
+      `unreachable!`, `expect` and an unguarded payment: Play from a draft, cost, payment, hand
+      removal, Choose, Pick. Ticket 11.
+  34. `mana_cost`, `health` and `attack` answer `Option` to callers that already know the zone,
+      and every caller in `src` `expect`s it. They are public, and `tests/spec/` asserts `None`.
+      Ticket 08.
+  35. `validate` returns `()`, and `Binder` stores the same `CardDef`s with `pub` fields.
+      `Binder::get`, `resolve_character_selector` and `CardDef::health` and `attack` (`Option` by
+      card kind) rely on facts only the validator checked. Ticket 12, with 12.
 
   Names every auditor failed: `game`, `cards`, `choice`, `ids`, `turn`, `cards::definition`,
   `cards::modifier` (not in the glossary), and `condition`, `lookup`, `resolve`, `triggering` and
@@ -449,7 +499,8 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   Routed elsewhere: ObjectIds name hidden cards (a card-game thread already). Board auras reach
   minions in every zone, the hand included (`lookup.rs:158`), a rules question for the card-game
   course. `setup` runs no drain, so triggers matched during setup wait for the first `apply`, now a
-  card-game thread (02b).
+  card-game thread (02b). A chosen target that leaves play before its effect resolves: whether
+  the effect fizzles is a rules question for the card-game course (02g).
 - Doc feedback deferred to session 02: a decision with no data of its own, or one that needs
   another module's data (four auditors), answered in 02 by "a decision that combines several
   owners' data gets its own module with no data". Procedure versus domain order and the 02b
@@ -539,7 +590,7 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   level of concepts, with no signatures or code, and probe only what the knowledge map doesn't
   already show (02c); probe concepts, never facts about the code, and define shorthand such as
   "ladder" or drop it (02d); don't turn applying settled rules to existing code into an exercise
-  (02e). Propose the edits to him for review.
+  (02e); when referring to his design, quote the words meant, never "the other version" (02g). Propose the edits to him for review.
 - `fulfill_character_filter` is half narrow already: the side check is a free function in
   `cards/filter.rs`, while the kind check goes from object to definition to `binder`. Material for
   sessions 02e and 04.
@@ -553,6 +604,12 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   Cargo's crate-cycle ban. Verify before session 06 teaches it. Verified in 01e: `disallowed_types`
   bans an item at every path, so it can't ban one path. Verified in 02b: a ban by definition path
   on a `pub(crate)` method, lifted by `#[allow]` on one module, and a stale path failing the checks.
+- The per-zone proofs (02g), for ticket 08 and the 02f review. The location owner hands out a
+  proof per zone that borrows only what its questions read: cost on the hand's, health in play,
+  attack on the board. Callers that walk a zone get plain answers, an ID from outside or from
+  storage gets one honest check, moves take a plain ID in one command, and stored references keep
+  the plain `ObjectId`. "View" is a glossary term (what one player may see) and `game/view.rs`
+  builds them, so the proofs need another name, ticket 08's call.
 - Bevy names changed since 0.17: buffered events are `Message`s, `Event` is for observers, 0.20 is
   current. Use these names in session 03.
 
@@ -576,7 +633,7 @@ graph TD
   ORD["Orders between steps: swap test, order rules (done)"]
   STK["The stack owner (done)"]
   C["Chained keepers, one value of a shared command, emit's parameters (done)"]
-  PDV["Parse, don't validate: proofs as types, and when they go stale"]
+  PDV["Parse, don't validate: proofs as types, and when they go stale (done)"]
   DOD["Data-oriented design and ECS"]
   P["Ports, anti-corruption layers, contract tests"]
   T["Tests as design feedback"]
@@ -649,8 +706,8 @@ graph TD
 | 02c | ORD, STK | Orders between steps; the stack owner | done (probe 5 of 5, which he called retesting; swap test from his experiment, the callee's contract found after the `apply` case; "Orders between steps" in `file-structure.md`, rule defined, "of the domain" dropped; per-object death rattle helper again in production; stack owner with a `Next` enum; push keeper drafted; exercises moved to the level of concepts; audit unreviewed) |
 | 02d | C | Review the 02c audit; where `apply` lives, `emit`'s parameters, one event variant, checkpoints | done (a probe on code facts he objected to, then 2 of 2 on concepts; gaps G1 to G7 settled in `file-structure.md`, among them output as observable and reachable by accepted input; chained keepers nest one level per link; a rule about one value restricts who builds it, the token in an internal input; a struct of borrows for many callers; checkpoints wait for a shell; his exercise designs are not settled designs) |
 | 02e | untangle | Untangle `Game` as tickets | done (exercises dropped at his call, since applying settled rules is the agent's part; ten tickets in `docs/issues/untangle-game/` state problems, not shapes, and carry one ruling, matching stays with reporting; one ticket at a time, one to five review rounds; behavior changes allowed when justified, except rules changes and known bugs; no audit; PR #37) |
-| 02f | review | Review the untangling PRs; the doc gaps they surface | |
-| 02g | PDV | Parse, don't validate: `apply` and `legal_actions`, `ObjectId` by zone | next |
+| 02f | review | Review the untangling PRs; the doc gaps they surface | next, once he has run the untangling |
+| 02g | PDV | Parse, don't validate: `apply` and `legal_actions`, `ObjectId` by zone | done (probe edge was a proof's reach, he let `apply` skip the check; four nodes, each a rule in "Parse, don't validate", plus a Rust bullet on proofs that borrow; `apply` exercise reached "&mut or owned values" after one question; `ObjectId`: identity in stored IDs, per-zone proofs from the location owner, his first proof borrowed the ID; no audit, findings 33 to 35 and 12 ticketed as 08, 11 and 12, PR #38) |
 | 03 | DOD | Data-oriented design, ECS organization, the rules core beside Bevy | |
 | 04 | R3, P, T | Ports, anti-corruption layers, contract tests, tests as feedback | |
 | 05 | F | Feature-first, shared code, naming | |
