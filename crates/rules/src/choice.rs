@@ -1,7 +1,4 @@
-use crate::{
-    cards::{filter::CharacterFilter, object::ObjectId},
-    history::HistoryQuery,
-};
+use crate::{cards::filter::CharacterFilter, history::HistoryQuery};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EffectAmount {
@@ -48,18 +45,5 @@ pub struct CharacterChoice {
     pub different: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ChoiceTarget {
-    pub choice_id: ChoiceId,
-    pub targets: Vec<ObjectId>,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PickId(pub usize);
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct PickTarget {
-    pub pick_id: PickId,
-    pub picked: Vec<ObjectId>,
-    pub others: Vec<ObjectId>,
-}
