@@ -1,6 +1,6 @@
 # Zones and order of play have an owner
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 Branch: `zones-and-order-of-play`, new, from `main`. New draft PR with base `main`.
@@ -66,3 +66,7 @@ two share an answer today."
 - Each question about order of play has its own function.
 - Every order the rules depend on comes out as before.
 - The checks pass, and the PR justifies every behavior change.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/39

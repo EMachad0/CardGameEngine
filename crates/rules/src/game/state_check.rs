@@ -45,7 +45,7 @@ impl Game {
                 .into_iter()
                 .chain(dead_heroes)
                 .collect::<Vec<_>>();
-            death_pass.sort_by_key(|o| self.objects.get(*o).order);
+            death_pass.sort_by_key(|&o| self.zones.death_order(o));
             self.kill(&death_pass, obs);
 
             for player_id in dead_players.into_iter() {

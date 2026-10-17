@@ -52,7 +52,8 @@ impl Game {
         asking: PlayerId,
         filter: &CharacterFilter,
     ) -> Vec<ObjectId> {
-        self.characters_in_play()
+        self.zones
+            .characters_in_play()
             .filter(|&object_id| {
                 let owner = self.objects.get(object_id).player_id;
                 self.fulfill_character_filter(asking, owner, object_id, filter)

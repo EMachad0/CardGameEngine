@@ -2,7 +2,7 @@
 //!
 //! `legal_actions` is the one definition of legality. `apply` accepts exactly
 //! what it lists, and an `Err` leaves the game unchanged. Child modules:
-//! - `player`: one player's resources, zones and pending choice.
+//! - `player`: one player's resources and pending choice.
 //! - `resolve`: the mutation half of `apply`.
 //! - `lookup`: attack, health and cost, computed on read.
 #![expect(
@@ -33,13 +33,14 @@ use crate::observer::Observer;
 use crate::outcome::Outcome;
 use crate::rng::Rng;
 use crate::turn::TurnOrder;
-use crate::zones::Deck;
+use crate::zones::Zones;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Game {
     rng: Rng,
     turn_order: TurnOrder,
     players: Vec<Player>,
+    zones: Zones,
     objects: ObjectBag,
     binder: Binder,
     history: History,
@@ -69,20 +70,25 @@ impl Game {
 
         let player_count = decks.len();
         let player_ids = (0..player_count).map(PlayerId::new).collect::<Vec<_>>();
-        let mut players = player_ids
+        let players = player_ids
             .iter()
-            .map(|&player_id| {
-                let hero_id = objects.insert(HERO, player_id);
-                Player::new(player_id, hero_id)
+            .map(|&player_id| Player::new(player_id))
+            .collect::<Vec<_>>();
+        let heroes = player_ids
+            .iter()
+            .map(|&player_id| objects.insert(HERO, player_id))
+            .collect::<Vec<_>>();
+        let decks = player_ids
+            .iter()
+            .zip(decks)
+            .map(|(&player_id, deck_defs)| {
+                deck_defs
+                    .into_iter()
+                    .map(|def_id| objects.insert(def_id, player_id))
+                    .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
-        for (player, deck_defs) in players.iter_mut().zip(decks) {
-            let deck = deck_defs
-                .into_iter()
-                .map(|def_id| objects.insert(def_id, player.id))
-                .collect::<Vec<_>>();
-            player.zones.deck = Deck::new(deck);
-        }
+        let zones = Zones::new(heroes.into_iter().zip(decks));
         let turn_order = TurnOrder::new(player_ids.clone());
         let history = History::default();
 
@@ -90,6 +96,7 @@ impl Game {
             rng,
             turn_order,
             players,
+            zones,
             objects,
             binder,
             history,
@@ -98,9 +105,9 @@ impl Game {
             resolving_effect: Default::default(),
         };
 
-        for player in game.players.iter_mut() {
-            if shuffle {
-                player.zones.deck.shuffle(&mut game.rng);
+        if shuffle {
+            for &player_id in &player_ids {
+                game.zones.shuffle_deck(player_id, &mut game.rng);
             }
         }
 
@@ -204,21 +211,21 @@ impl Game {
     }
 
     pub fn hand(&self, player_id: PlayerId) -> &[ObjectId] {
-        self.get_player(player_id).zones.hand.as_slice()
+        self.zones.hand(player_id)
     }
 
     /// A copy, top first.
     pub fn deck(&self, player_id: PlayerId) -> Vec<ObjectId> {
-        self.get_player(player_id).zones.deck.to_vec()
+        self.zones.deck(player_id)
     }
 
     pub fn player_board(&self, player_id: PlayerId) -> &[ObjectId] {
-        self.get_player(player_id).zones.board.as_slice()
+        self.zones.board(player_id)
     }
 
     fn characters_in_order_of_play(&self) -> Vec<ObjectId> {
-        let mut characters = self.characters_in_play().collect::<Vec<_>>();
-        characters.sort_by_key(|o| self.objects.get(*o).order);
+        let mut characters = self.zones.characters_in_play().collect::<Vec<_>>();
+        characters.sort_by_key(|&o| self.zones.match_order(o));
         characters
     }
 

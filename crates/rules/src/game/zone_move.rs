@@ -26,18 +26,14 @@ impl Game {
     /// Each draw from an empty deck costs 1 health instead.
     pub(crate) fn draw(&mut self, player_id: PlayerId, count: u8, obs: &mut impl Observer) {
         for _ in 0..count {
-            let player = self.get_player_mut(player_id);
-            let card = player.zones.deck.pop_front();
-            if let Some(object_id) = card {
-                player.zones.hand.add(object_id);
+            if let Some(object_id) = self.zones.draw(player_id) {
                 let event = Event::Drew {
                     player_id,
                     object_id,
                 };
                 self.emit(event, obs);
-                self.objects.update_order(object_id);
             } else {
-                let hero_id = player.zones.hero;
+                let hero_id = self.zones.hero(player_id);
                 let damage = 1;
                 let object = self.objects.get_mut(hero_id);
                 object.damage += damage;
@@ -57,10 +53,8 @@ impl Game {
         object_id: ObjectId,
         obs: &mut impl Observer,
     ) {
-        self.get_player_mut(player_id)
-            .zones
-            .hand
-            .remove(object_id)
+        self.zones
+            .take_from_hand(player_id, object_id)
             .expect("legal actions guarantee playable cards are in hand");
 
         if !self.play_effects(object_id).is_empty() {
@@ -89,7 +83,7 @@ impl Game {
         object_id: ObjectId,
         obs: &mut impl Observer,
     ) {
-        self.get_player_mut(player_id).zones.board.add(object_id);
+        self.zones.enter_board(player_id, object_id);
         self.character_entered(player_id, object_id, obs);
     }
 
@@ -119,10 +113,8 @@ impl Game {
         object_id: ObjectId,
         obs: &mut impl Observer,
     ) {
-        self.get_player_mut(player_id)
-            .zones
-            .board
-            .remove(object_id)
+        self.zones
+            .leave_board(player_id, object_id)
             .expect("object not in board");
 
         if self.card_def(object_id).goes_to_graveyard() {
@@ -136,11 +128,7 @@ impl Game {
         object_id: ObjectId,
         _obs: &mut impl Observer,
     ) {
-        self.objects.update_order(object_id);
-        self.get_player_mut(player_id)
-            .zones
-            .graveyard
-            .add(object_id);
+        self.zones.entomb(player_id, object_id);
     }
 
     pub(crate) fn reveal(
@@ -151,18 +139,7 @@ impl Game {
         count: u8,
         obs: &mut impl Observer,
     ) {
-        let options = {
-            let player = self.get_player_mut(player_id);
-            let mut options = Vec::new();
-            for _ in 0..count {
-                let Some(card) = player.zones.deck.pop_front() else {
-                    break;
-                };
-
-                options.push(card);
-            }
-            options
-        };
+        let options = self.zones.reveal(player_id, count);
 
         if !options.is_empty() {
             let event = Event::Revealed {
@@ -220,9 +197,7 @@ impl Game {
         object_id: ObjectId,
         obs: &mut impl Observer,
     ) {
-        let player = self.get_player_mut(player_id);
-        player.zones.hand.add(object_id);
-        self.objects.update_order(object_id);
+        self.zones.add_to_hand(player_id, object_id);
         let event = Event::AddedToHand {
             player_id,
             object_id,
@@ -236,9 +211,7 @@ impl Game {
         object_id: ObjectId,
         obs: &mut impl Observer,
     ) {
-        let player = self.get_player_mut(player_id);
-        player.zones.deck.push_back(object_id);
-        self.objects.update_order(object_id);
+        self.zones.bury(player_id, object_id);
         let event = Event::Buried {
             player_id,
             object_id,
@@ -252,7 +225,6 @@ impl Game {
         object_id: ObjectId,
         obs: &mut impl Observer,
     ) {
-        self.objects.update_order(object_id);
         let event = Event::BoardEntered {
             player_id,
             object_id,
