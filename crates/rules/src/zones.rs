@@ -140,9 +140,9 @@ impl PlayerZones {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Zones {
     players: Vec<PlayerZones>,
-    /// The value of `entries` when each object last entered a zone.
+    /// The value of `next_stamp` when each object last entered a zone.
     entered: BTreeMap<ObjectId, u64>,
-    entries: u64,
+    next_stamp: u64,
 }
 
 impl Zones {
@@ -151,7 +151,7 @@ impl Zones {
         let mut zones = Self {
             players: Vec::new(),
             entered: BTreeMap::new(),
-            entries: 0,
+            next_stamp: 0,
         };
         for (hero, deck) in players {
             zones.stamp_entry(hero);
@@ -291,8 +291,8 @@ impl Zones {
             !self.players.iter().any(|player| player.holds(&object_id)),
             "an object enters a zone only from no zone",
         );
-        self.entered.insert(object_id, self.entries);
-        self.entries += 1;
+        self.entered.insert(object_id, self.next_stamp);
+        self.next_stamp += 1;
     }
 
     fn order_of_play(&self, object_id: ObjectId) -> u64 {
