@@ -73,8 +73,9 @@ impl PickAnswer {
 pub(super) struct Questions {
     /// Sorted by player.
     pending: Vec<(PlayerId, Question)>,
+    /// Sorted by card, then in the order stored.
     choice_answers: Vec<ChoiceAnswer>,
-    /// In the order picked.
+    /// Sorted by source, then in the order picked.
     pick_answers: Vec<PickAnswer>,
 }
 
@@ -121,7 +122,7 @@ impl Questions {
             .find(|answer| answer.source == source && answer.pick_id == pick_id)
     }
 
-    /// Replaces any question the player has.
+    /// Replaces any draft the player has. Panics if they have a pending pick.
     pub(super) fn open_draft(&mut self, player_id: PlayerId, object_id: ObjectId) {
         self.ask(
             player_id,
@@ -139,9 +140,12 @@ impl Questions {
         draft.chosen.push((object_id, choice_id));
     }
 
-    /// Drops the player's question, whatever it is.
+    /// Drops the player's draft, if any. Panics if they have a pending pick.
     pub(super) fn cancel(&mut self, player_id: PlayerId) {
-        self.take(player_id);
+        if let Ok(idx) = self.slot(player_id) {
+            self.assert_no_pick(idx);
+            self.pending.remove(idx);
+        }
     }
 
     /// Closes the player's draft and stores one answer per choice in `choice_ids` for the
@@ -152,21 +156,23 @@ impl Questions {
         };
         self.choice_answers
             .retain(|answer| answer.object_id != object_id);
-        for &choice_id in choice_ids {
-            self.choice_answers.push(ChoiceAnswer {
-                object_id,
-                choice_id,
-                targets: chosen
-                    .iter()
-                    .filter(|(_, c)| *c == choice_id)
-                    .map(|(o, _)| *o)
-                    .collect(),
-            });
-        }
+        let idx = self
+            .choice_answers
+            .partition_point(|answer| answer.object_id < object_id);
+        let answers = choice_ids.iter().map(|&choice_id| ChoiceAnswer {
+            object_id,
+            choice_id,
+            targets: chosen
+                .iter()
+                .filter(|(_, c)| *c == choice_id)
+                .map(|(o, _)| *o)
+                .collect(),
+        });
+        self.choice_answers.splice(idx..idx, answers);
     }
 
-    /// Asks the player to pick one of `options`, replacing any question they have. With no
-    /// options, asks nothing and returns `false`.
+    /// Asks the player to pick one of `options`, replacing any draft they have. With no options,
+    /// asks nothing and returns `false`. Panics if they have a pending pick.
     pub(super) fn ask_pick(
         &mut self,
         player_id: PlayerId,
@@ -204,12 +210,18 @@ impl Questions {
             .position(|id| *id == object_id)
             .expect("a legal pick should name one of the options");
         let picked = options.remove(idx);
-        self.pick_answers.push(PickAnswer {
-            source,
-            pick_id,
-            picked: vec![picked],
-            others: options,
-        });
+        let idx = self
+            .pick_answers
+            .partition_point(|answer| answer.source <= source);
+        self.pick_answers.insert(
+            idx,
+            PickAnswer {
+                source,
+                pick_id,
+                picked: vec![picked],
+                others: options,
+            },
+        );
     }
 
     fn question_mut(&mut self, player_id: PlayerId) -> Option<&mut Question> {
@@ -220,7 +232,10 @@ impl Questions {
 
     fn ask(&mut self, player_id: PlayerId, question: Question) {
         match self.slot(player_id) {
-            Ok(idx) => self.pending[idx].1 = question,
+            Ok(idx) => {
+                self.assert_no_pick(idx);
+                self.pending[idx].1 = question;
+            }
             Err(idx) => self.pending.insert(idx, (player_id, question)),
         }
     }
@@ -229,6 +244,14 @@ impl Questions {
         self.slot(player_id)
             .ok()
             .map(|idx| self.pending.remove(idx).1)
+    }
+
+    /// A pending pick holds its revealed cards, so only `pick` may close it.
+    fn assert_no_pick(&self, idx: usize) {
+        assert!(
+            !matches!(self.pending[idx].1, Question::Pick(_)),
+            "a pending pick closes only when the player picks",
+        );
     }
 
     fn slot(&self, player_id: PlayerId) -> Result<usize, usize> {
@@ -275,7 +298,40 @@ mod tests {
         let answer = questions.pick_answer(source, PickId(0)).unwrap();
         assert_eq!(answer.picked(), [b]);
         assert_eq!(answer.others(), [a, c]);
-        assert_eq!(questions.revealed(player), []);
+    }
+
+    #[test]
+    fn a_pick_closes_the_pending_pick() {
+        let [source, a] = ids();
+        let player = PlayerId::new(0);
+        let mut questions = Questions::default();
+        questions.ask_pick(player, source, PickId(0), vec![a]);
+
+        questions.pick(player, a);
+
+        assert_eq!(questions.question(player), None);
+    }
+
+    #[test]
+    #[should_panic(expected = "a pending pick closes only when the player picks")]
+    fn a_pending_pick_cannot_be_cancelled() {
+        let [source, a] = ids();
+        let player = PlayerId::new(0);
+        let mut questions = Questions::default();
+        questions.ask_pick(player, source, PickId(0), vec![a]);
+
+        questions.cancel(player);
+    }
+
+    #[test]
+    #[should_panic(expected = "a pending pick closes only when the player picks")]
+    fn a_pending_pick_cannot_be_replaced() {
+        let [source, card, a] = ids();
+        let player = PlayerId::new(0);
+        let mut questions = Questions::default();
+        questions.ask_pick(player, source, PickId(0), vec![a]);
+
+        questions.open_draft(player, card);
     }
 
     #[test]
@@ -287,7 +343,6 @@ mod tests {
         questions.ask_pick(player, source, PickId(0), vec![a, b]);
 
         assert_eq!(questions.revealed(player), [a, b]);
-        assert_eq!(questions.draft(player), None);
     }
 
     #[test]
@@ -309,7 +364,37 @@ mod tests {
             Some(&[][..]),
             "a declared choice with no target must still have an answer",
         );
+    }
+
+    #[test]
+    fn a_committed_draft_closes_the_draft() {
+        let [card] = ids();
+        let player = PlayerId::new(0);
+        let mut questions = Questions::default();
+        questions.open_draft(player, card);
+
+        questions.commit_draft(player, &[ChoiceId(0)]);
+
         assert_eq!(questions.question(player), None);
+    }
+
+    #[test]
+    fn committing_a_cards_draft_again_replaces_its_answers() {
+        let [card, first, second] = ids();
+        let player = PlayerId::new(0);
+        let mut questions = Questions::default();
+        questions.open_draft(player, card);
+        questions.choose(player, first, ChoiceId(0));
+        questions.commit_draft(player, &[ChoiceId(0)]);
+        questions.open_draft(player, card);
+        questions.choose(player, second, ChoiceId(0));
+
+        questions.commit_draft(player, &[ChoiceId(0)]);
+
+        assert_eq!(
+            questions.choice_answer(card, ChoiceId(0)),
+            Some(&[second][..])
+        );
     }
 
     #[test]
@@ -323,7 +408,6 @@ mod tests {
         questions.cancel(player);
 
         assert_eq!(questions.choice_answer(card, ChoiceId(0)), None);
-        assert_eq!(questions.question(player), None);
     }
 
     #[test]
@@ -335,6 +419,16 @@ mod tests {
         questions.open_draft(player, card);
 
         assert_eq!(questions.revealed(player), []);
+    }
+
+    #[test]
+    fn an_open_draft_names_its_card() {
+        let [card] = ids();
+        let player = PlayerId::new(0);
+        let mut questions = Questions::default();
+
+        questions.open_draft(player, card);
+
         assert_eq!(questions.draft(player).map(Draft::object_id), Some(card));
     }
 
