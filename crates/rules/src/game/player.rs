@@ -1,4 +1,4 @@
-//! One player's record inside `Game`: resources, zones, and any pending choice.
+//! One player's record inside `Game`: resources and any pending choice.
 //!
 //! Fields are `pub(super)`, so `Game` can change them and nothing outside
 //! `game` can see them.
@@ -6,7 +6,6 @@
 use crate::cards::object::ObjectId;
 use crate::choice::{ChoiceId, PickId};
 use crate::ids::PlayerId;
-use crate::zones::Zones;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(super) enum PlayerInteractionState {
@@ -29,18 +28,16 @@ pub(super) struct Player {
     pub(super) mana: u8,
     pub(super) max_mana: u8,
     pub(super) interaction_state: PlayerInteractionState,
-    pub(super) zones: Zones,
     pub(super) playing: bool,
 }
 
 impl Player {
-    pub(super) fn new(id: PlayerId, hero: ObjectId) -> Self {
+    pub(super) fn new(id: PlayerId) -> Self {
         Self {
             id,
             mana: 0,
             max_mana: 0,
             interaction_state: PlayerInteractionState::default(),
-            zones: Zones::new(hero),
             playing: true,
         }
     }

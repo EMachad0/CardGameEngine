@@ -96,18 +96,16 @@ impl Game {
             hero: self.hero_card(viewer, player.id),
             mana: player.mana,
             max_mana: player.max_mana,
-            hand: player
+            hand: self
                 .zones
-                .hand
-                .as_slice()
+                .hand(player.id)
                 .iter()
                 .map(|o| self.hand_card(viewer, player.id, *o))
                 .collect(),
-            deck_size: player.zones.deck.len(),
-            board: player
+            deck_size: self.zones.deck_size(player.id),
+            board: self
                 .zones
-                .board
-                .as_slice()
+                .board(player.id)
                 .iter()
                 .map(|o| self.board_card(viewer, *o))
                 .collect(),

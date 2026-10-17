@@ -26,38 +26,25 @@ impl Game {
     }
 
     pub fn hero_id(&self, player_id: PlayerId) -> ObjectId {
-        self.get_player(player_id).zones.hero
-    }
-
-    pub(super) fn characters_in_play(&self) -> impl Iterator<Item = ObjectId> {
-        let heroes = self.players.iter().map(|player| player.zones.hero);
-        let minions = self
-            .players
-            .iter()
-            .flat_map(|player| player.zones.board.as_slice().iter().copied());
-        heroes.chain(minions)
+        self.zones.hero(player_id)
     }
 
     pub fn mana_cost(&self, object_id: ObjectId) -> Option<u8> {
         let obj = self.object(object_id);
-        self.get_player(obj.player_id)
-            .zones
-            .hand
-            .contains(&object_id)
-            .then(|| {
-                let printed_cost = self.card_def(object_id).mana_cost;
-                let neg_modifiers = self
-                    .modifiers(object_id)
-                    .as_slice()
-                    .iter()
-                    .filter_map(|m| match m.effect {
-                        ModifierEffect::ReduceManaCost { amount } => Some(amount),
-                        _ => None,
-                    })
-                    .map(|a| self.effect_amount(&a, obj.player_id))
-                    .sum::<u8>();
-                printed_cost.saturating_sub(neg_modifiers)
-            })
+        self.zones.in_hand(obj.player_id, object_id).then(|| {
+            let printed_cost = self.card_def(object_id).mana_cost;
+            let neg_modifiers = self
+                .modifiers(object_id)
+                .as_slice()
+                .iter()
+                .filter_map(|m| match m.effect {
+                    ModifierEffect::ReduceManaCost { amount } => Some(amount),
+                    _ => None,
+                })
+                .map(|a| self.effect_amount(&a, obj.player_id))
+                .sum::<u8>();
+            printed_cost.saturating_sub(neg_modifiers)
+        })
     }
 
     pub fn hero_health(&self, player_id: PlayerId) -> i32 {
@@ -70,6 +57,7 @@ impl Game {
         let card_def = self.card_def(object_id);
 
         let is_in_play = self
+            .zones
             .characters_in_play()
             .any(|character| character == object_id);
 
@@ -94,27 +82,23 @@ impl Game {
 
     pub fn attack(&self, object_id: ObjectId) -> Option<i32> {
         let obj = self.object(object_id);
-        self.get_player(obj.player_id)
-            .zones
-            .board
-            .contains(&object_id)
-            .then(|| {
-                let printed_attack = self
-                    .card_def(object_id)
-                    .attack()
-                    .expect("board objects always have attack");
-                let modifiers = self
-                    .modifiers(object_id)
-                    .as_slice()
-                    .iter()
-                    .filter_map(|m| match m.effect {
-                        ModifierEffect::BuffAtk { amount } => Some(amount),
-                        _ => None,
-                    })
-                    .map(|a| self.effect_amount(&a, obj.player_id) as i32)
-                    .sum::<i32>();
-                printed_attack + modifiers
-            })
+        self.zones.on_board(obj.player_id, object_id).then(|| {
+            let printed_attack = self
+                .card_def(object_id)
+                .attack()
+                .expect("board objects always have attack");
+            let modifiers = self
+                .modifiers(object_id)
+                .as_slice()
+                .iter()
+                .filter_map(|m| match m.effect {
+                    ModifierEffect::BuffAtk { amount } => Some(amount),
+                    _ => None,
+                })
+                .map(|a| self.effect_amount(&a, obj.player_id) as i32)
+                .sum::<i32>();
+            printed_attack + modifiers
+        })
     }
 
     pub(crate) fn death_rattles(&self, object_id: ObjectId) -> Vec<Trigger> {
