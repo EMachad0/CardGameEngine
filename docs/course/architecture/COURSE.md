@@ -24,7 +24,9 @@ up.
   about any earlier session's nodes, such as 01 to 01e and 02 to 02g for 03. Skip it when he did
   the previous session just before.
 - Roles. He learns the concepts and makes every decision about the rules. The agent drafts the docs
-  and the lint rules, and writes the refactor tickets. He reviews all of it before it's merged.
+  and the lint rules, and writes the refactor tickets. He reviews all of it before it's merged. His
+  exercise designs are answers, not settled designs: the refactoring agent picks the shape within
+  the doc (his call, 02d).
 - Each node ends with an exercise at the level of concepts, with no options offered: he classifies
   real code, picks its owner or keeper, or judges a design the agent drafts. No signatures or code.
   Solving the code is the agent's part (his call, 02c). When a node settles, he states the rule and
@@ -61,7 +63,8 @@ up.
   promotes a module to a crate or ends with `pub(crate)` everywhere (00).
 - Across strands, recognition is solid and production with no options is the edge. He finds spread
   knowledge reliably but misses some of its holders (00, 01, 01a, 02, and in 02b the second call of
-  `check_state`). The 02c probe went 5 of 5 again.
+  `check_state`). The 02c probe went 5 of 5 again, and the 02d probe, on concepts the map had no
+  evidence for, 2 of 2.
 
 ### Coupling and hiding decisions
 
@@ -90,6 +93,15 @@ up.
   the domain". In the `apply` exercise he got both kinds right but called the drain free for every
   action except Play (Pick and EndTurn break). Asked whether trigger matching should leave `emit`;
   the swap test keeps it there, since a deferred match sees a different board.
+- The 02c audit's gaps (02d). Right that the observer sees event order. Said swapping two steps
+  and swapping only their reports break the same thing, then found the difference himself ("if u
+  can emit a TurnEnded whatever then of course it no longer means the turn ended"). Asked why
+  report order can't be an order rule of its own, settled by "decisions that change together count
+  as one", then stated the rule and reworded my draft with "output". Filed an order through a
+  stored field as an order rule at once, and asked whether the fix was "going back" (it is). On
+  reachable states he argued today's cards are code, then challenged a double standard between
+  adding a card and widening the validator. My framing of code as data in one place and interface
+  in another was the confusion; caller against interface settled it.
 - Probe (02c), all right: `play`'s push before `Played` as a domain rule with his own reason, the
   merged `kill` loops (missed in 01), the stack not applying effects, formal knowledge still
   costing an edit per place (missed with West, 02a), and a private-field payload for `Died`.
@@ -124,6 +136,9 @@ up.
   only public types hide nothing (01d). Noted that `object.rs` holds two decisions and hides one.
 - File or module: mana pays, outcome doesn't (one writer, `set`/`get` mirror the field); the
   effect stack qualifies only if its order goes inside (01b).
+- `emit`'s parameters (02d): said the 13 callers know what recording needs, missing that matching
+  reads most of it, and expects it to change. Proposed a read type built from `&Game`, which has to
+  split `&mut Game` instead, since `emit` writes History.
 - Edge: draws the boundary around an entity or noun rather than a decision. His "Objects" module
   bundled triggers, modifiers and health and needed most of `Game`'s data, which he noticed
   (01b); he split `derived` by noun into Mana, Stats, Auras and Modifiers where the change test
@@ -191,6 +206,13 @@ up.
   `current_finished` question, then picked a `Next` enum so the boundary is formal. Missed the
   push-side quiz by reading ADR 0013 as a queue (my wording); his reading showed the same leak.
   For the push side he proposed a no-data keeper with a token; the doc's ladder gives nesting.
+- Keepers in 02d: derived unaided that an order rule restricts its later step, and that the
+  reverse holds only when the domain needs it; quiz right. Nested the chain of keepers (`apply`,
+  drain, state check, `kill`) as a tree unaided. For its last link, the location owner's shared
+  move, he named the keeper but not the tool, a token. On one value of a shared command: "the
+  interface restricts what the caller passes" unaided, "I don't know" on whether the token goes in
+  the public `Event`, then proposed decoupling the internal event from the external one. Quiz right
+  on a ledger case.
 - 00 beliefs, probably resolved: a method on `Player` makes it "an object rather than data", and
   fear of delegation boilerplate on `Game`.
 
@@ -252,8 +274,9 @@ up.
   instead of organization (00), "narrower than its data", which counted items, not knowledge
   (01b), "place" framed as undefined (01d), "bet", which he asked to drop, "its interface"
   read as today's, and a leading question ("a design without the binder?") that pushed him off
-  his right option (02a), "the procedure", which the doc never defined, and ADR 0013's "oldest
-  first", read as a queue (02c).
+  his right option (02a), "the procedure", which the doc never defined, ADR 0013's "oldest
+  first", read as a queue (02c), "ladder" for the tools in "Restricting callers", and code called
+  data in one place and interface in another (02d).
 - Rule drafting: first drafts come by feel and sharpen in discussion (01b); he rewrites and
   rejects his own drafts (01d). Cuts wording that decides nothing, examples, and Rust terms from
   the General section (01c, 02). Rejects doc text that fixes no shown gap or is owned elsewhere.
@@ -271,6 +294,10 @@ up.
   part, I am here to learn the subjects" (02c). Objected to a probe that retested taught material
   the map already showed. Lost track when I kept calling an amended answer "your test" without
   saying what changed.
+- Objected again to a probe on facts about the code: "once again you are probing about existing
+  code instead of concepts" (02d). Asks me to state a rule when he holds the idea but not the
+  wording, then rewrites my draft (G1). Accepts doc text that answers an auditor's confusion even
+  when he finds it inferable (G2).
 
 ## Course plan
 
@@ -289,12 +316,11 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
    make its writes, and the Rust tools for restricting callers (done). 02c: orders between steps
    (the swap test, order rules and their keeper, a coordinator holding only orders that carry no
    decision) and the stack owner, which picks what resolves next and applies nothing (done). 02d:
-   review the 02c audit; where `apply` lives (26), with `apply`, the drain and the state check as
-   a chain of keepers that the nesting bullet may not cover; `emit`'s parameter list, now that it
-   hands matches back; restricting one event variant (30, gap G2); checkpoints (31). Material in
+   the 02c audit's gaps, a chain of keepers nesting one level per link (26), restricting one value
+   of a shared command (30), `emit`'s parameters as one struct of borrows; checkpoints wait for a
+   shell (done). 02e: untangle `Game`, then the audit. Material in
    `research/02b-pass-and-coordinator/scope.md` (Evans's application layer, Forge and XMage, Dahan
-   and Bogard, Newman and the Process Manager) and `research/02c-coordinator/`. 02e: untangle
-   `Game`, then the audit. 02f writes the tickets: the untangling, the findings, and #16, #17 and
+   and Bogard, Newman and the Process Manager) and `research/02c-coordinator/`. 02f writes the tickets: the untangling, the findings, and #16, #17 and
    #18 redone from their branches. Session 02g, its own node: parse, don't validate (Alexis King,
    2019). A check's result carried forward as a type, not an assumption; who can build the proof,
    and when it goes stale. Material:
@@ -366,10 +392,13 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   25. The pass: "if the pass runs, no resolving effect is part-way through". It also runs after an
       action with none (`fatigue_at_turn_start_can_end_the_game`). `check_state` is `pub(crate)`,
       and a finished resolving effect gets it twice (`resolve.rs:265`, then `:231`), which no
-      test catches. His design: a loop parent (not `loop`, a keyword) whose only children are
+      test catches. His 02b exercise answer: a loop parent (not `loop`, a keyword) whose only children are
       the drain and the state check, `check_state` `pub(super)`, one call.
   26. Only `apply` starts the drain (ADR 0015). Moving the loop out of `resolve` opens the
-      drain's entry to all of `game` unless `apply` moves in. Session 02d.
+      drain's entry to all of `game` unless `apply` moves in. Settled in 02d: `apply`, the
+      drain, the state check and `kill` nest one level per link. The last link, removing the
+      dying through the location owner's shared move, takes a token in the move's input (see
+      30). The layout is the refactor's call. Session 02e.
   27. The effect stack and the resolving effect as one owner, popped and advanced only by the
       loop; `apply_effect` and `reveal` (low) run only as a step, through a `Step` token. Extends
       5 and 21. His effect stack question, answered in 02c: the owner picks what resolves next
@@ -383,9 +412,13 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   30. Reporting one event variant (`Died`, `Played`, `GameEnded`) can't be restricted: `emit`
       takes the public `Event`, and the tools restrict commands, not arguments. A token in an
       internal input type might. A private-field payload in the variant works (E0451, checked),
-      but changes the public `Event`. Session 02d.
-  31. Checkpoints: ten sites and no keeper. A Clippy ban like `Observer::event`'s (low). Refines
-      20. Session 02d.
+      but changes the public `Event`. Settled in 02d: an internal input type for `emit` carries
+      the token in those variants, and `emit` builds the public `Event` from it, which tests and
+      log readers stay free to build. The same for the location owner's death move (28).
+  31. Checkpoints: ten sites and no keeper. No decision behind the placement yet (his call, 02d).
+      Revisit when a shell reads views, in session 03 or the card-game course, and review the
+      `events.rs` tests that pin positions, such as `a_checkpoint_follows_a_card_leaving_the_hand`.
+      Refines 20.
   32. `emit` reports `Died` after removal, and `health` is `None` off the board, so `kill` takes
       the history snapshot and it travels with the report. For #16's redo.
 
@@ -403,12 +436,16 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
 - Doc feedback deferred to session 02: a decision with no data of its own, or one that needs
   another module's data (four auditors), answered in 02 by "a decision that combines several
   owners' data gets its own module with no data". Procedure versus domain order and the 02b
-  audit's gap G3 were settled in 02c by "Orders between steps". Checkpoints (two) wait for 02d.
-- The 02c audit against "Orders between steps", for 02d, not yet checked or reviewed:
-  `research/02c-coordinator/audit-1.md`. Eight orders that matter (O1 to O8), 13 free ones with
-  the roadmap work that would make each a rule, and doc gaps G1 to G7, among them whether event
-  order counts as observable, orders passed through `Game`'s fields that still compile after a
-  swap, and an order kept at two sites (the state check at `resolve.rs:231` and `:265`).
+  audit's gap G3 were settled in 02c by "Orders between steps". Checkpoints (two) wait for a shell (31).
+- The 02c audit, `research/02c-coordinator/audit-1.md`, checked and reviewed in 02d. Gaps G1 to
+  G7 are settled in `file-structure.md` (G4 needed no change). Its orders O1 to O8 and the free
+  orders feed the 02e audit and the tickets. My check corrected it: `draw` emits before
+  `update_order`; the `damage` matcher is `fulfill_trigger_pattern` (`triggering.rs:47-78`), not
+  `condition.rs:63-72`; History stores object clones at `Died`, `Played` and `BoardEntered`, so
+  the `summon` and `kill` swaps change what it stores, though nothing reads it. Orders it missed:
+  `TurnStarted` before the mana refill (`mod.rs:255`), `entomb` stamping before the add
+  (`zone_move.rs:139-143`), `remove_dead` sorting by `order` (`state_check.rs:48`), and Pick and
+  Draft checkpointing in `apply_action` while Play does it in `play`.
 - The stack owner (02c), for 02e and #17's redo in 02f. Private `effect_stack` and
   `resolving_effect`. `next_effect() -> Next { Effect(ObjectId, Effect), Finished, Empty }` reads
   and advances in one command. It returns `Finished` at every boundary between resolving effects,
@@ -424,7 +461,7 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   hand, deck, board, graveyard, a pending pick's revealed cards and the entry order, behind one
   move command. It replaces `Object.order` and the three sorts (finding 4) and settles finding 17's
   holding zone. `pick_targets`, `choice_targets`, and `PendingPick`'s `source` and `pick_id` are
-  resolution context, not object or player data (extends finding 9), for 02d.
+  resolution context, not object or player data (extends finding 9), for 02e.
 - The history owner, drawn in 02a for #16's redo in 02f (extends finding 13). Private entries
   hold the player, turn, `DefId`, kind and a snapshot of attack, health and cost at that moment,
   replacing the `Object` clones. `record` stays open: the rule runs one way, so only `Observer::event` is restricted, as
@@ -434,7 +471,7 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   snapshot. `HistoryQuery` is card text, so runtime context goes in parameters or the type
   becomes `HistoryQueryDef`, decided at the ticket. Take the snapshot in `kill`, before the dead leave the
   board (ADR 0012), and pass it with the report (finding 32). Check the ADR bar when it is built.
-- His `verb.rs` design (session 01c), for sessions 02d and 02e: a zones module owning
+- His `verb.rs` design (session 01c), for session 02e: a zones module owning
   the zones, the stamps and in-zone order behind moves such as `deck_to_hand` (maybe deepening
   `zones.rs`); a damage module, with fatigue calling it; and an intermediate coordinator for the
   consequences of a move (events, pushes, their order), with the zones module as its child so
@@ -443,7 +480,9 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   effect stack and the observer, and reads objects, the binder, turn order, locations and the
   event: three `&mut` and five `&` through about fifteen callers. The order of its steps is
   free. In 02c `emit` kept matching and hands the matches back, so it no longer takes the stack.
-  Session 02d. Needs a name; "actions" collides with the glossary.
+  In 02d its parameters became one struct of borrows, built by one function from `&mut Game`:
+  `&mut` History and shared borrows of the rest, so callers pass one value. Not named Viewer, a
+  glossary term. Session 02e. Needs a name; "actions" collides with the glossary.
 - The `derived.rs` split: by the change test, stats and cost with `modifiers` are one decision
   with no term yet (#18's bet), and auras are another. He proposed four noun modules.
 - His D4 exercise ideas, for session 02e or later: a builder for `Game` creation, so callers
@@ -478,7 +517,8 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   exercise and 02's owners exercise were too big; keep "bet" out of session text, at his
   request (02a); check a surprising quiz miss for a misclick before probing around it (02b); keep exercises at the
   level of concepts, with no signatures or code, and probe only what the knowledge map doesn't
-  already show (02c). Propose the edits to him for review.
+  already show (02c); probe concepts, never facts about the code, and define shorthand such as
+  "ladder" or drop it (02d). Propose the edits to him for review.
 - `fulfill_character_filter` is half narrow already: the side check is a free function in
   `cards/filter.rs`, while the kind check goes from object to definition to `binder`. Material for
   sessions 02e and 04.
@@ -514,7 +554,7 @@ graph TD
   K["Keepers: rules no owner guards, restricting callers (done)"]
   ORD["Orders between steps: swap test, order rules (done)"]
   STK["The stack owner (done)"]
-  C["Where apply lives, emit's parameters, checkpoints"]
+  C["Chained keepers, one value of a shared command, emit's parameters (done)"]
   PDV["Parse, don't validate: proofs as types, and when they go stale"]
   DOD["Data-oriented design and ECS"]
   P["Ports, anti-corruption layers, contract tests"]
@@ -586,8 +626,8 @@ graph TD
 | 02a | O exercise, W | Redraw `emit`; West's argument against data hiding | done (retrieval 3 of 3; `emit` drawn as a module with no data; history owner with a stats snapshot after his own forecast overturned his narrow entry; "coupling costs as much as the decision changes" moved to the coupling section; West's real disagreement is hiding a representation no invariant ties, doc unchanged) |
 | 02b | K | Keepers: rules no owner guards, restricting callers in Rust | done (probe right but for a misclick; "Rules no owner guards" in General with his implication rule; "Restricting callers" in Rust from his three sentences; nesting designed for `check_state`; two audits, findings 24 to 32; ADR 0015 in glossary terms; coordinator topics moved to 02c) |
 | 02c | ORD, STK | Orders between steps; the stack owner | done (probe 5 of 5, which he called retesting; swap test from his experiment, the callee's contract found after the `apply` case; "Orders between steps" in `file-structure.md`, rule defined, "of the domain" dropped; per-object death rattle helper again in production; stack owner with a `Next` enum; push keeper drafted; exercises moved to the level of concepts; audit unreviewed) |
-| 02d | C | Review the 02c audit; where `apply` lives, `emit`'s parameters, one event variant, checkpoints | next |
-| 02e | untangle, audit | Untangle `Game`; audit against the doc | |
+| 02d | C | Review the 02c audit; where `apply` lives, `emit`'s parameters, one event variant, checkpoints | done (a probe on code facts he objected to, then 2 of 2 on concepts; gaps G1 to G7 settled in `file-structure.md`, among them output as observable and reachable by accepted input; chained keepers nest one level per link; a rule about one value restricts who builds it, the token in an internal input; a struct of borrows for many callers; checkpoints wait for a shell; his exercise designs are not settled designs) |
+| 02e | untangle, audit | Untangle `Game`; audit against the doc | next |
 | 02f | refactor | Tickets: the untangling, the findings, #16 to #18 redone | |
 | 02g | PDV | Parse, don't validate: `apply` and `legal_actions`, `ObjectId` by zone | |
 | 03 | DOD | Data-oriented design, ECS organization, the rules core beside Bevy | |
