@@ -152,6 +152,9 @@ pass. Give a rule an owner whenever its data can share one.
   restrict A and leave B open. A rule that also runs the other way restricts both.
 - An order rule, X before Y, reads as "if Y runs, X ran first", so restrict Y. When Y must also
   follow every X, the rule runs both ways.
+- A rule about one value of a shared command restricts who can build that value. The restriction
+  goes in the command's input, not in a type it hands out, since readers outside may build that
+  type too.
 
 ### Names exclude
 
@@ -241,6 +244,9 @@ command picks its tool by where the command lives.
   takes a value with a private field, which only the keeper's subtree can build.
 - A Clippy ban fits when neither the tree nor a signature should carry the rule. An `#[expect]`
   marks each rightful call.
+- For a rule about one value of a shared command, put the token inside the value: the variant
+  holds a type with a private field. When the command's input is also public output, decouple
+  them. An internal input type carries the token, and the command builds the public type from it.
 
 ## This project
 
