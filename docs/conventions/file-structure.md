@@ -175,6 +175,9 @@ is then formal, and the later steps have nothing left to assume.
 - Keep each fact true wherever its type can go. Either the type stops writes to the data while it
   exists, or it never leaves the command that checked it, and no step of that command writes the
   data before the step that uses the fact.
+- A stored reference names its target by a fact nothing writes, such as its identity. A fact a
+  write can change, such as where the target is, stays out of the reference's type. Parse it where
+  it's used.
 - Don't hand a parsed type to code that can keep it while the data changes, or use it on other
   data. Take that code's input plain, and parse it where it arrives.
 
