@@ -46,7 +46,7 @@ mod tests {
         assert_eq!(
             (mana.current(), mana.max()),
             (2, 2),
-            "(mana, max mana) after two refills",
+            "each refill raises max mana by one and fills mana to it",
         );
     }
 
@@ -60,7 +60,7 @@ mod tests {
         assert_eq!(
             (mana.current(), mana.max()),
             (10, 10),
-            "(mana, max mana) after eleven refills",
+            "max mana rises to 10 and no further",
         );
     }
 
@@ -75,7 +75,7 @@ mod tests {
         assert_eq!(
             (mana.current(), mana.max()),
             (1, 3),
-            "(mana, max mana) after paying 2 of 3",
+            "paying 2 of 3 mana leaves 1, and max mana stays 3",
         );
     }
 
