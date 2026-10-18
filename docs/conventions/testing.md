@@ -122,31 +122,19 @@ linted. An editor that runs clippy without the flag hides every test lint.
 
 Benchmarks use the criterion API and live in `crates/<crate>/benches/`. Like crate tests, they use
 only the crate's public interface. They can't import `tests/`, so each bench builds its own
-fixtures.
-
-The `criterion` dependency is CodSpeed's `codspeed-criterion-compat` under criterion's name. A plain
-`cargo bench` passes through to CodSpeed's fork of criterion and measures wall-clock time. Measure
-with `iter` or `iter_batched`, since CodSpeed skips `iter_custom`.
+fixtures. Measure with `iter` or `iter_batched`. CI skips `iter_custom`.
 
 A bench may pin a seed, because it measures and asserts nothing. A rules change that shifts the
 RNG stream also changes the pinned game, so numbers from before and after such a change don't
 compare directly.
 
-`cargo bench -p rules` runs them and reports the change since the last run.
+Don't run benches unless asked to. CI measures them on main and on every pull request that touches
+the code, and reports the change against main's latest run. Read the numbers there. The checks
+don't run benches, but clippy with `--all-targets` lints them.
+
+When asked, `cargo bench -p rules` runs them and reports the change since the last local run.
 `cargo bench -p rules -- clone` runs the benches whose name contains `clone`, and
-`cargo bench -p rules -- --test` runs each one once as a smoke test. The checks don't run benches,
-but clippy with `--all-targets` lints them.
-
-Shared CI runners swing wall-clock time by 10% and more, so CI measures with CodSpeed's CPU
-simulation instead. `cargo codspeed build` compiles the benches against CodSpeed's hooks, and the
-CodSpeed action runs each benchmark's measured iteration once under Valgrind. CodSpeed turns its
-instruction count and simulated cache misses into a time, and leaves system calls out. Every
-measured iteration starts with an empty simulated cache, so the estimate includes the misses that
-fill it. The harness runs the routine five times first, unmeasured, so the allocator is warm.
-
-The workflow runs on main, which records the baseline, and on every pull request that touches the
-code. The CodSpeed app compares the pull request against the latest baseline and comments the
-result. A regression fails CodSpeed's check but doesn't block the merge.
+`cargo bench -p rules -- --test` runs each one once as a smoke test.
 
 ## References
 
