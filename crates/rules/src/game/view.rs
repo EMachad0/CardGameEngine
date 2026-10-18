@@ -91,8 +91,8 @@ impl Game {
         PlayerView {
             player_id: player.id,
             hero: self.hero_card(viewer, player.id),
-            mana: player.mana,
-            max_mana: player.max_mana,
+            mana: player.mana.current(),
+            max_mana: player.mana.max(),
             hand: self
                 .zones
                 .hand(player.id)

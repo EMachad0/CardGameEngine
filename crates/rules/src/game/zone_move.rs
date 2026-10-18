@@ -66,6 +66,10 @@ impl Game {
         object_id: ObjectId,
         obs: &mut impl Observer,
     ) {
+        let mana_cost = self
+            .mana_cost(object_id)
+            .expect("legal actions guarantee playable cards are in hand");
+        self.get_player_mut(player_id).mana.pay(mana_cost);
         self.zones
             .take_from_hand(player_id, object_id)
             .expect("legal actions guarantee playable cards are in hand");
