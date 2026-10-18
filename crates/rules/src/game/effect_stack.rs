@@ -21,18 +21,27 @@ struct PendingEffect {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ResolvingEffect {
     pending: PendingEffect,
-    place: usize,
+    idx: usize,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub(super) struct NextEffect {
+    pub(super) source: ObjectId,
+    pub(super) effect: Effect,
 }
 
 impl ResolvingEffect {
-    fn next_effect(&mut self) -> Option<(ObjectId, Effect)> {
-        let effect = self.pending.effects.as_slice().get(self.place)?.clone();
-        self.place += 1;
-        Some((self.pending.source, effect))
+    fn next_effect(&mut self) -> Option<NextEffect> {
+        let effect = self.pending.effects.as_slice().get(self.idx)?.clone();
+        self.idx += 1;
+        Some(NextEffect {
+            source: self.pending.source,
+            effect,
+        })
     }
 
     fn is_done(&self) -> bool {
-        self.pending.effects.as_slice().len() <= self.place
+        self.pending.effects.as_slice().len() <= self.idx
     }
 }
 
@@ -51,13 +60,12 @@ impl EffectStack {
             self.resolving = self
                 .pending
                 .pop()
-                .map(|pending| ResolvingEffect { pending, place: 0 });
+                .map(|pending| ResolvingEffect { pending, idx: 0 });
         }
     }
 
-    /// The resolving effect's next effect, with the object it comes from. Moves its place past
-    /// that effect.
-    pub(super) fn next_effect(&mut self) -> Option<(ObjectId, Effect)> {
+    /// The resolving effect's next effect. Moves the resolving effect past it.
+    pub(super) fn next_effect(&mut self) -> Option<NextEffect> {
         self.resolving.as_mut()?.next_effect()
     }
 
@@ -101,6 +109,10 @@ mod tests {
         }
     }
 
+    fn next(source: ObjectId, effect: Effect) -> Option<NextEffect> {
+        Some(NextEffect { source, effect })
+    }
+
     #[test]
     fn the_newest_pending_effect_resolves_first() {
         let [older, newer] = sources();
@@ -110,7 +122,7 @@ mod tests {
 
         stack.start_next();
 
-        assert_eq!(stack.next_effect(), Some((newer, draw(2))));
+        assert_eq!(stack.next_effect(), next(newer, draw(2)));
     }
 
     #[test]
@@ -126,10 +138,7 @@ mod tests {
             stack.next_effect(),
         ];
 
-        assert_eq!(
-            steps,
-            [Some((source, draw(1))), Some((source, draw(2))), None]
-        );
+        assert_eq!(steps, [next(source, draw(1)), next(source, draw(2)), None]);
     }
 
     #[test]
@@ -154,7 +163,7 @@ mod tests {
 
         assert_eq!(
             stack.next_effect(),
-            Some((older, draw(2))),
+            next(older, draw(2)),
             "one pending effect resolves at a time, so the newer one waits",
         );
     }
@@ -171,7 +180,7 @@ mod tests {
         assert!(stack.finish_if_done());
         stack.start_next();
 
-        assert_eq!(stack.next_effect(), Some((older, draw(1))));
+        assert_eq!(stack.next_effect(), next(older, draw(1)));
     }
 
     #[test]
@@ -201,7 +210,7 @@ mod tests {
         stack.next_effect();
 
         assert!(!stack.finish_if_done());
-        assert_eq!(stack.next_effect(), Some((source, draw(2))));
+        assert_eq!(stack.next_effect(), next(source, draw(2)));
     }
 
     #[test]

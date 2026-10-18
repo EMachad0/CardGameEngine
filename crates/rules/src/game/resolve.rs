@@ -15,7 +15,7 @@ use crate::{
         object::ObjectId,
     },
     effect::{Effect, EffectAmount},
-    game::Game,
+    game::{Game, effect_stack::NextEffect},
     history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter},
     ids::PlayerId,
     observer::{Observer, Views},
@@ -205,7 +205,7 @@ impl Game {
 
     fn continue_resolving_effect(&mut self, obs: &mut impl Observer) {
         while !self.player_input.any_awaiting()
-            && let Some((source, effect)) = self.effect_stack.next_effect()
+            && let Some(NextEffect { source, effect }) = self.effect_stack.next_effect()
         {
             let owner = self.objects.get(source).player_id;
             self.apply_effect(owner, source, &effect, obs);

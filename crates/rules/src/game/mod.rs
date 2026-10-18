@@ -2,7 +2,7 @@
 //!
 //! `legal_actions` is the one definition of legality. `apply` accepts exactly
 //! what it lists, and an `Err` leaves the game unchanged. Child modules:
-//! - `effect_stack`: the pending effects and the resolving effect, with its place.
+//! - `effect_stack`: the pending effects and the resolving effect.
 //! - `player`: one player's resources.
 //! - `player_input`: what the game awaits from each player, and what they targeted and picked.
 //! - `resolve`: the mutation half of `apply`.
