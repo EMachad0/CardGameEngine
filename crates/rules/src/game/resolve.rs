@@ -16,7 +16,7 @@ use crate::{
     },
     effect::{Effect, EffectAmount},
     game::Game,
-    history::{HistoryKind, HistoryQuery, HistoryQueryKind, PlayerFilter},
+    history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter},
     ids::PlayerId,
     observer::{Observer, Views},
 };
@@ -237,45 +237,27 @@ impl Game {
         }
     }
 
-    pub(crate) fn history_query(&self, query: HistoryQuery, player_id: PlayerId) -> u8 {
-        let entries = self.history.entries.iter();
-        let targets = match query.scope {
-            PlayerFilter::All => self.players.iter().map(|p| p.id).collect(),
-            PlayerFilter::Owner => vec![player_id],
-            PlayerFilter::Active => vec![self.turn_order.get_active_player_id()],
+    fn history_query(&self, query: HistoryQuery, player_id: PlayerId) -> u8 {
+        let player_id = match query.scope {
+            PlayerFilter::All => None,
+            PlayerFilter::Owner => Some(player_id),
+            PlayerFilter::Active => Some(self.turn_order.get_active_player_id()),
+        };
+        let turn = match query.turn {
+            TurnFilter::Current => Some(self.turn_order.turn_count()),
+            TurnFilter::All => None,
         };
         let count = match query.kind {
-            HistoryQueryKind::SpellsPlayed => entries
-                .filter(|entry| targets.contains(&entry.player_id))
-                .filter(|entry| match query.turn {
-                    crate::history::TurnFilter::Current => {
-                        entry.turn == self.turn_order.turn_count()
-                    }
-                    crate::history::TurnFilter::All => true,
-                })
-                .filter(|entry| {
-                    matches!(
-                        &entry.kind,
-                        HistoryKind::CardPlayed { object }
-                            if self.binder.get(object.def_id).card_kind() == CardKind::Spell
-                    )
-                })
+            HistoryQueryKind::SpellsPlayed => self
+                .history
+                .played(player_id, turn)
+                .filter(|&object_id| self.card_def(object_id).card_kind() == CardKind::Spell)
                 .count(),
-            HistoryQueryKind::MinionsDied => entries
-                .filter(|entry| targets.contains(&entry.player_id))
-                .filter(|entry| match query.turn {
-                    crate::history::TurnFilter::Current => {
-                        entry.turn == self.turn_order.turn_count()
-                    }
-                    crate::history::TurnFilter::All => true,
-                })
-                .filter(|entry| {
-                    matches!(
-                        &entry.kind,
-                        HistoryKind::CharacterDied { object }
-                            if self.binder.get(object.def_id).character_kind()
-                                == Some(CharacterKind::Minion)
-                    )
+            HistoryQueryKind::MinionsDied => self
+                .history
+                .died(player_id, turn)
+                .filter(|&object_id| {
+                    self.card_def(object_id).character_kind() == Some(CharacterKind::Minion)
                 })
                 .count(),
         };
