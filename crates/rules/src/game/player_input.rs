@@ -45,7 +45,7 @@ impl Targeting {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Targets {
+struct StoredTargets {
     object_id: ObjectId,
     target_id: TargetId,
     targeted: Vec<ObjectId>,
@@ -75,7 +75,7 @@ pub(super) struct PlayerInput {
     /// Sorted by player.
     awaiting: Vec<(PlayerId, Awaiting)>,
     /// Sorted by card, then in the order stored.
-    targets: Vec<Targets>,
+    targets: Vec<StoredTargets>,
     /// Sorted by source, then in the order picked.
     picks: Vec<Picks>,
 }
@@ -104,7 +104,7 @@ impl PlayerInput {
         }
     }
 
-    /// `None` if the card was never played after targeting that declared `target_id`.
+    /// `None` unless the card was played after targeting and declares `target_id`.
     pub(super) fn targets(&self, object_id: ObjectId, target_id: TargetId) -> Option<&[ObjectId]> {
         self.targets
             .iter()
@@ -159,7 +159,7 @@ impl PlayerInput {
         let idx = self
             .targets
             .partition_point(|entry| entry.object_id <= object_id);
-        let entries = target_ids.iter().map(|&target_id| Targets {
+        let entries = target_ids.iter().map(|&target_id| StoredTargets {
             object_id,
             target_id,
             targeted: targeted
