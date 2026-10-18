@@ -1,6 +1,6 @@
 # The effect stack and the resolving effect have an owner
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 Blocked by: 03
@@ -51,3 +51,7 @@ would." "A command whose only rightful caller shares its file is private."
 - Only the boundary you build can push, pop or move the cursor.
 - Every pending effect resolves in the same order as before.
 - The checks pass, and the PR justifies every behavior change.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/43

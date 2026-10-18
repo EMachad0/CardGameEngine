@@ -15,7 +15,7 @@ use crate::{
         object::ObjectId,
     },
     effect::{Effect, EffectAmount},
-    game::Game,
+    game::{Game, effect_stack::NextEffect},
     history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter},
     ids::PlayerId,
     observer::{Observer, Views},
@@ -191,16 +191,13 @@ impl Game {
             self.continue_resolving_effect(obs);
 
             // finished a unit
-            if self.resolving_effect.is_none() {
+            if !self.effect_stack.is_resolving() {
                 self.check_state(obs);
-
-                if let Some(pending_effect) = self.effect_stack.pop() {
-                    self.resolving_effect = Some(pending_effect.into());
-                }
+                self.effect_stack.start_next();
             }
 
             // no more units
-            if self.resolving_effect.is_none() && self.effect_stack.is_empty() {
+            if self.effect_stack.is_idle() {
                 break;
             }
         }
@@ -208,24 +205,13 @@ impl Game {
 
     fn continue_resolving_effect(&mut self, obs: &mut impl Observer) {
         while !self.player_input.any_awaiting()
-            && let Some(resolving) = &mut self.resolving_effect
-            && !resolving.is_finished()
+            && let Some(NextEffect { source, effect }) = self.effect_stack.next_effect()
         {
-            let effect = resolving
-                .curr_effect()
-                .expect("An unfinished ResolvingEffect have effects to apply")
-                .clone();
-            let source = resolving.source;
-            resolving.advance();
-
             let owner = self.objects.get(source).player_id;
             self.apply_effect(owner, source, &effect, obs);
             obs.checkpoint(Views::new(self));
         }
-        if let Some(resolving) = &mut self.resolving_effect
-            && resolving.is_finished()
-        {
-            self.resolving_effect = None;
+        if self.effect_stack.finish_if_done() {
             self.check_state(obs);
         }
     }

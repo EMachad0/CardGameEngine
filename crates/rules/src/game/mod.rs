@@ -2,6 +2,7 @@
 //!
 //! `legal_actions` is the one definition of legality. `apply` accepts exactly
 //! what it lists, and an `Err` leaves the game unchanged. Child modules:
+//! - `effect_stack`: the pending effects and the resolving effect.
 //! - `player`: one player's resources.
 //! - `player_input`: what the game awaits from each player, and what they targeted and picked.
 //! - `resolve`: the mutation half of `apply`.
@@ -12,6 +13,7 @@
 )]
 
 mod condition;
+mod effect_stack;
 mod lookup;
 mod player;
 mod player_input;
@@ -26,8 +28,8 @@ use crate::cards::binder::sets::base::static_card_definition::HERO;
 use crate::cards::binder::store::Binder;
 use crate::cards::definition::DefId;
 use crate::cards::object::{ObjectBag, ObjectId};
-use crate::effect::{PendingEffect, ResolvingEffect};
 use crate::event::Event;
+use crate::game::effect_stack::EffectStack;
 use crate::game::player::Player;
 use crate::game::player_input::{Awaiting, PlayerInput};
 use crate::history::History;
@@ -49,8 +51,7 @@ pub struct Game {
     binder: Binder,
     history: History,
     outcome: Option<Outcome>,
-    effect_stack: Vec<PendingEffect>,
-    resolving_effect: Option<ResolvingEffect>,
+    effect_stack: EffectStack,
 }
 
 impl Game {
@@ -107,7 +108,6 @@ impl Game {
             history,
             outcome: Default::default(),
             effect_stack: Default::default(),
-            resolving_effect: Default::default(),
         };
 
         if shuffle {

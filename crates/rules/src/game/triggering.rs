@@ -1,6 +1,5 @@
 use crate::{
     cards::{definition::TriggerDef, object::ObjectId},
-    effect::PendingEffect,
     event::Event,
     game::Game,
     ids::PlayerId,
@@ -24,22 +23,14 @@ impl Game {
         }
     }
 
-    pub(super) fn enqueue_triggers(
-        &mut self,
-        player_id: PlayerId,
-        object_id: ObjectId,
-        event: &Event,
-    ) {
+    fn enqueue_triggers(&mut self, player_id: PlayerId, object_id: ObjectId, event: &Event) {
         for Trigger {
             def: TriggerDef { pattern, effects },
             ..
         } in self.triggers(object_id)
         {
             if self.fulfill_trigger_pattern(player_id, object_id, pattern, event) {
-                self.effect_stack.push(PendingEffect {
-                    source: object_id,
-                    effects,
-                });
+                self.effect_stack.push(object_id, effects);
             }
         }
     }
