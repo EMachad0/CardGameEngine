@@ -1,5 +1,5 @@
-//! Cost, attack, health and triggers: the printed values, changed by every modifier on the object
-//! and every aura that reaches it.
+//! Cost, attack, health and triggers: the printed values, changed by the object's modifiers, the
+//! auras that reach it and, for health, its damage.
 
 use crate::{
     cards::{modifier::StatChanges, object::ObjectId},

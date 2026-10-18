@@ -153,7 +153,7 @@ mod tests {
                 changes.granted_triggers().collect::<Vec<_>>(),
             ),
             (1, 2, 3, vec![(granter, &died)]),
-            "attack, health and cost each take only their own buff, and only the trigger is granted",
+            "each stat takes only the modifier that changes it",
         );
     }
 
