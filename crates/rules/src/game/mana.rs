@@ -41,12 +41,13 @@ mod tests {
     fn a_refill_fills_mana_to_a_max_one_higher() {
         let mut mana = Mana::default();
         mana.refill();
+        mana.pay(1);
         mana.refill();
 
         assert_eq!(
             (mana.current(), mana.max()),
             (2, 2),
-            "each refill raises max mana by one and fills mana to it",
+            "a refill raises max mana by one and fills spent mana to it",
         );
     }
 

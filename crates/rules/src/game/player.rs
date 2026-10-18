@@ -1,7 +1,6 @@
 //! One player's record inside `Game`: resources.
 //!
-//! Fields are `pub(super)`, so `Game` can change them and nothing outside
-//! `game` can see them.
+//! Fields are `pub(super)`, so nothing outside `game` can see them.
 
 use crate::game::mana::Mana;
 use crate::ids::PlayerId;
