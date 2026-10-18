@@ -4,8 +4,8 @@ use crate::{
         definition::{CardDef, CharacterSelector, DefId},
         sequences::{SequenceOrigin, effect_sequences},
     },
-    choice::{ChoiceId, PickId},
-    effect::Effect,
+    effect::{Effect, PickId},
+    target::TargetId,
 };
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
@@ -16,12 +16,12 @@ pub(crate) enum CardDefError {
     Duplicate(DefId),
     #[error("Placeholder card def present")]
     Placeholder,
-    #[error("Duplicate choice {1:?} on {0:?}")]
-    DuplicateChoice(DefId, ChoiceId),
-    #[error("Choice {1:?} not found on {0:?}")]
-    ChoiceNotFound(DefId, ChoiceId),
-    #[error("Choice {1:?} used by a trigger on {0:?}")]
-    ChoiceInTrigger(DefId, ChoiceId),
+    #[error("Duplicate target {1:?} on {0:?}")]
+    DuplicateTarget(DefId, TargetId),
+    #[error("Target {1:?} not found on {0:?}")]
+    TargetNotFound(DefId, TargetId),
+    #[error("Target {1:?} used by a trigger on {0:?}")]
+    TargetInTrigger(DefId, TargetId),
     #[error("Pick {1:?} resolved with no reveal before it on {0:?}")]
     PickNotFound(DefId, PickId),
     #[error("Pick {1:?} revealed and never resolved on {0:?}")]
@@ -32,9 +32,9 @@ pub(super) fn validate(defs: &[CardDef]) -> Result<(), CardDefError> {
     validate_placeholder(defs)?;
     validate_duplicates(defs)?;
     validate_not_found(defs)?;
-    validate_choice_duplicates(defs)?;
-    validate_choice_not_found(defs)?;
-    validate_choice_on_trigger(defs)?;
+    validate_target_duplicates(defs)?;
+    validate_target_not_found(defs)?;
+    validate_target_on_trigger(defs)?;
     validate_picks(defs)?;
     Ok(())
 }
@@ -66,34 +66,34 @@ fn validate_not_found(defs: &[CardDef]) -> Result<(), CardDefError> {
     Ok(())
 }
 
-fn validate_choice_duplicates(defs: &[CardDef]) -> Result<(), CardDefError> {
+fn validate_target_duplicates(defs: &[CardDef]) -> Result<(), CardDefError> {
     for def in defs {
-        for (index, choice) in def.choices.iter().enumerate() {
-            if def.choices[..index].iter().any(|seen| seen.id == choice.id) {
-                return Err(CardDefError::DuplicateChoice(def.id, choice.id));
+        for (index, target) in def.targets.iter().enumerate() {
+            if def.targets[..index].iter().any(|seen| seen.id == target.id) {
+                return Err(CardDefError::DuplicateTarget(def.id, target.id));
             }
         }
     }
     Ok(())
 }
 
-/// Rejects a play effect that names a choice the card doesn't declare.
-fn validate_choice_not_found(defs: &[CardDef]) -> Result<(), CardDefError> {
+/// Rejects a play effect that names a target the card doesn't declare.
+fn validate_target_not_found(defs: &[CardDef]) -> Result<(), CardDefError> {
     for def in defs {
         let effects = effect_sequences(def)
             .into_iter()
-            .filter(|sequence| resolves_with_draft(sequence.origin))
+            .filter(|sequence| resolves_with_targeting(sequence.origin))
             .flat_map(|sequence| sequence.effects);
-        for choice_id in effects.filter_map(chosen_id) {
-            if def.choice(choice_id).is_none() {
-                return Err(CardDefError::ChoiceNotFound(def.id, choice_id));
+        for target_id in effects.filter_map(targeted_id) {
+            if def.target(target_id).is_none() {
+                return Err(CardDefError::TargetNotFound(def.id, target_id));
             }
         }
     }
     Ok(())
 }
 
-fn chosen_id(effect: &Effect) -> Option<ChoiceId> {
+fn targeted_id(effect: &Effect) -> Option<TargetId> {
     let selector = match effect {
         Effect::Damage { selector, .. }
         | Effect::Buff { selector, .. }
@@ -104,7 +104,7 @@ fn chosen_id(effect: &Effect) -> Option<ChoiceId> {
         | Effect::ResolvePick { .. } => return None,
     };
     match selector {
-        CharacterSelector::Chosen(choice_id) => Some(*choice_id),
+        CharacterSelector::Targeted(target_id) => Some(*target_id),
         CharacterSelector::All(_)
         | CharacterSelector::Itself
         | CharacterSelector::OwnerHero
@@ -112,23 +112,23 @@ fn chosen_id(effect: &Effect) -> Option<ChoiceId> {
     }
 }
 
-/// Rejects a trigger effect that names a choice, whether the trigger is printed or granted. A
-/// trigger resolves with no draft to read the choice from.
-fn validate_choice_on_trigger(defs: &[CardDef]) -> Result<(), CardDefError> {
+/// Rejects a trigger effect that names a target, whether the trigger is printed or granted. A
+/// trigger resolves with no targeting to read the target from.
+fn validate_target_on_trigger(defs: &[CardDef]) -> Result<(), CardDefError> {
     for def in defs {
         let mut effects = effect_sequences(def)
             .into_iter()
-            .filter(|sequence| !resolves_with_draft(sequence.origin))
+            .filter(|sequence| !resolves_with_targeting(sequence.origin))
             .flat_map(|sequence| sequence.effects);
-        if let Some(choice_id) = effects.find_map(chosen_id) {
-            return Err(CardDefError::ChoiceInTrigger(def.id, choice_id));
+        if let Some(target_id) = effects.find_map(targeted_id) {
+            return Err(CardDefError::TargetInTrigger(def.id, target_id));
         }
     }
     Ok(())
 }
 
-/// Whether a sequence resolves with the choices made in the card's draft.
-fn resolves_with_draft(origin: SequenceOrigin) -> bool {
+/// Whether a sequence resolves with the targets named in the card's targeting.
+fn resolves_with_targeting(origin: SequenceOrigin) -> bool {
     match origin {
         SequenceOrigin::Play => true,
         SequenceOrigin::Trigger => false,
@@ -224,34 +224,34 @@ mod tests {
     }
 
     #[test]
-    fn two_choices_with_one_id_on_a_card_are_a_duplicate() {
+    fn two_targets_with_one_id_on_a_card_are_a_duplicate() {
         let mut defs = base::definitions();
         let ping = defs.iter_mut().find(|def| def.id == PING).unwrap();
-        ping.choices.push(ping.choices[0]);
+        ping.targets.push(ping.targets[0]);
 
         assert_eq!(
             validate(&defs),
-            Err(CardDefError::DuplicateChoice(PING, ChoiceId(0)))
+            Err(CardDefError::DuplicateTarget(PING, TargetId(0)))
         );
     }
 
     #[test]
-    fn an_effect_naming_an_undeclared_choice_is_not_found() {
+    fn an_effect_naming_an_undeclared_target_is_not_found() {
         let mut defs = base::definitions();
         let ping = defs.iter_mut().find(|def| def.id == PING).unwrap();
-        ping.choices.clear();
+        ping.targets.clear();
 
         assert_eq!(
             validate(&defs),
-            Err(CardDefError::ChoiceNotFound(PING, ChoiceId(0)))
+            Err(CardDefError::TargetNotFound(PING, TargetId(0)))
         );
     }
 
-    fn chosen_damage_trigger() -> TriggerDef {
+    fn targeted_damage_trigger() -> TriggerDef {
         TriggerDef {
             pattern: TriggerPattern::Died(TriggerSubject::Itself),
             effects: EffectSequence(vec![Effect::Damage {
-                selector: CharacterSelector::Chosen(ChoiceId(0)),
+                selector: CharacterSelector::Targeted(TargetId(0)),
                 amount: 1.into(),
             }]),
         }
@@ -266,113 +266,113 @@ mod tests {
     }
 
     #[test]
-    fn a_trigger_effect_naming_a_choice_is_rejected() {
+    fn a_trigger_effect_naming_a_target_is_rejected() {
         let mut defs = base::definitions();
         let ping = defs.iter_mut().find(|def| def.id == PING).unwrap();
-        ping.triggers.push(chosen_damage_trigger());
+        ping.triggers.push(targeted_damage_trigger());
 
         assert_eq!(
             validate(&defs),
-            Err(CardDefError::ChoiceInTrigger(PING, ChoiceId(0))),
-            "a trigger resolves with no draft, even on a card that declares the choice"
+            Err(CardDefError::TargetInTrigger(PING, TargetId(0))),
+            "a trigger resolves with no targeting, even on a card that declares the target"
         );
     }
 
     #[test]
-    fn a_granted_trigger_effect_naming_a_choice_is_rejected() {
+    fn a_granted_trigger_effect_naming_a_target_is_rejected() {
         let mut defs = base::definitions();
-        let ping_choice = defs.iter().find(|def| def.id == PING).unwrap().choices[0];
+        let ping_target = defs.iter().find(|def| def.id == PING).unwrap().targets[0];
         let banner = defs.iter_mut().find(|def| def.id == RALLY_BANNER).unwrap();
-        banner.choices.push(ping_choice);
+        banner.targets.push(ping_target);
         replace_rally_banner_friendly_auras(
             &mut defs,
-            vec![ModifierEffect::GrantTrigger(chosen_damage_trigger())],
+            vec![ModifierEffect::GrantTrigger(targeted_damage_trigger())],
         );
 
         assert_eq!(
             validate(&defs),
-            Err(CardDefError::ChoiceInTrigger(RALLY_BANNER, ChoiceId(0)))
+            Err(CardDefError::TargetInTrigger(RALLY_BANNER, TargetId(0)))
         );
     }
 
     #[test]
-    fn a_trigger_granted_by_a_modifier_effect_naming_a_choice_is_rejected() {
+    fn a_trigger_granted_by_a_modifier_effect_naming_a_target_is_rejected() {
         let mut defs = base::definitions();
         let ping = defs.iter_mut().find(|def| def.id == PING).unwrap();
         ping.modifier_effects
-            .push(ModifierEffect::GrantTrigger(chosen_damage_trigger()));
+            .push(ModifierEffect::GrantTrigger(targeted_damage_trigger()));
 
         assert_eq!(
             validate(&defs),
-            Err(CardDefError::ChoiceInTrigger(PING, ChoiceId(0)))
+            Err(CardDefError::TargetInTrigger(PING, TargetId(0)))
         );
     }
 
     #[test]
-    fn a_trigger_granted_by_a_buff_naming_a_choice_is_rejected() {
+    fn a_trigger_granted_by_a_buff_naming_a_target_is_rejected() {
         let mut defs = base::definitions();
         play_effects_of(&mut defs, PING).push(Effect::Buff {
             selector: CharacterSelector::OwnerHero,
-            effect: ModifierEffect::GrantTrigger(chosen_damage_trigger()),
+            effect: ModifierEffect::GrantTrigger(targeted_damage_trigger()),
         });
 
         assert_eq!(
             validate(&defs),
-            Err(CardDefError::ChoiceInTrigger(PING, ChoiceId(0))),
-            "the buff resolves during play, but the trigger it grants resolves with no draft"
+            Err(CardDefError::TargetInTrigger(PING, TargetId(0))),
+            "the buff resolves during play, but the trigger it grants resolves with no targeting"
         );
     }
 
     #[test]
-    fn a_trigger_granted_by_an_added_aura_naming_a_choice_is_rejected() {
+    fn a_trigger_granted_by_an_added_aura_naming_a_target_is_rejected() {
         let mut defs = base::definitions();
         play_effects_of(&mut defs, PING).push(Effect::AddFriendlyAura {
             selector: CharacterSelector::OwnerHero,
-            effect: ModifierEffect::GrantTrigger(chosen_damage_trigger()),
+            effect: ModifierEffect::GrantTrigger(targeted_damage_trigger()),
         });
 
         assert_eq!(
             validate(&defs),
-            Err(CardDefError::ChoiceInTrigger(PING, ChoiceId(0)))
+            Err(CardDefError::TargetInTrigger(PING, TargetId(0)))
         );
     }
 
     #[test]
-    fn a_trigger_granted_inside_a_granted_trigger_naming_a_choice_is_rejected() {
+    fn a_trigger_granted_inside_a_granted_trigger_naming_a_target_is_rejected() {
         let mut defs = base::definitions();
-        let ping_choice = defs.iter().find(|def| def.id == PING).unwrap().choices[0];
+        let ping_target = defs.iter().find(|def| def.id == PING).unwrap().targets[0];
         let banner = defs.iter_mut().find(|def| def.id == RALLY_BANNER).unwrap();
-        banner.choices.push(ping_choice);
+        banner.targets.push(ping_target);
         replace_rally_banner_friendly_auras(
             &mut defs,
             vec![ModifierEffect::GrantTrigger(TriggerDef {
                 pattern: TriggerPattern::Damaged(TriggerSubject::Itself),
                 effects: EffectSequence(vec![Effect::Buff {
                     selector: CharacterSelector::Itself,
-                    effect: ModifierEffect::GrantTrigger(chosen_damage_trigger()),
+                    effect: ModifierEffect::GrantTrigger(targeted_damage_trigger()),
                 }]),
             })],
         );
 
         assert_eq!(
             validate(&defs),
-            Err(CardDefError::ChoiceInTrigger(RALLY_BANNER, ChoiceId(0)))
+            Err(CardDefError::TargetInTrigger(RALLY_BANNER, TargetId(0)))
         );
     }
 
     #[test]
-    fn a_buff_in_play_effects_may_choose_whom_it_grants_a_trigger_to() {
+    fn a_buff_in_play_effects_may_target_whom_it_grants_a_trigger_to() {
         let mut defs = base::definitions();
         let deathrattle = defs.iter().find(|def| def.id == HOARDER).unwrap().triggers[0].clone();
         play_effects_of(&mut defs, PING).push(Effect::Buff {
-            selector: CharacterSelector::Chosen(ChoiceId(0)),
+            selector: CharacterSelector::Targeted(TargetId(0)),
             effect: ModifierEffect::GrantTrigger(deathrattle),
         });
 
         assert_eq!(
             validate(&defs),
             Ok(()),
-            "the buff's own selector resolves during play, where the choice is drafted"
+            "the buff's own selector resolves during play, where its target is named"
         );
     }
 

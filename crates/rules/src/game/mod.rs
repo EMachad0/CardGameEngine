@@ -148,13 +148,13 @@ impl Game {
                         continue;
                     }
 
-                    match self.card_def(object_id).choices.is_empty() {
+                    match self.card_def(object_id).targets.is_empty() {
                         true => {
                             actions.push(Action::Play { object_id });
                         }
                         false => {
-                            if self.can_finish_choices(object_id, &mut Vec::new()) {
-                                actions.push(Action::Draft { object_id });
+                            if self.can_finish_targeting(object_id, &mut Vec::new()) {
+                                actions.push(Action::StartTargeting { object_id });
                             }
                         }
                     }
@@ -170,38 +170,38 @@ impl Game {
                         .map(|object_id| Action::Pick { object_id }),
                 );
             }
-            Some(Awaiting::Draft(draft)) => {
-                let object_id = draft.object_id();
-                let chosen = draft.chosen();
-                let mut all_choices_fulfilled = true;
-                for choice in &self.card_def(object_id).choices {
-                    let chosen_for_choice_count = chosen
+            Some(Awaiting::Targets(targeting)) => {
+                let object_id = targeting.object_id();
+                let targeted = targeting.targeted();
+                let mut all_targets_fulfilled = true;
+                for target in &self.card_def(object_id).targets {
+                    let targeted_for_target_count = targeted
                         .iter()
-                        .filter(|(_, choice_id)| choice.id == *choice_id)
+                        .filter(|(_, target_id)| target.id == *target_id)
                         .count();
-                    if self.check_choice_count_fulfilled(
+                    if self.check_target_count_fulfilled(
                         object_id,
-                        choice.id,
-                        chosen_for_choice_count as u8,
+                        target.id,
+                        targeted_for_target_count as u8,
                     ) {
                         continue;
                     }
 
-                    let candidates = self.scan_for_valid_choices(object_id, choice, chosen);
+                    let candidates = self.scan_for_valid_targets(object_id, target, targeted);
                     for candidate in candidates.into_iter() {
-                        let mut chosen = chosen.to_vec();
-                        chosen.push((candidate, choice.id));
-                        if self.can_finish_choices(object_id, &mut chosen) {
-                            actions.push(Action::Choose {
-                                choice_id: choice.id,
+                        let mut targeted = targeted.to_vec();
+                        targeted.push((candidate, target.id));
+                        if self.can_finish_targeting(object_id, &mut targeted) {
+                            actions.push(Action::Target {
+                                target_id: target.id,
                                 object_id: candidate,
                             })
                         }
                     }
-                    all_choices_fulfilled = false;
+                    all_targets_fulfilled = false;
                     break;
                 }
-                if all_choices_fulfilled {
+                if all_targets_fulfilled {
                     actions.push(Action::Play { object_id });
                 }
                 actions.push(Action::Cancel { object_id });

@@ -21,8 +21,8 @@ fn sample_deck() -> Vec<DefId> {
     ]
 }
 
-/// `sample_deck` plus one of each card that is played through a draft.
-fn drafting_deck() -> Vec<DefId> {
+/// `sample_deck` plus one of each card that is played through targeting.
+fn targeting_deck() -> Vec<DefId> {
     let mut deck = sample_deck();
     deck.extend([PING, TWIN_SHOT, CROSSFIRE, SHOVE]);
     deck
@@ -66,35 +66,37 @@ fn stages() -> [(&'static str, Game); 3] {
     ]
 }
 
-/// Across the drafting deck's playouts, the idle state that offers a `Draft` with the
-/// most minions on the boards, and the open draft that offers the most `Choose`s.
-fn drafting_stages() -> [(&'static str, Game); 2] {
+/// Across the targeting deck's playouts, the idle state that offers a `StartTargeting` with
+/// the most minions on the boards, and the open targeting that offers the most `Target`s.
+fn targeting_stages() -> [(&'static str, Game); 2] {
     let mut idle: Option<(usize, Game)> = None;
     let mut open: Option<(usize, Game)> = None;
     for seed in PLAYOUT_SEEDS {
-        play_out(drafting_deck, seed, |game| {
+        play_out(targeting_deck, seed, |game| {
             let actions = game.legal_actions(decider(game));
             let minions = game
                 .players()
                 .iter()
                 .map(|&p| game.player_board(p).len())
                 .sum();
-            let chooses = actions
+            let targets = actions
                 .iter()
-                .filter(|a| matches!(a, Action::Choose { .. }))
+                .filter(|a| matches!(a, Action::Target { .. }))
                 .count();
-            if actions.iter().any(|a| matches!(a, Action::Draft { .. }))
+            if actions
+                .iter()
+                .any(|a| matches!(a, Action::StartTargeting { .. }))
                 && idle.as_ref().is_none_or(|(best, _)| minions > *best)
             {
                 idle = Some((minions, game.clone()));
             }
-            if chooses > 0 && open.as_ref().is_none_or(|(best, _)| chooses > *best) {
-                open = Some((chooses, game.clone()));
+            if targets > 0 && open.as_ref().is_none_or(|(best, _)| targets > *best) {
+                open = Some((targets, game.clone()));
             }
         });
     }
-    let idle = idle.expect("some playout offers a draft").1;
-    let open = open.expect("some playout opens a draft").1;
+    let idle = idle.expect("some playout offers targeting").1;
+    let open = open.expect("some playout starts targeting").1;
     [("idle", idle), ("open", open)]
 }
 
@@ -143,9 +145,9 @@ fn bench_legal_actions(c: &mut Criterion) {
     group.finish();
 }
 
-fn bench_legal_actions_drafting(c: &mut Criterion) {
-    let mut group = c.benchmark_group("legal_actions_drafting");
-    for (stage, game) in drafting_stages() {
+fn bench_legal_actions_targeting(c: &mut Criterion) {
+    let mut group = c.benchmark_group("legal_actions_targeting");
+    for (stage, game) in targeting_stages() {
         let p = decider(&game);
         group.bench_with_input(BenchmarkId::from_parameter(stage), &game, |b, game| {
             b.iter(|| black_box(game).legal_actions(black_box(p)))
@@ -159,7 +161,7 @@ fn bench_playout(c: &mut Criterion) {
     let mut group = c.benchmark_group("playout");
     for (prefix, deck) in [
         ("", sample_deck as fn() -> Vec<DefId>),
-        ("drafting_", drafting_deck),
+        ("targeting_", targeting_deck),
     ] {
         let id = format!("{prefix}seeds_{}_to_{}", seeds.start, seeds.end - 1);
         group.bench_function(id, |b| {
@@ -179,7 +181,7 @@ criterion_group!(
     bench_clone,
     bench_eq,
     bench_legal_actions,
-    bench_legal_actions_drafting,
+    bench_legal_actions_targeting,
     bench_playout
 );
 criterion_main!(benches);

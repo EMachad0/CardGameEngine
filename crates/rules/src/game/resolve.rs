@@ -14,8 +14,7 @@ use crate::{
         modifier::Modifier,
         object::ObjectId,
     },
-    choice::EffectAmount,
-    effect::Effect,
+    effect::{Effect, EffectAmount},
     game::Game,
     history::{HistoryKind, HistoryQuery, HistoryQueryKind, PlayerFilter},
     ids::PlayerId,
@@ -62,14 +61,14 @@ impl Game {
     ) {
         match action {
             Action::Play { object_id } => {
-                if let Some(draft) = self.player_input.draft(player_id) {
-                    let choice_ids = self
-                        .card_def(draft.object_id())
-                        .choices
+                if let Some(targeting) = self.player_input.targeting(player_id) {
+                    let target_ids = self
+                        .card_def(targeting.object_id())
+                        .targets
                         .iter()
-                        .map(|c| c.id)
+                        .map(|t| t.id)
                         .collect::<Vec<_>>();
-                    self.player_input.commit_draft(player_id, &choice_ids);
+                    self.player_input.commit_targeting(player_id, &target_ids);
                 }
 
                 let mana_cost = self
@@ -87,15 +86,15 @@ impl Game {
                 self.start_turn(obs);
                 obs.checkpoint(Views::new(self));
             }
-            Action::Draft { object_id } => {
-                self.player_input.open_draft(player_id, object_id);
+            Action::StartTargeting { object_id } => {
+                self.player_input.start_targeting(player_id, object_id);
                 obs.checkpoint(Views::new(self));
             }
-            Action::Choose {
-                choice_id,
+            Action::Target {
+                target_id,
                 object_id,
             } => {
-                self.player_input.choose(player_id, object_id, choice_id);
+                self.player_input.target(player_id, object_id, target_id);
                 obs.checkpoint(Views::new(self));
             }
             Action::Cancel { .. } => {
@@ -321,10 +320,10 @@ impl Game {
                     None => Vec::new(),
                 }
             }
-            CharacterSelector::Chosen(choice_id) => self
+            CharacterSelector::Targeted(target_id) => self
                 .player_input
-                .targets(object_id, *choice_id)
-                .expect("Choice not fulfilled")
+                .targets(object_id, *target_id)
+                .expect("Target not fulfilled")
                 .to_vec(),
         }
     }

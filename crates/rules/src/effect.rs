@@ -4,8 +4,23 @@ use crate::{
         modifier::ModifierEffect,
         object::ObjectId,
     },
-    choice::{EffectAmount, PickId},
+    history::HistoryQuery,
 };
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EffectAmount {
+    Static(u8),
+    History(HistoryQuery),
+}
+
+impl From<u8> for EffectAmount {
+    fn from(value: u8) -> Self {
+        Self::Static(value)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PickId(pub usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ZoneMove {

@@ -25,10 +25,14 @@ fn is_draw(e: &Event) -> bool {
     matches!(e, Event::Drew { .. })
 }
 
-/// Pings `target` with the Ping in P0's hand and returns what the play reported.
-fn ping(b: &mut Boards, target: ObjectId) -> Vec<Event> {
+/// Pings `minion` with the Ping in P0's hand and returns what the play reported.
+fn ping(b: &mut Boards, minion: ObjectId) -> Vec<Event> {
     let ping = in_hand(&b.game, b.p0, PING);
-    apply_all(&mut b.game, b.p0, &[draft(ping), choose(0, target)]);
+    apply_all(
+        &mut b.game,
+        b.p0,
+        &[start_targeting(ping), target(0, minion)],
+    );
     observe(&mut b.game, b.p0, play(ping)).events()
 }
 
@@ -292,7 +296,7 @@ fn a_deathrattles_consequences_resolve_before_triggers_already_waiting() {
     apply_all(
         &mut b.game,
         b.p0,
-        &[draft(twin_shot), choose(0, one), choose(0, two)],
+        &[start_targeting(twin_shot), target(0, one), target(0, two)],
     );
 
     let events = observe(&mut b.game, b.p0, play(twin_shot)).events();

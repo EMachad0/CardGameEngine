@@ -50,8 +50,8 @@ pub(crate) fn expected_cost(def: DefId, spells_cast: u8) -> u8 {
     }
 }
 
-/// The damage a drafted card deals to each target chosen for it.
-pub(crate) fn damage_per_chosen_target(def: DefId) -> i32 {
+/// The damage a card with targets deals to each object targeted for it.
+pub(crate) fn damage_per_target(def: DefId) -> i32 {
     if def == PING { 2 } else { 1 }
 }
 

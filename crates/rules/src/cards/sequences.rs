@@ -31,7 +31,7 @@ pub(super) fn effect_sequences(def: &CardDef) -> Vec<Sequence<'_>> {
         modifier_effects,
         play_effects,
         triggers,
-        choices: _,
+        targets: _,
     } = def;
     let mut sequences = Vec::new();
     collect_sequence(&mut sequences, SequenceOrigin::Play, play_effects);
@@ -138,7 +138,7 @@ mod tests {
             modifier_effects: Vec::new(),
             play_effects: EffectSequence::default(),
             triggers: Vec::new(),
-            choices: Vec::new(),
+            targets: Vec::new(),
         }
     }
 

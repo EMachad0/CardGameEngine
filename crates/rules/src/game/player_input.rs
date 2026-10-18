@@ -1,15 +1,16 @@
 //! What the game awaits from each player, and the targets and picks they gave. The game awaits at
-//! most one thing from a player: a draft while playing a card, or a pending pick while a card
+//! most one thing from a player: targeting while playing a card, or a pending pick while a card
 //! resolves. A revealed card sits in a pending pick's options until picked, then in its picks.
 
 use crate::cards::object::ObjectId;
-use crate::choice::{ChoiceId, PickId};
+use crate::effect::PickId;
 use crate::ids::PlayerId;
+use crate::target::TargetId;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum Awaiting {
     Pick(PendingPick),
-    Draft(Draft),
+    Targets(Targeting),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,27 +28,27 @@ impl PendingPick {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct Draft {
+pub(super) struct Targeting {
     object_id: ObjectId,
-    chosen: Vec<(ObjectId, ChoiceId)>,
+    targeted: Vec<(ObjectId, TargetId)>,
 }
 
-impl Draft {
+impl Targeting {
     pub(super) fn object_id(&self) -> ObjectId {
         self.object_id
     }
 
-    /// In the order chosen.
-    pub(super) fn chosen(&self) -> &[(ObjectId, ChoiceId)] {
-        &self.chosen
+    /// In the order targeted.
+    pub(super) fn targeted(&self) -> &[(ObjectId, TargetId)] {
+        &self.targeted
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Targets {
     object_id: ObjectId,
-    choice_id: ChoiceId,
-    chosen: Vec<ObjectId>,
+    target_id: TargetId,
+    targeted: Vec<ObjectId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -92,23 +93,23 @@ impl PlayerInput {
     pub(super) fn revealed(&self, player_id: PlayerId) -> &[ObjectId] {
         match self.awaiting(player_id) {
             Some(Awaiting::Pick(pick)) => pick.options(),
-            Some(Awaiting::Draft(_)) | None => &[],
+            Some(Awaiting::Targets(_)) | None => &[],
         }
     }
 
-    pub(super) fn draft(&self, player_id: PlayerId) -> Option<&Draft> {
+    pub(super) fn targeting(&self, player_id: PlayerId) -> Option<&Targeting> {
         match self.awaiting(player_id) {
-            Some(Awaiting::Draft(draft)) => Some(draft),
+            Some(Awaiting::Targets(targeting)) => Some(targeting),
             Some(Awaiting::Pick(_)) | None => None,
         }
     }
 
-    /// `None` if the card was never played from a draft that declared `choice_id`.
-    pub(super) fn targets(&self, object_id: ObjectId, choice_id: ChoiceId) -> Option<&[ObjectId]> {
+    /// `None` if the card was never played from targeting that declared `target_id`.
+    pub(super) fn targets(&self, object_id: ObjectId, target_id: TargetId) -> Option<&[ObjectId]> {
         self.targets
             .iter()
-            .find(|entry| entry.object_id == object_id && entry.choice_id == choice_id)
-            .map(|entry| entry.chosen.as_slice())
+            .find(|entry| entry.object_id == object_id && entry.target_id == target_id)
+            .map(|entry| entry.targeted.as_slice())
     }
 
     /// The first picks `source` stored for `pick_id`.
@@ -118,25 +119,25 @@ impl PlayerInput {
             .find(|entry| entry.source == source && entry.pick_id == pick_id)
     }
 
-    /// Replaces any draft the player has. Panics if they have a pending pick.
-    pub(super) fn open_draft(&mut self, player_id: PlayerId, object_id: ObjectId) {
+    /// Replaces any targeting the player has. Panics if they have a pending pick.
+    pub(super) fn start_targeting(&mut self, player_id: PlayerId, object_id: ObjectId) {
         self.ask(
             player_id,
-            Awaiting::Draft(Draft {
+            Awaiting::Targets(Targeting {
                 object_id,
-                chosen: Vec::new(),
+                targeted: Vec::new(),
             }),
         );
     }
 
-    pub(super) fn choose(&mut self, player_id: PlayerId, object_id: ObjectId, choice_id: ChoiceId) {
-        let Some(Awaiting::Draft(draft)) = self.awaiting_mut(player_id) else {
+    pub(super) fn target(&mut self, player_id: PlayerId, object_id: ObjectId, target_id: TargetId) {
+        let Some(Awaiting::Targets(targeting)) = self.awaiting_mut(player_id) else {
             unreachable!();
         };
-        draft.chosen.push((object_id, choice_id));
+        targeting.targeted.push((object_id, target_id));
     }
 
-    /// Drops the player's draft, if any. Panics if they have a pending pick.
+    /// Drops the player's targeting, if any. Panics if they have a pending pick.
     pub(super) fn cancel(&mut self, player_id: PlayerId) {
         if let Ok(idx) = self.slot(player_id) {
             self.assert_droppable(idx);
@@ -144,30 +145,34 @@ impl PlayerInput {
         }
     }
 
-    /// Closes the player's draft and stores the drafted card's targets for each choice in
-    /// `choice_ids`, replacing any it had.
-    pub(super) fn commit_draft(&mut self, player_id: PlayerId, choice_ids: &[ChoiceId]) {
-        let Some(Awaiting::Draft(Draft { object_id, chosen })) = self.take(player_id) else {
+    /// Closes the player's targeting and stores the card's targeted objects for each target in
+    /// `target_ids`, replacing any it had.
+    pub(super) fn commit_targeting(&mut self, player_id: PlayerId, target_ids: &[TargetId]) {
+        let Some(Awaiting::Targets(Targeting {
+            object_id,
+            targeted,
+        })) = self.take(player_id)
+        else {
             unreachable!();
         };
         self.targets.retain(|entry| entry.object_id != object_id);
         let idx = self
             .targets
             .partition_point(|entry| entry.object_id <= object_id);
-        let entries = choice_ids.iter().map(|&choice_id| Targets {
+        let entries = target_ids.iter().map(|&target_id| Targets {
             object_id,
-            choice_id,
-            chosen: chosen
+            target_id,
+            targeted: targeted
                 .iter()
-                .filter(|(_, c)| *c == choice_id)
+                .filter(|(_, t)| *t == target_id)
                 .map(|(o, _)| *o)
                 .collect(),
         });
         self.targets.splice(idx..idx, entries);
     }
 
-    /// Asks the player to pick one of `options`, replacing any draft they have. With no options,
-    /// asks nothing and returns `false`. Panics if they have a pending pick.
+    /// Asks the player to pick one of `options`, replacing any targeting they have. With no
+    /// options, asks nothing and returns `false`. Panics if they have a pending pick.
     pub(super) fn ask_pick(
         &mut self,
         player_id: PlayerId,
@@ -242,7 +247,7 @@ impl PlayerInput {
     fn assert_droppable(&self, idx: usize) {
         let holds_revealed_cards = match &self.awaiting[idx].1 {
             Awaiting::Pick(_) => true,
-            Awaiting::Draft(_) => false,
+            Awaiting::Targets(_) => false,
         };
         assert!(
             !holds_revealed_cards,
@@ -327,7 +332,7 @@ mod tests {
         let mut input = PlayerInput::default();
         input.ask_pick(player, source, PickId(0), vec![a]);
 
-        input.open_draft(player, card);
+        input.start_targeting(player, card);
     }
 
     #[test]
@@ -342,84 +347,87 @@ mod tests {
     }
 
     #[test]
-    fn a_committed_draft_stores_targets_for_every_declared_choice() {
+    fn committed_targeting_stores_targeted_objects_for_every_declared_target() {
         let [card, target] = ids();
         let player = PlayerId::new(0);
         let mut input = PlayerInput::default();
-        input.open_draft(player, card);
-        input.choose(player, target, ChoiceId(0));
+        input.start_targeting(player, card);
+        input.target(player, target, TargetId(0));
 
-        input.commit_draft(player, &[ChoiceId(0), ChoiceId(1)]);
+        input.commit_targeting(player, &[TargetId(0), TargetId(1)]);
 
-        assert_eq!(input.targets(card, ChoiceId(0)), Some(&[target][..]));
+        assert_eq!(input.targets(card, TargetId(0)), Some(&[target][..]));
         assert_eq!(
-            input.targets(card, ChoiceId(1)),
+            input.targets(card, TargetId(1)),
             Some(&[][..]),
-            "a declared choice with no target must still have its targets stored",
+            "a declared target with no targeted object must still have its targets stored",
         );
     }
 
     #[test]
-    fn a_committed_draft_closes_the_draft() {
+    fn committed_targeting_closes_the_targeting() {
         let [card] = ids();
         let player = PlayerId::new(0);
         let mut input = PlayerInput::default();
-        input.open_draft(player, card);
+        input.start_targeting(player, card);
 
-        input.commit_draft(player, &[ChoiceId(0)]);
+        input.commit_targeting(player, &[TargetId(0)]);
 
         assert_eq!(input.awaiting(player), None);
     }
 
     #[test]
-    fn committing_a_cards_draft_again_replaces_its_targets() {
+    fn committing_a_cards_targeting_again_replaces_its_targets() {
         let [card, first, second] = ids();
         let player = PlayerId::new(0);
         let mut input = PlayerInput::default();
-        input.open_draft(player, card);
-        input.choose(player, first, ChoiceId(0));
-        input.commit_draft(player, &[ChoiceId(0)]);
-        input.open_draft(player, card);
-        input.choose(player, second, ChoiceId(0));
+        input.start_targeting(player, card);
+        input.target(player, first, TargetId(0));
+        input.commit_targeting(player, &[TargetId(0)]);
+        input.start_targeting(player, card);
+        input.target(player, second, TargetId(0));
 
-        input.commit_draft(player, &[ChoiceId(0)]);
+        input.commit_targeting(player, &[TargetId(0)]);
 
-        assert_eq!(input.targets(card, ChoiceId(0)), Some(&[second][..]));
+        assert_eq!(input.targets(card, TargetId(0)), Some(&[second][..]));
     }
 
     #[test]
-    fn a_cancelled_draft_stores_no_targets() {
+    fn cancelled_targeting_stores_no_targets() {
         let [card, target] = ids();
         let player = PlayerId::new(0);
         let mut input = PlayerInput::default();
-        input.open_draft(player, card);
-        input.choose(player, target, ChoiceId(0));
+        input.start_targeting(player, card);
+        input.target(player, target, TargetId(0));
 
         input.cancel(player);
 
-        assert_eq!(input.targets(card, ChoiceId(0)), None);
+        assert_eq!(input.targets(card, TargetId(0)), None);
     }
 
     #[test]
-    fn an_open_draft_shows_no_revealed_cards() {
+    fn targeting_shows_no_revealed_cards() {
         let [card] = ids();
         let player = PlayerId::new(0);
         let mut input = PlayerInput::default();
 
-        input.open_draft(player, card);
+        input.start_targeting(player, card);
 
         assert_eq!(input.revealed(player), []);
     }
 
     #[test]
-    fn an_open_draft_names_its_card() {
+    fn targeting_names_its_card() {
         let [card] = ids();
         let player = PlayerId::new(0);
         let mut input = PlayerInput::default();
 
-        input.open_draft(player, card);
+        input.start_targeting(player, card);
 
-        assert_eq!(input.draft(player).map(Draft::object_id), Some(card));
+        assert_eq!(
+            input.targeting(player).map(Targeting::object_id),
+            Some(card)
+        );
     }
 
     #[test]
@@ -427,7 +435,7 @@ mod tests {
         let [card] = ids();
         let mut input = PlayerInput::default();
 
-        input.open_draft(PlayerId::new(1), card);
+        input.start_targeting(PlayerId::new(1), card);
 
         assert!(input.any_awaiting());
         assert_eq!(input.awaiting(PlayerId::new(0)), None);

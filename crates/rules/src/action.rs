@@ -1,6 +1,6 @@
 //! What a player sends in, and what comes back when it isn't legal.
 
-use crate::{cards::object::ObjectId, choice::ChoiceId, ids::PlayerId};
+use crate::{cards::object::ObjectId, ids::PlayerId, target::TargetId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Action {
@@ -10,11 +10,11 @@ pub enum Action {
     Pick {
         object_id: ObjectId,
     },
-    Draft {
+    StartTargeting {
         object_id: ObjectId,
     },
-    Choose {
-        choice_id: ChoiceId,
+    Target {
+        target_id: TargetId,
         object_id: ObjectId,
     },
     Cancel {
