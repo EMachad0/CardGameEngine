@@ -33,7 +33,7 @@ use crate::game::effect_stack::EffectStack;
 use crate::game::player::Player;
 use crate::game::player_input::{Awaiting, PlayerInput};
 use crate::game::reporting::Report;
-use crate::game::resolve::state_check::Standings;
+use crate::game::resolve::state_check::standings::Standings;
 use crate::history::History;
 use crate::ids::PlayerId;
 use crate::observer::Observer;
@@ -108,6 +108,10 @@ impl Game {
             objects,
             binder,
             history,
+            #[expect(
+                clippy::disallowed_methods,
+                reason = "the one start of the standings, as the game is set up"
+            )]
             standings: Standings::new(player_ids.clone()),
             effect_stack: Default::default(),
         };

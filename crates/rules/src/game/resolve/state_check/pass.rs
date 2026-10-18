@@ -7,25 +7,6 @@ use crate::{
     outcome::Outcome,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(in crate::game) struct Standings {
-    playing: Vec<PlayerId>,
-    outcome: Option<Outcome>,
-}
-
-impl Standings {
-    pub(in crate::game) fn new(players: Vec<PlayerId>) -> Self {
-        Self {
-            playing: players,
-            outcome: None,
-        }
-    }
-
-    pub(in crate::game) fn outcome(&self) -> Option<Outcome> {
-        self.outcome
-    }
-}
-
 pub(in crate::game) struct Death {
     object_id: ObjectId,
 }
@@ -51,7 +32,7 @@ impl From<Ending> for Event {
 }
 
 impl Game {
-    pub(super) fn check_state(&mut self, obs: &mut impl Observer) {
+    pub(in crate::game::resolve) fn check_state(&mut self, obs: &mut impl Observer) {
         self.remove_dead(obs);
         self.decide_outcome(obs);
     }
@@ -78,9 +59,7 @@ impl Game {
 
             let dead_players = self
                 .standings
-                .playing
-                .iter()
-                .copied()
+                .playing()
                 .filter(|&player_id| self.hero_health(player_id) <= 0)
                 .collect::<Vec<_>>();
             let player_died = !dead_players.is_empty();
@@ -97,9 +76,7 @@ impl Game {
                 .collect();
             self.kill(deaths, obs);
 
-            self.standings
-                .playing
-                .retain(|player_id| !dead_players.contains(player_id));
+            self.standings.eliminate(&dead_players);
 
             if player_died || minion_died {
                 obs.checkpoint(Views::new(self));
@@ -149,18 +126,7 @@ impl Game {
     }
 
     fn decide_outcome(&mut self, obs: &mut impl Observer) {
-        if self.standings.outcome.is_some() {
-            return;
-        }
-
-        let outcome = match self.standings.playing.as_slice() {
-            [] => Some(Outcome::Draw),
-            [player_id] => Some(Outcome::Won(*player_id)),
-            _ => None,
-        };
-
-        self.standings.outcome = outcome;
-        if let Some(outcome) = outcome {
+        if let Some(outcome) = self.standings.decide() {
             self.report(Report::GameEnded(Ending { outcome }), obs);
             obs.checkpoint(Views::new(self));
         }
