@@ -8,6 +8,7 @@
 //! - `reporting`: recording an event, telling the observer and pushing the triggers it matched.
 //! - `resolve`: the mutation half of `apply`.
 //! - `lookup`: attack, health, cost and amounts, computed on read.
+//! - `mana`: one player's mana, and the rules for paying and refilling it.
 #![expect(
     clippy::definition_in_module_root,
     reason = "the child modules read Game's private fields, which a leaf would hide from them"
@@ -16,6 +17,7 @@
 mod condition;
 mod effect_stack;
 mod lookup;
+mod mana;
 mod player;
 mod player_input;
 mod reporting;
@@ -144,13 +146,13 @@ impl Game {
                     return Vec::new();
                 }
 
-                let mana = self.mana(player_id);
+                let mana = &self.get_player(player_id).mana;
                 let hand = self.hand(player_id);
                 for object_id in hand.iter().copied() {
                     let mana_cost = self
                         .mana_cost(object_id)
                         .expect("objects in hand always have mana cost");
-                    if mana_cost > mana {
+                    if !mana.can_pay(mana_cost) {
                         continue;
                     }
 
@@ -233,7 +235,7 @@ impl Game {
     }
 
     pub fn mana(&self, player_id: PlayerId) -> u8 {
-        self.get_player(player_id).mana
+        self.get_player(player_id).mana.current()
     }
 
     /// The cards a pending Forage revealed. Empty if nothing is pending.
@@ -260,9 +262,7 @@ impl Game {
             player_id: active_player_id,
         };
         self.report(report, obs);
-        let player = self.get_player_mut(active_player_id);
-        player.max_mana = (player.max_mana + 1).min(10);
-        player.mana = player.max_mana;
+        self.get_player_mut(active_player_id).mana.refill();
         self.draw(active_player_id, 1, obs);
     }
 
