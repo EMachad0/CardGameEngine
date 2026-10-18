@@ -41,7 +41,7 @@ impl Game {
         let printed_cost = self.card_def(object_id).mana_cost;
         let reduction = self
             .stat_changes(object_id)
-            .cost_reduction(self.owners_amount(object_id));
+            .cost_reduction(self.evaluate_for_owner(object_id));
         printed_cost.saturating_sub(reduction)
     }
 
@@ -53,7 +53,7 @@ impl Game {
             .expect("board objects always have attack");
         let bonus = self
             .stat_changes(object_id)
-            .attack_bonus(self.owners_amount(object_id));
+            .attack_bonus(self.evaluate_for_owner(object_id));
         printed_attack + bonus
     }
 
@@ -65,12 +65,12 @@ impl Game {
             .expect("in play objects always have health");
         let bonus = self
             .stat_changes(object_id)
-            .health_bonus(self.owners_amount(object_id));
+            .health_bonus(self.evaluate_for_owner(object_id));
         printed_health + bonus - self.objects.get(object_id).damage() as i32
     }
 
     /// Evaluates the amounts on an object's modifiers for its owner.
-    fn owners_amount(&self, object_id: ObjectId) -> impl Fn(&EffectAmount) -> u8 {
+    fn evaluate_for_owner(&self, object_id: ObjectId) -> impl Fn(&EffectAmount) -> u8 {
         let owner = self.objects.get(object_id).player_id;
         move |amount| self.effect_amount(amount, owner)
     }

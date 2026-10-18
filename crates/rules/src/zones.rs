@@ -533,50 +533,75 @@ mod tests {
         );
     }
 
-    #[test]
-    fn a_card_is_found_only_in_the_hand_that_holds_it() {
-        let [hero, drawn, in_deck] = ids();
+    /// Player 0 has `summoned` on the board, `held` in hand and `in_deck` in the deck. Player 1
+    /// has only a hero.
+    fn one_of_each() -> (Zones, [ObjectId; 5]) {
+        let [hero, other_hero, summoned, held, in_deck] = ids();
         let player = PlayerId::new(0);
-        let mut zones = Zones::new([(hero, vec![drawn, in_deck])]);
-        zones.draw(player);
-
-        assert_eq!(
-            [drawn, in_deck, hero].map(|o| zones.find_in_hand(player, o).map(InHand::object_id)),
-            [Some(drawn), None, None],
-        );
-    }
-
-    #[test]
-    fn a_card_is_found_only_on_the_board_that_holds_it() {
-        let [hero, summoned, held] = ids();
-        let player = PlayerId::new(0);
-        let mut zones = Zones::new([(hero, vec![summoned, held])]);
+        let mut zones = Zones::new([
+            (hero, vec![summoned, held, in_deck]),
+            (other_hero, Vec::new()),
+        ]);
         zones.draw(player);
         zones.draw(player);
         zones.take_from_hand(player, summoned);
         zones.enter_board(player, summoned);
+        (zones, [hero, other_hero, summoned, held, in_deck])
+    }
 
-        assert_eq!(
-            [summoned, held, hero].map(|o| zones.find_on_board(player, o).map(OnBoard::object_id)),
-            [Some(summoned), None, None],
-        );
+    #[test]
+    fn a_card_in_a_hand_is_found_there() {
+        let (zones, [_, _, _, held, _]) = one_of_each();
+
+        let found = zones.find_in_hand(PlayerId::new(0), held);
+
+        assert_eq!(found.map(InHand::object_id), Some(held));
+    }
+
+    #[test]
+    fn nothing_outside_a_hand_is_found_in_it() {
+        let (zones, [hero, _, summoned, _, in_deck]) = one_of_each();
+
+        let found = [hero, summoned, in_deck].map(|o| zones.find_in_hand(PlayerId::new(0), o));
+
+        assert!(found.iter().all(Option::is_none));
+    }
+
+    #[test]
+    fn a_card_on_a_board_is_found_there() {
+        let (zones, [_, _, summoned, _, _]) = one_of_each();
+
+        let found = zones.find_on_board(PlayerId::new(0), summoned);
+
+        assert_eq!(found.map(OnBoard::object_id), Some(summoned));
+    }
+
+    #[test]
+    fn nothing_off_a_board_is_found_on_it() {
+        let (zones, [hero, _, _, held, in_deck]) = one_of_each();
+
+        let found = [hero, held, in_deck].map(|o| zones.find_on_board(PlayerId::new(0), o));
+
+        assert!(found.iter().all(Option::is_none));
     }
 
     #[test]
     fn heroes_and_cards_on_a_board_are_in_play() {
-        let [hero, other_hero, summoned, held] = ids();
-        let player = PlayerId::new(0);
-        let mut zones = Zones::new([(hero, vec![summoned, held]), (other_hero, Vec::new())]);
-        zones.draw(player);
-        zones.draw(player);
-        zones.take_from_hand(player, summoned);
-        zones.enter_board(player, summoned);
+        let (zones, [hero, other_hero, summoned, _, _]) = one_of_each();
 
-        assert_eq!(
-            [hero, other_hero, summoned, held]
-                .map(|o| zones.find_in_play(o).map(InPlay::object_id)),
-            [Some(hero), Some(other_hero), Some(summoned), None],
-        );
+        let found =
+            [hero, other_hero, summoned].map(|o| zones.find_in_play(o).map(InPlay::object_id));
+
+        assert_eq!(found, [Some(hero), Some(other_hero), Some(summoned)]);
+    }
+
+    #[test]
+    fn cards_in_a_hand_or_a_deck_are_not_in_play() {
+        let (zones, [_, _, _, held, in_deck]) = one_of_each();
+
+        let found = [held, in_deck].map(|o| zones.find_in_play(o));
+
+        assert!(found.iter().all(Option::is_none));
     }
 
     #[test]

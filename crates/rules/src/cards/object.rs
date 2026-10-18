@@ -119,7 +119,7 @@ mod tests {
     }
 
     #[test]
-    fn a_new_object_has_no_damage_and_nothing_granted() {
+    fn a_new_object_starts_with_no_damage_or_grants() {
         let mut bag = ObjectBag::default();
         let recruit = bag.insert(RECRUIT, PlayerId::new(0));
 

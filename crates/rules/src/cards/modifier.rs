@@ -4,14 +4,14 @@ use crate::{
 };
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub(crate) struct Modifiers(Vec<Modifier>);
+pub(super) struct Modifiers(Vec<Modifier>);
 
 impl Modifiers {
-    pub(crate) fn add(&mut self, modifier: Modifier) {
+    pub(super) fn add(&mut self, modifier: Modifier) {
         self.0.push(modifier);
     }
 
-    pub(crate) fn as_slice(&self) -> &[Modifier] {
+    pub(super) fn as_slice(&self) -> &[Modifier] {
         self.0.as_slice()
     }
 }
@@ -216,7 +216,7 @@ mod tests {
     }
 
     #[test]
-    fn granted_triggers_keep_their_order_and_the_object_granting_each() {
+    fn granted_triggers_come_in_the_order_they_were_added() {
         let [first, second] = ids();
         let died = trigger(TriggerPattern::Died(TriggerSubject::Itself));
         let damaged = trigger(TriggerPattern::Damaged(TriggerSubject::Itself));
