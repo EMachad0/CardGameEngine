@@ -56,7 +56,7 @@ reviewing it.
 | 06 | `state-check-and-drain` | 05 |
 | 07 | `mana` | 06 |
 | 08 | `stats-and-modifiers` | 07 |
-| 09 | `draft-walk` | 08 |
+| 09 | `targeting-walk` | 08 |
 | 10 | `game-leaf` | 09 |
 | 11 | `legal-actions` | 10 |
 | 12 | `card-text` | 11 |
