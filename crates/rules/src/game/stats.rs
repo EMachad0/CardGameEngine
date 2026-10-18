@@ -6,57 +6,69 @@ use crate::{
     game::Game,
     ids::PlayerId,
     trigger::Trigger,
+    zones::{InHand, InPlay, OnBoard},
 };
 
 impl Game {
+    /// `None` unless the card is in its owner's hand.
     pub fn mana_cost(&self, object_id: ObjectId) -> Option<u8> {
         let owner = self.objects.get(object_id).player_id;
-        self.zones.in_hand(owner, object_id).then(|| {
-            let printed_cost = self.card_def(object_id).mana_cost;
-            let reduction = self
-                .stat_changes(object_id)
-                .cost_reduction(|amount| self.effect_amount(amount, owner));
-            printed_cost.saturating_sub(reduction)
-        })
+        let card = self.zones.find_in_hand(owner, object_id)?;
+        Some(self.cost(card))
+    }
+
+    /// `None` unless the card is on its owner's board.
+    pub fn attack(&self, object_id: ObjectId) -> Option<i32> {
+        let owner = self.objects.get(object_id).player_id;
+        let card = self.zones.find_on_board(owner, object_id)?;
+        Some(self.minion_attack(card))
+    }
+
+    /// `None` unless the object is a character in play. Panics on an id the game never made.
+    pub fn health(&self, object_id: ObjectId) -> Option<i32> {
+        self.objects.get(object_id);
+        let character = self.zones.find_in_play(object_id)?;
+        Some(self.character_health(character))
     }
 
     pub fn hero_health(&self, player_id: PlayerId) -> i32 {
-        self.health(self.hero_id(player_id))
-            .expect("in play heroes always have health")
+        self.character_health(self.zones.hero_in_play(player_id))
     }
 
-    pub fn health(&self, object_id: ObjectId) -> Option<i32> {
-        let object = self.objects.get(object_id);
-        let card_def = self.card_def(object_id);
-
-        let is_in_play = self
-            .zones
-            .characters_in_play()
-            .any(|character| character == object_id);
-
-        is_in_play.then(|| {
-            let printed_health = card_def
-                .health()
-                .expect("in play objects always have health");
-            let bonus = self
-                .stat_changes(object_id)
-                .health_bonus(|amount| self.effect_amount(amount, object.player_id));
-            printed_health + bonus - object.damage() as i32
-        })
-    }
-
-    pub fn attack(&self, object_id: ObjectId) -> Option<i32> {
+    pub(super) fn cost(&self, card: InHand<'_>) -> u8 {
+        let object_id = card.object_id();
         let owner = self.objects.get(object_id).player_id;
-        self.zones.on_board(owner, object_id).then(|| {
-            let printed_attack = self
-                .card_def(object_id)
-                .attack()
-                .expect("board objects always have attack");
-            let bonus = self
-                .stat_changes(object_id)
-                .attack_bonus(|amount| self.effect_amount(amount, owner));
-            printed_attack + bonus
-        })
+        let printed_cost = self.card_def(object_id).mana_cost;
+        let reduction = self
+            .stat_changes(object_id)
+            .cost_reduction(|amount| self.effect_amount(amount, owner));
+        printed_cost.saturating_sub(reduction)
+    }
+
+    pub(super) fn minion_attack(&self, card: OnBoard<'_>) -> i32 {
+        let object_id = card.object_id();
+        let owner = self.objects.get(object_id).player_id;
+        let printed_attack = self
+            .card_def(object_id)
+            .attack()
+            .expect("board objects always have attack");
+        let bonus = self
+            .stat_changes(object_id)
+            .attack_bonus(|amount| self.effect_amount(amount, owner));
+        printed_attack + bonus
+    }
+
+    pub(super) fn character_health(&self, character: InPlay<'_>) -> i32 {
+        let object_id = character.object_id();
+        let object = self.objects.get(object_id);
+        let printed_health = self
+            .card_def(object_id)
+            .health()
+            .expect("in play objects always have health");
+        let bonus = self
+            .stat_changes(object_id)
+            .health_bonus(|amount| self.effect_amount(amount, object.player_id));
+        printed_health + bonus - object.damage() as i32
     }
 
     pub(super) fn triggers(&self, object_id: ObjectId) -> Vec<Trigger> {

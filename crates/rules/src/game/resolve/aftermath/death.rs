@@ -22,12 +22,9 @@ impl Game {
     fn find_dead(&self) -> Vec<ObjectId> {
         let mut death_pass = Vec::new();
         for player_id in self.players().into_iter() {
-            for object_id in self.player_board(player_id).iter().copied() {
-                let health = self
-                    .health(object_id)
-                    .expect("board objects always have health");
-                if health <= 0 {
-                    death_pass.push(object_id);
+            for card in self.zones.board_cards(player_id) {
+                if self.character_health(card.into()) <= 0 {
+                    death_pass.push(card.object_id());
                 }
             }
         }

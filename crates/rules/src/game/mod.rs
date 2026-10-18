@@ -149,12 +149,9 @@ impl Game {
                 }
 
                 let mana = &self.get_player(player_id).mana;
-                let hand = self.hand(player_id);
-                for object_id in hand.iter().copied() {
-                    let mana_cost = self
-                        .mana_cost(object_id)
-                        .expect("objects in hand always have mana cost");
-                    if !mana.can_pay(mana_cost) {
+                for card in self.zones.hand_cards(player_id) {
+                    let object_id = card.object_id();
+                    if !mana.can_pay(self.cost(card)) {
                         continue;
                     }
 

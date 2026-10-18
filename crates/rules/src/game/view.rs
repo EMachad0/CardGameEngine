@@ -5,6 +5,7 @@ use crate::{
     game::{Game, player::Player},
     ids::PlayerId,
     outcome::Outcome,
+    zones::{InHand, OnBoard},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -95,43 +96,37 @@ impl Game {
             max_mana: player.mana.max(),
             hand: self
                 .zones
-                .hand(player.id)
-                .iter()
-                .map(|o| self.hand_card(viewer, player.id, *o))
+                .hand_cards(player.id)
+                .map(|card| self.hand_card(viewer, player.id, card))
                 .collect(),
             deck_size: self.zones.deck_size(player.id),
             board: self
                 .zones
-                .board(player.id)
-                .iter()
-                .map(|o| self.board_card(viewer, *o))
+                .board_cards(player.id)
+                .map(|card| self.board_card(viewer, card))
                 .collect(),
             revealed: self.revealed_view(viewer, player.id),
             targeting: self.targeting_view(player.id),
         }
     }
 
-    fn hand_card(&self, viewer: PlayerId, player_id: PlayerId, object_id: ObjectId) -> HandCard {
+    fn hand_card(&self, viewer: PlayerId, player_id: PlayerId, card: InHand<'_>) -> HandCard {
+        let object_id = card.object_id();
         let face = (player_id == viewer).then(|| Face {
             def_id: self.def_id(object_id),
-            mana_cost: self
-                .mana_cost(object_id)
-                .expect("hand objects always have mana cost"),
+            mana_cost: self.cost(card),
         });
 
         HandCard { object_id, face }
     }
 
-    fn board_card(&self, _viewer: PlayerId, object_id: ObjectId) -> BoardCard {
+    fn board_card(&self, _viewer: PlayerId, card: OnBoard<'_>) -> BoardCard {
+        let object_id = card.object_id();
         BoardCard {
             object_id,
             def_id: self.def_id(object_id),
-            attack: self
-                .attack(object_id)
-                .expect("board objects always have attack"),
-            health: self
-                .health(object_id)
-                .expect("board objects always have health"),
+            attack: self.minion_attack(card),
+            health: self.character_health(card.into()),
         }
     }
 

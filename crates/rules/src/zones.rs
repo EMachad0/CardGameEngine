@@ -5,6 +5,7 @@
 //! a zone, or took its place as a hero.
 
 use std::collections::VecDeque;
+use std::marker::PhantomData;
 
 use crate::cards::object::ObjectId;
 use crate::ids::PlayerId;
@@ -136,6 +137,55 @@ impl PlayerZones {
     }
 }
 
+/// A card found in a hand. It borrows the zones, so the card stays there while this lives.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct InHand<'a> {
+    object_id: ObjectId,
+    zones: PhantomData<&'a Zones>,
+}
+
+impl InHand<'_> {
+    pub(crate) fn object_id(self) -> ObjectId {
+        self.object_id
+    }
+}
+
+/// A card found on a board. It borrows the zones, so the card stays there while this lives.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct OnBoard<'a> {
+    object_id: ObjectId,
+    zones: PhantomData<&'a Zones>,
+}
+
+impl OnBoard<'_> {
+    pub(crate) fn object_id(self) -> ObjectId {
+        self.object_id
+    }
+}
+
+/// A character found in play: a hero, or a card on a board. It borrows the zones, so the
+/// character stays in play while this lives.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct InPlay<'a> {
+    object_id: ObjectId,
+    zones: PhantomData<&'a Zones>,
+}
+
+impl InPlay<'_> {
+    pub(crate) fn object_id(self) -> ObjectId {
+        self.object_id
+    }
+}
+
+impl<'a> From<OnBoard<'a>> for InPlay<'a> {
+    fn from(card: OnBoard<'a>) -> Self {
+        Self {
+            object_id: card.object_id,
+            zones: PhantomData,
+        }
+    }
+}
+
 /// Every player's zones, by `PlayerId`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Zones {
@@ -192,12 +242,64 @@ impl Zones {
         self.player(player_id).board.as_slice()
     }
 
-    pub(crate) fn in_hand(&self, player_id: PlayerId, object_id: ObjectId) -> bool {
-        self.player(player_id).hand.contains(&object_id)
+    /// Oldest first.
+    pub(crate) fn hand_cards(&self, player_id: PlayerId) -> impl Iterator<Item = InHand<'_>> {
+        self.hand(player_id).iter().map(|&object_id| InHand {
+            object_id,
+            zones: PhantomData,
+        })
     }
 
-    pub(crate) fn on_board(&self, player_id: PlayerId, object_id: ObjectId) -> bool {
-        self.player(player_id).board.contains(&object_id)
+    /// Left to right.
+    pub(crate) fn board_cards(&self, player_id: PlayerId) -> impl Iterator<Item = OnBoard<'_>> {
+        self.board(player_id).iter().map(|&object_id| OnBoard {
+            object_id,
+            zones: PhantomData,
+        })
+    }
+
+    pub(crate) fn hero_in_play(&self, player_id: PlayerId) -> InPlay<'_> {
+        InPlay {
+            object_id: self.hero(player_id),
+            zones: PhantomData,
+        }
+    }
+
+    pub(crate) fn find_in_hand(
+        &self,
+        player_id: PlayerId,
+        object_id: ObjectId,
+    ) -> Option<InHand<'_>> {
+        self.player(player_id)
+            .hand
+            .contains(&object_id)
+            .then_some(InHand {
+                object_id,
+                zones: PhantomData,
+            })
+    }
+
+    pub(crate) fn find_on_board(
+        &self,
+        player_id: PlayerId,
+        object_id: ObjectId,
+    ) -> Option<OnBoard<'_>> {
+        self.player(player_id)
+            .board
+            .contains(&object_id)
+            .then_some(OnBoard {
+                object_id,
+                zones: PhantomData,
+            })
+    }
+
+    pub(crate) fn find_in_play(&self, object_id: ObjectId) -> Option<InPlay<'_>> {
+        self.characters_in_play()
+            .any(|character| character == object_id)
+            .then_some(InPlay {
+                object_id,
+                zones: PhantomData,
+            })
     }
 
     /// Every hero, then every player's board, both by `PlayerId`.
@@ -428,6 +530,82 @@ mod tests {
             deaths,
             [hero, second, first],
             "the card that entered the board last must come last",
+        );
+    }
+
+    #[test]
+    fn a_card_is_found_only_in_the_hand_that_holds_it() {
+        let [hero, drawn, in_deck] = ids();
+        let player = PlayerId::new(0);
+        let mut zones = Zones::new([(hero, vec![drawn, in_deck])]);
+        zones.draw(player);
+
+        assert_eq!(
+            [drawn, in_deck, hero].map(|o| zones.find_in_hand(player, o).map(InHand::object_id)),
+            [Some(drawn), None, None],
+        );
+    }
+
+    #[test]
+    fn a_card_is_found_only_on_the_board_that_holds_it() {
+        let [hero, summoned, held] = ids();
+        let player = PlayerId::new(0);
+        let mut zones = Zones::new([(hero, vec![summoned, held])]);
+        zones.draw(player);
+        zones.draw(player);
+        zones.take_from_hand(player, summoned);
+        zones.enter_board(player, summoned);
+
+        assert_eq!(
+            [summoned, held, hero].map(|o| zones.find_on_board(player, o).map(OnBoard::object_id)),
+            [Some(summoned), None, None],
+        );
+    }
+
+    #[test]
+    fn heroes_and_cards_on_a_board_are_in_play() {
+        let [hero, other_hero, summoned, held] = ids();
+        let player = PlayerId::new(0);
+        let mut zones = Zones::new([(hero, vec![summoned, held]), (other_hero, Vec::new())]);
+        zones.draw(player);
+        zones.draw(player);
+        zones.take_from_hand(player, summoned);
+        zones.enter_board(player, summoned);
+
+        assert_eq!(
+            [hero, other_hero, summoned, held]
+                .map(|o| zones.find_in_play(o).map(InPlay::object_id)),
+            [Some(hero), Some(other_hero), Some(summoned), None],
+        );
+        assert_eq!(zones.hero_in_play(player).object_id(), hero);
+    }
+
+    #[test]
+    fn walking_a_hand_or_a_board_keeps_its_order() {
+        let [hero, a, b, c, d] = ids();
+        let player = PlayerId::new(0);
+        let mut zones = Zones::new([(hero, vec![a, b, c, d])]);
+        for _ in 0..4 {
+            zones.draw(player);
+        }
+        for card in [c, a] {
+            zones.take_from_hand(player, card);
+            zones.enter_board(player, card);
+        }
+
+        assert_eq!(
+            (
+                zones
+                    .hand_cards(player)
+                    .map(InHand::object_id)
+                    .collect::<Vec<_>>(),
+                zones
+                    .board_cards(player)
+                    .map(OnBoard::object_id)
+                    .collect::<Vec<_>>(),
+            ),
+            (vec![b, d], vec![c, a]),
+            "the hand walks oldest first and the board left to right",
         );
     }
 
