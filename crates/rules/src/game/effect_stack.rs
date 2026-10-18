@@ -21,18 +21,18 @@ struct PendingEffect {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ResolvingEffect {
     pending: PendingEffect,
-    next: usize,
+    place: usize,
 }
 
 impl ResolvingEffect {
     fn next_effect(&mut self) -> Option<(ObjectId, Effect)> {
-        let effect = self.pending.effects.as_slice().get(self.next)?.clone();
-        self.next += 1;
+        let effect = self.pending.effects.as_slice().get(self.place)?.clone();
+        self.place += 1;
         Some((self.pending.source, effect))
     }
 
     fn is_done(&self) -> bool {
-        self.pending.effects.as_slice().len() <= self.next
+        self.pending.effects.as_slice().len() <= self.place
     }
 }
 
@@ -51,7 +51,7 @@ impl EffectStack {
             self.resolving = self
                 .pending
                 .pop()
-                .map(|pending| ResolvingEffect { pending, next: 0 });
+                .map(|pending| ResolvingEffect { pending, place: 0 });
         }
     }
 
@@ -72,7 +72,6 @@ impl EffectStack {
         self.resolving.is_some()
     }
 
-    /// Nothing pending and nothing resolving.
     pub(super) fn is_idle(&self) -> bool {
         self.pending.is_empty() && !self.is_resolving()
     }
