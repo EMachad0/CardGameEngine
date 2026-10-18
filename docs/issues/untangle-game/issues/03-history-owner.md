@@ -1,6 +1,6 @@
 # History has an owner
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 Blocked by: 02
@@ -38,3 +38,7 @@ out is part of its interface: its layout, what each field means and the rules fo
 
 - One module knows an entry's layout, and counting asks it.
 - The checks pass, and the PR justifies every behavior change.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/42
