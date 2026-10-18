@@ -9,7 +9,7 @@ use crate::{
     effect::Effect,
     game::Game,
     ids::PlayerId,
-    trigger::{Trigger, TriggerPattern, TriggerSubject},
+    trigger::Trigger,
 };
 
 impl Game {
@@ -99,13 +99,6 @@ impl Game {
                 .sum::<i32>();
             printed_attack + modifiers
         })
-    }
-
-    pub(crate) fn death_rattles(&self, object_id: ObjectId) -> Vec<Trigger> {
-        self.triggers(object_id)
-            .into_iter()
-            .filter(|t| matches!(t.def.pattern, TriggerPattern::Died(TriggerSubject::Itself)))
-            .collect()
     }
 
     pub(crate) fn triggers(&self, object_id: ObjectId) -> Vec<Trigger> {

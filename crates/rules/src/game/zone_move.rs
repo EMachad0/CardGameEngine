@@ -88,7 +88,8 @@ impl Game {
         // Enqueue death rattles
         for &object_id in object_ids.iter() {
             for death_rattle in self.death_rattles(object_id).into_iter() {
-                self.effect_stack.push(object_id, death_rattle.def.effects);
+                self.effect_stack
+                    .push(death_rattle.source, death_rattle.effects);
             }
         }
 
