@@ -143,12 +143,13 @@ _Avoid_: valid move
 **Play**:
 Paying a card's cost, taking it from the hand and resolving it.
 
-**Draft**:
-A card a player has started to play but hasn't played yet, with the choices made so far.
+**Targeting**:
+A card a player has started to play but hasn't played yet, with the targets named so far.
+_Avoid_: draft
 
-**Choose**:
+**Target**:
 To name what an effect will act on while playing the card, before it resolves.
-_Avoid_: pick
+_Avoid_: choose
 
 **Resolve**:
 To carry out a card's text.
@@ -169,11 +170,11 @@ _Avoid_: heal
 Taking cards from the top of a deck for a player to pick from.
 
 **Pending pick**:
-A choice the game waits on from a player in the middle of resolving a card.
+A pick the game waits on from a player in the middle of resolving a card.
 _Avoid_: picker
 
 **Awaiting**:
-What the game waits on from one player before it goes on: a draft or a pending pick.
+What the game waits on from one player before it goes on: targeting or a pending pick.
 _Avoid_: question, prompt, request
 
 **Player input**:
@@ -238,7 +239,7 @@ The part of a card that can be hidden from a player: its definition and cost.
   object is one copy in one game.
 - **Action** and **Event**: actions go into the game, events come out of it. A player sends an
   action, and the game reports events while it resolves.
-- **Choose** and **Pick**: a player chooses while playing a card, before it resolves, from what is
+- **Target** and **Pick**: a player targets while playing a card, before it resolves, from what is
   already in play. A player picks while a card resolves, from the cards it revealed.
 - **Pending effect** and **Resolving effect**: a pending effect waits on the effect stack. The
   resolving effect has been taken off it and is being carried out, one effect at a time.
