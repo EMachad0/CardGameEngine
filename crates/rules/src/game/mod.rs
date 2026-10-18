@@ -7,7 +7,7 @@
 //! - `player_input`: what the game awaits from each player, and what they targeted and picked.
 //! - `reporting`: recording an event, telling the observer and pushing the triggers it matched.
 //! - `resolve`: the mutation half of `apply`.
-//! - `lookup`: attack, health and cost, computed on read.
+//! - `lookup`: attack, health, cost and amounts, computed on read.
 #![expect(
     clippy::definition_in_module_root,
     reason = "the child modules read Game's private fields, which a leaf would hide from them"

@@ -1,8 +1,7 @@
 //! The mutation half of `Game::apply`. It runs an action and resolves any card
 //! the action plays.
 //!
-//! Every action that reaches this module is already in `legal_actions`, so
-//! nothing here re-checks legality.
+//! `apply` checks legality once, and nothing after its check re-checks it.
 
 use crate::{
     action::{Action, IllegalAction},

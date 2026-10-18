@@ -1,4 +1,4 @@
-//! Attack, health and cost, computed on read from history and printed data.
+//! Attack, health, cost and amounts, computed on read from history and printed data.
 
 use crate::{
     cards::{
