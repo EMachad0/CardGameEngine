@@ -167,7 +167,7 @@ fn the_opponent_has_no_actions_during_targeting() {
 }
 
 #[test]
-fn starting_targeting_and_targeting_pay_nothing_and_keep_the_card_in_hand() {
+fn targeting_pays_nothing_and_keeps_the_card_in_hand() {
     let mut t = table(&[PING], 0, 1);
     let ping = in_hand(&t.game, t.p0, PING);
     let mana = t.game.mana(t.p0);

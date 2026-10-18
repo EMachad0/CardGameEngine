@@ -175,15 +175,12 @@ impl Game {
                 let targeted = targeting.targeted();
                 let mut all_targets_fulfilled = true;
                 for target in &self.card_def(object_id).targets {
-                    let targeted_for_target_count = targeted
+                    let targeted_count = targeted
                         .iter()
                         .filter(|(_, target_id)| target.id == *target_id)
                         .count();
-                    if self.check_target_count_fulfilled(
-                        object_id,
-                        target.id,
-                        targeted_for_target_count as u8,
-                    ) {
+                    if self.check_target_count_fulfilled(object_id, target.id, targeted_count as u8)
+                    {
                         continue;
                     }
 

@@ -19,8 +19,7 @@ Branch: `targeting-walk`, new, from `main` after ticket 08 merges. New draft PR 
   both "is this target full", where `scan_for_valid_targets` offers no more candidates, and "may
   the player stop", where `legal_actions` moves on and `can_finish_targeting` treats the target as
   done. With only `Exactly` bounds the two answers coincide. An `AtMost` bound would offer no
-  `Target`.
-  `AmountBound::upper_bound` has no callers.
+  `Target`. `AmountBound::upper_bound` has no callers.
 
 ADR 0002 makes `legal_actions` the one definition of legality, and ADRs 0007, 0009 and 0010 hold
 targeting's decisions. They call it a draft.

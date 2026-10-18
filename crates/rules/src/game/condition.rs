@@ -18,13 +18,12 @@ impl Game {
         target: &CharacterTarget,
         targeted: &[(ObjectId, TargetId)],
     ) -> Vec<ObjectId> {
-        let targeted_for_target = targeted
+        let objects_for_target = targeted
             .iter()
             .filter(|(_, target_id)| target.id == *target_id)
             .map(|(o, _)| *o)
             .collect::<Vec<_>>();
-        if self.check_target_count_fulfilled(object_id, target.id, targeted_for_target.len() as u8)
-        {
+        if self.check_target_count_fulfilled(object_id, target.id, objects_for_target.len() as u8) {
             return Vec::new();
         }
 
@@ -32,7 +31,7 @@ impl Game {
         self.scan_characters_with_filter(obj.player_id, &target.filter)
             .into_iter()
             .filter(|o| !target.different || targeted.iter().all(|(o2, _)| o != o2))
-            .filter(|o| !targeted_for_target.contains(o))
+            .filter(|o| !objects_for_target.contains(o))
             .collect()
     }
 
@@ -104,15 +103,11 @@ impl Game {
     ) -> bool {
         let mut any_unfulfiled = false;
         for target in &self.card_def(object_id).targets {
-            let targeted_for_target_count = targeted
+            let targeted_count = targeted
                 .iter()
                 .filter(|(_, target_id)| target.id == *target_id)
                 .count();
-            if !self.check_target_count_fulfilled(
-                object_id,
-                target.id,
-                targeted_for_target_count as u8,
-            ) {
+            if !self.check_target_count_fulfilled(object_id, target.id, targeted_count as u8) {
                 let candidates = self.scan_for_valid_targets(object_id, target, targeted);
                 for candidate in candidates.into_iter() {
                     targeted.push((candidate, target.id));

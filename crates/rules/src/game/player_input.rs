@@ -360,7 +360,7 @@ mod tests {
         assert_eq!(
             input.targets(card, TargetId(1)),
             Some(&[][..]),
-            "a declared target with no targeted object must still have its targets stored",
+            "a declared target with nothing targeted must still store an empty list",
         );
     }
 

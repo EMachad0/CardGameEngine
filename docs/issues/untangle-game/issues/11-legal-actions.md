@@ -14,13 +14,13 @@ legality". The code that runs the action relies on the check through `expect`, `
 a write with no guard. When this ticket was written, in `game/resolve.rs` and `game/zone_move.rs`:
 
 - Play after targeting. `apply_action` asks whether targeting is open, then takes it with
-  `let ... else { unreachable!() }`. It writes the answers for the targeting's `of_object_id` and
-  plays the action's `object_id`, relying on the two being one card.
+  `let ... else { unreachable!() }`. It writes the answers for the targeting's `object_id` and plays
+  the action's `object_id`, relying on the two being one card.
 - Play. `mana_cost(object_id).expect(..)` relies on the card being in its owner's hand, and
   `mana -= mana_cost` relies on the player being able to pay. `play` then removes the card from
   the hand with `expect("legal actions guarantee playable cards are in hand")`.
-- Target. `let PlayerInteractionState::Draft { .. } = .. else { unreachable!() }` relies on
-  targeting being open.
+- Target. `let Some(Awaiting::Targets(..)) = .. else { unreachable!() }` relies on targeting
+  being open.
 - Pick. `pick` takes the pending pick with `let ... else { unreachable!() }`, and finds the picked
   object among its options with `expect("a legal pick should name one of the options")`.
 
