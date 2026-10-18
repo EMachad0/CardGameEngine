@@ -104,7 +104,7 @@ impl PlayerInput {
         }
     }
 
-    /// `None` if the card was never played from targeting that declared `target_id`.
+    /// `None` if the card was never played after targeting that declared `target_id`.
     pub(super) fn targets(&self, object_id: ObjectId, target_id: TargetId) -> Option<&[ObjectId]> {
         self.targets
             .iter()

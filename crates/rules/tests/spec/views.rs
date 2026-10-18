@@ -202,7 +202,7 @@ fn a_view_reports_the_outcome_once_the_game_is_over() {
 }
 
 #[test]
-fn both_players_see_the_card_being_targeted_for_and_its_targets_so_far() {
+fn both_players_see_the_card_in_targeting_and_its_targets_so_far() {
     let mut t = table(&[TWIN_SHOT], 0, 2);
     let twin_shot = in_hand(&t.game, t.p0, TWIN_SHOT);
     apply_all(
@@ -226,7 +226,7 @@ fn both_players_see_the_card_being_targeted_for_and_its_targets_so_far() {
 }
 
 #[test]
-fn the_opponent_still_sees_no_face_on_the_card_being_targeted_for() {
+fn the_opponent_still_sees_no_face_on_the_card_in_targeting() {
     let mut t = table(&[PING], 0, 1);
     let ping = in_hand(&t.game, t.p0, PING);
     apply_all(&mut t.game, t.p0, &[start_targeting(ping)]);

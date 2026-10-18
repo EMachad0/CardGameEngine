@@ -792,7 +792,7 @@ fn an_apply_ends_with_a_checkpoint_showing_the_game_it_leaves() {
 }
 
 #[test]
-fn starting_targeting_naming_a_target_and_cancelling_each_report_one_checkpoint_and_no_event() {
+fn each_targeting_action_reports_one_checkpoint_and_no_event() {
     let mut t = table(&[PING], 0, 1);
     let ping = in_hand(&t.game, t.p0, PING);
 
