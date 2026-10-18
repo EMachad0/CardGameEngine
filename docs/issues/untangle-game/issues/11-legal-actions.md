@@ -25,7 +25,7 @@ a write with no guard. After ticket 02, in `game/resolve.rs`, `game/player_input
 - Pick. `pick` takes the pending pick with `let ... else { unreachable!() }`, and finds the picked
   object among its options with `expect("a legal pick should name one of the options")`.
 
-Tickets 01, 02 and 07 move this code, so names and files may differ when you start. The reliance
+Ticket 07 moves this code, so names and files may differ when you start. The reliance
 is the problem. ADR 0002 makes `legal_actions` the one definition of legality.
 
 The doc's rules: "A check validates when it returns nothing, or hands back the type it was given.
