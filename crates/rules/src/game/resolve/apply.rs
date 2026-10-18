@@ -55,10 +55,6 @@ impl Game {
                     self.player_input.commit_targeting(player_id, &target_ids);
                 }
 
-                let mana_cost = self
-                    .mana_cost(object_id)
-                    .expect("[legal_actions] guarantees a play action object_id has mana");
-                self.get_player_mut(player_id).mana.pay(mana_cost);
                 self.play(player_id, object_id, obs);
             }
             Action::Pick { object_id } => {
