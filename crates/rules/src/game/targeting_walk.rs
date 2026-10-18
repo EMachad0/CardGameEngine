@@ -1,4 +1,5 @@
-//! Which objects a player may target next for a card, so that its targeting can still be finished.
+//! Whether a card's targeting can be finished, which objects the player may target next, and
+//! whether they may stop.
 
 use crate::{
     cards::object::ObjectId,

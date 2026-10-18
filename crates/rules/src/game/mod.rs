@@ -11,7 +11,8 @@
 //! - `modifiers`: the modifiers and auras that reach an object.
 //! - `stats`: cost, attack and health, as an object's modifiers and damage leave them.
 //! - `mana`: one player's mana, and the rules for paying and refilling it.
-//! - `targeting_walk`: which objects a player may target next, so that targeting can be finished.
+//! - `targeting_walk`: whether targeting can be finished, what the player may target next, and
+//!   whether they may stop.
 #![expect(
     clippy::definition_in_module_root,
     reason = "the child modules read Game's private fields, which a leaf would hide from them"
