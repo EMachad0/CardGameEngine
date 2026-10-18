@@ -238,7 +238,7 @@ impl Game {
     }
 
     fn history_query(&self, query: HistoryQuery, player_id: PlayerId) -> u8 {
-        let player_id = match query.scope {
+        let scope = match query.scope {
             PlayerFilter::All => None,
             PlayerFilter::Owner => Some(player_id),
             PlayerFilter::Active => Some(self.turn_order.get_active_player_id()),
@@ -250,12 +250,12 @@ impl Game {
         let count = match query.kind {
             HistoryQueryKind::SpellsPlayed => self
                 .history
-                .played(player_id, turn)
+                .played(scope, turn)
                 .filter(|&object_id| self.card_def(object_id).card_kind() == CardKind::Spell)
                 .count(),
             HistoryQueryKind::MinionsDied => self
                 .history
-                .died(player_id, turn)
+                .died(scope, turn)
                 .filter(|&object_id| {
                     self.card_def(object_id).character_kind() == Some(CharacterKind::Minion)
                 })

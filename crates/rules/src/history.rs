@@ -51,7 +51,7 @@ pub(crate) struct History {
 }
 
 impl History {
-    /// Keeps a play, a character entering the board or a death, for the player it counts for.
+    /// Keeps a play, a board entry or a death. A death counts for the dead character's owner.
     pub(crate) fn record(&mut self, event: &Event, turn: u32, objects: &ObjectBag) {
         let (player_id, kind, object_id) = match *event {
             Event::Played {
@@ -163,7 +163,7 @@ mod tests {
     }
 
     #[test]
-    fn no_player_lists_the_cards_every_player_played() {
+    fn any_player_lists_the_cards_every_player_played() {
         let mut objects = ObjectBag::default();
         let first = objects.insert(SPARK, P0);
         let second = objects.insert(SPARK, P1);
@@ -199,10 +199,20 @@ mod tests {
 
         history.record(&Event::Died { object_id: recruit }, 2, &objects);
 
-        assert_eq!(
-            history.died(Some(P1), Some(2)).collect::<Vec<_>>(),
-            [recruit]
-        );
+        assert_eq!(history.died(Some(P1), None).collect::<Vec<_>>(), [recruit]);
+    }
+
+    #[test]
+    fn a_turn_lists_only_the_characters_that_died_in_it() {
+        let mut objects = ObjectBag::default();
+        let first = objects.insert(RECRUIT, P0);
+        let second = objects.insert(RECRUIT, P0);
+        let mut history = History::default();
+
+        history.record(&Event::Died { object_id: first }, 1, &objects);
+        history.record(&Event::Died { object_id: second }, 3, &objects);
+
+        assert_eq!(history.died(None, Some(3)).collect::<Vec<_>>(), [second]);
     }
 
     #[test]
