@@ -3,7 +3,6 @@ use crate::{
     effect::PendingEffect,
     event::Event,
     game::Game,
-    history::{HistoryEntry, HistoryKind},
     ids::PlayerId,
     observer::Observer,
     trigger::Trigger,
@@ -12,7 +11,8 @@ use crate::{
 
 impl Game {
     pub(crate) fn emit(&mut self, event: Event, obs: &mut impl Observer) {
-        self.history_from_event(&event);
+        self.history
+            .record(&event, self.turn_order.turn_count(), &self.objects);
         #[expect(
             clippy::disallowed_methods,
             reason = "the one place that reports an event"
@@ -74,42 +74,6 @@ impl Game {
                 };
                 self.fulfill_trigger_subject(subject, trigger_owner, trigger_object, *target)
             }
-        }
-    }
-
-    fn history_from_event(&mut self, event: &Event) {
-        let turn = self.turn_order.turn_count();
-        if let Some(entry) = match event {
-            Event::Died { object_id } => Some(HistoryEntry {
-                player_id: self.objects.get(*object_id).player_id,
-                kind: HistoryKind::CharacterDied {
-                    object: self.objects.get(*object_id).clone(),
-                },
-                turn,
-            }),
-            Event::Played {
-                player_id,
-                object_id,
-            } => Some(HistoryEntry {
-                player_id: *player_id,
-                kind: HistoryKind::CardPlayed {
-                    object: self.objects.get(*object_id).clone(),
-                },
-                turn,
-            }),
-            Event::BoardEntered {
-                player_id,
-                object_id,
-            } => Some(HistoryEntry {
-                player_id: *player_id,
-                kind: HistoryKind::CharacterEntered {
-                    object: self.objects.get(*object_id).clone(),
-                },
-                turn,
-            }),
-            _ => None,
-        } {
-            self.history.entries.push(entry);
         }
     }
 
