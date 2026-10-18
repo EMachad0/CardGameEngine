@@ -145,6 +145,13 @@ pub(crate) struct InHand<'a> {
 }
 
 impl InHand<'_> {
+    fn new(object_id: ObjectId) -> Self {
+        Self {
+            object_id,
+            zones: PhantomData,
+        }
+    }
+
     pub(crate) fn object_id(self) -> ObjectId {
         self.object_id
     }
@@ -158,6 +165,13 @@ pub(crate) struct OnBoard<'a> {
 }
 
 impl OnBoard<'_> {
+    fn new(object_id: ObjectId) -> Self {
+        Self {
+            object_id,
+            zones: PhantomData,
+        }
+    }
+
     pub(crate) fn object_id(self) -> ObjectId {
         self.object_id
     }
@@ -172,6 +186,13 @@ pub(crate) struct InPlay<'a> {
 }
 
 impl InPlay<'_> {
+    fn new(object_id: ObjectId) -> Self {
+        Self {
+            object_id,
+            zones: PhantomData,
+        }
+    }
+
     pub(crate) fn object_id(self) -> ObjectId {
         self.object_id
     }
@@ -179,10 +200,7 @@ impl InPlay<'_> {
 
 impl<'a> From<OnBoard<'a>> for InPlay<'a> {
     fn from(card: OnBoard<'a>) -> Self {
-        Self {
-            object_id: card.object_id,
-            zones: PhantomData,
-        }
+        Self::new(card.object_id)
     }
 }
 
@@ -244,25 +262,16 @@ impl Zones {
 
     /// Oldest first.
     pub(crate) fn hand_cards(&self, player_id: PlayerId) -> impl Iterator<Item = InHand<'_>> {
-        self.hand(player_id).iter().map(|&object_id| InHand {
-            object_id,
-            zones: PhantomData,
-        })
+        self.hand(player_id).iter().copied().map(InHand::new)
     }
 
     /// Left to right.
     pub(crate) fn board_cards(&self, player_id: PlayerId) -> impl Iterator<Item = OnBoard<'_>> {
-        self.board(player_id).iter().map(|&object_id| OnBoard {
-            object_id,
-            zones: PhantomData,
-        })
+        self.board(player_id).iter().copied().map(OnBoard::new)
     }
 
     pub(crate) fn hero_in_play(&self, player_id: PlayerId) -> InPlay<'_> {
-        InPlay {
-            object_id: self.hero(player_id),
-            zones: PhantomData,
-        }
+        InPlay::new(self.hero(player_id))
     }
 
     pub(crate) fn find_in_hand(
@@ -273,10 +282,7 @@ impl Zones {
         self.player(player_id)
             .hand
             .contains(&object_id)
-            .then_some(InHand {
-                object_id,
-                zones: PhantomData,
-            })
+            .then(|| InHand::new(object_id))
     }
 
     pub(crate) fn find_on_board(
@@ -287,19 +293,13 @@ impl Zones {
         self.player(player_id)
             .board
             .contains(&object_id)
-            .then_some(OnBoard {
-                object_id,
-                zones: PhantomData,
-            })
+            .then(|| OnBoard::new(object_id))
     }
 
     pub(crate) fn find_in_play(&self, object_id: ObjectId) -> Option<InPlay<'_>> {
         self.characters_in_play()
             .any(|character| character == object_id)
-            .then_some(InPlay {
-                object_id,
-                zones: PhantomData,
-            })
+            .then(|| InPlay::new(object_id))
     }
 
     /// Every hero, then every player's board, both by `PlayerId`.
@@ -577,11 +577,18 @@ mod tests {
                 .map(|o| zones.find_in_play(o).map(InPlay::object_id)),
             [Some(hero), Some(other_hero), Some(summoned), None],
         );
-        assert_eq!(zones.hero_in_play(player).object_id(), hero);
     }
 
     #[test]
-    fn walking_a_hand_or_a_board_keeps_its_order() {
+    fn a_players_hero_is_in_play() {
+        let [hero, other_hero] = ids();
+        let zones = Zones::new([(hero, Vec::new()), (other_hero, Vec::new())]);
+
+        assert_eq!(zones.hero_in_play(PlayerId::new(1)).object_id(), other_hero);
+    }
+
+    /// Player 0 has drawn `[a, b, c, d]` and played `c`, then `a`.
+    fn c_then_a_played() -> (Zones, [ObjectId; 4]) {
         let [hero, a, b, c, d] = ids();
         let player = PlayerId::new(0);
         let mut zones = Zones::new([(hero, vec![a, b, c, d])]);
@@ -592,20 +599,28 @@ mod tests {
             zones.take_from_hand(player, card);
             zones.enter_board(player, card);
         }
+        (zones, [a, b, c, d])
+    }
+
+    #[test]
+    fn walking_a_hand_goes_oldest_first() {
+        let (zones, [_, b, _, d]) = c_then_a_played();
+
+        let walked = zones.hand_cards(PlayerId::new(0)).map(InHand::object_id);
+
+        assert_eq!(walked.collect::<Vec<_>>(), [b, d]);
+    }
+
+    #[test]
+    fn walking_a_board_goes_left_to_right() {
+        let (zones, [a, _, c, _]) = c_then_a_played();
+
+        let walked = zones.board_cards(PlayerId::new(0)).map(OnBoard::object_id);
 
         assert_eq!(
-            (
-                zones
-                    .hand_cards(player)
-                    .map(InHand::object_id)
-                    .collect::<Vec<_>>(),
-                zones
-                    .board_cards(player)
-                    .map(OnBoard::object_id)
-                    .collect::<Vec<_>>(),
-            ),
-            (vec![b, d], vec![c, a]),
-            "the hand walks oldest first and the board left to right",
+            walked.collect::<Vec<_>>(),
+            [c, a],
+            "the card played first must come first",
         );
     }
 

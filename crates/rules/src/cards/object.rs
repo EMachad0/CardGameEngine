@@ -71,7 +71,7 @@ impl ObjectBag {
             .expect("ObjectId is only created on object insert")
     }
 
-    pub(crate) fn damage(&mut self, object_id: ObjectId, amount: u8) {
+    pub(crate) fn add_damage(&mut self, object_id: ObjectId, amount: u8) {
         self.get_mut(object_id).damage += amount;
     }
 
@@ -135,8 +135,8 @@ mod tests {
         let mut bag = ObjectBag::default();
         let recruit = bag.insert(RECRUIT, PlayerId::new(0));
 
-        bag.damage(recruit, 2);
-        bag.damage(recruit, 3);
+        bag.add_damage(recruit, 2);
+        bag.add_damage(recruit, 3);
 
         assert_eq!(bag.get(recruit).damage(), 5);
     }

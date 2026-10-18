@@ -3,6 +3,7 @@
 
 use crate::{
     cards::{modifier::StatChanges, object::ObjectId},
+    effect::EffectAmount,
     game::Game,
     ids::PlayerId,
     trigger::Trigger,
@@ -10,14 +11,14 @@ use crate::{
 };
 
 impl Game {
-    /// `None` unless the card is in its owner's hand.
+    /// `None` unless the card is in its owner's hand. Panics on an id the game never made.
     pub fn mana_cost(&self, object_id: ObjectId) -> Option<u8> {
         let owner = self.objects.get(object_id).player_id;
         let card = self.zones.find_in_hand(owner, object_id)?;
         Some(self.cost(card))
     }
 
-    /// `None` unless the card is on its owner's board.
+    /// `None` unless the card is on its owner's board. Panics on an id the game never made.
     pub fn attack(&self, object_id: ObjectId) -> Option<i32> {
         let owner = self.objects.get(object_id).player_id;
         let card = self.zones.find_on_board(owner, object_id)?;
@@ -37,38 +38,41 @@ impl Game {
 
     pub(super) fn cost(&self, card: InHand<'_>) -> u8 {
         let object_id = card.object_id();
-        let owner = self.objects.get(object_id).player_id;
         let printed_cost = self.card_def(object_id).mana_cost;
         let reduction = self
             .stat_changes(object_id)
-            .cost_reduction(|amount| self.effect_amount(amount, owner));
+            .cost_reduction(self.owners_amount(object_id));
         printed_cost.saturating_sub(reduction)
     }
 
     pub(super) fn minion_attack(&self, card: OnBoard<'_>) -> i32 {
         let object_id = card.object_id();
-        let owner = self.objects.get(object_id).player_id;
         let printed_attack = self
             .card_def(object_id)
             .attack()
             .expect("board objects always have attack");
         let bonus = self
             .stat_changes(object_id)
-            .attack_bonus(|amount| self.effect_amount(amount, owner));
+            .attack_bonus(self.owners_amount(object_id));
         printed_attack + bonus
     }
 
     pub(super) fn character_health(&self, character: InPlay<'_>) -> i32 {
         let object_id = character.object_id();
-        let object = self.objects.get(object_id);
         let printed_health = self
             .card_def(object_id)
             .health()
             .expect("in play objects always have health");
         let bonus = self
             .stat_changes(object_id)
-            .health_bonus(|amount| self.effect_amount(amount, object.player_id));
-        printed_health + bonus - object.damage() as i32
+            .health_bonus(self.owners_amount(object_id));
+        printed_health + bonus - self.objects.get(object_id).damage() as i32
+    }
+
+    /// Evaluates the amounts on an object's modifiers for its owner.
+    fn owners_amount(&self, object_id: ObjectId) -> impl Fn(&EffectAmount) -> u8 {
+        let owner = self.objects.get(object_id).player_id;
+        move |amount| self.effect_amount(amount, owner)
     }
 
     pub(super) fn triggers(&self, object_id: ObjectId) -> Vec<Trigger> {
