@@ -2,10 +2,24 @@ use crate::{
     cards::object::ObjectId,
     effect::{PickId, ZoneMove},
     event::Event,
-    game::Game,
+    game::{Game, reporting::Report, state_check::Death, triggering::MatchedTrigger},
     ids::PlayerId,
     observer::{Observer, Views},
 };
+
+pub(super) struct Play {
+    player_id: PlayerId,
+    object_id: ObjectId,
+}
+
+impl From<Play> for Event {
+    fn from(play: Play) -> Self {
+        Event::Played {
+            player_id: play.player_id,
+            object_id: play.object_id,
+        }
+    }
+}
 
 impl Game {
     pub(crate) fn zone_move(
@@ -26,22 +40,22 @@ impl Game {
     pub(crate) fn draw(&mut self, player_id: PlayerId, count: u8, obs: &mut impl Observer) {
         for _ in 0..count {
             if let Some(object_id) = self.zones.draw(player_id) {
-                let event = Event::Drew {
+                let report = Report::Drew {
                     player_id,
                     object_id,
                 };
-                self.emit(event, obs);
+                self.report(report, obs);
             } else {
                 let hero_id = self.zones.hero(player_id);
                 let damage = 1;
                 let object = self.objects.get_mut(hero_id);
                 object.damage += damage;
-                let event = Event::FatigueDamaged {
+                let report = Report::FatigueDamaged {
                     amount: damage,
                     player_id,
                     object_id: hero_id,
                 };
-                self.emit(event, obs);
+                self.report(report, obs);
             };
         }
     }
@@ -61,11 +75,11 @@ impl Game {
                 .push(object_id, self.play_effects(object_id).to_vec());
         }
 
-        let event = Event::Played {
+        let report = Report::Played(Play {
             player_id,
             object_id,
-        };
-        self.emit(event, obs);
+        });
+        self.report(report, obs);
 
         obs.checkpoint(Views::new(self));
         if self.card_def(object_id).has_board_presence() {
@@ -84,20 +98,21 @@ impl Game {
         self.character_entered(player_id, object_id, obs);
     }
 
-    pub(crate) fn kill(&mut self, object_ids: &[ObjectId], obs: &mut impl Observer) {
+    pub(super) fn kill(&mut self, deaths: Vec<Death>, obs: &mut impl Observer) {
         // Enqueue death rattles
-        for &object_id in object_ids.iter() {
-            for death_rattle in self.death_rattles(object_id).into_iter() {
-                self.effect_stack.push(object_id, death_rattle.def.effects);
+        for death in deaths.iter() {
+            for MatchedTrigger { source, effects } in self.death_rattles(death.object_id()) {
+                self.effect_stack.push(source, effects);
             }
         }
 
-        for &object_id in object_ids.iter() {
+        for death in deaths.into_iter() {
+            let object_id = death.object_id();
             let object = self.objects.get(object_id);
             if self.card_def(object_id).leaves_zone_on_death() {
                 self.destroy(object.player_id, object_id, obs);
             }
-            self.emit(Event::Died { object_id }, obs);
+            self.report(Report::Died(death), obs);
         }
     }
 
@@ -138,7 +153,7 @@ impl Game {
             reason = "the one reveal, which posts the revealed cards as a pending pick"
         )]
         let options = self.zones.reveal(player_id, count);
-        let event = Event::Revealed {
+        let report = Report::Revealed {
             player_id,
             object_ids: options.clone(),
         };
@@ -146,7 +161,7 @@ impl Game {
             .player_input
             .ask_pick(player_id, source, pick_id, options)
         {
-            self.emit(event, obs);
+            self.report(report, obs);
         }
     }
 
@@ -158,11 +173,11 @@ impl Game {
     ) {
         self.player_input.pick(player_id, object_id);
 
-        let event = Event::Picked {
+        let report = Report::Picked {
             player_id,
             object_id,
         };
-        self.emit(event, obs);
+        self.report(report, obs);
     }
 
     pub(crate) fn add_to_hand(
@@ -172,11 +187,11 @@ impl Game {
         obs: &mut impl Observer,
     ) {
         self.zones.add_to_hand(player_id, object_id);
-        let event = Event::AddedToHand {
+        let report = Report::AddedToHand {
             player_id,
             object_id,
         };
-        self.emit(event, obs);
+        self.report(report, obs);
     }
 
     pub(crate) fn bury(
@@ -186,11 +201,11 @@ impl Game {
         obs: &mut impl Observer,
     ) {
         self.zones.bury(player_id, object_id);
-        let event = Event::Buried {
+        let report = Report::Buried {
             player_id,
             object_id,
         };
-        self.emit(event, obs);
+        self.report(report, obs);
     }
 
     fn character_entered(
@@ -199,11 +214,11 @@ impl Game {
         object_id: ObjectId,
         obs: &mut impl Observer,
     ) {
-        let event = Event::BoardEntered {
+        let report = Report::BoardEntered {
             player_id,
             object_id,
         };
-        self.emit(event, obs);
+        self.report(report, obs);
     }
 
     pub(crate) fn damage(
@@ -215,11 +230,11 @@ impl Game {
     ) {
         let object = self.objects.get_mut(target);
         object.damage += amount;
-        let event = Event::Damaged {
+        let report = Report::Damaged {
             target,
             amount,
             source,
         };
-        self.emit(event, obs);
+        self.report(report, obs);
     }
 }

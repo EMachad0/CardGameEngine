@@ -1,10 +1,40 @@
 use crate::{
     cards::object::ObjectId,
     event::Event,
-    game::Game,
+    game::{Game, reporting::Report},
     observer::{Observer, Views},
     outcome::Outcome,
 };
+
+pub(super) struct Death {
+    object_id: ObjectId,
+}
+
+impl Death {
+    pub(super) fn object_id(&self) -> ObjectId {
+        self.object_id
+    }
+}
+
+impl From<Death> for Event {
+    fn from(death: Death) -> Self {
+        Event::Died {
+            object_id: death.object_id,
+        }
+    }
+}
+
+pub(super) struct Ending {
+    outcome: Outcome,
+}
+
+impl From<Ending> for Event {
+    fn from(ending: Ending) -> Self {
+        Event::GameEnded {
+            outcome: ending.outcome,
+        }
+    }
+}
 
 impl Game {
     pub(crate) fn check_state(&mut self, obs: &mut impl Observer) {
@@ -46,7 +76,11 @@ impl Game {
                 .chain(dead_heroes)
                 .collect::<Vec<_>>();
             death_pass.sort_by_key(|&o| self.zones.death_order(o));
-            self.kill(&death_pass, obs);
+            let deaths = death_pass
+                .into_iter()
+                .map(|object_id| Death { object_id })
+                .collect();
+            self.kill(deaths, obs);
 
             for player_id in dead_players.into_iter() {
                 let player = self.get_player_mut(player_id);
@@ -79,8 +113,7 @@ impl Game {
 
         self.outcome = outcome;
         if let Some(outcome) = outcome {
-            let event = Event::GameEnded { outcome };
-            self.emit(event, obs);
+            self.report(Report::GameEnded(Ending { outcome }), obs);
             obs.checkpoint(Views::new(self));
         }
     }

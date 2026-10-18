@@ -1,6 +1,6 @@
 # Reporting an event can reach the whole game
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 Blocked by: 04
@@ -51,3 +51,7 @@ inside the value." "When the command's input is also public output, decouple the
   enforces it.
 - Pending effects come out in the same order as before.
 - The checks pass, and the PR justifies every behavior change.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/45

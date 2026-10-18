@@ -5,6 +5,7 @@
 //! - `effect_stack`: the pending effects and the resolving effect.
 //! - `player`: one player's resources.
 //! - `player_input`: what the game awaits from each player, and what they targeted and picked.
+//! - `reporting`: recording an event, telling the observer and pushing the triggers it matched.
 //! - `resolve`: the mutation half of `apply`.
 //! - `lookup`: attack, health and cost, computed on read.
 #![expect(
@@ -17,6 +18,7 @@ mod effect_stack;
 mod lookup;
 mod player;
 mod player_input;
+mod reporting;
 pub(crate) mod resolve;
 mod state_check;
 mod triggering;
@@ -28,10 +30,10 @@ use crate::cards::binder::sets::base::static_card_definition::HERO;
 use crate::cards::binder::store::Binder;
 use crate::cards::definition::DefId;
 use crate::cards::object::{ObjectBag, ObjectId};
-use crate::event::Event;
 use crate::game::effect_stack::EffectStack;
 use crate::game::player::Player;
 use crate::game::player_input::{Awaiting, PlayerInput};
+use crate::game::reporting::Report;
 use crate::history::History;
 use crate::ids::PlayerId;
 use crate::observer::Observer;
@@ -241,19 +243,19 @@ impl Game {
 
     fn end_turn(&mut self, obs: &mut impl Observer) {
         let active_player_id = self.turn_order.get_active_player_id();
-        let event = Event::TurnEnded {
+        let report = Report::TurnEnded {
             player_id: active_player_id,
         };
-        self.emit(event, obs);
+        self.report(report, obs);
         self.turn_order.end_turn();
     }
 
     fn start_turn(&mut self, obs: &mut impl Observer) {
         let active_player_id = self.turn_order.get_active_player_id();
-        let event = Event::TurnStarted {
+        let report = Report::TurnStarted {
             player_id: active_player_id,
         };
-        self.emit(event, obs);
+        self.report(report, obs);
         let player = self.get_player_mut(active_player_id);
         player.max_mana = (player.max_mana + 1).min(10);
         player.mana = player.max_mana;
