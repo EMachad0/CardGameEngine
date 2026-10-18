@@ -1,5 +1,6 @@
 use crate::{
     cards::object::ObjectId,
+    event::Event,
     game::{Game, reporting::Report},
     observer::{Observer, Views},
     outcome::Outcome,
@@ -15,13 +16,23 @@ impl Death {
     }
 }
 
+impl From<Death> for Event {
+    fn from(death: Death) -> Self {
+        Event::Died {
+            object_id: death.object_id,
+        }
+    }
+}
+
 pub(super) struct Ending {
     outcome: Outcome,
 }
 
-impl Ending {
-    pub(super) fn outcome(&self) -> Outcome {
-        self.outcome
+impl From<Ending> for Event {
+    fn from(ending: Ending) -> Self {
+        Event::GameEnded {
+            outcome: ending.outcome,
+        }
     }
 }
 

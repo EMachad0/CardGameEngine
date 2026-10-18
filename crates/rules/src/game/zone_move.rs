@@ -1,6 +1,7 @@
 use crate::{
     cards::object::ObjectId,
     effect::{PickId, ZoneMove},
+    event::Event,
     game::{Game, reporting::Report, state_check::Death, triggering::MatchedTrigger},
     ids::PlayerId,
     observer::{Observer, Views},
@@ -11,13 +12,12 @@ pub(super) struct Play {
     object_id: ObjectId,
 }
 
-impl Play {
-    pub(super) fn player_id(&self) -> PlayerId {
-        self.player_id
-    }
-
-    pub(super) fn object_id(&self) -> ObjectId {
-        self.object_id
+impl From<Play> for Event {
+    fn from(play: Play) -> Self {
+        Event::Played {
+            player_id: play.player_id,
+            object_id: play.object_id,
+        }
     }
 }
 

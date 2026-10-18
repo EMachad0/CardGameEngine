@@ -1,6 +1,6 @@
 //! Records each reported event in history, tells the observer, and pushes the triggers it matched.
-//! `Played`, `Died` and `GameEnded` hold a value with private fields, so only the file that
-//! defines that value can build their report.
+//! A variant that holds a value with private fields can be built only in the file that defines
+//! the value.
 
 use crate::{
     cards::object::{ObjectBag, ObjectId},
@@ -75,10 +75,7 @@ impl Report {
                 player_id,
                 object_id,
             },
-            Report::Played(play) => Event::Played {
-                player_id: play.player_id(),
-                object_id: play.object_id(),
-            },
+            Report::Played(play) => play.into(),
             Report::Damaged {
                 target,
                 amount,
@@ -132,12 +129,8 @@ impl Report {
                 player_id,
                 object_id,
             },
-            Report::Died(death) => Event::Died {
-                object_id: death.object_id(),
-            },
-            Report::GameEnded(ending) => Event::GameEnded {
-                outcome: ending.outcome(),
-            },
+            Report::Died(death) => death.into(),
+            Report::GameEnded(ending) => ending.into(),
         }
     }
 }
