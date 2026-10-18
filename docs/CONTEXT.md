@@ -190,6 +190,13 @@ Putting a card on the bottom of its owner's deck.
 Card text that reacts to an event. It matches when the event happens and resolves later.
 _Avoid_: listener, hook
 
+**Matched trigger**:
+A trigger an event has matched, with the card it belongs to.
+
+**Death rattle**:
+A trigger on its own card's death.
+_Avoid_: deathrattle, own death trigger
+
 **Pending effect**:
 Text waiting to resolve, with the card it came from: a played card's effects or a matched trigger.
 _Avoid_: unit
@@ -206,6 +213,9 @@ _Avoid_: unit, current trigger
 The pass that removes dead cards from the board and decides whether the game is over.
 _Avoid_: death check, state-based actions
 
+**Death**:
+A character dying, as a state check finds it.
+
 **Outcome**:
 How a finished game ended: one player won, or it was a draw.
 _Avoid_: result, winner
@@ -215,6 +225,10 @@ _Avoid_: result, winner
 **Event**:
 The game's report of one thing that happened while it resolved an action.
 _Avoid_: message, notification
+
+**Report**:
+To make an event known as it happens.
+_Avoid_: emit
 
 **Checkpoint**:
 A moment during an action when each player's view can be read.
