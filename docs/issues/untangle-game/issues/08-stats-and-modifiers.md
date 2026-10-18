@@ -1,6 +1,6 @@
 # A character's stats are decided in several places
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 Blocked by: 07
@@ -59,3 +59,7 @@ and answer plainly."
 - Only the boundary you build can add a modifier or an aura to an object, or damage it.
 - A caller that found an object in a zone reads its stats without the zone being checked again.
 - The checks pass, and the PR justifies every behavior change.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/48
