@@ -7,6 +7,25 @@ use crate::{
     outcome::Outcome,
 };
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(in crate::game) struct Standings {
+    playing: Vec<PlayerId>,
+    outcome: Option<Outcome>,
+}
+
+impl Standings {
+    pub(in crate::game) fn new(players: Vec<PlayerId>) -> Self {
+        Self {
+            playing: players,
+            outcome: None,
+        }
+    }
+
+    pub(in crate::game) fn outcome(&self) -> Option<Outcome> {
+        self.outcome
+    }
+}
+
 pub(in crate::game) struct Death {
     object_id: ObjectId,
 }
@@ -58,9 +77,10 @@ impl Game {
             let minion_died = !dead_minions.is_empty();
 
             let dead_players = self
-                .players()
-                .into_iter()
-                .filter(|&player_id| self.playing(player_id))
+                .standings
+                .playing
+                .iter()
+                .copied()
                 .filter(|&player_id| self.hero_health(player_id) <= 0)
                 .collect::<Vec<_>>();
             let player_died = !dead_players.is_empty();
@@ -77,10 +97,9 @@ impl Game {
                 .collect();
             self.kill(deaths, obs);
 
-            for player_id in dead_players.into_iter() {
-                let player = self.get_player_mut(player_id);
-                player.playing = false;
-            }
+            self.standings
+                .playing
+                .retain(|player_id| !dead_players.contains(player_id));
 
             if player_died || minion_died {
                 obs.checkpoint(Views::new(self));
@@ -130,22 +149,17 @@ impl Game {
     }
 
     fn decide_outcome(&mut self, obs: &mut impl Observer) {
-        if self.outcome.is_some() {
+        if self.standings.outcome.is_some() {
             return;
         }
 
-        let mut alive = self
-            .players()
-            .into_iter()
-            .filter(|&player_id| self.playing(player_id))
-            .filter(|&player_id| self.hero_health(player_id) > 0);
-        let outcome = match (alive.next(), alive.next()) {
-            (None, None) => Some(Outcome::Draw),
-            (Some(player_id), None) => Some(Outcome::Won(player_id)),
-            (_, _) => None,
+        let outcome = match self.standings.playing.as_slice() {
+            [] => Some(Outcome::Draw),
+            [player_id] => Some(Outcome::Won(*player_id)),
+            _ => None,
         };
 
-        self.outcome = outcome;
+        self.standings.outcome = outcome;
         if let Some(outcome) = outcome {
             self.report(Report::GameEnded(Ending { outcome }), obs);
             obs.checkpoint(Views::new(self));

@@ -220,8 +220,4 @@ impl Game {
         };
         u8::try_from(count).unwrap_or(u8::MAX)
     }
-
-    pub(crate) fn playing(&self, player_id: PlayerId) -> bool {
-        self.get_player(player_id).playing
-    }
 }

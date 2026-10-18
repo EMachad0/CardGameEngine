@@ -33,6 +33,7 @@ use crate::game::effect_stack::EffectStack;
 use crate::game::player::Player;
 use crate::game::player_input::{Awaiting, PlayerInput};
 use crate::game::reporting::Report;
+use crate::game::resolve::state_check::Standings;
 use crate::history::History;
 use crate::ids::PlayerId;
 use crate::observer::Observer;
@@ -51,7 +52,7 @@ pub struct Game {
     objects: ObjectBag,
     binder: Binder,
     history: History,
-    outcome: Option<Outcome>,
+    standings: Standings,
     effect_stack: EffectStack,
 }
 
@@ -107,7 +108,7 @@ impl Game {
             objects,
             binder,
             history,
-            outcome: Default::default(),
+            standings: Standings::new(player_ids.clone()),
             effect_stack: Default::default(),
         };
 
@@ -237,7 +238,7 @@ impl Game {
     }
 
     pub fn outcome(&self) -> Option<Outcome> {
-        self.outcome
+        self.standings.outcome()
     }
 
     fn end_turn(&mut self, obs: &mut impl Observer) {
