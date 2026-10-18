@@ -1,6 +1,6 @@
-//! Reporting an event: it is recorded in history and sent to the observer, and the triggers it
-//! matched wait on the effect stack. A guarded event's variant holds a value with a private
-//! field, so only the file that defines that value can build the event's report.
+//! Records each reported event in history, tells the observer, and pushes the triggers it matched.
+//! `Played`, `Died` and `GameEnded` hold a value with private fields, so only the file that
+//! defines that value can build their report.
 
 use crate::{
     cards::object::{ObjectBag, ObjectId},
@@ -170,7 +170,7 @@ fn report_event(
     history.record(event, turn, objects);
     #[expect(
         clippy::disallowed_methods,
-        reason = "the one report to the observer, which every event reaches through Game::report"
+        reason = "the one report to the observer, reached through Game::report"
     )]
     obs.event(event);
     for MatchedTrigger { source, effects } in matched {
