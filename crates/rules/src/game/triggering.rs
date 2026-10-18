@@ -15,8 +15,6 @@ pub(super) struct MatchedTrigger {
 }
 
 impl Game {
-    /// The triggers `event` matches, listener by listener in order of play, each listener's in
-    /// grant order.
     pub(super) fn matched_triggers(&self, event: &Event) -> Vec<MatchedTrigger> {
         let mut matched = Vec::new();
         for object_id in self.characters_in_order_of_play().into_iter() {
@@ -37,7 +35,6 @@ impl Game {
         matched
     }
 
-    /// The triggers `object_id` has on its own death.
     pub(super) fn death_rattles(&self, object_id: ObjectId) -> Vec<MatchedTrigger> {
         self.triggers(object_id)
             .into_iter()
