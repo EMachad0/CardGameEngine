@@ -112,8 +112,6 @@ impl Game {
             self.apply_effect(owner, source, &effect, obs);
             obs.checkpoint(Views::new(self));
         }
-        if self.effect_stack.finish_if_done() {
-            self.check_state(obs);
-        }
+        self.effect_stack.finish_if_done();
     }
 }
