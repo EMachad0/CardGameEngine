@@ -51,7 +51,7 @@ impl Game {
         target: &'a CharacterTarget,
         targeted: &'a mut Vec<(ObjectId, TargetId)>,
     ) -> impl Iterator<Item = ObjectId> + 'a {
-        let candidates = self.candidates(object_id, target, targeted);
+        let candidates = self.untargeted_matches(object_id, target, targeted);
         candidates.into_iter().filter(move |&candidate| {
             targeted.push((candidate, target.id));
             let can_finish = self.can_finish_targeting(object_id, targeted);
@@ -73,7 +73,7 @@ impl Game {
         })
     }
 
-    fn candidates(
+    fn untargeted_matches(
         &self,
         object_id: ObjectId,
         target: &CharacterTarget,
@@ -88,17 +88,19 @@ impl Game {
             return Vec::new();
         }
 
-        let obj = self.objects.get(object_id);
-        self.scan_characters_with_filter(obj.player_id, &target.filter)
+        let owner = self.objects.get(object_id).player_id;
+        self.scan_characters_with_filter(owner, &target.filter)
             .into_iter()
-            .filter(|o| !target.different || targeted.iter().all(|(o2, _)| o != o2))
-            .filter(|o| !objects_for_target.contains(o))
+            .filter(|candidate| {
+                !target.different || targeted.iter().all(|(object, _)| object != candidate)
+            })
+            .filter(|candidate| !objects_for_target.contains(candidate))
             .collect()
     }
 
     fn required_count(&self, object_id: ObjectId, target: &CharacterTarget) -> u8 {
-        let obj = self.objects.get(object_id);
-        self.effect_amount(&target.count, obj.player_id)
+        let owner = self.objects.get(object_id).player_id;
+        self.effect_amount(&target.count, owner)
     }
 }
 
