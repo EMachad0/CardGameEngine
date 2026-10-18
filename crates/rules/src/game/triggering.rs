@@ -45,6 +45,23 @@ impl Game {
             .collect()
     }
 
+    fn triggers(&self, object_id: ObjectId) -> Vec<Trigger> {
+        let modifiers = self.modifiers(object_id);
+        let granted = modifiers
+            .granted_triggers()
+            .map(|(granted_by, def)| Trigger {
+                granted_by,
+                def: def.clone(),
+            });
+        let printed = self.card_def(object_id).triggers.iter().map(|def| Trigger {
+            granted_by: object_id,
+            def: def.clone(),
+        });
+        let mut triggers = granted.chain(printed).collect::<Vec<_>>();
+        triggers.sort_by_key(|t| self.zones.grant_order(t.granted_by));
+        triggers
+    }
+
     fn fulfill_trigger_pattern(
         &self,
         trigger_owner: PlayerId,

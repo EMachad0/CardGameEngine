@@ -7,7 +7,9 @@
 //! - `player_input`: what the game awaits from each player, and what they targeted and picked.
 //! - `reporting`: recording an event, telling the observer and pushing the triggers it matched.
 //! - `resolve`: the mutation half of `apply`.
-//! - `lookup`: attack, health, cost and amounts, computed on read.
+//! - `lookup`: definitions, heroes and amounts, computed on read.
+//! - `modifiers`: the modifiers and auras that reach an object.
+//! - `stats`: cost, attack and health, as an object's modifiers and damage leave them.
 //! - `mana`: one player's mana, and the rules for paying and refilling it.
 #![expect(
     clippy::definition_in_module_root,
@@ -18,10 +20,12 @@ mod condition;
 mod effect_stack;
 mod lookup;
 mod mana;
+mod modifiers;
 mod player;
 mod player_input;
 mod reporting;
 pub(crate) mod resolve;
+mod stats;
 mod triggering;
 pub(crate) mod view;
 mod zone_move;
@@ -147,12 +151,9 @@ impl Game {
                 }
 
                 let mana = &self.get_player(player_id).mana;
-                let hand = self.hand(player_id);
-                for object_id in hand.iter().copied() {
-                    let mana_cost = self
-                        .mana_cost(object_id)
-                        .expect("objects in hand always have mana cost");
-                    if !mana.can_pay(mana_cost) {
+                for card in self.zones.hand_cards(player_id) {
+                    let object_id = card.object_id();
+                    if !mana.can_pay(self.cost(card)) {
                         continue;
                     }
 

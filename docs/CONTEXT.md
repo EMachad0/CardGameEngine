@@ -95,6 +95,13 @@ _Avoid_: enchantment
 **Aura**:
 A buff that a card on the board gives other cards for as long as it stays there.
 
+**Stat**:
+A card's cost, attack or health.
+_Avoid_: attribute
+
+**Modifier**:
+A change to a card's stats or triggers, printed on it, granted to it, or given by an aura.
+
 ### Zones
 
 **Zone**:
@@ -111,6 +118,9 @@ The cards a player holds and can play.
 **Board**:
 The cards a player has in play, in order from left to right.
 _Avoid_: battlefield, field, play area
+
+**In play**:
+Being a hero, or a card on a board.
 
 **Graveyard**:
 A zone where a player puts his dead minions.
@@ -260,6 +270,8 @@ The part of a card that can be hidden from a player: its definition and cost.
   never another word for a player.
 - **Player** and **Hero**: a player makes decisions, a hero is the piece that represents them and
   takes damage.
+- **Modifier** and **Buff**: a buff raises attack or health. A modifier can also lower a cost or
+  grant a trigger, so every buff is a modifier and not every modifier is a buff.
 - **Card definition** and **Object**: the definition is the printed card, shared by every copy. An
   object is one copy in one game.
 - **Action** and **Event**: actions go into the game, events come out of it. A player sends an
