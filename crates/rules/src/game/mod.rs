@@ -33,7 +33,7 @@ use crate::game::effect_stack::EffectStack;
 use crate::game::player::Player;
 use crate::game::player_input::{Awaiting, PlayerInput};
 use crate::game::reporting::Report;
-use crate::game::resolve::state_check::standings::Standings;
+use crate::game::resolve::aftermath::standings::Standings;
 use crate::history::History;
 use crate::ids::PlayerId;
 use crate::observer::Observer;

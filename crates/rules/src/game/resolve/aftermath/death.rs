@@ -19,11 +19,6 @@ impl From<Death> for Event {
 }
 
 impl Game {
-    pub(in crate::game::resolve) fn check_state(&mut self, obs: &mut impl Observer) {
-        self.remove_dead(obs);
-        self.decide_outcome(obs);
-    }
-
     fn find_dead(&self) -> Vec<ObjectId> {
         let mut death_pass = Vec::new();
         for player_id in self.players().into_iter() {
@@ -39,7 +34,7 @@ impl Game {
         death_pass
     }
 
-    fn remove_dead(&mut self, obs: &mut impl Observer) {
+    pub(super) fn remove_dead(&mut self, obs: &mut impl Observer) {
         loop {
             let dead_minions = self.find_dead();
             let minion_died = !dead_minions.is_empty();
@@ -110,12 +105,5 @@ impl Game {
             reason = "the one entry into a graveyard, made as the state check removes the dead"
         )]
         self.zones.entomb(player_id, object_id);
-    }
-
-    fn decide_outcome(&mut self, obs: &mut impl Observer) {
-        if let Some(ending) = self.standings.decide() {
-            self.report(Report::GameEnded(ending), obs);
-            obs.checkpoint(Views::new(self));
-        }
     }
 }
