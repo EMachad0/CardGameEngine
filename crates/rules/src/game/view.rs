@@ -136,7 +136,7 @@ impl Game {
     }
 
     fn revealed_view(&self, viewer: PlayerId, player_id: PlayerId) -> Vec<RevealedCard> {
-        self.questions
+        self.player_input
             .revealed(player_id)
             .iter()
             .map(|&object_id| RevealedCard {
@@ -156,7 +156,7 @@ impl Game {
     }
 
     fn draft_view(&self, player_id: PlayerId) -> Option<DraftView> {
-        self.questions.draft(player_id).map(|draft| DraftView {
+        self.player_input.draft(player_id).map(|draft| DraftView {
             object_id: draft.object_id(),
             chosen: draft.chosen().iter().map(|(o, _)| *o).collect(),
         })

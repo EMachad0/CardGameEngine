@@ -62,14 +62,14 @@ impl Game {
     ) {
         match action {
             Action::Play { object_id } => {
-                if let Some(draft) = self.questions.draft(player_id) {
+                if let Some(draft) = self.player_input.draft(player_id) {
                     let choice_ids = self
                         .card_def(draft.object_id())
                         .choices
                         .iter()
                         .map(|c| c.id)
                         .collect::<Vec<_>>();
-                    self.questions.commit_draft(player_id, &choice_ids);
+                    self.player_input.commit_draft(player_id, &choice_ids);
                 }
 
                 let mana_cost = self
@@ -88,18 +88,18 @@ impl Game {
                 obs.checkpoint(Views::new(self));
             }
             Action::Draft { object_id } => {
-                self.questions.open_draft(player_id, object_id);
+                self.player_input.open_draft(player_id, object_id);
                 obs.checkpoint(Views::new(self));
             }
             Action::Choose {
                 choice_id,
                 object_id,
             } => {
-                self.questions.choose(player_id, object_id, choice_id);
+                self.player_input.choose(player_id, object_id, choice_id);
                 obs.checkpoint(Views::new(self));
             }
             Action::Cancel { .. } => {
-                self.questions.cancel(player_id);
+                self.player_input.cancel(player_id);
                 obs.checkpoint(Views::new(self));
             }
         };
@@ -136,12 +136,12 @@ impl Game {
                 picked_move,
                 other_move,
             } => {
-                let answer = self
-                    .questions
-                    .pick_answer(source, *pick_id)
-                    .map(|answer| (answer.picked().to_vec(), answer.others().to_vec()));
+                let picks = self
+                    .player_input
+                    .picks(source, *pick_id)
+                    .map(|picks| (picks.picked().to_vec(), picks.others().to_vec()));
 
-                if let Some((picked, others)) = answer {
+                if let Some((picked, others)) = picks {
                     picked
                         .into_iter()
                         .for_each(|id| self.zone_move(owner, id, *picked_move, obs));
@@ -188,7 +188,7 @@ impl Game {
     }
 
     fn drain_effect_queue(&mut self, obs: &mut impl Observer) {
-        while !self.questions.any_pending() && self.outcome().is_none() {
+        while !self.player_input.any_awaiting() && self.outcome().is_none() {
             self.continue_resolving_effect(obs);
 
             // finished a unit
@@ -208,7 +208,7 @@ impl Game {
     }
 
     fn continue_resolving_effect(&mut self, obs: &mut impl Observer) {
-        while !self.questions.any_pending()
+        while !self.player_input.any_awaiting()
             && let Some(resolving) = &mut self.resolving_effect
             && !resolving.is_finished()
         {
@@ -322,8 +322,8 @@ impl Game {
                 }
             }
             CharacterSelector::Chosen(choice_id) => self
-                .questions
-                .choice_answer(object_id, *choice_id)
+                .player_input
+                .targets(object_id, *choice_id)
                 .expect("Choice not fulfilled")
                 .to_vec(),
         }

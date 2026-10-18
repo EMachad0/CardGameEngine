@@ -3,7 +3,7 @@
 //! `legal_actions` is the one definition of legality. `apply` accepts exactly
 //! what it lists, and an `Err` leaves the game unchanged. Child modules:
 //! - `player`: one player's resources.
-//! - `questions`: what each player is asked and what each card was answered.
+//! - `player_input`: what the game awaits from each player, and the targets and picks they gave.
 //! - `resolve`: the mutation half of `apply`.
 //! - `lookup`: attack, health and cost, computed on read.
 #![expect(
@@ -14,7 +14,7 @@
 mod condition;
 mod lookup;
 mod player;
-mod questions;
+mod player_input;
 pub(crate) mod resolve;
 mod state_check;
 mod triggering;
@@ -29,7 +29,7 @@ use crate::cards::object::{ObjectBag, ObjectId};
 use crate::effect::{PendingEffect, ResolvingEffect};
 use crate::event::Event;
 use crate::game::player::Player;
-use crate::game::questions::{Question, Questions};
+use crate::game::player_input::{Awaiting, PlayerInput};
 use crate::history::History;
 use crate::ids::PlayerId;
 use crate::observer::Observer;
@@ -44,7 +44,7 @@ pub struct Game {
     turn_order: TurnOrder,
     players: Vec<Player>,
     zones: Zones,
-    questions: Questions,
+    player_input: PlayerInput,
     objects: ObjectBag,
     binder: Binder,
     history: History,
@@ -101,7 +101,7 @@ impl Game {
             turn_order,
             players,
             zones,
-            questions: Default::default(),
+            player_input: Default::default(),
             objects,
             binder,
             history,
@@ -130,10 +130,10 @@ impl Game {
         }
 
         let mut actions = Vec::new();
-        match self.questions.question(player_id) {
+        match self.player_input.awaiting(player_id) {
             None => {
                 if self.turn_order.get_active_player_id() != player_id
-                    || self.questions.any_pending()
+                    || self.player_input.any_awaiting()
                 {
                     return Vec::new();
                 }
@@ -162,7 +162,7 @@ impl Game {
 
                 actions.push(Action::EndTurn);
             }
-            Some(Question::Pick(pick)) => {
+            Some(Awaiting::Pick(pick)) => {
                 actions.extend(
                     pick.options()
                         .iter()
@@ -170,7 +170,7 @@ impl Game {
                         .map(|object_id| Action::Pick { object_id }),
                 );
             }
-            Some(Question::Draft(draft)) => {
+            Some(Awaiting::Draft(draft)) => {
                 let object_id = draft.object_id();
                 let chosen = draft.chosen();
                 let mut all_choices_fulfilled = true;
@@ -235,7 +235,7 @@ impl Game {
 
     /// The cards a pending Forage revealed. Empty if nothing is pending.
     pub fn revealed(&self, player_id: PlayerId) -> &[ObjectId] {
-        self.questions.revealed(player_id)
+        self.player_input.revealed(player_id)
     }
 
     pub fn outcome(&self) -> Option<Outcome> {

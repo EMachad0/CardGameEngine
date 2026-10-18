@@ -1,13 +1,13 @@
-//! What each player is asked, and what each card was answered. A player has at most one
-//! question: a draft while playing a card, or a pending pick while a card resolves. A revealed card
-//! sits in a pending pick's options until picked, then in its pick's answer.
+//! What the game awaits from each player, and the targets and picks they gave. The game awaits at
+//! most one thing from a player: a draft while playing a card, or a pending pick while a card
+//! resolves. A revealed card sits in a pending pick's options until picked, then in its picks.
 
 use crate::cards::object::ObjectId;
 use crate::choice::{ChoiceId, PickId};
 use crate::ids::PlayerId;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) enum Question {
+pub(super) enum Awaiting {
     Pick(PendingPick),
     Draft(Draft),
 }
@@ -44,21 +44,21 @@ impl Draft {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct ChoiceAnswer {
+struct Targets {
     object_id: ObjectId,
     choice_id: ChoiceId,
-    targets: Vec<ObjectId>,
+    chosen: Vec<ObjectId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct PickAnswer {
+pub(super) struct Picks {
     source: ObjectId,
     pick_id: PickId,
     picked: Vec<ObjectId>,
     others: Vec<ObjectId>,
 }
 
-impl PickAnswer {
+impl Picks {
     pub(super) fn picked(&self) -> &[ObjectId] {
         &self.picked
     }
@@ -70,63 +70,59 @@ impl PickAnswer {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub(super) struct Questions {
+pub(super) struct PlayerInput {
     /// Sorted by player.
-    pending: Vec<(PlayerId, Question)>,
+    awaiting: Vec<(PlayerId, Awaiting)>,
     /// Sorted by card, then in the order stored.
-    choice_answers: Vec<ChoiceAnswer>,
+    targets: Vec<Targets>,
     /// Sorted by source, then in the order picked.
-    pick_answers: Vec<PickAnswer>,
+    picks: Vec<Picks>,
 }
 
-impl Questions {
-    pub(super) fn question(&self, player_id: PlayerId) -> Option<&Question> {
-        self.slot(player_id).ok().map(|idx| &self.pending[idx].1)
+impl PlayerInput {
+    pub(super) fn awaiting(&self, player_id: PlayerId) -> Option<&Awaiting> {
+        self.slot(player_id).ok().map(|idx| &self.awaiting[idx].1)
     }
 
-    pub(super) fn any_pending(&self) -> bool {
-        !self.pending.is_empty()
+    pub(super) fn any_awaiting(&self) -> bool {
+        !self.awaiting.is_empty()
     }
 
-    /// A pending pick's options. Empty for any other question, or none.
+    /// A pending pick's options. Empty while awaiting anything else, or nothing.
     pub(super) fn revealed(&self, player_id: PlayerId) -> &[ObjectId] {
-        match self.question(player_id) {
-            Some(Question::Pick(pick)) => pick.options(),
-            Some(Question::Draft(_)) | None => &[],
+        match self.awaiting(player_id) {
+            Some(Awaiting::Pick(pick)) => pick.options(),
+            Some(Awaiting::Draft(_)) | None => &[],
         }
     }
 
     pub(super) fn draft(&self, player_id: PlayerId) -> Option<&Draft> {
-        match self.question(player_id) {
-            Some(Question::Draft(draft)) => Some(draft),
-            Some(Question::Pick(_)) | None => None,
+        match self.awaiting(player_id) {
+            Some(Awaiting::Draft(draft)) => Some(draft),
+            Some(Awaiting::Pick(_)) | None => None,
         }
     }
 
     /// `None` if the card was never played from a draft that declared `choice_id`.
-    pub(super) fn choice_answer(
-        &self,
-        object_id: ObjectId,
-        choice_id: ChoiceId,
-    ) -> Option<&[ObjectId]> {
-        self.choice_answers
+    pub(super) fn targets(&self, object_id: ObjectId, choice_id: ChoiceId) -> Option<&[ObjectId]> {
+        self.targets
             .iter()
-            .find(|answer| answer.object_id == object_id && answer.choice_id == choice_id)
-            .map(|answer| answer.targets.as_slice())
+            .find(|entry| entry.object_id == object_id && entry.choice_id == choice_id)
+            .map(|entry| entry.chosen.as_slice())
     }
 
-    /// The first answer `source` stored for `pick_id`.
-    pub(super) fn pick_answer(&self, source: ObjectId, pick_id: PickId) -> Option<&PickAnswer> {
-        self.pick_answers
+    /// The first picks `source` stored for `pick_id`.
+    pub(super) fn picks(&self, source: ObjectId, pick_id: PickId) -> Option<&Picks> {
+        self.picks
             .iter()
-            .find(|answer| answer.source == source && answer.pick_id == pick_id)
+            .find(|entry| entry.source == source && entry.pick_id == pick_id)
     }
 
     /// Replaces any draft the player has. Panics if they have a pending pick.
     pub(super) fn open_draft(&mut self, player_id: PlayerId, object_id: ObjectId) {
         self.ask(
             player_id,
-            Question::Draft(Draft {
+            Awaiting::Draft(Draft {
                 object_id,
                 chosen: Vec::new(),
             }),
@@ -134,7 +130,7 @@ impl Questions {
     }
 
     pub(super) fn choose(&mut self, player_id: PlayerId, object_id: ObjectId, choice_id: ChoiceId) {
-        let Some(Question::Draft(draft)) = self.question_mut(player_id) else {
+        let Some(Awaiting::Draft(draft)) = self.awaiting_mut(player_id) else {
             unreachable!();
         };
         draft.chosen.push((object_id, choice_id));
@@ -144,31 +140,30 @@ impl Questions {
     pub(super) fn cancel(&mut self, player_id: PlayerId) {
         if let Ok(idx) = self.slot(player_id) {
             self.assert_droppable(idx);
-            self.pending.remove(idx);
+            self.awaiting.remove(idx);
         }
     }
 
-    /// Closes the player's draft and stores one answer per choice in `choice_ids` for the
-    /// drafted card, replacing any it had.
+    /// Closes the player's draft and stores the drafted card's targets for each choice in
+    /// `choice_ids`, replacing any it had.
     pub(super) fn commit_draft(&mut self, player_id: PlayerId, choice_ids: &[ChoiceId]) {
-        let Some(Question::Draft(Draft { object_id, chosen })) = self.take(player_id) else {
+        let Some(Awaiting::Draft(Draft { object_id, chosen })) = self.take(player_id) else {
             unreachable!();
         };
-        self.choice_answers
-            .retain(|answer| answer.object_id != object_id);
+        self.targets.retain(|entry| entry.object_id != object_id);
         let idx = self
-            .choice_answers
-            .partition_point(|answer| answer.object_id <= object_id);
-        let answers = choice_ids.iter().map(|&choice_id| ChoiceAnswer {
+            .targets
+            .partition_point(|entry| entry.object_id <= object_id);
+        let entries = choice_ids.iter().map(|&choice_id| Targets {
             object_id,
             choice_id,
-            targets: chosen
+            chosen: chosen
                 .iter()
                 .filter(|(_, c)| *c == choice_id)
                 .map(|(o, _)| *o)
                 .collect(),
         });
-        self.choice_answers.splice(idx..idx, answers);
+        self.targets.splice(idx..idx, entries);
     }
 
     /// Asks the player to pick one of `options`, replacing any draft they have. With no options,
@@ -185,7 +180,7 @@ impl Questions {
         }
         self.ask(
             player_id,
-            Question::Pick(PendingPick {
+            Awaiting::Pick(PendingPick {
                 source,
                 pick_id,
                 options,
@@ -197,7 +192,7 @@ impl Questions {
     /// Closes the player's pending pick and stores `object_id` as picked and the other options
     /// as the others.
     pub(super) fn pick(&mut self, player_id: PlayerId, object_id: ObjectId) {
-        let Some(Question::Pick(PendingPick {
+        let Some(Awaiting::Pick(PendingPick {
             source,
             pick_id,
             mut options,
@@ -210,12 +205,10 @@ impl Questions {
             .position(|id| *id == object_id)
             .expect("a legal pick should name one of the options");
         let picked = options.remove(idx);
-        let idx = self
-            .pick_answers
-            .partition_point(|answer| answer.source <= source);
-        self.pick_answers.insert(
+        let idx = self.picks.partition_point(|entry| entry.source <= source);
+        self.picks.insert(
             idx,
-            PickAnswer {
+            Picks {
                 source,
                 pick_id,
                 picked: vec![picked],
@@ -224,32 +217,32 @@ impl Questions {
         );
     }
 
-    fn question_mut(&mut self, player_id: PlayerId) -> Option<&mut Question> {
+    fn awaiting_mut(&mut self, player_id: PlayerId) -> Option<&mut Awaiting> {
         self.slot(player_id)
             .ok()
-            .map(|idx| &mut self.pending[idx].1)
+            .map(|idx| &mut self.awaiting[idx].1)
     }
 
-    fn ask(&mut self, player_id: PlayerId, question: Question) {
+    fn ask(&mut self, player_id: PlayerId, awaiting: Awaiting) {
         match self.slot(player_id) {
             Ok(idx) => {
                 self.assert_droppable(idx);
-                self.pending[idx].1 = question;
+                self.awaiting[idx].1 = awaiting;
             }
-            Err(idx) => self.pending.insert(idx, (player_id, question)),
+            Err(idx) => self.awaiting.insert(idx, (player_id, awaiting)),
         }
     }
 
-    fn take(&mut self, player_id: PlayerId) -> Option<Question> {
+    fn take(&mut self, player_id: PlayerId) -> Option<Awaiting> {
         self.slot(player_id)
             .ok()
-            .map(|idx| self.pending.remove(idx).1)
+            .map(|idx| self.awaiting.remove(idx).1)
     }
 
     fn assert_droppable(&self, idx: usize) {
-        let holds_revealed_cards = match &self.pending[idx].1 {
-            Question::Pick(_) => true,
-            Question::Draft(_) => false,
+        let holds_revealed_cards = match &self.awaiting[idx].1 {
+            Awaiting::Pick(_) => true,
+            Awaiting::Draft(_) => false,
         };
         assert!(
             !holds_revealed_cards,
@@ -258,7 +251,7 @@ impl Questions {
     }
 
     fn slot(&self, player_id: PlayerId) -> Result<usize, usize> {
-        self.pending
+        self.awaiting
             .binary_search_by_key(&player_id.idx(), |(p, _)| p.idx())
     }
 }
@@ -281,38 +274,38 @@ mod tests {
     fn a_reveal_with_no_cards_asks_no_pick() {
         let [source] = ids();
         let player = PlayerId::new(0);
-        let mut questions = Questions::default();
+        let mut input = PlayerInput::default();
 
-        assert!(!questions.ask_pick(player, source, PickId(0), Vec::new()));
+        assert!(!input.ask_pick(player, source, PickId(0), Vec::new()));
 
-        assert_eq!(questions.question(player), None);
-        assert!(!questions.any_pending());
+        assert_eq!(input.awaiting(player), None);
+        assert!(!input.any_awaiting());
     }
 
     #[test]
     fn a_pick_keeps_the_options_left_as_the_others() {
         let [source, a, b, c] = ids();
         let player = PlayerId::new(0);
-        let mut questions = Questions::default();
-        questions.ask_pick(player, source, PickId(0), vec![a, b, c]);
+        let mut input = PlayerInput::default();
+        input.ask_pick(player, source, PickId(0), vec![a, b, c]);
 
-        questions.pick(player, b);
+        input.pick(player, b);
 
-        let answer = questions.pick_answer(source, PickId(0)).unwrap();
-        assert_eq!(answer.picked(), [b]);
-        assert_eq!(answer.others(), [a, c]);
+        let picks = input.picks(source, PickId(0)).unwrap();
+        assert_eq!(picks.picked(), [b]);
+        assert_eq!(picks.others(), [a, c]);
     }
 
     #[test]
     fn a_pick_closes_the_pending_pick() {
         let [source, a] = ids();
         let player = PlayerId::new(0);
-        let mut questions = Questions::default();
-        questions.ask_pick(player, source, PickId(0), vec![a]);
+        let mut input = PlayerInput::default();
+        input.ask_pick(player, source, PickId(0), vec![a]);
 
-        questions.pick(player, a);
+        input.pick(player, a);
 
-        assert_eq!(questions.question(player), None);
+        assert_eq!(input.awaiting(player), None);
     }
 
     #[test]
@@ -320,10 +313,10 @@ mod tests {
     fn a_pending_pick_cannot_be_cancelled() {
         let [source, a] = ids();
         let player = PlayerId::new(0);
-        let mut questions = Questions::default();
-        questions.ask_pick(player, source, PickId(0), vec![a]);
+        let mut input = PlayerInput::default();
+        input.ask_pick(player, source, PickId(0), vec![a]);
 
-        questions.cancel(player);
+        input.cancel(player);
     }
 
     #[test]
@@ -331,41 +324,38 @@ mod tests {
     fn a_pending_pick_cannot_be_replaced() {
         let [source, card, a] = ids();
         let player = PlayerId::new(0);
-        let mut questions = Questions::default();
-        questions.ask_pick(player, source, PickId(0), vec![a]);
+        let mut input = PlayerInput::default();
+        input.ask_pick(player, source, PickId(0), vec![a]);
 
-        questions.open_draft(player, card);
+        input.open_draft(player, card);
     }
 
     #[test]
     fn a_pending_pick_shows_its_options_as_revealed() {
         let [source, a, b] = ids();
         let player = PlayerId::new(0);
-        let mut questions = Questions::default();
+        let mut input = PlayerInput::default();
 
-        questions.ask_pick(player, source, PickId(0), vec![a, b]);
+        input.ask_pick(player, source, PickId(0), vec![a, b]);
 
-        assert_eq!(questions.revealed(player), [a, b]);
+        assert_eq!(input.revealed(player), [a, b]);
     }
 
     #[test]
-    fn a_committed_draft_answers_every_declared_choice() {
+    fn a_committed_draft_stores_targets_for_every_declared_choice() {
         let [card, target] = ids();
         let player = PlayerId::new(0);
-        let mut questions = Questions::default();
-        questions.open_draft(player, card);
-        questions.choose(player, target, ChoiceId(0));
+        let mut input = PlayerInput::default();
+        input.open_draft(player, card);
+        input.choose(player, target, ChoiceId(0));
 
-        questions.commit_draft(player, &[ChoiceId(0), ChoiceId(1)]);
+        input.commit_draft(player, &[ChoiceId(0), ChoiceId(1)]);
 
+        assert_eq!(input.targets(card, ChoiceId(0)), Some(&[target][..]));
         assert_eq!(
-            questions.choice_answer(card, ChoiceId(0)),
-            Some(&[target][..])
-        );
-        assert_eq!(
-            questions.choice_answer(card, ChoiceId(1)),
+            input.targets(card, ChoiceId(1)),
             Some(&[][..]),
-            "a declared choice with no target must still have an answer",
+            "a declared choice with no target must still have its targets stored",
         );
     }
 
@@ -373,76 +363,73 @@ mod tests {
     fn a_committed_draft_closes_the_draft() {
         let [card] = ids();
         let player = PlayerId::new(0);
-        let mut questions = Questions::default();
-        questions.open_draft(player, card);
+        let mut input = PlayerInput::default();
+        input.open_draft(player, card);
 
-        questions.commit_draft(player, &[ChoiceId(0)]);
+        input.commit_draft(player, &[ChoiceId(0)]);
 
-        assert_eq!(questions.question(player), None);
+        assert_eq!(input.awaiting(player), None);
     }
 
     #[test]
-    fn committing_a_cards_draft_again_replaces_its_answers() {
+    fn committing_a_cards_draft_again_replaces_its_targets() {
         let [card, first, second] = ids();
         let player = PlayerId::new(0);
-        let mut questions = Questions::default();
-        questions.open_draft(player, card);
-        questions.choose(player, first, ChoiceId(0));
-        questions.commit_draft(player, &[ChoiceId(0)]);
-        questions.open_draft(player, card);
-        questions.choose(player, second, ChoiceId(0));
+        let mut input = PlayerInput::default();
+        input.open_draft(player, card);
+        input.choose(player, first, ChoiceId(0));
+        input.commit_draft(player, &[ChoiceId(0)]);
+        input.open_draft(player, card);
+        input.choose(player, second, ChoiceId(0));
 
-        questions.commit_draft(player, &[ChoiceId(0)]);
+        input.commit_draft(player, &[ChoiceId(0)]);
 
-        assert_eq!(
-            questions.choice_answer(card, ChoiceId(0)),
-            Some(&[second][..])
-        );
+        assert_eq!(input.targets(card, ChoiceId(0)), Some(&[second][..]));
     }
 
     #[test]
-    fn a_cancelled_draft_leaves_no_answer() {
+    fn a_cancelled_draft_stores_no_targets() {
         let [card, target] = ids();
         let player = PlayerId::new(0);
-        let mut questions = Questions::default();
-        questions.open_draft(player, card);
-        questions.choose(player, target, ChoiceId(0));
+        let mut input = PlayerInput::default();
+        input.open_draft(player, card);
+        input.choose(player, target, ChoiceId(0));
 
-        questions.cancel(player);
+        input.cancel(player);
 
-        assert_eq!(questions.choice_answer(card, ChoiceId(0)), None);
+        assert_eq!(input.targets(card, ChoiceId(0)), None);
     }
 
     #[test]
     fn an_open_draft_shows_no_revealed_cards() {
         let [card] = ids();
         let player = PlayerId::new(0);
-        let mut questions = Questions::default();
+        let mut input = PlayerInput::default();
 
-        questions.open_draft(player, card);
+        input.open_draft(player, card);
 
-        assert_eq!(questions.revealed(player), []);
+        assert_eq!(input.revealed(player), []);
     }
 
     #[test]
     fn an_open_draft_names_its_card() {
         let [card] = ids();
         let player = PlayerId::new(0);
-        let mut questions = Questions::default();
+        let mut input = PlayerInput::default();
 
-        questions.open_draft(player, card);
+        input.open_draft(player, card);
 
-        assert_eq!(questions.draft(player).map(Draft::object_id), Some(card));
+        assert_eq!(input.draft(player).map(Draft::object_id), Some(card));
     }
 
     #[test]
-    fn one_players_question_keeps_the_game_waiting() {
+    fn awaiting_one_player_keeps_the_game_waiting() {
         let [card] = ids();
-        let mut questions = Questions::default();
+        let mut input = PlayerInput::default();
 
-        questions.open_draft(PlayerId::new(1), card);
+        input.open_draft(PlayerId::new(1), card);
 
-        assert!(questions.any_pending());
-        assert_eq!(questions.question(PlayerId::new(0)), None);
+        assert!(input.any_awaiting());
+        assert_eq!(input.awaiting(PlayerId::new(0)), None);
     }
 }

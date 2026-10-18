@@ -148,7 +148,10 @@ impl Game {
             player_id,
             object_ids: options.clone(),
         };
-        if self.questions.ask_pick(player_id, source, pick_id, options) {
+        if self
+            .player_input
+            .ask_pick(player_id, source, pick_id, options)
+        {
             self.emit(event, obs);
         }
     }
@@ -159,7 +162,7 @@ impl Game {
         object_id: ObjectId,
         obs: &mut impl Observer,
     ) {
-        self.questions.pick(player_id, object_id);
+        self.player_input.pick(player_id, object_id);
 
         let event = Event::Picked {
             player_id,
