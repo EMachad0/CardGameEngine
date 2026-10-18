@@ -83,7 +83,7 @@ impl Game {
                 .iter()
                 .map(|p| self.player_view(viewer, p))
                 .collect(),
-            outcome: self.outcome,
+            outcome: self.outcome(),
         }
     }
 

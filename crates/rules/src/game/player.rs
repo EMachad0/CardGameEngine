@@ -10,7 +10,6 @@ pub(super) struct Player {
     pub(super) id: PlayerId,
     pub(super) mana: u8,
     pub(super) max_mana: u8,
-    pub(super) playing: bool,
 }
 
 impl Player {
@@ -19,7 +18,6 @@ impl Player {
             id,
             mana: 0,
             max_mana: 0,
-            playing: true,
         }
     }
 }

@@ -1,6 +1,6 @@
 # Rules around the resolution loop hold only by convention
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 Blocked by: 05
@@ -57,3 +57,7 @@ so restrict Y". The Rust section's "Restricting callers".
   from making the writes it guards.
 - Elimination is decided in one place.
 - The checks pass, and the PR justifies every behavior change.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/47

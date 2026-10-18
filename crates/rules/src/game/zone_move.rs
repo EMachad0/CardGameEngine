@@ -1,8 +1,8 @@
 use crate::{
     cards::object::ObjectId,
-    effect::{PickId, ZoneMove},
+    effect::ZoneMove,
     event::Event,
-    game::{Game, reporting::Report, state_check::Death, triggering::MatchedTrigger},
+    game::{Game, reporting::Report},
     ids::PlayerId,
     observer::{Observer, Views},
 };
@@ -96,73 +96,6 @@ impl Game {
     ) {
         self.zones.enter_board(player_id, object_id);
         self.character_entered(player_id, object_id, obs);
-    }
-
-    pub(super) fn kill(&mut self, deaths: Vec<Death>, obs: &mut impl Observer) {
-        // Enqueue death rattles
-        for death in deaths.iter() {
-            for MatchedTrigger { source, effects } in self.death_rattles(death.object_id()) {
-                self.effect_stack.push(source, effects);
-            }
-        }
-
-        for death in deaths.into_iter() {
-            let object_id = death.object_id();
-            let object = self.objects.get(object_id);
-            if self.card_def(object_id).leaves_zone_on_death() {
-                self.destroy(object.player_id, object_id, obs);
-            }
-            self.report(Report::Died(death), obs);
-        }
-    }
-
-    pub(crate) fn destroy(
-        &mut self,
-        player_id: PlayerId,
-        object_id: ObjectId,
-        obs: &mut impl Observer,
-    ) {
-        self.zones
-            .leave_board(player_id, object_id)
-            .expect("object not in board");
-
-        if self.card_def(object_id).goes_to_graveyard() {
-            self.entomb(player_id, object_id, obs);
-        }
-    }
-
-    pub(crate) fn entomb(
-        &mut self,
-        player_id: PlayerId,
-        object_id: ObjectId,
-        _obs: &mut impl Observer,
-    ) {
-        self.zones.entomb(player_id, object_id);
-    }
-
-    pub(crate) fn reveal(
-        &mut self,
-        player_id: PlayerId,
-        source: ObjectId,
-        pick_id: PickId,
-        count: u8,
-        obs: &mut impl Observer,
-    ) {
-        #[expect(
-            clippy::disallowed_methods,
-            reason = "the one reveal, which posts the revealed cards as a pending pick"
-        )]
-        let options = self.zones.reveal(player_id, count);
-        let report = Report::Revealed {
-            player_id,
-            object_ids: options.clone(),
-        };
-        if self
-            .player_input
-            .ask_pick(player_id, source, pick_id, options)
-        {
-            self.report(report, obs);
-        }
     }
 
     pub(crate) fn pick(

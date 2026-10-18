@@ -220,6 +220,15 @@ A character dying, as a state check finds it.
 How a finished game ended: one player won, or it was a draw.
 _Avoid_: result, winner
 
+**Standings**:
+Which players are still playing, and the outcome once the game is over.
+_Avoid_: survivors
+
+**Aftermath**:
+What an action or a resolving effect leaves for the state check to settle: the dead, the standings
+and whether the game is over.
+_Avoid_: cleanup
+
 ### Reports
 
 **Event**:
@@ -261,6 +270,10 @@ The part of a card that can be hidden from a player: its definition and cost.
   resolving effect has been taken off it and is being carried out, one effect at a time.
 - **Checkpoint** and **State check**: a checkpoint lets observers read views and changes nothing. A
   state check changes the game: it removes dead cards from the board and can end the game.
+- **Aftermath** and **State check**: the aftermath is what an action or an effect leaves to settle.
+  The state check is the pass that settles it.
+- **Standings** and **Outcome**: the standings say who is still playing at any moment. The outcome
+  exists only once the game is over, and the standings hold it from then on.
 - **Draw** a card and a **draw** as an outcome: the first moves a card from deck to hand, the second
   is a finished game with no winner.
 - **View** and **game state**: a view is what one player may see. The game state is all of it,

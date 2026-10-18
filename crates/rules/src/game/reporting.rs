@@ -8,7 +8,7 @@ use crate::{
     game::{
         Game,
         effect_stack::EffectStack,
-        state_check::{Death, Ending},
+        resolve::aftermath::{death::Death, standings::Ending},
         triggering::MatchedTrigger,
         zone_move::Play,
     },

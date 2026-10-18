@@ -7,7 +7,7 @@
 //! - `player_input`: what the game awaits from each player, and what they targeted and picked.
 //! - `reporting`: recording an event, telling the observer and pushing the triggers it matched.
 //! - `resolve`: the mutation half of `apply`.
-//! - `lookup`: attack, health and cost, computed on read.
+//! - `lookup`: attack, health, cost and amounts, computed on read.
 #![expect(
     clippy::definition_in_module_root,
     reason = "the child modules read Game's private fields, which a leaf would hide from them"
@@ -20,7 +20,6 @@ mod player;
 mod player_input;
 mod reporting;
 pub(crate) mod resolve;
-mod state_check;
 mod triggering;
 pub(crate) mod view;
 mod zone_move;
@@ -34,6 +33,7 @@ use crate::game::effect_stack::EffectStack;
 use crate::game::player::Player;
 use crate::game::player_input::{Awaiting, PlayerInput};
 use crate::game::reporting::Report;
+use crate::game::resolve::aftermath::standings::Standings;
 use crate::history::History;
 use crate::ids::PlayerId;
 use crate::observer::Observer;
@@ -52,7 +52,7 @@ pub struct Game {
     objects: ObjectBag,
     binder: Binder,
     history: History,
-    outcome: Option<Outcome>,
+    standings: Standings,
     effect_stack: EffectStack,
 }
 
@@ -108,7 +108,11 @@ impl Game {
             objects,
             binder,
             history,
-            outcome: Default::default(),
+            #[expect(
+                clippy::disallowed_methods,
+                reason = "the one start of the standings, as the game is set up"
+            )]
+            standings: Standings::new(player_ids.clone()),
             effect_stack: Default::default(),
         };
 
@@ -238,7 +242,7 @@ impl Game {
     }
 
     pub fn outcome(&self) -> Option<Outcome> {
-        self.outcome
+        self.standings.outcome()
     }
 
     fn end_turn(&mut self, obs: &mut impl Observer) {
