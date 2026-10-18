@@ -31,8 +31,7 @@ impl Object {
         self.modifiers.as_slice()
     }
 
-    /// Modifiers granted after the object was made for it to give its friendly cards, oldest
-    /// first.
+    /// Modifiers granted to the object to give its friendly cards, oldest first.
     pub(crate) fn friendly_aura(&self) -> &[Modifier] {
         self.friendly_aura.as_slice()
     }

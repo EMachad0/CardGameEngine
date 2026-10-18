@@ -69,7 +69,7 @@ impl Game {
         printed_health + bonus - self.objects.get(object_id).damage() as i32
     }
 
-    /// Evaluates the amounts on an object's modifiers for its owner.
+    /// Evaluates an amount for the object's owner.
     fn evaluate_for_owner(&self, object_id: ObjectId) -> impl Fn(&EffectAmount) -> u8 {
         let owner = self.objects.get(object_id).player_id;
         move |amount| self.effect_amount(amount, owner)
