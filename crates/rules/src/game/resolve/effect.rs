@@ -67,21 +67,21 @@ impl Game {
             Effect::Buff { selector, effect } => {
                 let targets = self.resolve_character_selector(owner, source, selector);
                 for target in targets.into_iter() {
-                    let object = self.objects.get_mut(target);
-                    object.modifiers.add(Modifier {
+                    let modifier = Modifier {
                         granted_by: source,
                         effect: effect.clone(),
-                    });
+                    };
+                    self.objects.grant(target, modifier);
                 }
             }
             Effect::AddFriendlyAura { selector, effect } => {
                 let targets = self.resolve_character_selector(owner, source, selector);
                 for target in targets.into_iter() {
-                    let object = self.objects.get_mut(target);
-                    object.friendly_aura.add(Modifier {
+                    let modifier = Modifier {
                         granted_by: source,
                         effect: effect.clone(),
-                    });
+                    };
+                    self.objects.grant_friendly_aura(target, modifier);
                 }
             }
             Effect::Summon { selector, def_id } => {

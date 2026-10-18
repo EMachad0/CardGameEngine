@@ -48,8 +48,7 @@ impl Game {
             } else {
                 let hero_id = self.zones.hero(player_id);
                 let damage = 1;
-                let object = self.objects.get_mut(hero_id);
-                object.damage += damage;
+                self.objects.damage(hero_id, damage);
                 let report = Report::FatigueDamaged {
                     amount: damage,
                     player_id,
@@ -165,8 +164,7 @@ impl Game {
         source: ObjectId,
         obs: &mut impl Observer,
     ) {
-        let object = self.objects.get_mut(target);
-        object.damage += amount;
+        self.objects.damage(target, amount);
         let report = Report::Damaged {
             target,
             amount,

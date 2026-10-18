@@ -76,7 +76,7 @@ impl Game {
                 })
                 .map(|a| self.effect_amount(&a, obj.player_id) as i32)
                 .sum::<i32>();
-            let damage = obj.damage as i32;
+            let damage = obj.damage() as i32;
             printed_health + modifiers - damage
         })
     }
@@ -132,7 +132,7 @@ impl Game {
             })
             .collect::<Vec<_>>();
         let mut modifiers = Modifiers::new(modifiers);
-        modifiers.extend(obj.modifiers.clone());
+        modifiers.extend(Modifiers::new(obj.modifiers().to_vec()));
 
         if card_def.receives_auras() {
             for other_player_id in self.players().into_iter() {
@@ -170,7 +170,7 @@ impl Game {
             })
             .collect::<Vec<_>>();
         let mut modifiers = Modifiers::new(modifiers);
-        modifiers.extend(obj.friendly_aura.clone());
+        modifiers.extend(Modifiers::new(obj.friendly_aura().to_vec()));
         modifiers
     }
 

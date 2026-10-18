@@ -1,7 +1,10 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    cards::{definition::DefId, modifier::Modifiers},
+    cards::{
+        definition::DefId,
+        modifier::{Modifier, Modifiers},
+    },
     ids::PlayerId,
 };
 
@@ -13,9 +16,26 @@ pub(crate) struct Object {
     pub def_id: DefId,
     pub object_id: ObjectId,
     pub player_id: PlayerId,
-    pub damage: u8,
-    pub modifiers: Modifiers,
-    pub friendly_aura: Modifiers,
+    damage: u8,
+    modifiers: Modifiers,
+    friendly_aura: Modifiers,
+}
+
+impl Object {
+    pub(crate) fn damage(&self) -> u8 {
+        self.damage
+    }
+
+    /// Modifiers granted after the object was made, oldest first.
+    pub(crate) fn modifiers(&self) -> &[Modifier] {
+        self.modifiers.as_slice()
+    }
+
+    /// Modifiers granted after the object was made for it to give its friendly cards, oldest
+    /// first.
+    pub(crate) fn friendly_aura(&self) -> &[Modifier] {
+        self.friendly_aura.as_slice()
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -51,7 +71,19 @@ impl ObjectBag {
             .expect("ObjectId is only created on object insert")
     }
 
-    pub(crate) fn get_mut(&mut self, object_id: ObjectId) -> &mut Object {
+    pub(crate) fn damage(&mut self, object_id: ObjectId, amount: u8) {
+        self.get_mut(object_id).damage += amount;
+    }
+
+    pub(crate) fn grant(&mut self, object_id: ObjectId, modifier: Modifier) {
+        self.get_mut(object_id).modifiers.add(modifier);
+    }
+
+    pub(crate) fn grant_friendly_aura(&mut self, object_id: ObjectId, modifier: Modifier) {
+        self.get_mut(object_id).friendly_aura.add(modifier);
+    }
+
+    fn get_mut(&mut self, object_id: ObjectId) -> &mut Object {
         self.objects
             .get_mut(&object_id)
             .expect("ObjectId is only created on object insert")
@@ -62,7 +94,19 @@ impl ObjectBag {
 mod tests {
     use super::*;
 
-    use pretty_assertions::assert_ne;
+    use pretty_assertions::{assert_eq, assert_ne};
+
+    use crate::cards::binder::sets::base::static_card_definition::{RECRUIT, SPARK};
+    use crate::cards::modifier::ModifierEffect;
+
+    fn buff(granted_by: ObjectId, amount: u8) -> Modifier {
+        Modifier {
+            granted_by,
+            effect: ModifierEffect::BuffAtk {
+                amount: amount.into(),
+            },
+        }
+    }
 
     #[test]
     fn each_new_id_is_distinct() {
@@ -72,5 +116,60 @@ mod tests {
         let second = bag.next_id();
 
         assert_ne!(first, second);
+    }
+
+    #[test]
+    fn a_new_object_has_no_damage_and_nothing_granted() {
+        let mut bag = ObjectBag::default();
+        let recruit = bag.insert(RECRUIT, PlayerId::new(0));
+
+        let object = bag.get(recruit);
+
+        assert_eq!(object.damage(), 0);
+        assert_eq!(object.modifiers(), []);
+        assert_eq!(object.friendly_aura(), []);
+    }
+
+    #[test]
+    fn damage_adds_up() {
+        let mut bag = ObjectBag::default();
+        let recruit = bag.insert(RECRUIT, PlayerId::new(0));
+
+        bag.damage(recruit, 2);
+        bag.damage(recruit, 3);
+
+        assert_eq!(bag.get(recruit).damage(), 5);
+    }
+
+    #[test]
+    fn granted_modifiers_keep_their_order() {
+        let mut bag = ObjectBag::default();
+        let recruit = bag.insert(RECRUIT, PlayerId::new(0));
+        let spark = bag.insert(SPARK, PlayerId::new(0));
+
+        bag.grant(recruit, buff(spark, 1));
+        bag.grant(recruit, buff(recruit, 2));
+
+        assert_eq!(
+            bag.get(recruit).modifiers(),
+            [buff(spark, 1), buff(recruit, 2)]
+        );
+    }
+
+    #[test]
+    fn a_granted_friendly_aura_is_not_a_modifier_of_the_object() {
+        let mut bag = ObjectBag::default();
+        let recruit = bag.insert(RECRUIT, PlayerId::new(0));
+
+        bag.grant_friendly_aura(recruit, buff(recruit, 1));
+
+        assert_eq!(
+            (
+                bag.get(recruit).modifiers(),
+                bag.get(recruit).friendly_aura()
+            ),
+            (&[][..], &[buff(recruit, 1)][..]),
+            "a friendly aura goes to the object's other friendly cards, not to the object",
+        );
     }
 }
