@@ -4,7 +4,6 @@ use crate::{
     event::Event,
     game::Game,
     ids::PlayerId,
-    observer::Observer,
     trigger::Trigger,
     trigger::{TriggerPattern, TriggerSubject},
 };
@@ -16,20 +15,6 @@ pub(super) struct MatchedTrigger {
 }
 
 impl Game {
-    pub(crate) fn emit(&mut self, event: Event, obs: &mut impl Observer) {
-        let matched = self.matched_triggers(&event);
-        self.history
-            .record(&event, self.turn_order.turn_count(), &self.objects);
-        #[expect(
-            clippy::disallowed_methods,
-            reason = "the one place that reports an event"
-        )]
-        obs.event(&event);
-        for MatchedTrigger { source, effects } in matched {
-            self.effect_stack.push(source, effects);
-        }
-    }
-
     /// The triggers `event` matches, listener by listener in order of play, each listener's in
     /// grant order.
     pub(super) fn matched_triggers(&self, event: &Event) -> Vec<MatchedTrigger> {
