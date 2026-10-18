@@ -5,7 +5,7 @@
 //! - `effect_stack`: the pending effects and the resolving effect.
 //! - `player`: one player's resources.
 //! - `player_input`: what the game awaits from each player, and what they targeted and picked.
-//! - `reporting`: what reporting an event records and tells the observer, and who may report it.
+//! - `reporting`: what reporting an event records, tells the observer and pushes.
 //! - `resolve`: the mutation half of `apply`.
 //! - `lookup`: attack, health and cost, computed on read.
 #![expect(

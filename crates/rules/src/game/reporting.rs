@@ -1,6 +1,6 @@
 //! Reporting an event: it is recorded in history and sent to the observer, and the triggers it
 //! matched wait on the effect stack. A guarded event's variant holds a value with a private
-//! field, so only the module that defines that value can report the event.
+//! field, so only the file that defines that value can build the event's report.
 
 use crate::{
     cards::object::{ObjectBag, ObjectId},

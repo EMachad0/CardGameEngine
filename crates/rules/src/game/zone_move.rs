@@ -1,7 +1,7 @@
 use crate::{
     cards::object::ObjectId,
     effect::{PickId, ZoneMove},
-    game::{Game, reporting::Report, state_check::Death},
+    game::{Game, reporting::Report, state_check::Death, triggering::MatchedTrigger},
     ids::PlayerId,
     observer::{Observer, Views},
 };
@@ -102,9 +102,8 @@ impl Game {
     pub(super) fn kill(&mut self, deaths: Vec<Death>, obs: &mut impl Observer) {
         // Enqueue death rattles
         for death in deaths.iter() {
-            for death_rattle in self.death_rattles(death.object_id()).into_iter() {
-                self.effect_stack
-                    .push(death_rattle.source, death_rattle.effects);
+            for MatchedTrigger { source, effects } in self.death_rattles(death.object_id()) {
+                self.effect_stack.push(source, effects);
             }
         }
 
