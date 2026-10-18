@@ -83,7 +83,7 @@ impl Game {
         let count = objects_for_target.len() as u8;
         if target
             .bound
-            .is_satisfied(count, self.required_count(object_id, target))
+            .is_full(count, self.required_count(object_id, target))
         {
             return Vec::new();
         }

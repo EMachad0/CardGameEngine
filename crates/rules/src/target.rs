@@ -8,13 +8,17 @@ pub enum AmountBound {
 }
 
 impl AmountBound {
-    pub fn is_satisfied<T: PartialOrd>(&self, count: T, required: T) -> bool {
+    pub(crate) fn is_satisfied<T: PartialOrd>(&self, count: T, required: T) -> bool {
         match self {
             Self::Exactly => count == required,
         }
     }
 
-    pub fn upper_bound<T>(&self, required: T) -> Option<T> {
+    pub(crate) fn is_full<T: PartialOrd>(&self, count: T, required: T) -> bool {
+        self.upper_bound(required).is_some_and(|max| count >= max)
+    }
+
+    fn upper_bound<T>(&self, required: T) -> Option<T> {
         match self {
             Self::Exactly => Some(required),
         }
@@ -31,4 +35,19 @@ pub struct CharacterTarget {
     pub count: EffectAmount,
     pub bound: AmountBound,
     pub different: bool,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn exactly_is_full_at_the_required_count() {
+        assert!(AmountBound::Exactly.is_full(2, 2));
+    }
+
+    #[test]
+    fn exactly_is_not_full_below_the_required_count() {
+        assert!(!AmountBound::Exactly.is_full(1, 2));
+    }
 }
