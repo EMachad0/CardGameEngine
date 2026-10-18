@@ -1,19 +1,14 @@
 use crate::{
     cards::object::ObjectId,
     event::Event,
-    game::{Game, reporting::Report},
+    game::{Game, reporting::Report, triggering::MatchedTrigger},
+    ids::PlayerId,
     observer::{Observer, Views},
     outcome::Outcome,
 };
 
-pub(super) struct Death {
+pub(in crate::game) struct Death {
     object_id: ObjectId,
-}
-
-impl Death {
-    pub(super) fn object_id(&self) -> ObjectId {
-        self.object_id
-    }
 }
 
 impl From<Death> for Event {
@@ -24,7 +19,7 @@ impl From<Death> for Event {
     }
 }
 
-pub(super) struct Ending {
+pub(in crate::game) struct Ending {
     outcome: Outcome,
 }
 
@@ -37,7 +32,7 @@ impl From<Ending> for Event {
 }
 
 impl Game {
-    pub(crate) fn check_state(&mut self, obs: &mut impl Observer) {
+    pub(super) fn check_state(&mut self, obs: &mut impl Observer) {
         self.remove_dead(obs);
         self.decide_outcome(obs);
     }
@@ -93,6 +88,45 @@ impl Game {
                 break;
             }
         }
+    }
+
+    fn kill(&mut self, deaths: Vec<Death>, obs: &mut impl Observer) {
+        for death in deaths.iter() {
+            for MatchedTrigger { source, effects } in self.death_rattles(death.object_id) {
+                self.effect_stack.push(source, effects);
+            }
+        }
+
+        for death in deaths.into_iter() {
+            let object_id = death.object_id;
+            let object = self.objects.get(object_id);
+            if self.card_def(object_id).leaves_zone_on_death() {
+                self.destroy(object.player_id, object_id);
+            }
+            self.report(Report::Died(death), obs);
+        }
+    }
+
+    fn destroy(&mut self, player_id: PlayerId, object_id: ObjectId) {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the one removal from the board, made as the state check removes the dead"
+        )]
+        self.zones
+            .leave_board(player_id, object_id)
+            .expect("object not in board");
+
+        if self.card_def(object_id).goes_to_graveyard() {
+            self.entomb(player_id, object_id);
+        }
+    }
+
+    fn entomb(&mut self, player_id: PlayerId, object_id: ObjectId) {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the one entry into a graveyard, made as the state check removes the dead"
+        )]
+        self.zones.entomb(player_id, object_id);
     }
 
     fn decide_outcome(&mut self, obs: &mut impl Observer) {
