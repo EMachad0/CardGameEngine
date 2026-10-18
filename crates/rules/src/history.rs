@@ -86,7 +86,7 @@ impl History {
         });
     }
 
-    /// The cards played, oldest first, by `player_id` in `turn`. `None` matches any.
+    /// The cards `player_id` played in `turn`, oldest first. `None` matches any.
     pub(crate) fn played(
         &self,
         player_id: Option<PlayerId>,
@@ -95,8 +95,7 @@ impl History {
         self.of_kind(HistoryKind::CardPlayed, player_id, turn)
     }
 
-    /// The characters that died, oldest first, owned by `player_id` in `turn`. `None` matches
-    /// any.
+    /// The characters of `player_id` that died in `turn`, oldest first. `None` matches any.
     pub(crate) fn died(
         &self,
         player_id: Option<PlayerId>,
