@@ -5,7 +5,7 @@ use rules::prelude::static_card_definition::{
     BOLT, CAPTAIN, FORAGE, HERO, PING, RECRUIT, SPARK, TWIN_SHOT,
 };
 use rules::prelude::{
-    BoardCard, DefId, DraftView, Face, Game, HeroCard, ObjectId, PlayerId, RevealedCard,
+    BoardCard, DefId, Face, Game, HeroCard, ObjectId, PlayerId, RevealedCard, TargetingView,
 };
 
 use crate::support::*;
@@ -151,7 +151,7 @@ fn both_players_see_each_minions_definition_and_current_stats() {
 }
 
 #[test]
-fn only_the_player_choosing_sees_a_pending_forages_options() {
+fn only_the_player_picking_sees_a_pending_forages_options() {
     let deck0 = vec![FORAGE, SPARK, SPARK, SPARK, RECRUIT, CAPTAIN, BOLT];
     let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
     let [p0, p1] = players(&game);
@@ -202,57 +202,57 @@ fn a_view_reports_the_outcome_once_the_game_is_over() {
 }
 
 #[test]
-fn both_players_see_the_drafted_card_and_the_targets_chosen_so_far() {
+fn both_players_see_the_card_in_targeting_and_what_it_targeted_so_far() {
     let mut t = table(&[TWIN_SHOT], 0, 2);
     let twin_shot = in_hand(&t.game, t.p0, TWIN_SHOT);
     apply_all(
         &mut t.game,
         t.p0,
-        &[draft(twin_shot), choose(0, t.enemy[1])],
+        &[start_targeting(twin_shot), target(0, t.enemy[1])],
     );
 
     for viewer in players(&t.game) {
         let view = t.game.view(viewer);
         assert_eq!(
-            player_view(&view, t.p0).draft,
-            Some(DraftView {
+            player_view(&view, t.p0).targeting,
+            Some(TargetingView {
                 object_id: twin_shot,
-                chosen: vec![t.enemy[1]],
+                targeted: vec![t.enemy[1]],
             }),
             "{viewer:?}"
         );
-        assert_eq!(player_view(&view, t.p1).draft, None, "{viewer:?}");
+        assert_eq!(player_view(&view, t.p1).targeting, None, "{viewer:?}");
     }
 }
 
 #[test]
-fn the_opponent_still_sees_no_face_on_the_drafted_card() {
+fn the_opponent_still_sees_no_face_on_the_card_in_targeting() {
     let mut t = table(&[PING], 0, 1);
     let ping = in_hand(&t.game, t.p0, PING);
-    apply_all(&mut t.game, t.p0, &[draft(ping)]);
+    apply_all(&mut t.game, t.p0, &[start_targeting(ping)]);
 
     let view = t.game.view(t.p1);
     let card = player_view(&view, t.p0)
         .hand
         .iter()
         .find(|card| card.object_id == ping)
-        .expect("the drafted card stays in the hand");
+        .expect("the card stays in the hand while targeting");
     assert_eq!(card.face, None);
 }
 
 #[test]
-fn a_cancelled_draft_no_longer_shows() {
+fn cancelled_targeting_no_longer_shows() {
     let mut t = table(&[PING], 0, 1);
     let ping = in_hand(&t.game, t.p0, PING);
     apply_all(
         &mut t.game,
         t.p0,
-        &[draft(ping), choose(0, t.enemy[0]), cancel(ping)],
+        &[start_targeting(ping), target(0, t.enemy[0]), cancel(ping)],
     );
 
     for viewer in players(&t.game) {
         assert_eq!(
-            player_view(&t.game.view(viewer), t.p0).draft,
+            player_view(&t.game.view(viewer), t.p0).targeting,
             None,
             "{viewer:?}"
         );
@@ -260,18 +260,18 @@ fn a_cancelled_draft_no_longer_shows() {
 }
 
 #[test]
-fn a_played_draft_no_longer_shows() {
+fn targeting_no_longer_shows_once_the_card_is_played() {
     let mut t = table(&[PING], 0, 1);
     let ping = in_hand(&t.game, t.p0, PING);
     apply_all(
         &mut t.game,
         t.p0,
-        &[draft(ping), choose(0, t.enemy[0]), play(ping)],
+        &[start_targeting(ping), target(0, t.enemy[0]), play(ping)],
     );
 
     for viewer in players(&t.game) {
         assert_eq!(
-            player_view(&t.game.view(viewer), t.p0).draft,
+            player_view(&t.game.view(viewer), t.p0).targeting,
             None,
             "{viewer:?}"
         );

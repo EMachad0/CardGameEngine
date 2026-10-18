@@ -5,8 +5,8 @@ use crate::{
         filter::{CharacterFilter, Side},
         modifier::ModifierEffect,
     },
-    choice::{CharacterChoice, ChoiceId},
     effect::EffectSequence,
+    target::{CharacterTarget, TargetId},
     trigger::TriggerPattern,
 };
 
@@ -28,7 +28,7 @@ pub struct CardDef {
     pub modifier_effects: Vec<ModifierEffect>,
     pub play_effects: EffectSequence,
     pub triggers: Vec<TriggerDef>,
-    pub choices: Vec<CharacterChoice>,
+    pub targets: Vec<CharacterTarget>,
 }
 
 impl CardDef {
@@ -112,8 +112,8 @@ impl CardDef {
         }
     }
 
-    pub(crate) fn choice(&self, id: ChoiceId) -> Option<&CharacterChoice> {
-        self.choices.iter().find(|choice| choice.id == id)
+    pub(crate) fn target(&self, id: TargetId) -> Option<&CharacterTarget> {
+        self.targets.iter().find(|target| target.id == id)
     }
 }
 
@@ -196,5 +196,5 @@ pub enum CharacterSelector {
     Itself,
     OwnerHero,
     Random(CharacterFilter),
-    Chosen(ChoiceId),
+    Targeted(TargetId),
 }

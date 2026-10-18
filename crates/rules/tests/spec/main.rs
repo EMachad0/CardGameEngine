@@ -2,7 +2,6 @@
 
 mod cards;
 mod derived;
-mod drafts;
 mod events;
 mod legality;
 mod lookups;
@@ -13,6 +12,7 @@ mod resolution;
 mod setup;
 mod state_check;
 mod support;
+mod targeting;
 mod triggers;
 mod turns;
 mod views;

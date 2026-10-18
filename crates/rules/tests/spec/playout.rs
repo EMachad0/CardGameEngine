@@ -9,7 +9,7 @@ use rules::prelude::static_card_definition::{
 };
 use rules::prelude::{Action, DefId, Game, ObjectId, Outcome, PlayerId, Rng};
 
-use crate::model::{BoardModel, damage_per_chosen_target, expected_cost, is_spell};
+use crate::model::{BoardModel, damage_per_target, expected_cost, is_spell};
 use crate::support::*;
 
 const MAX_STEPS: usize = 5_000;
@@ -32,8 +32,8 @@ struct History {
     /// By index in `Game::players`.
     spells_cast: [u8; 2],
     boards: BoardModel,
-    /// The targets chosen in the open draft, in order.
-    chosen: Vec<ObjectId>,
+    /// The objects targeted in the open targeting, in order.
+    targeted: Vec<ObjectId>,
 }
 
 /// Plays a random game and returns it with its decision log. A separate `Rng`
@@ -90,16 +90,16 @@ fn apply_checked(game: &mut Game, history: &mut History, p: PlayerId, a: Action,
         Action::Play { object_id } => Some(game.def_id(object_id)),
         _ => None,
     };
-    let minion_targets: Vec<(usize, usize)> = match a {
+    let targeted_minions: Vec<(usize, usize)> = match a {
         Action::Play { .. } => history
-            .chosen
+            .targeted
             .iter()
             .filter_map(|&target| board_position(game, target))
             .collect(),
         _ => Vec::new(),
     };
-    if let Action::Choose { object_id, .. } = a {
-        history.chosen.push(object_id);
+    if let Action::Target { object_id, .. } = a {
+        history.targeted.push(object_id);
     }
 
     game.apply(p, a, &mut ())
@@ -119,14 +119,14 @@ fn apply_checked(game: &mut Game, history: &mut History, p: PlayerId, a: Action,
             history.spells_cast[i] += 1;
         }
         history.boards.played(i, def);
-        for (owner, position) in minion_targets {
+        for (owner, position) in targeted_minions {
             history
                 .boards
-                .damaged(owner, position, damage_per_chosen_target(def));
+                .damaged(owner, position, damage_per_target(def));
         }
     }
     if matches!(a, Action::Play { .. } | Action::Cancel { .. }) {
-        history.chosen.clear();
+        history.targeted.clear();
     }
     history.boards.check();
     assert_eq!(

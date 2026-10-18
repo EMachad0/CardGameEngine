@@ -1,6 +1,6 @@
 use crate::{
     cards::{definition::TriggerDef, object::ObjectId},
-    choice::EffectAmount,
+    effect::EffectAmount,
 };
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]

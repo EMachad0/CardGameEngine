@@ -792,11 +792,11 @@ fn an_apply_ends_with_a_checkpoint_showing_the_game_it_leaves() {
 }
 
 #[test]
-fn draft_choose_and_cancel_each_report_one_checkpoint_and_no_event() {
+fn each_targeting_action_reports_one_checkpoint_and_no_event() {
     let mut t = table(&[PING], 0, 1);
     let ping = in_hand(&t.game, t.p0, PING);
 
-    for a in [draft(ping), choose(0, t.enemy[0]), cancel(ping)] {
+    for a in [start_targeting(ping), target(0, t.enemy[0]), cancel(ping)] {
         let recorder = observe(&mut t.game, t.p0, a);
         assert_eq!(recorder.steps.len(), 1, "{a:?}");
         assert_eq!(recorder.events(), [], "{a:?}");
@@ -804,16 +804,16 @@ fn draft_choose_and_cancel_each_report_one_checkpoint_and_no_event() {
 }
 
 #[test]
-fn a_drafted_card_reports_played_then_hits_its_chosen_targets() {
+fn a_card_with_targets_reports_played_then_hits_its_targeted_minions() {
     let mut t = table(&[TWIN_SHOT], 0, 2);
     let twin_shot = in_hand(&t.game, t.p0, TWIN_SHOT);
     apply_all(
         &mut t.game,
         t.p0,
         &[
-            draft(twin_shot),
-            choose(0, t.enemy[1]),
-            choose(0, t.enemy[0]),
+            start_targeting(twin_shot),
+            target(0, t.enemy[1]),
+            target(0, t.enemy[0]),
         ],
     );
 
@@ -833,6 +833,6 @@ fn a_drafted_card_reports_played_then_hits_its_chosen_targets() {
             }],
             vec![hit(t.enemy[1]), hit(t.enemy[0])],
         ],
-        "one effect over a set of targets is one step, in the order they were chosen"
+        "one effect over a set of targeted minions is one step, in the order they were targeted"
     );
 }

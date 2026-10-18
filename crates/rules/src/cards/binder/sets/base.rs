@@ -10,9 +10,9 @@ use crate::{
         filter::{CardFilter, CharacterFilter, Side},
         modifier::ModifierEffect,
     },
-    choice::{AmountBound, CharacterChoice, ChoiceId, EffectAmount, PickId},
-    effect::{Effect, EffectSequence, ZoneMove},
+    effect::{Effect, EffectAmount, EffectSequence, PickId, ZoneMove},
     history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter},
+    target::{AmountBound, CharacterTarget, TargetId},
     trigger::{TriggerPattern, TriggerSubject},
 };
 
@@ -28,7 +28,7 @@ impl Default for CardDef {
             modifier_effects: Default::default(),
             play_effects: Default::default(),
             triggers: Default::default(),
-            choices: Default::default(),
+            targets: Default::default(),
         }
     }
 }
@@ -254,11 +254,11 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 1,
             play_effects: EffectSequence(vec![Effect::Damage {
-                selector: CharacterSelector::Chosen(ChoiceId(0)),
+                selector: CharacterSelector::Targeted(TargetId(0)),
                 amount: 2.into(),
             }]),
-            choices: vec![CharacterChoice {
-                id: ChoiceId(0),
+            targets: vec![CharacterTarget {
+                id: TargetId(0),
                 filter: CharacterFilter {
                     kind: EnumSet::only(CharacterKind::Minion),
                     side: EnumSet::all(),
@@ -276,17 +276,17 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             mana_cost: 1,
             play_effects: EffectSequence(vec![
                 Effect::Damage {
-                    selector: CharacterSelector::Chosen(ChoiceId(0)),
+                    selector: CharacterSelector::Targeted(TargetId(0)),
                     amount: 1.into(),
                 },
                 Effect::Damage {
-                    selector: CharacterSelector::Chosen(ChoiceId(1)),
+                    selector: CharacterSelector::Targeted(TargetId(1)),
                     amount: 1.into(),
                 },
             ]),
-            choices: vec![
-                CharacterChoice {
-                    id: ChoiceId(0),
+            targets: vec![
+                CharacterTarget {
+                    id: TargetId(0),
                     filter: CharacterFilter {
                         kind: EnumSet::only(CharacterKind::Minion),
                         side: EnumSet::all(),
@@ -295,8 +295,8 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                     bound: AmountBound::Exactly,
                     different: true,
                 },
-                CharacterChoice {
-                    id: ChoiceId(1),
+                CharacterTarget {
+                    id: TargetId(1),
                     filter: CharacterFilter {
                         kind: EnumSet::only(CharacterKind::Minion),
                         side: EnumSet::only(Side::Friendly),
@@ -314,11 +314,11 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 2,
             play_effects: EffectSequence(vec![Effect::Damage {
-                selector: CharacterSelector::Chosen(ChoiceId(0)),
+                selector: CharacterSelector::Targeted(TargetId(0)),
                 amount: 1.into(),
             }]),
-            choices: vec![CharacterChoice {
-                id: ChoiceId(0),
+            targets: vec![CharacterTarget {
+                id: TargetId(0),
                 filter: CharacterFilter {
                     kind: EnumSet::only(CharacterKind::Minion),
                     side: EnumSet::all(),
@@ -336,17 +336,17 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             mana_cost: 2,
             play_effects: EffectSequence(vec![
                 Effect::Damage {
-                    selector: CharacterSelector::Chosen(ChoiceId(0)),
+                    selector: CharacterSelector::Targeted(TargetId(0)),
                     amount: 1.into(),
                 },
                 Effect::Damage {
-                    selector: CharacterSelector::Chosen(ChoiceId(1)),
+                    selector: CharacterSelector::Targeted(TargetId(1)),
                     amount: 1.into(),
                 },
             ]),
-            choices: vec![
-                CharacterChoice {
-                    id: ChoiceId(0),
+            targets: vec![
+                CharacterTarget {
+                    id: TargetId(0),
                     filter: CharacterFilter {
                         kind: EnumSet::only(CharacterKind::Minion),
                         side: EnumSet::all(),
@@ -355,8 +355,8 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                     bound: AmountBound::Exactly,
                     different: true,
                 },
-                CharacterChoice {
-                    id: ChoiceId(1),
+                CharacterTarget {
+                    id: TargetId(1),
                     filter: CharacterFilter {
                         kind: EnumSet::only(CharacterKind::Hero),
                         side: EnumSet::all(),

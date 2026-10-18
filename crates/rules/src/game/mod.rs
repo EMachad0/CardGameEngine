@@ -3,7 +3,7 @@
 //! `legal_actions` is the one definition of legality. `apply` accepts exactly
 //! what it lists, and an `Err` leaves the game unchanged. Child modules:
 //! - `player`: one player's resources.
-//! - `player_input`: what the game awaits from each player, and the targets and picks they gave.
+//! - `player_input`: what the game awaits from each player, and what they targeted and picked.
 //! - `resolve`: the mutation half of `apply`.
 //! - `lookup`: attack, health and cost, computed on read.
 #![expect(
@@ -148,13 +148,13 @@ impl Game {
                         continue;
                     }
 
-                    match self.card_def(object_id).choices.is_empty() {
+                    match self.card_def(object_id).targets.is_empty() {
                         true => {
                             actions.push(Action::Play { object_id });
                         }
                         false => {
-                            if self.can_finish_choices(object_id, &mut Vec::new()) {
-                                actions.push(Action::Draft { object_id });
+                            if self.can_finish_targeting(object_id, &mut Vec::new()) {
+                                actions.push(Action::StartTargeting { object_id });
                             }
                         }
                     }
@@ -170,38 +170,35 @@ impl Game {
                         .map(|object_id| Action::Pick { object_id }),
                 );
             }
-            Some(Awaiting::Draft(draft)) => {
-                let object_id = draft.object_id();
-                let chosen = draft.chosen();
-                let mut all_choices_fulfilled = true;
-                for choice in &self.card_def(object_id).choices {
-                    let chosen_for_choice_count = chosen
+            Some(Awaiting::Targets(targeting)) => {
+                let object_id = targeting.object_id();
+                let targeted = targeting.targeted();
+                let mut all_targets_fulfilled = true;
+                for target in &self.card_def(object_id).targets {
+                    let targeted_count = targeted
                         .iter()
-                        .filter(|(_, choice_id)| choice.id == *choice_id)
+                        .filter(|(_, target_id)| target.id == *target_id)
                         .count();
-                    if self.check_choice_count_fulfilled(
-                        object_id,
-                        choice.id,
-                        chosen_for_choice_count as u8,
-                    ) {
+                    if self.check_target_count_fulfilled(object_id, target.id, targeted_count as u8)
+                    {
                         continue;
                     }
 
-                    let candidates = self.scan_for_valid_choices(object_id, choice, chosen);
+                    let candidates = self.scan_for_valid_targets(object_id, target, targeted);
                     for candidate in candidates.into_iter() {
-                        let mut chosen = chosen.to_vec();
-                        chosen.push((candidate, choice.id));
-                        if self.can_finish_choices(object_id, &mut chosen) {
-                            actions.push(Action::Choose {
-                                choice_id: choice.id,
+                        let mut targeted = targeted.to_vec();
+                        targeted.push((candidate, target.id));
+                        if self.can_finish_targeting(object_id, &mut targeted) {
+                            actions.push(Action::Target {
+                                target_id: target.id,
                                 object_id: candidate,
                             })
                         }
                     }
-                    all_choices_fulfilled = false;
+                    all_targets_fulfilled = false;
                     break;
                 }
-                if all_choices_fulfilled {
+                if all_targets_fulfilled {
                     actions.push(Action::Play { object_id });
                 }
                 actions.push(Action::Cancel { object_id });

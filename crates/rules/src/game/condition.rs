@@ -6,45 +6,45 @@ use crate::{
         filter::{CardFilter, CharacterFilter, fulfill_side_filter},
         object::ObjectId,
     },
-    choice::{CharacterChoice, ChoiceId},
     game::Game,
     ids::PlayerId,
+    target::{CharacterTarget, TargetId},
 };
 
 impl Game {
-    pub(crate) fn scan_for_valid_choices(
+    pub(crate) fn scan_for_valid_targets(
         &self,
-        chooser_id: ObjectId,
-        choice: &CharacterChoice,
-        chosen: &[(ObjectId, ChoiceId)],
+        object_id: ObjectId,
+        target: &CharacterTarget,
+        targeted: &[(ObjectId, TargetId)],
     ) -> Vec<ObjectId> {
-        let chosen_for_choice = chosen
+        let objects_for_target = targeted
             .iter()
-            .filter(|(_, choice_id)| choice.id == *choice_id)
+            .filter(|(_, target_id)| target.id == *target_id)
             .map(|(o, _)| *o)
             .collect::<Vec<_>>();
-        if self.check_choice_count_fulfilled(chooser_id, choice.id, chosen_for_choice.len() as u8) {
+        if self.check_target_count_fulfilled(object_id, target.id, objects_for_target.len() as u8) {
             return Vec::new();
         }
 
-        let obj = self.objects.get(chooser_id);
-        self.scan_characters_with_filter(obj.player_id, &choice.filter)
+        let obj = self.objects.get(object_id);
+        self.scan_characters_with_filter(obj.player_id, &target.filter)
             .into_iter()
-            .filter(|o| !choice.different || chosen.iter().all(|(o2, _)| o != o2))
-            .filter(|o| !chosen_for_choice.contains(o))
+            .filter(|o| !target.different || targeted.iter().all(|(o2, _)| o != o2))
+            .filter(|o| !objects_for_target.contains(o))
             .collect()
     }
 
-    pub(crate) fn check_choice_count_fulfilled(
+    pub(crate) fn check_target_count_fulfilled(
         &self,
         object_id: ObjectId,
-        choice_id: ChoiceId,
-        chosen_count: u8,
+        target_id: TargetId,
+        targeted_count: u8,
     ) -> bool {
         let obj = self.objects.get(object_id);
-        let choice = self.card_def(object_id).choice(choice_id).unwrap();
-        let count = self.effect_amount(&choice.count, obj.player_id);
-        choice.bound.is_satisfied(chosen_count, count)
+        let target = self.card_def(object_id).target(target_id).unwrap();
+        let count = self.effect_amount(&target.count, obj.player_id);
+        target.bound.is_satisfied(targeted_count, count)
     }
 
     pub(crate) fn scan_characters_with_filter(
@@ -96,30 +96,26 @@ impl Game {
         kind.contains(self.card_def(object_id).card_kind())
     }
 
-    pub(super) fn can_finish_choices(
+    pub(super) fn can_finish_targeting(
         &self,
         object_id: ObjectId,
-        chosen: &mut Vec<(ObjectId, ChoiceId)>,
+        targeted: &mut Vec<(ObjectId, TargetId)>,
     ) -> bool {
         let mut any_unfulfiled = false;
-        for choice in &self.card_def(object_id).choices {
-            let chosen_for_choice_count = chosen
+        for target in &self.card_def(object_id).targets {
+            let targeted_count = targeted
                 .iter()
-                .filter(|(_, choice_id)| choice.id == *choice_id)
+                .filter(|(_, target_id)| target.id == *target_id)
                 .count();
-            if !self.check_choice_count_fulfilled(
-                object_id,
-                choice.id,
-                chosen_for_choice_count as u8,
-            ) {
-                let candidates = self.scan_for_valid_choices(object_id, choice, chosen);
+            if !self.check_target_count_fulfilled(object_id, target.id, targeted_count as u8) {
+                let candidates = self.scan_for_valid_targets(object_id, target, targeted);
                 for candidate in candidates.into_iter() {
-                    chosen.push((candidate, choice.id));
-                    let can_finish = self.can_finish_choices(object_id, chosen);
+                    targeted.push((candidate, target.id));
+                    let can_finish = self.can_finish_targeting(object_id, targeted);
                     if can_finish {
                         return true;
                     }
-                    chosen.pop();
+                    targeted.pop();
                 }
                 any_unfulfiled = true;
                 break;

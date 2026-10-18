@@ -28,8 +28,8 @@ pub struct PlayerView {
     pub board: Vec<BoardCard>,
     /// A pending Forage's options, in reveal order. Empty if none is pending.
     pub revealed: Vec<RevealedCard>,
-    /// The card being drafted and its choices so far. `None` if not drafting.
-    pub draft: Option<DraftView>,
+    /// The card in targeting and what it has targeted so far. `None` if not targeting.
+    pub targeting: Option<TargetingView>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,7 +55,7 @@ pub struct Face {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RevealedCard {
     pub object_id: ObjectId,
-    /// `None` unless the viewer is the one choosing.
+    /// `None` unless the viewer is the one picking.
     pub def_id: Option<DefId>,
 }
 
@@ -68,9 +68,9 @@ pub struct BoardCard {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DraftView {
+pub struct TargetingView {
     pub object_id: ObjectId,
-    pub chosen: Vec<ObjectId>,
+    pub targeted: Vec<ObjectId>,
 }
 
 impl Game {
@@ -107,7 +107,7 @@ impl Game {
                 .map(|o| self.board_card(viewer, *o))
                 .collect(),
             revealed: self.revealed_view(viewer, player.id),
-            draft: self.draft_view(player.id),
+            targeting: self.targeting_view(player.id),
         }
     }
 
@@ -155,10 +155,12 @@ impl Game {
         }
     }
 
-    fn draft_view(&self, player_id: PlayerId) -> Option<DraftView> {
-        self.player_input.draft(player_id).map(|draft| DraftView {
-            object_id: draft.object_id(),
-            chosen: draft.chosen().iter().map(|(o, _)| *o).collect(),
-        })
+    fn targeting_view(&self, player_id: PlayerId) -> Option<TargetingView> {
+        self.player_input
+            .targeting(player_id)
+            .map(|targeting| TargetingView {
+                object_id: targeting.object_id(),
+                targeted: targeting.targeted().iter().map(|(o, _)| *o).collect(),
+            })
     }
 }

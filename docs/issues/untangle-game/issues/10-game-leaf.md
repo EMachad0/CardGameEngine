@@ -20,7 +20,7 @@ child of `game`:
 - Random picks and selectors: `select_random` reads the rng, and `resolve_player_selector` and
   `resolve_character_selector` in `game/resolve.rs` build the candidate lists. The rng is also read
   by the shuffle in `setup`.
-- Filters: the character and card filters in `game/condition.rs`, used by choices, selectors and
+- Filters: the character and card filters in `game/condition.rs`, used by targets, selectors and
   trigger matching. The side filter is already a free function in `cards/filter.rs`.
 - Characters in play: `characters_in_play` in `game/lookup.rs`, and the listener list that
   reporting asks for.

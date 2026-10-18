@@ -6,8 +6,8 @@ use std::collections::BTreeSet;
 use pretty_assertions::assert_eq;
 use rules::prelude::static_card_definition::{BOLT, RECRUIT};
 use rules::prelude::{
-    Action, ApplyError, ChoiceId, DefId, Event, Game, IllegalAction, ObjectId, Observer, PlayerId,
-    PlayerView, View, Views,
+    Action, ApplyError, DefId, Event, Game, IllegalAction, ObjectId, Observer, PlayerId,
+    PlayerView, TargetId, View, Views,
 };
 
 /// The game's players, in `Game::players` order. The tests assume the player at index `i`
@@ -32,14 +32,14 @@ pub(crate) fn pick(object_id: ObjectId) -> Action {
     Action::Pick { object_id }
 }
 
-pub(crate) fn draft(object_id: ObjectId) -> Action {
-    Action::Draft { object_id }
+pub(crate) fn start_targeting(object_id: ObjectId) -> Action {
+    Action::StartTargeting { object_id }
 }
 
-/// Chooses `object_id` for the card's choice with id `choice`.
-pub(crate) fn choose(choice: usize, object_id: ObjectId) -> Action {
-    Action::Choose {
-        choice_id: ChoiceId(choice),
+/// Targets `object_id` for the card's target with id `target_id`.
+pub(crate) fn target(target_id: usize, object_id: ObjectId) -> Action {
+    Action::Target {
+        target_id: TargetId(target_id),
         object_id,
     }
 }
@@ -375,10 +375,10 @@ pub(crate) fn assert_unlisted_rejected_with(game: &Game, extra: &BTreeSet<Object
     for id in ids {
         candidates.push(play(id));
         candidates.push(pick(id));
-        candidates.push(draft(id));
+        candidates.push(start_targeting(id));
         candidates.push(cancel(id));
-        candidates.push(choose(0, id));
-        candidates.push(choose(1, id));
+        candidates.push(target(0, id));
+        candidates.push(target(1, id));
     }
     let unlisted: Vec<(PlayerId, Action)> = players(game)
         .into_iter()

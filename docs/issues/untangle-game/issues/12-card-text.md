@@ -15,17 +15,17 @@ The code that reads card text relies on facts only the validator checked:
 
 - `Binder::get` `expect`s "card def not found". `validate_not_found` checks that every built-in
   ID has a definition.
-- `resolve_character_selector` in `game/resolve.rs` `expect`s "Choice not fulfilled" for
-  `CharacterSelector::Chosen`. It relies on `validate_choice_on_trigger` and
-  `validate_choice_not_found`: a `Chosen` sits only in play effects and names a choice the card
-  declares. It also relies on the draft having stored an answer for every choice.
+- `resolve_character_selector` in `game/resolve.rs` `expect`s "Target not fulfilled" for
+  `CharacterSelector::Targeted`. It relies on `validate_target_on_trigger` and
+  `validate_target_not_found`: a `Targeted` sits only in play effects and names a target the card
+  declares. It also relies on targeting having stored an answer for every target.
 - `CardDef::health` and `CardDef::attack` return `Option` by card kind. `Game::health` and
   `Game::attack` in `game/lookup.rs` `expect` them ("in play objects always have health", "board
   objects always have attack"), relying on only characters being in play and only minions on the
   board.
 
-The validators also copy resolution's rules. `validate_choice_on_trigger` knows a trigger
-resolves with no draft, and `validate_picks` knows `ResolvePick` reads what an earlier `Reveal`
+The validators also copy resolution's rules. `validate_target_on_trigger` knows a trigger
+resolves with no targeting, and `validate_picks` knows `ResolvePick` reads what an earlier `Reveal`
 stored.
 
 The doc's rules: "A check validates when it returns nothing, or hands back the type it was given."
