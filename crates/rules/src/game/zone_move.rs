@@ -1,6 +1,6 @@
 use crate::{
     cards::object::ObjectId,
-    effect::{PickId, ZoneMove},
+    effect::ZoneMove,
     event::Event,
     game::{Game, reporting::Report, state_check::Death, triggering::MatchedTrigger},
     ids::PlayerId,
@@ -138,31 +138,6 @@ impl Game {
         _obs: &mut impl Observer,
     ) {
         self.zones.entomb(player_id, object_id);
-    }
-
-    pub(crate) fn reveal(
-        &mut self,
-        player_id: PlayerId,
-        source: ObjectId,
-        pick_id: PickId,
-        count: u8,
-        obs: &mut impl Observer,
-    ) {
-        #[expect(
-            clippy::disallowed_methods,
-            reason = "the one reveal, which posts the revealed cards as a pending pick"
-        )]
-        let options = self.zones.reveal(player_id, count);
-        let report = Report::Revealed {
-            player_id,
-            object_ids: options.clone(),
-        };
-        if self
-            .player_input
-            .ask_pick(player_id, source, pick_id, options)
-        {
-            self.report(report, obs);
-        }
     }
 
     pub(crate) fn pick(

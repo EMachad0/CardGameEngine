@@ -7,7 +7,7 @@ pub use crate::cards::object::ObjectId;
 pub use crate::effect::PickId;
 pub use crate::event::Event;
 pub use crate::game::Game;
-pub use crate::game::resolve::ApplyError;
+pub use crate::game::resolve::apply::ApplyError;
 pub use crate::game::view::{
     BoardCard, Face, HandCard, HeroCard, PlayerView, RevealedCard, TargetingView, View,
 };
