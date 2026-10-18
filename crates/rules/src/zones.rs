@@ -443,6 +443,7 @@ mod tests {
     }
 
     #[test]
+    #[expect(clippy::disallowed_methods, reason = "tests the reveal itself")]
     fn a_revealed_card_leaves_its_deck_for_no_zone() {
         let [hero, top, next] = ids();
         let player = PlayerId::new(0);

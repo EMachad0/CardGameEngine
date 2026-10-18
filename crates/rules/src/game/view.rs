@@ -2,10 +2,7 @@
 
 use crate::{
     cards::{definition::DefId, object::ObjectId},
-    game::{
-        Game,
-        player::{Player, PlayerInteractionState},
-    },
+    game::{Game, player::Player},
     ids::PlayerId,
     outcome::Outcome,
 };
@@ -109,8 +106,8 @@ impl Game {
                 .iter()
                 .map(|o| self.board_card(viewer, *o))
                 .collect(),
-            revealed: self.revealed_view(viewer, player.id, &player.interaction_state),
-            draft: self.draft_view(&player.interaction_state),
+            revealed: self.revealed_view(viewer, player.id),
+            draft: self.draft_view(player.id),
         }
     }
 
@@ -138,22 +135,15 @@ impl Game {
         }
     }
 
-    fn revealed_view(
-        &self,
-        viewer: PlayerId,
-        player_id: PlayerId,
-        interaction_state: &PlayerInteractionState,
-    ) -> Vec<RevealedCard> {
-        match interaction_state {
-            PlayerInteractionState::PendingPick { options, .. } => options
-                .iter()
-                .map(|&object_id| RevealedCard {
-                    object_id,
-                    def_id: (player_id == viewer).then(|| self.def_id(object_id)),
-                })
-                .collect(),
-            _ => Vec::new(),
-        }
+    fn revealed_view(&self, viewer: PlayerId, player_id: PlayerId) -> Vec<RevealedCard> {
+        self.player_input
+            .revealed(player_id)
+            .iter()
+            .map(|&object_id| RevealedCard {
+                object_id,
+                def_id: (player_id == viewer).then(|| self.def_id(object_id)),
+            })
+            .collect()
     }
 
     fn hero_card(&self, _viewer: PlayerId, player_id: PlayerId) -> HeroCard {
@@ -165,19 +155,10 @@ impl Game {
         }
     }
 
-    fn draft_view(&self, interaction_state: &PlayerInteractionState) -> Option<DraftView> {
-        match interaction_state {
-            PlayerInteractionState::Draft {
-                of_object_id,
-                chosen,
-            } => {
-                let chosen = chosen.iter().map(|(o, _)| *o).collect();
-                Some(DraftView {
-                    object_id: *of_object_id,
-                    chosen,
-                })
-            }
-            _ => None,
-        }
+    fn draft_view(&self, player_id: PlayerId) -> Option<DraftView> {
+        self.player_input.draft(player_id).map(|draft| DraftView {
+            object_id: draft.object_id(),
+            chosen: draft.chosen().iter().map(|(o, _)| *o).collect(),
+        })
     }
 }

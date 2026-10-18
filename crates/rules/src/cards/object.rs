@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 
 use crate::{
     cards::{definition::DefId, modifier::Modifiers},
-    choice::{ChoiceTarget, PickTarget},
     ids::PlayerId,
 };
 
@@ -17,8 +16,6 @@ pub(crate) struct Object {
     pub damage: u8,
     pub modifiers: Modifiers,
     pub friendly_aura: Modifiers,
-    pub choice_targets: Vec<ChoiceTarget>,
-    pub pick_targets: Vec<PickTarget>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -43,8 +40,6 @@ impl ObjectBag {
             damage: 0,
             modifiers: Modifiers::default(),
             friendly_aura: Modifiers::default(),
-            choice_targets: Default::default(),
-            pick_targets: Default::default(),
         };
         self.objects.insert(object_id, object);
         object_id

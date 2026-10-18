@@ -2,7 +2,8 @@
 //!
 //! `legal_actions` is the one definition of legality. `apply` accepts exactly
 //! what it lists, and an `Err` leaves the game unchanged. Child modules:
-//! - `player`: one player's resources and pending choice.
+//! - `player`: one player's resources.
+//! - `player_input`: what the game awaits from each player, and the targets and picks they gave.
 //! - `resolve`: the mutation half of `apply`.
 //! - `lookup`: attack, health and cost, computed on read.
 #![expect(
@@ -13,6 +14,7 @@
 mod condition;
 mod lookup;
 mod player;
+mod player_input;
 pub(crate) mod resolve;
 mod state_check;
 mod triggering;
@@ -26,7 +28,8 @@ use crate::cards::definition::DefId;
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::effect::{PendingEffect, ResolvingEffect};
 use crate::event::Event;
-use crate::game::player::{Player, PlayerInteractionState};
+use crate::game::player::Player;
+use crate::game::player_input::{Awaiting, PlayerInput};
 use crate::history::History;
 use crate::ids::PlayerId;
 use crate::observer::Observer;
@@ -41,6 +44,7 @@ pub struct Game {
     turn_order: TurnOrder,
     players: Vec<Player>,
     zones: Zones,
+    player_input: PlayerInput,
     objects: ObjectBag,
     binder: Binder,
     history: History,
@@ -97,6 +101,7 @@ impl Game {
             turn_order,
             players,
             zones,
+            player_input: Default::default(),
             objects,
             binder,
             history,
@@ -125,10 +130,10 @@ impl Game {
         }
 
         let mut actions = Vec::new();
-        match &self.get_player(player_id).interaction_state {
-            PlayerInteractionState::Idle => {
+        match self.player_input.awaiting(player_id) {
+            None => {
                 if self.turn_order.get_active_player_id() != player_id
-                    || self.is_pending_interaction()
+                    || self.player_input.any_awaiting()
                 {
                     return Vec::new();
                 }
@@ -157,37 +162,36 @@ impl Game {
 
                 actions.push(Action::EndTurn);
             }
-            PlayerInteractionState::PendingPick { options, .. } => {
+            Some(Awaiting::Pick(pick)) => {
                 actions.extend(
-                    options
+                    pick.options()
                         .iter()
                         .cloned()
                         .map(|object_id| Action::Pick { object_id }),
                 );
             }
-            PlayerInteractionState::Draft {
-                of_object_id,
-                chosen,
-            } => {
+            Some(Awaiting::Draft(draft)) => {
+                let object_id = draft.object_id();
+                let chosen = draft.chosen();
                 let mut all_choices_fulfilled = true;
-                for choice in &self.card_def(*of_object_id).choices {
+                for choice in &self.card_def(object_id).choices {
                     let chosen_for_choice_count = chosen
                         .iter()
                         .filter(|(_, choice_id)| choice.id == *choice_id)
                         .count();
                     if self.check_choice_count_fulfilled(
-                        *of_object_id,
+                        object_id,
                         choice.id,
                         chosen_for_choice_count as u8,
                     ) {
                         continue;
                     }
 
-                    let candidates = self.scan_for_valid_choices(*of_object_id, choice, chosen);
+                    let candidates = self.scan_for_valid_choices(object_id, choice, chosen);
                     for candidate in candidates.into_iter() {
-                        let mut chosen = chosen.clone();
+                        let mut chosen = chosen.to_vec();
                         chosen.push((candidate, choice.id));
-                        if self.can_finish_choices(*of_object_id, &mut chosen) {
+                        if self.can_finish_choices(object_id, &mut chosen) {
                             actions.push(Action::Choose {
                                 choice_id: choice.id,
                                 object_id: candidate,
@@ -198,13 +202,9 @@ impl Game {
                     break;
                 }
                 if all_choices_fulfilled {
-                    actions.push(Action::Play {
-                        object_id: *of_object_id,
-                    });
+                    actions.push(Action::Play { object_id });
                 }
-                actions.push(Action::Cancel {
-                    object_id: *of_object_id,
-                });
+                actions.push(Action::Cancel { object_id });
             }
         }
         actions
@@ -235,10 +235,7 @@ impl Game {
 
     /// The cards a pending Forage revealed. Empty if nothing is pending.
     pub fn revealed(&self, player_id: PlayerId) -> &[ObjectId] {
-        match &self.get_player(player_id).interaction_state {
-            PlayerInteractionState::PendingPick { options, .. } => options,
-            _ => &[],
-        }
+        self.player_input.revealed(player_id)
     }
 
     pub fn outcome(&self) -> Option<Outcome> {

@@ -172,6 +172,14 @@ Taking cards from the top of a deck for a player to pick from.
 A choice the game waits on from a player in the middle of resolving a card.
 _Avoid_: picker
 
+**Awaiting**:
+What the game waits on from one player before it goes on: a draft or a pending pick.
+_Avoid_: question, prompt, request
+
+**Player input**:
+What the game awaits from each player, and the targets and picks each player gave a card.
+_Avoid_: interaction, answers
+
 **Bury**:
 Putting a card on the bottom of its owner's deck.
 

@@ -14,9 +14,9 @@ use crate::{
         modifier::Modifier,
         object::ObjectId,
     },
-    choice::{ChoiceTarget, EffectAmount, PickTarget},
+    choice::EffectAmount,
     effect::Effect,
-    game::{Game, player::PlayerInteractionState},
+    game::Game,
     history::{HistoryKind, HistoryQuery, HistoryQueryKind, PlayerFilter},
     ids::PlayerId,
     observer::{Observer, Views},
@@ -62,37 +62,14 @@ impl Game {
     ) {
         match action {
             Action::Play { object_id } => {
-                let from_draft = matches!(
-                    self.get_player(player_id).interaction_state,
-                    PlayerInteractionState::Draft { .. }
-                );
-                if from_draft {
-                    let PlayerInteractionState::Draft {
-                        of_object_id,
-                        chosen,
-                    } = std::mem::take(&mut self.get_player_mut(player_id).interaction_state)
-                    else {
-                        unreachable!();
-                    };
+                if let Some(draft) = self.player_input.draft(player_id) {
                     let choice_ids = self
-                        .card_def(of_object_id)
+                        .card_def(draft.object_id())
                         .choices
                         .iter()
                         .map(|c| c.id)
                         .collect::<Vec<_>>();
-
-                    let obj = self.objects.get_mut(of_object_id);
-                    obj.choice_targets.clear();
-                    for choice_id in choice_ids {
-                        obj.choice_targets.push(ChoiceTarget {
-                            choice_id,
-                            targets: chosen
-                                .iter()
-                                .filter(|(_, c)| *c == choice_id)
-                                .map(|(o, _)| *o)
-                                .collect(),
-                        });
-                    }
+                    self.player_input.commit_draft(player_id, &choice_ids);
                 }
 
                 let mana_cost = self
@@ -111,27 +88,18 @@ impl Game {
                 obs.checkpoint(Views::new(self));
             }
             Action::Draft { object_id } => {
-                self.get_player_mut(player_id).interaction_state = PlayerInteractionState::Draft {
-                    of_object_id: object_id,
-                    chosen: Vec::new(),
-                };
+                self.player_input.open_draft(player_id, object_id);
                 obs.checkpoint(Views::new(self));
             }
             Action::Choose {
                 choice_id,
                 object_id,
             } => {
-                let player = self.get_player_mut(player_id);
-                let PlayerInteractionState::Draft { chosen, .. } = &mut player.interaction_state
-                else {
-                    unreachable!();
-                };
-                chosen.push((object_id, choice_id));
+                self.player_input.choose(player_id, object_id, choice_id);
                 obs.checkpoint(Views::new(self));
             }
             Action::Cancel { .. } => {
-                let player = self.get_player_mut(player_id);
-                player.interaction_state = PlayerInteractionState::default();
+                self.player_input.cancel(player_id);
                 obs.checkpoint(Views::new(self));
             }
         };
@@ -168,15 +136,12 @@ impl Game {
                 picked_move,
                 other_move,
             } => {
-                let pick_target = self
-                    .objects
-                    .get(source)
-                    .pick_targets
-                    .iter()
-                    .find(|pt| pt.pick_id == *pick_id)
-                    .cloned();
+                let picks = self
+                    .player_input
+                    .picks(source, *pick_id)
+                    .map(|picks| (picks.picked().to_vec(), picks.others().to_vec()));
 
-                if let Some(PickTarget { picked, others, .. }) = pick_target {
+                if let Some((picked, others)) = picks {
                     picked
                         .into_iter()
                         .for_each(|id| self.zone_move(owner, id, *picked_move, obs));
@@ -223,7 +188,7 @@ impl Game {
     }
 
     fn drain_effect_queue(&mut self, obs: &mut impl Observer) {
-        while !self.is_pending_interaction() && self.outcome().is_none() {
+        while !self.player_input.any_awaiting() && self.outcome().is_none() {
             self.continue_resolving_effect(obs);
 
             // finished a unit
@@ -243,7 +208,7 @@ impl Game {
     }
 
     fn continue_resolving_effect(&mut self, obs: &mut impl Observer) {
-        while !self.is_pending_interaction()
+        while !self.player_input.any_awaiting()
             && let Some(resolving) = &mut self.resolving_effect
             && !resolving.is_finished()
         {
@@ -264,15 +229,6 @@ impl Game {
             self.resolving_effect = None;
             self.check_state(obs);
         }
-    }
-
-    pub(crate) fn is_pending_interaction(&self) -> bool {
-        self.players().into_iter().any(|p| {
-            !matches!(
-                self.get_player(p).interaction_state,
-                PlayerInteractionState::Idle
-            )
-        })
     }
 
     pub(crate) fn effect_amount(&self, amount: &EffectAmount, player_id: PlayerId) -> u8 {
@@ -366,14 +322,10 @@ impl Game {
                 }
             }
             CharacterSelector::Chosen(choice_id) => self
-                .objects
-                .get(object_id)
-                .choice_targets
-                .iter()
-                .find(|c| c.choice_id == *choice_id)
+                .player_input
+                .targets(object_id, *choice_id)
                 .expect("Choice not fulfilled")
-                .targets
-                .clone(),
+                .to_vec(),
         }
     }
 
