@@ -28,8 +28,7 @@ pub struct PlayerView {
     pub board: Vec<BoardCard>,
     /// A pending Forage's options, in reveal order. Empty if none is pending.
     pub revealed: Vec<RevealedCard>,
-    /// The card the player is naming targets for, and its targets so far. `None` if not
-    /// targeting.
+    /// The card in targeting and its targets so far. `None` if not targeting.
     pub targeting: Option<TargetingView>,
 }
 
