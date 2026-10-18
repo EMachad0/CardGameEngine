@@ -4,7 +4,6 @@ use crate::{
     game::{Game, reporting::Report, triggering::MatchedTrigger},
     ids::PlayerId,
     observer::{Observer, Views},
-    outcome::Outcome,
 };
 
 pub(in crate::game) struct Death {
@@ -15,18 +14,6 @@ impl From<Death> for Event {
     fn from(death: Death) -> Self {
         Event::Died {
             object_id: death.object_id,
-        }
-    }
-}
-
-pub(in crate::game) struct Ending {
-    outcome: Outcome,
-}
-
-impl From<Ending> for Event {
-    fn from(ending: Ending) -> Self {
-        Event::GameEnded {
-            outcome: ending.outcome,
         }
     }
 }
@@ -126,8 +113,8 @@ impl Game {
     }
 
     fn decide_outcome(&mut self, obs: &mut impl Observer) {
-        if let Some(outcome) = self.standings.decide() {
-            self.report(Report::GameEnded(Ending { outcome }), obs);
+        if let Some(ending) = self.standings.decide() {
+            self.report(Report::GameEnded(ending), obs);
             obs.checkpoint(Views::new(self));
         }
     }

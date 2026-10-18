@@ -1,12 +1,24 @@
 //! Who is still playing, and the outcome once the game is over. The game ends once, when at most
 //! one player is left.
 
-use crate::{ids::PlayerId, outcome::Outcome};
+use crate::{event::Event, ids::PlayerId, outcome::Outcome};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(in crate::game) struct Standings {
     playing: Vec<PlayerId>,
     outcome: Option<Outcome>,
+}
+
+pub(in crate::game) struct Ending {
+    outcome: Outcome,
+}
+
+impl From<Ending> for Event {
+    fn from(ending: Ending) -> Self {
+        Event::GameEnded {
+            outcome: ending.outcome,
+        }
+    }
 }
 
 impl Standings {
@@ -32,9 +44,8 @@ impl Standings {
             .retain(|player_id| !players.contains(player_id));
     }
 
-    /// Ends the game if at most one player is left and it hasn't ended yet. Returns the outcome
-    /// only when this call decided it.
-    pub(super) fn decide(&mut self) -> Option<Outcome> {
+    /// `Some` only from the call that ends the game.
+    pub(super) fn decide(&mut self) -> Option<Ending> {
         if self.outcome.is_some() {
             return None;
         }
@@ -43,7 +54,7 @@ impl Standings {
             [player_id] => Some(Outcome::Won(*player_id)),
             _ => None,
         };
-        self.outcome
+        self.outcome.map(|outcome| Ending { outcome })
     }
 }
 
@@ -61,10 +72,25 @@ mod tests {
         std::array::from_fn(PlayerId::new)
     }
 
+    fn ended(outcome: Outcome) -> Option<Event> {
+        Some(Event::GameEnded { outcome })
+    }
+
     #[test]
-    fn eliminated_players_stop_playing_and_the_rest_keep_seat_order() {
+    fn eliminating_a_player_leaves_the_rest_in_seat_order() {
         let [a, b, c] = players();
         let mut standings = Standings::new(vec![a, b, c]);
+
+        standings.eliminate(&[b]);
+
+        assert_eq!(standings.playing().collect::<Vec<_>>(), [a, c]);
+    }
+
+    #[test]
+    fn eliminating_a_player_already_out_changes_nothing() {
+        let [a, b, c] = players();
+        let mut standings = Standings::new(vec![a, b, c]);
+        standings.eliminate(&[b]);
 
         standings.eliminate(&[b]);
 
@@ -77,7 +103,7 @@ mod tests {
         let mut standings = Standings::new(vec![a, b]);
         standings.eliminate(&[a]);
 
-        assert_eq!(standings.decide(), Some(Outcome::Won(b)));
+        assert_eq!(standings.decide().map(Event::from), ended(Outcome::Won(b)));
         assert_eq!(standings.outcome(), Some(Outcome::Won(b)));
     }
 
@@ -87,7 +113,7 @@ mod tests {
         let mut standings = Standings::new(vec![a, b]);
         standings.eliminate(&[a, b]);
 
-        assert_eq!(standings.decide(), Some(Outcome::Draw));
+        assert_eq!(standings.decide().map(Event::from), ended(Outcome::Draw));
     }
 
     #[test]
@@ -96,7 +122,7 @@ mod tests {
         let mut standings = Standings::new(vec![a, b, c]);
         standings.eliminate(&[a]);
 
-        assert_eq!(standings.decide(), None);
+        assert!(standings.decide().is_none());
         assert_eq!(standings.outcome(), None);
     }
 
@@ -108,7 +134,7 @@ mod tests {
         standings.decide();
         standings.eliminate(&[b]);
 
-        assert_eq!(standings.decide(), None, "the game ends once");
+        assert!(standings.decide().is_none(), "the game ends once");
         assert_eq!(standings.outcome(), Some(Outcome::Won(b)));
     }
 }
