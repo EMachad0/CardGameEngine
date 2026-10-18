@@ -1,6 +1,6 @@
 # Mana has an owner
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 Blocked by: 06
@@ -38,3 +38,7 @@ into one module that both ask." "An owner answers questions about its own data."
 - One module holds the rules for spending and refilling mana, and the places that check, pay and
   refill ask it or command it.
 - The checks pass, and the PR justifies every behavior change.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/44
