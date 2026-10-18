@@ -1,4 +1,4 @@
-//! What the game awaits from each player, and the targets and picks they gave. The game awaits at
+//! What the game awaits from each player, and what they targeted and picked. The game awaits at
 //! most one thing from a player: targeting while playing a card, or a pending pick while a card
 //! resolves. A revealed card sits in a pending pick's options until picked, then in its picks.
 
@@ -105,7 +105,7 @@ impl PlayerInput {
     }
 
     /// `None` unless the card was played after targeting and declares `target_id`.
-    pub(super) fn targets(&self, object_id: ObjectId, target_id: TargetId) -> Option<&[ObjectId]> {
+    pub(super) fn targeted(&self, object_id: ObjectId, target_id: TargetId) -> Option<&[ObjectId]> {
         self.targets
             .iter()
             .find(|entry| entry.object_id == object_id && entry.target_id == target_id)
@@ -356,9 +356,9 @@ mod tests {
 
         input.commit_targeting(player, &[TargetId(0), TargetId(1)]);
 
-        assert_eq!(input.targets(card, TargetId(0)), Some(&[target][..]));
+        assert_eq!(input.targeted(card, TargetId(0)), Some(&[target][..]));
         assert_eq!(
-            input.targets(card, TargetId(1)),
+            input.targeted(card, TargetId(1)),
             Some(&[][..]),
             "a declared target with nothing targeted must still store an empty list",
         );
@@ -377,7 +377,7 @@ mod tests {
     }
 
     #[test]
-    fn committing_a_cards_targeting_again_replaces_its_targets() {
+    fn committing_a_cards_targeting_again_replaces_what_it_targeted() {
         let [card, first, second] = ids();
         let player = PlayerId::new(0);
         let mut input = PlayerInput::default();
@@ -389,11 +389,11 @@ mod tests {
 
         input.commit_targeting(player, &[TargetId(0)]);
 
-        assert_eq!(input.targets(card, TargetId(0)), Some(&[second][..]));
+        assert_eq!(input.targeted(card, TargetId(0)), Some(&[second][..]));
     }
 
     #[test]
-    fn cancelled_targeting_stores_no_targets() {
+    fn cancelled_targeting_stores_nothing_targeted() {
         let [card, target] = ids();
         let player = PlayerId::new(0);
         let mut input = PlayerInput::default();
@@ -402,7 +402,7 @@ mod tests {
 
         input.cancel(player);
 
-        assert_eq!(input.targets(card, TargetId(0)), None);
+        assert_eq!(input.targeted(card, TargetId(0)), None);
     }
 
     #[test]

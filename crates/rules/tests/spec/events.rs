@@ -833,6 +833,6 @@ fn a_card_with_targets_reports_played_then_hits_its_targeted_minions() {
             }],
             vec![hit(t.enemy[1]), hit(t.enemy[0])],
         ],
-        "one effect over a set of targets is one step, in the order they were targeted"
+        "one effect over a set of targeted minions is one step, in the order they were targeted"
     );
 }

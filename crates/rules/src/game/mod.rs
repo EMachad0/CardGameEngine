@@ -3,7 +3,7 @@
 //! `legal_actions` is the one definition of legality. `apply` accepts exactly
 //! what it lists, and an `Err` leaves the game unchanged. Child modules:
 //! - `player`: one player's resources.
-//! - `player_input`: what the game awaits from each player, and the targets and picks they gave.
+//! - `player_input`: what the game awaits from each player, and what they targeted and picked.
 //! - `resolve`: the mutation half of `apply`.
 //! - `lookup`: attack, health and cost, computed on read.
 #![expect(

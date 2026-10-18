@@ -90,7 +90,7 @@ fn apply_checked(game: &mut Game, history: &mut History, p: PlayerId, a: Action,
         Action::Play { object_id } => Some(game.def_id(object_id)),
         _ => None,
     };
-    let minion_targets: Vec<(usize, usize)> = match a {
+    let targeted_minions: Vec<(usize, usize)> = match a {
         Action::Play { .. } => history
             .targeted
             .iter()
@@ -119,7 +119,7 @@ fn apply_checked(game: &mut Game, history: &mut History, p: PlayerId, a: Action,
             history.spells_cast[i] += 1;
         }
         history.boards.played(i, def);
-        for (owner, position) in minion_targets {
+        for (owner, position) in targeted_minions {
             history
                 .boards
                 .damaged(owner, position, damage_per_target(def));

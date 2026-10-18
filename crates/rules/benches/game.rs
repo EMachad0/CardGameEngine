@@ -79,7 +79,7 @@ fn targeting_stages() -> [(&'static str, Game); 2] {
                 .iter()
                 .map(|&p| game.player_board(p).len())
                 .sum();
-            let targets = actions
+            let target_actions = actions
                 .iter()
                 .filter(|a| matches!(a, Action::Target { .. }))
                 .count();
@@ -90,8 +90,8 @@ fn targeting_stages() -> [(&'static str, Game); 2] {
             {
                 idle = Some((minions, game.clone()));
             }
-            if targets > 0 && open.as_ref().is_none_or(|(best, _)| targets > *best) {
-                open = Some((targets, game.clone()));
+            if target_actions > 0 && open.as_ref().is_none_or(|(best, _)| target_actions > *best) {
+                open = Some((target_actions, game.clone()));
             }
         });
     }

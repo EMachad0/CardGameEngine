@@ -1,5 +1,5 @@
-//! Targeting: a card that needs targets starts targeting, its targets are named one at a time, and
-//! then it is played.
+//! Targeting: a card with targets starts targeting, the player targets an object for each of them
+//! one at a time, and then the card is played.
 
 use pretty_assertions::assert_eq;
 use rules::prelude::Action;

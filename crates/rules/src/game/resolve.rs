@@ -322,7 +322,7 @@ impl Game {
             }
             CharacterSelector::Targeted(target_id) => self
                 .player_input
-                .targets(object_id, *target_id)
+                .targeted(object_id, *target_id)
                 .expect("Target not fulfilled")
                 .to_vec(),
         }

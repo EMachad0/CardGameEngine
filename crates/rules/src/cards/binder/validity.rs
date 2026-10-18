@@ -127,7 +127,7 @@ fn validate_target_on_trigger(defs: &[CardDef]) -> Result<(), CardDefError> {
     Ok(())
 }
 
-/// Whether a sequence resolves with the targets named in the card's targeting.
+/// Whether a sequence resolves with what the card's targeting targeted.
 fn resolves_with_targeting(origin: SequenceOrigin) -> bool {
     match origin {
         SequenceOrigin::Play => true,
