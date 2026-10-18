@@ -144,11 +144,13 @@ _Avoid_: valid move
 Paying a card's cost, taking it from the hand and resolving it.
 
 **Targeting**:
-A card a player has started to play but hasn't played yet, with the targets named so far.
+A card a player has started to play but hasn't played yet, with what they have targeted for it so
+far.
 _Avoid_: draft
 
 **Target**:
-To name what an effect will act on while playing the card, before it resolves.
+To name what an effect will act on while playing the card, before it resolves. As a noun, one
+thing a card declares the player must name. The objects named for it are targeted, not targets.
 _Avoid_: choose
 
 **Resolve**:
@@ -178,7 +180,7 @@ What the game waits on from one player before it goes on: targeting or a pending
 _Avoid_: question, prompt, request
 
 **Player input**:
-What the game awaits from each player, and the targets and picks each player gave a card.
+What the game awaits from each player, and what each player targeted and picked for a card.
 _Avoid_: interaction, answers
 
 **Bury**:
