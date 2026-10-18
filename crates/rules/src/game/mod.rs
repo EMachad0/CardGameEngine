@@ -7,7 +7,8 @@
 //! - `player_input`: what the game awaits from each player, and what they targeted and picked.
 //! - `reporting`: recording an event, telling the observer and pushing the triggers it matched.
 //! - `resolve`: the mutation half of `apply`.
-//! - `lookup`: attack, health, cost and amounts, computed on read.
+//! - `lookup`: definitions, heroes and amounts, computed on read.
+//! - `stats`: cost, attack, health and triggers, with the modifiers and auras that change them.
 //! - `mana`: one player's mana, and the rules for paying and refilling it.
 #![expect(
     clippy::definition_in_module_root,
@@ -22,6 +23,7 @@ mod player;
 mod player_input;
 mod reporting;
 pub(crate) mod resolve;
+mod stats;
 mod triggering;
 pub(crate) mod view;
 mod zone_move;
