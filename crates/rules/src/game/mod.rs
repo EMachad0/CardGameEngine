@@ -8,7 +8,8 @@
 //! - `reporting`: recording an event, telling the observer and pushing the triggers it matched.
 //! - `resolve`: the mutation half of `apply`.
 //! - `lookup`: definitions, heroes and amounts, computed on read.
-//! - `stats`: cost, attack, health and triggers, with the modifiers and auras that change them.
+//! - `modifiers`: the modifiers and auras that reach an object.
+//! - `stats`: cost, attack and health, as an object's modifiers and damage leave them.
 //! - `mana`: one player's mana, and the rules for paying and refilling it.
 #![expect(
     clippy::definition_in_module_root,
@@ -19,6 +20,7 @@ mod condition;
 mod effect_stack;
 mod lookup;
 mod mana;
+mod modifiers;
 mod player;
 mod player_input;
 mod reporting;

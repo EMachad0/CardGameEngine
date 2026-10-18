@@ -30,17 +30,17 @@ pub enum ModifierEffect {
     GrantTrigger(TriggerDef),
 }
 
-/// What a list of modifiers changes, each sorted to the stat its effect changes. Amounts stay
-/// unevaluated until a stat is asked for.
+/// Modifiers sorted by what each changes: a stat, or the triggers. Amounts stay unevaluated until
+/// a stat is asked for.
 #[derive(Debug, Default)]
-pub(crate) struct StatChanges<'a> {
+pub(crate) struct SortedModifiers<'a> {
     attack: Vec<&'a EffectAmount>,
     health: Vec<&'a EffectAmount>,
     cost: Vec<&'a EffectAmount>,
     triggers: Vec<(ObjectId, &'a TriggerDef)>,
 }
 
-impl<'a> StatChanges<'a> {
+impl<'a> SortedModifiers<'a> {
     pub(crate) fn add(&mut self, granted_by: ObjectId, effect: &'a ModifierEffect) {
         match effect {
             ModifierEffect::BuffAtk { amount } => self.attack.push(amount),
@@ -125,16 +125,16 @@ mod tests {
         }
     }
 
-    fn changes<'a>(granted_by: ObjectId, effects: &'a [ModifierEffect]) -> StatChanges<'a> {
-        let mut changes = StatChanges::default();
+    fn sorted<'a>(granted_by: ObjectId, effects: &'a [ModifierEffect]) -> SortedModifiers<'a> {
+        let mut modifiers = SortedModifiers::default();
         for effect in effects {
-            changes.add(granted_by, effect);
+            modifiers.add(granted_by, effect);
         }
-        changes
+        modifiers
     }
 
     #[test]
-    fn each_modifier_changes_only_its_own_stat() {
+    fn each_modifier_is_sorted_under_what_it_changes() {
         let [granter] = ids();
         let died = trigger(TriggerPattern::Died(TriggerSubject::Itself));
         let effects = [
@@ -143,17 +143,17 @@ mod tests {
             cost(3),
             ModifierEffect::GrantTrigger(died.clone()),
         ];
-        let changes = changes(granter, &effects);
+        let modifiers = sorted(granter, &effects);
 
         assert_eq!(
             (
-                changes.attack_bonus(evaluate),
-                changes.health_bonus(evaluate),
-                changes.cost_reduction(evaluate),
-                changes.granted_triggers().collect::<Vec<_>>(),
+                modifiers.attack_bonus(evaluate),
+                modifiers.health_bonus(evaluate),
+                modifiers.cost_reduction(evaluate),
+                modifiers.granted_triggers().collect::<Vec<_>>(),
             ),
             (1, 2, 3, vec![(granter, &died)]),
-            "each stat takes only the modifier that changes it",
+            "each modifier counts only toward the stat or the triggers it changes",
         );
     }
 
@@ -161,13 +161,13 @@ mod tests {
     fn modifiers_of_one_kind_add_up() {
         let [granter] = ids();
         let effects = [attack(1), attack(2), health(3), health(4), cost(1), cost(2)];
-        let changes = changes(granter, &effects);
+        let modifiers = sorted(granter, &effects);
 
         assert_eq!(
             (
-                changes.attack_bonus(evaluate),
-                changes.health_bonus(evaluate),
-                changes.cost_reduction(evaluate),
+                modifiers.attack_bonus(evaluate),
+                modifiers.health_bonus(evaluate),
+                modifiers.cost_reduction(evaluate),
             ),
             (3, 7, 3),
         );
@@ -175,14 +175,14 @@ mod tests {
 
     #[test]
     fn no_modifiers_change_nothing() {
-        let changes = StatChanges::default();
+        let modifiers = SortedModifiers::default();
 
         assert_eq!(
             (
-                changes.attack_bonus(evaluate),
-                changes.health_bonus(evaluate),
-                changes.cost_reduction(evaluate),
-                changes.granted_triggers().count(),
+                modifiers.attack_bonus(evaluate),
+                modifiers.health_bonus(evaluate),
+                modifiers.cost_reduction(evaluate),
+                modifiers.granted_triggers().count(),
             ),
             (0, 0, 0, 0),
         );
@@ -202,13 +202,13 @@ mod tests {
                 amount: spells_played(),
             },
         ];
-        let changes = changes(granter, &effects);
+        let modifiers = sorted(granter, &effects);
 
         assert_eq!(
             (
-                changes.attack_bonus(evaluate),
-                changes.health_bonus(evaluate),
-                changes.cost_reduction(evaluate),
+                modifiers.attack_bonus(evaluate),
+                modifiers.health_bonus(evaluate),
+                modifiers.cost_reduction(evaluate),
             ),
             (5, 5, 5),
             "each history amount must count as the 5 the evaluation returns",
@@ -222,11 +222,11 @@ mod tests {
         let damaged = trigger(TriggerPattern::Damaged(TriggerSubject::Itself));
         let first_effects = [ModifierEffect::GrantTrigger(died.clone())];
         let second_effects = [ModifierEffect::GrantTrigger(damaged.clone())];
-        let mut changes = changes(first, &first_effects);
-        changes.add(second, &second_effects[0]);
+        let mut modifiers = sorted(first, &first_effects);
+        modifiers.add(second, &second_effects[0]);
 
         assert_eq!(
-            changes.granted_triggers().collect::<Vec<_>>(),
+            modifiers.granted_triggers().collect::<Vec<_>>(),
             [(first, &died), (second, &damaged)],
         );
     }
