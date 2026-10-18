@@ -6,7 +6,6 @@ use crate::{
     observer::{Observer, Views},
 };
 
-/// A card being played, by the player who plays it.
 pub(super) struct Play {
     player_id: PlayerId,
     object_id: ObjectId,

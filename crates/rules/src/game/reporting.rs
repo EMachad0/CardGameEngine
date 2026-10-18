@@ -170,7 +170,7 @@ fn report_event(
     history.record(event, turn, objects);
     #[expect(
         clippy::disallowed_methods,
-        reason = "the one place that reports an event"
+        reason = "the one report to the observer, which every event reaches through Game::report"
     )]
     obs.event(event);
     for MatchedTrigger { source, effects } in matched {

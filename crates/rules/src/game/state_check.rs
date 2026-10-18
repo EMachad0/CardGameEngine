@@ -5,7 +5,6 @@ use crate::{
     outcome::Outcome,
 };
 
-/// A character the state check found dead.
 pub(super) struct Death {
     object_id: ObjectId,
 }
@@ -16,7 +15,6 @@ impl Death {
     }
 }
 
-/// The outcome the state check decided.
 pub(super) struct Ending {
     outcome: Outcome,
 }

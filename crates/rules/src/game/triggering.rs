@@ -8,7 +8,6 @@ use crate::{
     trigger::{TriggerPattern, TriggerSubject},
 };
 
-/// A trigger that matched, with the object it waits to resolve for.
 pub(super) struct MatchedTrigger {
     pub(super) source: ObjectId,
     pub(super) effects: EffectSequence,
