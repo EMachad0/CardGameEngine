@@ -7,12 +7,6 @@ use crate::{
     target::{CharacterTarget, TargetId},
 };
 
-/// An object the player may target for one of the card's targets.
-pub(super) struct Candidate {
-    pub(super) target_id: TargetId,
-    pub(super) object_id: ObjectId,
-}
-
 impl Game {
     /// Whether the card's targeting can be finished from nothing targeted.
     pub(super) fn can_start_targeting(&self, object_id: ObjectId) -> bool {
@@ -26,15 +20,12 @@ impl Game {
 
     /// The objects the player may target next, for the first target they may not stop at. Each one
     /// leaves the targeting finishable.
-    pub(super) fn next_candidates(&self, targeting: &Targeting) -> Vec<Candidate> {
+    pub(super) fn next_candidates(&self, targeting: &Targeting) -> Vec<(TargetId, ObjectId)> {
         let Some(target) = self.first_unsatisfied_target(targeting) else {
             return Vec::new();
         };
         self.finishing_candidates(target, &mut targeting.clone())
-            .map(|object_id| Candidate {
-                target_id: target.id,
-                object_id,
-            })
+            .map(|object_id| (target.id, object_id))
             .collect()
     }
 
