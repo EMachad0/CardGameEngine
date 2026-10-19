@@ -456,35 +456,37 @@ mod tests {
     #[test]
     fn targeted_for_lists_one_targets_objects_in_the_order_targeted() {
         let [card, first, other, second] = ids();
-        let mut targeting = Targeting::new(card);
+        let player = PlayerId::new(0);
+        let mut input = PlayerInput::default();
+        input.start_targeting(player, card);
+        input.target(player, first, TargetId(0));
+        input.target(player, other, TargetId(1));
+        input.target(player, second, TargetId(0));
 
-        let targeted = targeting.with_targeted(first, TargetId(0), |targeting| {
-            targeting.with_targeted(other, TargetId(1), |targeting| {
-                targeting.with_targeted(second, TargetId(0), |targeting| {
-                    targeting.targeted_for(TargetId(0)).collect::<Vec<_>>()
-                })
-            })
-        });
+        let targeting = input.targeting(player).unwrap();
 
-        assert_eq!(targeted, [first, second]);
+        assert_eq!(
+            targeting.targeted_for(TargetId(0)).collect::<Vec<_>>(),
+            [first, second]
+        );
     }
 
     #[test]
     fn an_object_targeted_for_any_target_is_targeted() {
-        let [card, target] = ids();
+        let [card, object] = ids();
         let mut targeting = Targeting::new(card);
 
-        assert!(targeting.with_targeted(target, TargetId(1), |targeting| {
-            targeting.is_targeted(target)
+        assert!(targeting.with_targeted(object, TargetId(1), |targeting| {
+            targeting.is_targeted(object)
         }));
     }
 
     #[test]
     fn an_object_not_yet_targeted_is_not_targeted() {
-        let [card, target, other] = ids();
+        let [card, object, other] = ids();
         let mut targeting = Targeting::new(card);
 
-        assert!(!targeting.with_targeted(target, TargetId(0), |targeting| {
+        assert!(!targeting.with_targeted(object, TargetId(0), |targeting| {
             targeting.is_targeted(other)
         }));
     }
@@ -508,12 +510,16 @@ mod tests {
 
     #[test]
     fn with_targeted_leaves_the_targeting_as_it_found_it() {
-        let [card, target] = ids();
-        let mut targeting = Targeting::new(card);
+        let [card, first, second] = ids();
+        let player = PlayerId::new(0);
+        let mut input = PlayerInput::default();
+        input.start_targeting(player, card);
+        input.target(player, first, TargetId(0));
+        let mut targeting = input.targeting(player).unwrap().clone();
 
-        targeting.with_targeted(target, TargetId(0), |_| {});
+        targeting.with_targeted(second, TargetId(0), |_| {});
 
-        assert_eq!(targeting, Targeting::new(card));
+        assert_eq!(&targeting, input.targeting(player).unwrap());
     }
 
     #[test]
