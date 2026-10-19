@@ -474,21 +474,25 @@ mod tests {
     #[test]
     fn an_object_targeted_for_any_target_is_targeted() {
         let [card, object] = ids();
-        let mut targeting = Targeting::new(card);
+        let player = PlayerId::new(0);
+        let mut input = PlayerInput::default();
+        input.start_targeting(player, card);
 
-        assert!(targeting.with_targeted(object, TargetId(1), |targeting| {
-            targeting.is_targeted(object)
-        }));
+        input.target(player, object, TargetId(1));
+
+        assert!(input.targeting(player).unwrap().is_targeted(object));
     }
 
     #[test]
     fn an_object_not_yet_targeted_is_not_targeted() {
         let [card, object, other] = ids();
-        let mut targeting = Targeting::new(card);
+        let player = PlayerId::new(0);
+        let mut input = PlayerInput::default();
+        input.start_targeting(player, card);
 
-        assert!(!targeting.with_targeted(object, TargetId(0), |targeting| {
-            targeting.is_targeted(other)
-        }));
+        input.target(player, object, TargetId(0));
+
+        assert!(!input.targeting(player).unwrap().is_targeted(other));
     }
 
     #[test]
