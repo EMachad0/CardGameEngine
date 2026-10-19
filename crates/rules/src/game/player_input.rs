@@ -513,6 +513,22 @@ mod tests {
     }
 
     #[test]
+    fn with_targeted_runs_f_with_the_object_also_targeted() {
+        let [card, first, second] = ids();
+        let player = PlayerId::new(0);
+        let mut input = PlayerInput::default();
+        input.start_targeting(player, card);
+        input.target(player, first, TargetId(0));
+        let mut targeting = input.targeting(player).unwrap().clone();
+
+        let targeted = targeting.with_targeted(second, TargetId(0), |targeting| {
+            targeting.targeted_for(TargetId(0)).collect::<Vec<_>>()
+        });
+
+        assert_eq!(targeted, [first, second]);
+    }
+
+    #[test]
     fn with_targeted_leaves_the_targeting_as_it_found_it() {
         let [card, first, second] = ids();
         let player = PlayerId::new(0);
