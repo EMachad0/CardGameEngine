@@ -458,16 +458,15 @@ mod tests {
         let [card, first, other, second] = ids();
         let mut targeting = Targeting::new(card);
 
-        targeting.with_targeted(first, TargetId(0), |targeting| {
+        let targeted = targeting.with_targeted(first, TargetId(0), |targeting| {
             targeting.with_targeted(other, TargetId(1), |targeting| {
                 targeting.with_targeted(second, TargetId(0), |targeting| {
-                    assert_eq!(
-                        targeting.targeted_for(TargetId(0)).collect::<Vec<_>>(),
-                        [first, second],
-                    );
+                    targeting.targeted_for(TargetId(0)).collect::<Vec<_>>()
                 })
             })
         });
+
+        assert_eq!(targeted, [first, second]);
     }
 
     #[test]
@@ -475,9 +474,9 @@ mod tests {
         let [card, target] = ids();
         let mut targeting = Targeting::new(card);
 
-        targeting.with_targeted(target, TargetId(1), |targeting| {
-            assert!(targeting.is_targeted(target));
-        });
+        assert!(targeting.with_targeted(target, TargetId(1), |targeting| {
+            targeting.is_targeted(target)
+        }));
     }
 
     #[test]
@@ -485,9 +484,9 @@ mod tests {
         let [card, target, other] = ids();
         let mut targeting = Targeting::new(card);
 
-        targeting.with_targeted(target, TargetId(0), |targeting| {
-            assert!(!targeting.is_targeted(other));
-        });
+        assert!(!targeting.with_targeted(target, TargetId(0), |targeting| {
+            targeting.is_targeted(other)
+        }));
     }
 
     #[test]
