@@ -184,12 +184,14 @@ impl Game {
             }
             Some(Awaiting::Targets(targeting)) => {
                 let object_id = targeting.object_id();
-                actions.extend(self.next_candidates(targeting).into_iter().map(
-                    |(target_id, object_id)| Action::Target {
-                        target_id,
-                        object_id,
-                    },
-                ));
+                actions.extend(
+                    self.next_candidates(targeting)
+                        .into_iter()
+                        .map(|candidate| Action::Target {
+                            target_id: candidate.target_id,
+                            object_id: candidate.object_id,
+                        }),
+                );
                 if self.may_stop_targeting(targeting) {
                     actions.push(Action::Play { object_id });
                 }
