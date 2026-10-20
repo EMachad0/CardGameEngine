@@ -49,8 +49,9 @@ up.
   problem, the code that shows it and the rule it breaks, never a shape, and carries only the
   rulings he cares about. Applying settled rules to existing code is the agent's part, with no
   exercise (his calls, 02e).
-- AFK agents work the tickets, one PR each, one ticket at a time. They run one to five review
-  rounds with subagents and state their intentions in the PR body. A behavior change is allowed
+- AFK agents work the tickets, one PR each, one ticket at a time. They run review rounds with
+  subagents until one finds nothing to fix (his call, 02f; one to five before), and state their
+  intentions in the PR body. A behavior change is allowed
   when the PR justifies it, except a rules change or a known bug, which the card game course
   decides (his call, 02e). He checks the intentions against the code and merges. A
   choice of theirs he disagrees with marks a gap in the convention docs, which goes back into the
@@ -222,6 +223,20 @@ up.
   on a ledger case.
 - 00 beliefs, probably resolved: a method on `Player` makes it "an object rather than data", and
   fear of delegation boilerplate on `Game`.
+- Commands and the whole-state readers (02f): said he "did not got deeper on the problem", skipped
+  deriving `play`'s borrows ("I get it that it is a lot of fields") and asked whether the problem is
+  "too many parameters". Quiz right that a borrow held only to lend it can be used directly. Named
+  two families unaided: "break the step into two commands and the orchestrator would know the
+  order" (yield, the order left in the orchestrator until refined) and "step could recieve a
+  struct to pass notify, but it could not hold A" (lend, the conflict found himself). Asked for one
+  that gives up a fact, he gave defer. Raised West's "make state available everywhere" himself, and
+  asked for wider research before trusting the list. On yield, unaided: a fact survives the pause
+  only "trough informal knowledge that report does not change that".
+- His verdicts (02f): runtime checks out ("I very much dislike"), lend "too cumbersome", yield
+  only if a library helped, and "hand writting state machines per comand wont cut it". He asked to
+  evaluate matching per step, a rules change, with a split wherever a step must not batch, accepted
+  the structure, then had the ticket state the problem only: "let the agents arive on it or
+  something better".
 
 ### Checks and proofs
 
@@ -288,6 +303,10 @@ up.
   `pub(super)` is harmless since calls are formal: half right, since a wrong call compiles and
   locality decides. Feared nesting depth, settled by counting today's keepers. Quiz right on
   `apply_effect` as a third child.
+- Probe (02f), 3 of 3: a `&mut` lent as `&` for one call, a suspended future keeping its borrow,
+  and a borrow granting the owner's whole interface. On the third he couldn't picture "a narrowed
+  borrow listing only the owners it writes" until shown one. The 02g edge, borrow mechanics inside
+  a proof's design, didn't show.
 
 ### Other architecture topics, probed only
 
@@ -348,6 +367,9 @@ up.
   ("conversation is hard to follow when it is not clear what u are refering too"), and I misread
   his consumed-proof design until he corrected it. He cancelled a quiz to ask a question first. He
   asked me to word the node 3 rule and to suggest node 4's.
+- In 02f a probe assumed a shape he had never seen ("I dont know what [...] looks like"), and he
+  skipped a derivation he found obvious. He wanted the problem understood before the solutions,
+  and research wide enough not to "miss the optimal design".
 
 ## Course plan
 
@@ -371,6 +393,9 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
    shell (done). 02e: the untangling as ten tickets in `docs/issues/untangle-game/`, which
    state problems and leave the shape to the agents, with no exercise and no audit (done, PR #37).
    02f: review the untangling PRs as they land, and put the doc gaps they surface into the doc.
+   Done in 02f for PR #51's open question, how a command reports and checkpoints without holding
+   all of `Game`: the problem, six families and their costs, his verdict, ticket 13. The doc gaps
+   of PR #51 and tickets 11 to 13 wait for session 02h, after 13's review.
    Unused material: `research/02b-pass-and-coordinator/scope.md` (Forge and XMage, the Process
    Manager). Session 02g, its own node: parse, don't validate (Alexis King,
    2019). A check's result carried forward as a type, not an assumption; who can build the proof,
@@ -408,13 +433,15 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   32 as a fact in ticket 03. Not ticketed: 2, the hero bugs of 3, 9's uncleared answers and reused
   pick ID, and 18 (card-game bugs); 17's two owner sources (a rules question, left alone in ticket
   01); 20 and 31 (checkpoints); 22 (session 04). Ticketed in 02g, PR #38: 12 and 35 in ticket 12,
-  33 in ticket 11, 34 in ticket 08. Merge #38 before ticket 01 launches.
+  33 in ticket 11, 34 in ticket 08. Merge #38 before ticket 01 launches. Ticketed in 02f: 20 and
+  31 in ticket 13, which also deletes the effort folder.
   Fixed in 01e: 3 (#28, with both hero bugs left as they were), 10 (#14), 11 and 23 (#10),
   14 (#15), 15 (#23), and 22 in part (#10; `CardDef` is still public, now through the prelude).
   1. `game` is one module holding about fifteen independent decisions. Child types with private
      fields; `game` keeps the coordinator. Session 02e.
   2. Death pass reports one death at a time, against ADR 0012: the Mourner bug, live (4). Filed
-     on main as `docs/issues/dying-mourner-hears-older-death.md`.
+     on main as `docs/issues/dying-mourner-hears-older-death.md`. The card game course fixes it
+     before ticket 13 starts (02f).
   3. Characters in play computed in four or five places. One scan answers "all", random and draft
      candidates. A dead hero hears its own death twice; an eliminated hero stays a target (1).
   4. Order of play: `pub` stamp, five writers, three sorts, docstring against ADR 0012. Trigger
@@ -476,7 +503,8 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   31. Checkpoints: ten sites and no keeper. No decision behind the placement yet (his call, 02d).
       Revisit when a shell reads views, in session 03 or the card-game course, and review the
       `events.rs` tests that pin positions, such as `a_checkpoint_follows_a_card_leaving_the_hand`.
-      Refines 20.
+      Refines 20. Ticket 13 (02f) asks for one place that decides where they fall, at today's
+      positions. The placement itself stays open.
   32. `emit` reports `Died` after removal, and `health` is `None` off the board, so `kill` takes
       the history snapshot and it travels with the report. For #16's redo.
   33. `apply` checks `legal_actions` for a `bool`, and `apply_action` relies on it through
@@ -517,6 +545,24 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   Draft checkpointing in `apply_action` while Play does it in `play`.
 - The design threads from here to the D4 ideas stayed out of the untangling tickets, so the agents
   find the shape (his call, 02e). Compare each PR against its thread at the 02f review.
+- Commands and the whole-state readers (02f), for ticket 13's review in 02h. A command that reports
+  or checkpoints holds what the readers read, so a struct of borrows for it mirrors `Game`. Six
+  families from a case split (who reads, when, what), checked by three researchers in
+  `research/02f-commands-and-state/`: accept the whole state (every card engine read, and rustc's
+  `TyCtxt` with a write gate), lend, yield, runtime check, defer (excluded, since matching sees
+  the moment) and narrow the reader (ADR 0011 rejected the registry). He ruled out runtime checks,
+  lend and a hand-written state machine per command. He evaluated and accepted, as a structure
+  and not a ruling: steps that write only their owners and return their events, a driver that
+  matches each step's events against the state the step leaves and checkpoints after each step,
+  and a split wherever a step must not batch. By my reading, unprobed, only `play` must split
+  (`Played` before `summon`): ADR 0012 already batches deaths, and `Damaged` batches safely.
+  Ticket 13 states the problem only, with the matching ruling and his three rejections.
+  Restricting one owner command to its caller, such as `Mana::refill` to the turn start, is out of
+  13, since `&mut Mana` reaches `refill` (probe 3). A later ticket if he wants it. PR #51's doc
+  gaps are unsettled: a struct of borrows mirroring its owner, a main type under a subtree of its
+  commands, methods on a sibling's struct, a second builder for the selectors, and no coordinator
+  free of decisions. Ticket 13 may answer the first two and the last. He chose a verdict and the
+  families, not doc rules, so nothing went into `file-structure.md`.
 - The stack owner (02c), for 02e and #17's redo in 02f. Private `effect_stack` and
   `resolving_effect`. `next_effect() -> Next { Effect(ObjectId, Effect), Finished, Empty }` reads
   and advances in one command. It returns `Finished` at every boundary between resolving effects,
@@ -590,7 +636,8 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   level of concepts, with no signatures or code, and probe only what the knowledge map doesn't
   already show (02c); probe concepts, never facts about the code, and define shorthand such as
   "ladder" or drop it (02d); don't turn applying settled rules to existing code into an exercise
-  (02e); when referring to his design, quote the words meant, never "the other version" (02g). Propose the edits to him for review.
+  (02e); when referring to his design, quote the words meant, never "the other version" (02g); show a design's shape before a quiz assumes it (02f). Propose
+  the edits to him for review.
 - `fulfill_character_filter` is half narrow already: the side check is a free function in
   `cards/filter.rs`, while the kind check goes from object to definition to `binder`. Material for
   sessions 02e and 04.
@@ -634,6 +681,7 @@ graph TD
   STK["The stack owner (done)"]
   C["Chained keepers, one value of a shared command, emit's parameters (done)"]
   PDV["Parse, don't validate: proofs as types, and when they go stale (done)"]
+  CMD["Commands and whole-state readers: lend, yield, defer, narrow (done)"]
   DOD["Data-oriented design and ECS"]
   P["Ports, anti-corruption layers, contract tests"]
   T["Tests as design feedback"]
@@ -664,6 +712,9 @@ graph TD
   O-->C
   R1-->PDV
   C-->PDV
+  C-->CMD
+  R4-->CMD
+  CMD-->DOD
   PDV-->DOD
   PDV-->P
   PDV-->DOCS
@@ -706,9 +757,10 @@ graph TD
 | 02c | ORD, STK | Orders between steps; the stack owner | done (probe 5 of 5, which he called retesting; swap test from his experiment, the callee's contract found after the `apply` case; "Orders between steps" in `file-structure.md`, rule defined, "of the domain" dropped; per-object death rattle helper again in production; stack owner with a `Next` enum; push keeper drafted; exercises moved to the level of concepts; audit unreviewed) |
 | 02d | C | Review the 02c audit; where `apply` lives, `emit`'s parameters, one event variant, checkpoints | done (a probe on code facts he objected to, then 2 of 2 on concepts; gaps G1 to G7 settled in `file-structure.md`, among them output as observable and reachable by accepted input; chained keepers nest one level per link; a rule about one value restricts who builds it, the token in an internal input; a struct of borrows for many callers; checkpoints wait for a shell; his exercise designs are not settled designs) |
 | 02e | untangle | Untangle `Game` as tickets | done (exercises dropped at his call, since applying settled rules is the agent's part; ten tickets in `docs/issues/untangle-game/` state problems, not shapes, and carry one ruling, matching stays with reporting; one ticket at a time, one to five review rounds; behavior changes allowed when justified, except rules changes and known bugs; no audit; PR #37) |
-| 02f | review | Review the untangling PRs; the doc gaps they surface | next, once he has run the untangling |
+| 02f | CMD | Commands and the whole-state readers, PR #51's open question | done (probe 3 of 3 on borrow mechanics; the problem is the readers inside every command, not the number of parameters; six families, checked by three researchers; runtime checks, lend and per-command state machines ruled out; matching per step with forced splits evaluated and accepted; ticket 13 states the problem only; review rounds unlimited) |
 | 02g | PDV | Parse, don't validate: `apply` and `legal_actions`, `ObjectId` by zone | done (probe edge was a proof's reach, he let `apply` skip the check; four nodes, each a rule in "Parse, don't validate", plus a Rust bullet on proofs that borrow; `apply` exercise reached "&mut or owned values" after one question; `ObjectId`: identity in stored IDs, per-zone proofs from the location owner, his first proof borrowed the ID; no audit, findings 33 to 35 and 12 ticketed as 08, 11 and 12, PR #38) |
-| 03 | DOD | Data-oriented design, ECS organization, the rules core beside Bevy | |
+| 02h | review | The doc gaps of PR #51 and tickets 11 to 13 | once ticket 13 lands |
+| 03 | DOD | Data-oriented design, ECS organization, the rules core beside Bevy | next |
 | 04 | R3, P, T | Ports, anti-corruption layers, contract tests, tests as feedback | |
 | 05 | F | Feature-first, shared code, naming | |
 | 06 | RS, E | Rust layer and enforcement | |

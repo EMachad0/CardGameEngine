@@ -135,6 +135,7 @@ Understand card game systems well enough to design MTG, Hearthstone, or Yu-Gi-Oh
 
 ## Open threads
 
+- The Mourner fix, `docs/issues/dying-mourner-hears-older-death.md`: test-first under the course roles, and before architecture ticket 13 (`docs/issues/untangle-game/issues/13-game-data.md`), which waits for it (his call, architecture 02f). Its PR deletes the issue file and the bug's line under the untangle spec's known bugs.
 - Outside a pending pick, only the active player has legal actions, so an opponent's response is never offered. Session 08.
 - Signed modifiers: `ModifierEffect` amounts are `u8` since 04a, so "-2 Attack" or "costs (1) more" needs its own verb (the sign in the verb, like restore). He didn't say whether that's intended. Settle it with the first debuff or cost-increase card.
 - Random with no candidates: Stray Shot stays playable into an empty board and does nothing (Bomb Lobber), his 04b call "at least for now". `can_finish_targeting` reads only declared targets. The alternative is Deadly Shot's `REQ_MINIMUM_ENEMY_MINIONS`, a play condition that no target implies.
