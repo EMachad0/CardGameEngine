@@ -11,6 +11,8 @@
 //! - `modifiers`: the modifiers and auras that reach an object.
 //! - `stats`: cost, attack and health, as an object's modifiers and damage leave them.
 //! - `mana`: one player's mana, and the rules for paying and refilling it.
+//! - `targeting_walk`: whether targeting can be finished, what the player may target next, and
+//!   whether they may stop.
 #![expect(
     clippy::definition_in_module_root,
     reason = "the child modules read Game's private fields, which a leaf would hide from them"
@@ -26,6 +28,7 @@ mod player_input;
 mod reporting;
 pub(crate) mod resolve;
 mod stats;
+mod targeting_walk;
 mod triggering;
 pub(crate) mod view;
 mod zone_move;
@@ -162,7 +165,7 @@ impl Game {
                             actions.push(Action::Play { object_id });
                         }
                         false => {
-                            if self.can_finish_targeting(object_id, &mut Vec::new()) {
+                            if self.can_start_targeting(object_id) {
                                 actions.push(Action::StartTargeting { object_id });
                             }
                         }
@@ -181,33 +184,13 @@ impl Game {
             }
             Some(Awaiting::Targets(targeting)) => {
                 let object_id = targeting.object_id();
-                let targeted = targeting.targeted();
-                let mut all_targets_fulfilled = true;
-                for target in &self.card_def(object_id).targets {
-                    let targeted_count = targeted
-                        .iter()
-                        .filter(|(_, target_id)| target.id == *target_id)
-                        .count();
-                    if self.check_target_count_fulfilled(object_id, target.id, targeted_count as u8)
-                    {
-                        continue;
-                    }
-
-                    let candidates = self.scan_for_valid_targets(object_id, target, targeted);
-                    for candidate in candidates.into_iter() {
-                        let mut targeted = targeted.to_vec();
-                        targeted.push((candidate, target.id));
-                        if self.can_finish_targeting(object_id, &mut targeted) {
-                            actions.push(Action::Target {
-                                target_id: target.id,
-                                object_id: candidate,
-                            })
-                        }
-                    }
-                    all_targets_fulfilled = false;
-                    break;
-                }
-                if all_targets_fulfilled {
+                actions.extend(self.next_candidates(targeting).into_iter().map(
+                    |(target_id, object_id)| Action::Target {
+                        target_id,
+                        object_id,
+                    },
+                ));
+                if self.may_stop_targeting(targeting) {
                     actions.push(Action::Play { object_id });
                 }
                 actions.push(Action::Cancel { object_id });

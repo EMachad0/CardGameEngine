@@ -34,13 +34,49 @@ pub(super) struct Targeting {
 }
 
 impl Targeting {
+    /// With nothing targeted yet.
+    pub(super) fn new(object_id: ObjectId) -> Self {
+        Self {
+            object_id,
+            targeted: Vec::new(),
+        }
+    }
+
     pub(super) fn object_id(&self) -> ObjectId {
         self.object_id
     }
 
     /// In the order targeted.
-    pub(super) fn targeted(&self) -> &[(ObjectId, TargetId)] {
-        &self.targeted
+    pub(super) fn targeted_objects(&self) -> impl Iterator<Item = ObjectId> {
+        self.targeted.iter().map(|&(object_id, _)| object_id)
+    }
+
+    /// In the order targeted.
+    pub(super) fn targeted_for(&self, target_id: TargetId) -> impl Iterator<Item = ObjectId> {
+        self.targeted
+            .iter()
+            .filter(move |&&(_, id)| id == target_id)
+            .map(|&(object_id, _)| object_id)
+    }
+
+    /// Whether `object_id` is targeted for any target.
+    pub(super) fn is_targeted(&self, object_id: ObjectId) -> bool {
+        self.targeted_objects()
+            .any(|targeted| targeted == object_id)
+    }
+
+    /// Runs `f` on this targeting with `object_id` also targeted for `target_id`, then takes it
+    /// back out.
+    pub(super) fn with_targeted<R>(
+        &mut self,
+        object_id: ObjectId,
+        target_id: TargetId,
+        f: impl FnOnce(&mut Self) -> R,
+    ) -> R {
+        self.targeted.push((object_id, target_id));
+        let result = f(self);
+        self.targeted.pop();
+        result
     }
 }
 
@@ -121,13 +157,7 @@ impl PlayerInput {
 
     /// Replaces any targeting the player has. Panics if they have a pending pick.
     pub(super) fn start_targeting(&mut self, player_id: PlayerId, object_id: ObjectId) {
-        self.ask(
-            player_id,
-            Awaiting::Targets(Targeting {
-                object_id,
-                targeted: Vec::new(),
-            }),
-        );
+        self.ask(player_id, Awaiting::Targets(Targeting::new(object_id)));
     }
 
     pub(super) fn target(&mut self, player_id: PlayerId, object_id: ObjectId, target_id: TargetId) {
@@ -148,13 +178,10 @@ impl PlayerInput {
     /// Closes the player's targeting and stores the card's targeted objects for each target in
     /// `target_ids`, replacing any it had.
     pub(super) fn commit_targeting(&mut self, player_id: PlayerId, target_ids: &[TargetId]) {
-        let Some(Awaiting::Targets(Targeting {
-            object_id,
-            targeted,
-        })) = self.take(player_id)
-        else {
+        let Some(Awaiting::Targets(targeting)) = self.take(player_id) else {
             unreachable!();
         };
+        let object_id = targeting.object_id;
         self.targets.retain(|entry| entry.object_id != object_id);
         let idx = self
             .targets
@@ -162,11 +189,7 @@ impl PlayerInput {
         let entries = target_ids.iter().map(|&target_id| StoredTargets {
             object_id,
             target_id,
-            targeted: targeted
-                .iter()
-                .filter(|(_, t)| *t == target_id)
-                .map(|(o, _)| *o)
-                .collect(),
+            targeted: targeting.targeted_for(target_id).collect(),
         });
         self.targets.splice(idx..idx, entries);
     }
@@ -428,6 +451,95 @@ mod tests {
             input.targeting(player).map(Targeting::object_id),
             Some(card)
         );
+    }
+
+    #[test]
+    fn targeted_for_lists_one_targets_objects_in_the_order_targeted() {
+        let [card, first, other, second] = ids();
+        let player = PlayerId::new(0);
+        let mut input = PlayerInput::default();
+        input.start_targeting(player, card);
+        input.target(player, first, TargetId(0));
+        input.target(player, other, TargetId(1));
+        input.target(player, second, TargetId(0));
+
+        let targeting = input.targeting(player).unwrap();
+
+        assert_eq!(
+            targeting.targeted_for(TargetId(0)).collect::<Vec<_>>(),
+            [first, second]
+        );
+    }
+
+    #[test]
+    fn an_object_targeted_for_any_target_is_targeted() {
+        let [card, object] = ids();
+        let player = PlayerId::new(0);
+        let mut input = PlayerInput::default();
+        input.start_targeting(player, card);
+
+        input.target(player, object, TargetId(1));
+
+        assert!(input.targeting(player).unwrap().is_targeted(object));
+    }
+
+    #[test]
+    fn an_object_not_yet_targeted_is_not_targeted() {
+        let [card, object, other] = ids();
+        let player = PlayerId::new(0);
+        let mut input = PlayerInput::default();
+        input.start_targeting(player, card);
+
+        input.target(player, object, TargetId(0));
+
+        assert!(!input.targeting(player).unwrap().is_targeted(other));
+    }
+
+    #[test]
+    fn targeting_lists_its_targeted_objects_in_the_order_targeted() {
+        let [card, first, second] = ids();
+        let player = PlayerId::new(0);
+        let mut input = PlayerInput::default();
+        input.start_targeting(player, card);
+        input.target(player, first, TargetId(1));
+        input.target(player, second, TargetId(0));
+
+        let targeting = input.targeting(player).unwrap();
+
+        assert_eq!(
+            targeting.targeted_objects().collect::<Vec<_>>(),
+            [first, second]
+        );
+    }
+
+    #[test]
+    fn with_targeted_runs_f_with_the_object_also_targeted() {
+        let [card, first, second] = ids();
+        let player = PlayerId::new(0);
+        let mut input = PlayerInput::default();
+        input.start_targeting(player, card);
+        input.target(player, first, TargetId(0));
+        let mut targeting = input.targeting(player).unwrap().clone();
+
+        let targeted = targeting.with_targeted(second, TargetId(0), |targeting| {
+            targeting.targeted_for(TargetId(0)).collect::<Vec<_>>()
+        });
+
+        assert_eq!(targeted, [first, second]);
+    }
+
+    #[test]
+    fn with_targeted_leaves_the_targeting_as_it_found_it() {
+        let [card, first, second] = ids();
+        let player = PlayerId::new(0);
+        let mut input = PlayerInput::default();
+        input.start_targeting(player, card);
+        input.target(player, first, TargetId(0));
+        let mut targeting = input.targeting(player).unwrap().clone();
+
+        targeting.with_targeted(second, TargetId(0), |_| {});
+
+        assert_eq!(&targeting, input.targeting(player).unwrap());
     }
 
     #[test]

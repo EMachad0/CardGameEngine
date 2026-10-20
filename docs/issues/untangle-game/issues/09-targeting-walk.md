@@ -1,6 +1,6 @@
 # One walk over a card's targets
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 Blocked by: 08
@@ -47,3 +47,7 @@ name."
 - "Is this target full" and "may the player stop" are separate questions, each with its own
   function.
 - The checks pass, and the PR justifies every behavior change.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/49

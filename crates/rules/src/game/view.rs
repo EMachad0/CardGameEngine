@@ -155,7 +155,7 @@ impl Game {
             .targeting(player_id)
             .map(|targeting| TargetingView {
                 object_id: targeting.object_id(),
-                targeted: targeting.targeted().iter().map(|(o, _)| *o).collect(),
+                targeted: targeting.targeted_objects().collect(),
             })
     }
 }
