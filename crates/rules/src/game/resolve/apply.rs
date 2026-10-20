@@ -65,7 +65,6 @@ impl Game {
             }
             Action::EndTurn => {
                 self.end_turn(obs);
-                self.start_turn(obs);
                 obs.checkpoint(Views::new(self));
             }
             Action::StartTargeting { object_id } => {

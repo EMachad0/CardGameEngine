@@ -30,6 +30,7 @@ pub(crate) mod resolve;
 mod stats;
 mod targeting_walk;
 mod triggering;
+mod turn_change;
 pub(crate) mod view;
 mod zone_move;
 
@@ -41,11 +42,9 @@ use crate::cards::object::{ObjectBag, ObjectId};
 use crate::game::effect_stack::EffectStack;
 use crate::game::player::Player;
 use crate::game::player_input::{Awaiting, PlayerInput};
-use crate::game::reporting::Report;
 use crate::game::resolve::aftermath::standings::Standings;
 use crate::history::History;
 use crate::ids::PlayerId;
-use crate::observer::Observer;
 use crate::outcome::Outcome;
 use crate::rng::Rng;
 use crate::turn::TurnOrder;
@@ -228,25 +227,6 @@ impl Game {
 
     pub fn outcome(&self) -> Option<Outcome> {
         self.standings.outcome()
-    }
-
-    fn end_turn(&mut self, obs: &mut impl Observer) {
-        let active_player_id = self.turn_order.get_active_player_id();
-        let report = Report::TurnEnded {
-            player_id: active_player_id,
-        };
-        self.report(report, obs);
-        self.turn_order.end_turn();
-    }
-
-    fn start_turn(&mut self, obs: &mut impl Observer) {
-        let active_player_id = self.turn_order.get_active_player_id();
-        let report = Report::TurnStarted {
-            player_id: active_player_id,
-        };
-        self.report(report, obs);
-        self.get_player_mut(active_player_id).mana.refill();
-        self.draw(active_player_id, 1, obs);
     }
 
     fn get_player(&self, player_id: PlayerId) -> &Player {
