@@ -135,7 +135,7 @@ impl Report {
 impl Game {
     pub(super) fn report(&mut self, report: Report, obs: &mut impl Observer) {
         let event = report.into_event();
-        let matched = self.matched_triggers(&event);
+        let matched = self.cards().matched_triggers(&event);
         report_event(
             &event,
             matched,

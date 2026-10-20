@@ -16,7 +16,7 @@ impl Game {
     ) {
         match effect {
             Effect::Draw { selector, amount } => {
-                let amount = self.effect_amount(amount, owner);
+                let amount = self.cards().effect_amount(amount, owner);
                 let targets = self.resolve_player_selector(owner, selector);
                 for target in targets.into_iter() {
                     self.draw(target, amount, obs);
@@ -27,7 +27,7 @@ impl Game {
                 selector,
                 amount,
             } => {
-                let amount = self.effect_amount(amount, owner);
+                let amount = self.cards().effect_amount(amount, owner);
                 let targets = self.resolve_player_selector(owner, selector);
                 for target in targets.into_iter() {
                     self.reveal(target, source, *pick_id, amount, obs);
@@ -53,7 +53,7 @@ impl Game {
                 }
             }
             Effect::Damage { selector, amount } => {
-                let amount = self.effect_amount(amount, owner);
+                let amount = self.cards().effect_amount(amount, owner);
                 let targets = self.resolve_character_selector(owner, source, selector);
                 for target in targets.into_iter() {
                     self.damage(target, amount, source, obs);

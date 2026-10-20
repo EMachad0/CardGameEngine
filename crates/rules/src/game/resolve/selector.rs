@@ -37,11 +37,13 @@ impl Game {
         selector: &CharacterSelector,
     ) -> Vec<ObjectId> {
         match selector {
-            CharacterSelector::All(filter) => self.scan_characters_with_filter(owner, filter),
+            CharacterSelector::All(filter) => {
+                self.cards().scan_characters_with_filter(owner, filter)
+            }
             CharacterSelector::Itself => vec![object_id],
             CharacterSelector::OwnerHero => vec![self.hero_id(owner)],
             CharacterSelector::Random(filter) => {
-                let candidates = self.scan_characters_with_filter(owner, filter);
+                let candidates = self.cards().scan_characters_with_filter(owner, filter);
                 self.rng.choose(&candidates).copied().into_iter().collect()
             }
             CharacterSelector::Targeted(target_id) => self

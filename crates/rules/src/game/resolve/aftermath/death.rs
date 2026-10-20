@@ -20,10 +20,11 @@ impl From<Death> for Event {
 
 impl Game {
     fn find_dead(&self) -> Vec<ObjectId> {
+        let cards = self.cards();
         let mut death_pass = Vec::new();
         for player_id in self.players().into_iter() {
             for card in self.zones.board_cards(player_id) {
-                if self.character_health(card.into()) <= 0 {
+                if cards.character_health(card.into()) <= 0 {
                     death_pass.push(card.object_id());
                 }
             }
@@ -67,7 +68,7 @@ impl Game {
 
     fn kill(&mut self, deaths: Vec<Death>, obs: &mut impl Observer) {
         for death in deaths.iter() {
-            for MatchedTrigger { source, effects } in self.death_rattles(death.object_id) {
+            for MatchedTrigger { source, effects } in self.cards().death_rattles(death.object_id) {
                 self.effect_stack.push(source, effects);
             }
         }
@@ -75,7 +76,7 @@ impl Game {
         for death in deaths.into_iter() {
             let object_id = death.object_id;
             let object = self.objects.get(object_id);
-            if self.card_def(object_id).leaves_zone_on_death() {
+            if self.cards().card_def(object_id).leaves_zone_on_death() {
                 self.destroy(object.player_id, object_id);
             }
             self.report(Report::Died(death), obs);
@@ -91,7 +92,7 @@ impl Game {
             .leave_board(player_id, object_id)
             .expect("object not in board");
 
-        if self.card_def(object_id).goes_to_graveyard() {
+        if self.cards().card_def(object_id).goes_to_graveyard() {
             self.entomb(player_id, object_id);
         }
     }

@@ -2,11 +2,11 @@
 //! whether they may stop.
 
 use crate::cards::object::ObjectId;
-use crate::game::Game;
+use crate::game::cards::Cards;
 use crate::game::player_input::Targeting;
 use crate::target::{CharacterTarget, TargetId};
 
-impl Game {
+impl Cards<'_> {
     /// Whether the card's targeting can be finished from nothing targeted.
     pub(super) fn can_start_targeting(&self, object_id: ObjectId) -> bool {
         self.can_finish_targeting(&mut Targeting::new(object_id))

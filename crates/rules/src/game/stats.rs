@@ -4,6 +4,7 @@
 use crate::cards::object::ObjectId;
 use crate::effect::EffectAmount;
 use crate::game::Game;
+use crate::game::cards::Cards;
 use crate::ids::PlayerId;
 use crate::zones::{InHand, InPlay, OnBoard};
 
@@ -12,27 +13,30 @@ impl Game {
     pub fn mana_cost(&self, object_id: ObjectId) -> Option<u8> {
         let owner = self.objects.get(object_id).player_id;
         let card = self.zones.find_in_hand(owner, object_id)?;
-        Some(self.cost(card))
+        Some(self.cards().cost(card))
     }
 
     /// `None` unless the card is on its owner's board. Panics on an id the game never made.
     pub fn attack(&self, object_id: ObjectId) -> Option<i32> {
         let owner = self.objects.get(object_id).player_id;
         let card = self.zones.find_on_board(owner, object_id)?;
-        Some(self.minion_attack(card))
+        Some(self.cards().minion_attack(card))
     }
 
     /// `None` unless the object is a character in play. Panics on an id the game never made.
     pub fn health(&self, object_id: ObjectId) -> Option<i32> {
         self.objects.get(object_id);
         let character = self.zones.find_in_play(object_id)?;
-        Some(self.character_health(character))
+        Some(self.cards().character_health(character))
     }
 
     pub fn hero_health(&self, player_id: PlayerId) -> i32 {
-        self.character_health(self.zones.hero_in_play(player_id))
+        self.cards()
+            .character_health(self.zones.hero_in_play(player_id))
     }
+}
 
+impl Cards<'_> {
     pub(super) fn cost(&self, card: InHand<'_>) -> u8 {
         let object_id = card.object_id();
         let printed_cost = self.card_def(object_id).mana_cost;

@@ -1,33 +1,12 @@
-//! An object's definition, a player's hero, and amounts computed from history.
+//! What an effect amount comes to: its printed value, or a count of what history recorded.
 
-use crate::cards::definition::{CardDef, CardKind, CharacterKind, DefId};
-use crate::cards::object::{Object, ObjectId};
-use crate::effect::{Effect, EffectAmount};
-use crate::game::Game;
+use crate::cards::definition::{CardKind, CharacterKind};
+use crate::effect::EffectAmount;
+use crate::game::cards::Cards;
 use crate::history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter};
 use crate::ids::PlayerId;
 
-impl Game {
-    fn object(&self, object_id: ObjectId) -> &Object {
-        self.objects.get(object_id)
-    }
-
-    pub fn def_id(&self, object_id: ObjectId) -> DefId {
-        self.object(object_id).def_id
-    }
-
-    pub(super) fn card_def(&self, object_id: ObjectId) -> &CardDef {
-        self.binder.get(self.def_id(object_id))
-    }
-
-    pub fn hero_id(&self, player_id: PlayerId) -> ObjectId {
-        self.zones.hero(player_id)
-    }
-
-    pub(crate) fn play_effects(&self, object_id: ObjectId) -> &[Effect] {
-        self.card_def(object_id).play_effects.as_slice()
-    }
-
+impl Cards<'_> {
     pub(super) fn effect_amount(&self, amount: &EffectAmount, player_id: PlayerId) -> u8 {
         match amount {
             EffectAmount::Static(value) => *value,

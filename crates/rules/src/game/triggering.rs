@@ -2,7 +2,7 @@ use crate::cards::definition::TriggerDef;
 use crate::cards::object::ObjectId;
 use crate::effect::EffectSequence;
 use crate::event::Event;
-use crate::game::Game;
+use crate::game::cards::Cards;
 use crate::ids::PlayerId;
 use crate::trigger::{Trigger, TriggerPattern, TriggerSubject};
 
@@ -11,7 +11,7 @@ pub(super) struct MatchedTrigger {
     pub(super) effects: EffectSequence,
 }
 
-impl Game {
+impl Cards<'_> {
     pub(super) fn matched_triggers(&self, event: &Event) -> Vec<MatchedTrigger> {
         let mut matched = Vec::new();
         for object_id in self.characters_in_order_of_play().into_iter() {
@@ -41,6 +41,12 @@ impl Game {
                 effects: t.def.effects,
             })
             .collect()
+    }
+
+    fn characters_in_order_of_play(&self) -> Vec<ObjectId> {
+        let mut characters = self.zones.characters_in_play().collect::<Vec<_>>();
+        characters.sort_by_key(|&o| self.zones.match_order(o));
+        characters
     }
 
     fn triggers(&self, object_id: ObjectId) -> Vec<Trigger> {

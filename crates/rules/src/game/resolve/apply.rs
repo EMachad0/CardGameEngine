@@ -46,6 +46,7 @@ impl Game {
             Action::Play { object_id } => {
                 if let Some(targeting) = self.player_input.targeting(player_id) {
                     let target_ids = self
+                        .cards()
                         .card_def(targeting.object_id())
                         .targets
                         .iter()

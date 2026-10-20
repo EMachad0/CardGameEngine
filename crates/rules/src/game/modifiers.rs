@@ -3,10 +3,10 @@
 
 use crate::cards::modifier::SortedModifiers;
 use crate::cards::object::ObjectId;
-use crate::game::Game;
+use crate::game::cards::Cards;
 
-impl Game {
-    pub(super) fn modifiers(&self, object_id: ObjectId) -> SortedModifiers<'_> {
+impl<'g> Cards<'g> {
+    pub(super) fn modifiers(&self, object_id: ObjectId) -> SortedModifiers<'g> {
         let object = self.objects.get(object_id);
         let card_def = self.card_def(object_id);
         let mut modifiers = SortedModifiers::default();
@@ -36,7 +36,7 @@ impl Game {
         modifiers
     }
 
-    fn add_friendly_aura<'a>(&'a self, object_id: ObjectId, modifiers: &mut SortedModifiers<'a>) {
+    fn add_friendly_aura(&self, object_id: ObjectId, modifiers: &mut SortedModifiers<'g>) {
         for effect in self.card_def(object_id).friendly_aura_effects() {
             modifiers.add(object_id, effect);
         }
@@ -45,7 +45,7 @@ impl Game {
         }
     }
 
-    fn add_hostile_aura<'a>(&'a self, object_id: ObjectId, modifiers: &mut SortedModifiers<'a>) {
+    fn add_hostile_aura(&self, object_id: ObjectId, modifiers: &mut SortedModifiers<'g>) {
         for effect in self.card_def(object_id).hostile_aura_effects() {
             modifiers.add(object_id, effect);
         }

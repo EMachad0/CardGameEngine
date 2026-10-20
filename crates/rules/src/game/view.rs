@@ -114,7 +114,7 @@ impl Game {
         let object_id = card.object_id();
         let face = (player_id == viewer).then(|| Face {
             def_id: self.def_id(object_id),
-            mana_cost: self.cost(card),
+            mana_cost: self.cards().cost(card),
         });
 
         HandCard { object_id, face }
@@ -125,8 +125,8 @@ impl Game {
         BoardCard {
             object_id,
             def_id: self.def_id(object_id),
-            attack: self.minion_attack(card),
-            health: self.character_health(card.into()),
+            attack: self.cards().minion_attack(card),
+            health: self.cards().character_health(card.into()),
         }
     }
 

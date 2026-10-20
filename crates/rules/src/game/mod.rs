@@ -7,7 +7,6 @@
 //! - `player_input`: what the game awaits from each player, and what they targeted and picked.
 //! - `reporting`: recording an event, telling the observer and pushing the triggers it matched.
 //! - `resolve`: the mutation half of `apply`.
-//! - `lookup`: definitions, heroes and amounts, computed on read.
 //! - `modifiers`: the modifiers and auras that reach an object.
 //! - `stats`: cost, attack and health, as an object's modifiers and damage leave them.
 //! - `mana`: one player's mana, and the rules for paying and refilling it.
@@ -18,9 +17,9 @@
     reason = "the child modules read Game's private fields, which a leaf would hide from them"
 )]
 
-mod condition;
+mod amount;
+mod cards;
 mod effect_stack;
-mod lookup;
 mod mana;
 mod modifiers;
 mod player;
@@ -144,6 +143,7 @@ impl Game {
             return Vec::new();
         }
 
+        let cards = self.cards();
         let mut actions = Vec::new();
         match self.player_input.awaiting(player_id) {
             None => {
@@ -156,16 +156,16 @@ impl Game {
                 let mana = &self.get_player(player_id).mana;
                 for card in self.zones.hand_cards(player_id) {
                     let object_id = card.object_id();
-                    if !mana.can_pay(self.cost(card)) {
+                    if !mana.can_pay(cards.cost(card)) {
                         continue;
                     }
 
-                    match self.card_def(object_id).targets.is_empty() {
+                    match cards.card_def(object_id).targets.is_empty() {
                         true => {
                             actions.push(Action::Play { object_id });
                         }
                         false => {
-                            if self.can_start_targeting(object_id) {
+                            if cards.can_start_targeting(object_id) {
                                 actions.push(Action::StartTargeting { object_id });
                             }
                         }
@@ -184,13 +184,13 @@ impl Game {
             }
             Some(Awaiting::Targets(targeting)) => {
                 let object_id = targeting.object_id();
-                actions.extend(self.next_candidates(targeting).into_iter().map(
+                actions.extend(cards.next_candidates(targeting).into_iter().map(
                     |(target_id, object_id)| Action::Target {
                         target_id,
                         object_id,
                     },
                 ));
-                if self.may_stop_targeting(targeting) {
+                if cards.may_stop_targeting(targeting) {
                     actions.push(Action::Play { object_id });
                 }
                 actions.push(Action::Cancel { object_id });
@@ -212,10 +212,8 @@ impl Game {
         self.zones.board(player_id)
     }
 
-    fn characters_in_order_of_play(&self) -> Vec<ObjectId> {
-        let mut characters = self.zones.characters_in_play().collect::<Vec<_>>();
-        characters.sort_by_key(|&o| self.zones.match_order(o));
-        characters
+    pub fn hero_id(&self, player_id: PlayerId) -> ObjectId {
+        self.zones.hero(player_id)
     }
 
     pub fn mana(&self, player_id: PlayerId) -> u8 {

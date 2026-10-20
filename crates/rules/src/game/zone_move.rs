@@ -72,9 +72,9 @@ impl Game {
             .take_from_hand(player_id, object_id)
             .expect("legal actions guarantee playable cards are in hand");
 
-        if !self.play_effects(object_id).is_empty() {
-            self.effect_stack
-                .push(object_id, self.play_effects(object_id).to_vec());
+        let play_effects = self.cards().play_effects(object_id);
+        if !play_effects.is_empty() {
+            self.effect_stack.push(object_id, play_effects.to_vec());
         }
 
         let report = Report::Played(Play {
@@ -84,7 +84,7 @@ impl Game {
         self.report(report, obs);
 
         obs.checkpoint(Views::new(self));
-        if self.card_def(object_id).has_board_presence() {
+        if self.cards().card_def(object_id).has_board_presence() {
             self.summon(player_id, object_id, obs);
             obs.checkpoint(Views::new(self));
         }
