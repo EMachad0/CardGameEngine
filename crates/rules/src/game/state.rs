@@ -1,4 +1,4 @@
-//! `Game`, the whole state of one game, and the questions a shell asks of one of its owners.
+//! `Game`, the whole state of one game, and the questions that read one of its owners.
 
 use crate::cards::binder::store::Binder;
 use crate::cards::object::{ObjectBag, ObjectId};

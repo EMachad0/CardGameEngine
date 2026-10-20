@@ -59,7 +59,7 @@ impl<'g> Cards<'g> {
             .characters_in_play()
             .filter(|&object_id| {
                 let owner = self.objects.get(object_id).player_id;
-                filter.matches(asking, owner, self.card_def(object_id).character_kind())
+                filter.passes(asking, owner, self.card_def(object_id).character_kind())
             })
             .collect()
     }

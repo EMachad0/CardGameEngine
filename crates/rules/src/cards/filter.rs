@@ -29,9 +29,8 @@ impl CharacterFilter {
         }
     }
 
-    /// Whether a card of `kind` owned by `owner` passes, from `asking`'s side. `None` is a card
-    /// that is no character.
-    pub(crate) fn matches(
+    /// `kind` is `None` for a card that is no character.
+    pub(crate) fn passes(
         &self,
         asking: PlayerId,
         owner: PlayerId,
@@ -43,8 +42,7 @@ impl CharacterFilter {
 }
 
 impl CardFilter {
-    /// Whether a card of `kind` owned by `owner` passes, from `asking`'s side.
-    pub(crate) fn matches(&self, asking: PlayerId, owner: PlayerId, kind: CardKind) -> bool {
+    pub(crate) fn passes(&self, asking: PlayerId, owner: PlayerId, kind: CardKind) -> bool {
         fulfill_side_filter(self.side, asking, owner) && self.kind.contains(kind)
     }
 }
@@ -77,36 +75,36 @@ mod tests {
 
     #[test]
     fn a_character_filter_passes_a_character_of_its_kind_and_side() {
-        assert!(enemy_minions().matches(ME, THEM, Some(CharacterKind::Minion)));
+        assert!(enemy_minions().passes(ME, THEM, Some(CharacterKind::Minion)));
     }
 
     #[test]
     fn a_character_filter_rejects_a_character_of_another_side() {
-        assert!(!enemy_minions().matches(ME, ME, Some(CharacterKind::Minion)));
+        assert!(!enemy_minions().passes(ME, ME, Some(CharacterKind::Minion)));
     }
 
     #[test]
     fn a_character_filter_rejects_a_character_of_another_kind() {
-        assert!(!enemy_minions().matches(ME, THEM, Some(CharacterKind::Hero)));
+        assert!(!enemy_minions().passes(ME, THEM, Some(CharacterKind::Hero)));
     }
 
     #[test]
     fn a_character_filter_rejects_a_card_that_is_no_character() {
-        assert!(!CharacterFilter::all().matches(ME, THEM, None));
+        assert!(!CharacterFilter::all().passes(ME, THEM, None));
     }
 
     #[test]
     fn a_card_filter_passes_a_card_of_its_kind_and_side() {
-        assert!(friendly_spells().matches(ME, ME, CardKind::Spell));
+        assert!(friendly_spells().passes(ME, ME, CardKind::Spell));
     }
 
     #[test]
     fn a_card_filter_rejects_a_card_of_another_side() {
-        assert!(!friendly_spells().matches(ME, THEM, CardKind::Spell));
+        assert!(!friendly_spells().passes(ME, THEM, CardKind::Spell));
     }
 
     #[test]
     fn a_card_filter_rejects_a_card_of_another_kind() {
-        assert!(!friendly_spells().matches(ME, ME, CardKind::Minion));
+        assert!(!friendly_spells().passes(ME, ME, CardKind::Minion));
     }
 }
