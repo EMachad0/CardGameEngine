@@ -6,7 +6,8 @@
 file of `game` reads its fields and most of them write them, so no decision is hidden from the
 others. Apply `docs/conventions/file-structure.md` to it. Each ticket takes one decision out of
 the tangle, behind the boundary the doc calls for. When ticket 10 merges, `game/mod.rs` holds only
-`mod` declarations. Tickets 11 and 12 then carry two checks' results forward as types.
+`mod` declarations. Tickets 11 and 12 then carry two checks' results forward as types. Ticket 13
+gives `Game`'s data the boundary ticket 10 couldn't.
 
 A ticket describes a problem: what is wrong, where the code shows it, and which rule of the doc it
 breaks. It doesn't give the fix. The shape is yours, within the doc. Every ticket is a refactor,
@@ -60,6 +61,10 @@ reviewing it.
 | 10 | `game-leaf` | 09 |
 | 11 | `legal-actions` | 10 |
 | 12 | `card-text` | 11 |
+| 13 | `game-data` | 12, and the Mourner fix |
+
+The card game course fixes `docs/issues/dying-mourner-hears-older-death.md`. Ticket 13 starts once
+that file is gone from main.
 
 ## Workflow
 
@@ -79,7 +84,8 @@ reviewing it.
 
 ## Review loop
 
-Run at least one round of review and at most five. The PR isn't finished before the first round.
+Run rounds of review until one brings no finding you'd fix. There is no limit on the number of
+rounds, and the PR isn't finished before the first.
 
 - Each round runs the `code-review` skill. The fixed point is `origin/main` and the spec is your
   ticket plus this file. Give the Standards reviewer `AGENTS.md`,
@@ -89,9 +95,8 @@ Run at least one round of review and at most five. The PR isn't finished before 
   RNG draws and their order, the order of trigger listeners and of candidates for a random pick,
   panics, validation results, or the public API. It quotes each hunk it flags.
 - Fix every finding you agree with. Undo each behavior change the reviewer flags, or justify it in
-  the PR body. Rerun the checks, and run another round. Stop when a round
-  brings no finding you'd fix, or after the fifth round. In the PR body, list each declined
-  finding with your reason, and anything still open after five rounds.
+  the PR body. Rerun the checks, and run another round. Stop when a round brings no finding
+  you'd fix. In the PR body, list each declined finding with your reason.
 
 ## Behavior changes
 
@@ -138,7 +143,8 @@ Each fix is a rules change, and the card game course makes it test-first. Keep e
 it behaves today, even when your refactor makes the fix look like one line.
 
 - A dying minion hears an older minion's death in the same state check, because `kill` reports one
-  death at a time. Filed as `docs/issues/dying-mourner-hears-older-death.md`.
+  death at a time. Filed as `docs/issues/dying-mourner-hears-older-death.md`. The card game
+  course fixes it before ticket 13 starts.
 - A dead hero stays among the trigger listeners and hears its own death a second time.
 - With three players or more, an eliminated player's hero stays a target. Setup takes two decks,
   so it can't happen yet.
