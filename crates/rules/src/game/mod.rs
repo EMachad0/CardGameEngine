@@ -22,6 +22,7 @@ mod cards;
 mod effect_stack;
 mod mana;
 mod modifiers;
+mod play;
 mod player;
 mod player_input;
 mod reporting;

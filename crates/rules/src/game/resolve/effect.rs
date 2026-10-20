@@ -113,4 +113,14 @@ impl Game {
             self.report(report, obs);
         }
     }
+
+    fn damage(&mut self, target: ObjectId, amount: u8, source: ObjectId, obs: &mut impl Observer) {
+        self.objects.add_damage(target, amount);
+        let report = Report::Damaged {
+            target,
+            amount,
+            source,
+        };
+        self.report(report, obs);
+    }
 }

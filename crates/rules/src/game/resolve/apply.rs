@@ -4,8 +4,10 @@
 //! `apply` checks legality once, and nothing after its check re-checks it.
 
 use crate::action::{Action, IllegalAction};
+use crate::cards::object::ObjectId;
 use crate::game::Game;
 use crate::game::effect_stack::NextEffect;
+use crate::game::reporting::Report;
 use crate::ids::PlayerId;
 use crate::observer::{Observer, Views};
 
@@ -82,6 +84,16 @@ impl Game {
                 obs.checkpoint(Views::new(self));
             }
         };
+    }
+
+    fn pick(&mut self, player_id: PlayerId, object_id: ObjectId, obs: &mut impl Observer) {
+        self.player_input.pick(player_id, object_id);
+
+        let report = Report::Picked {
+            player_id,
+            object_id,
+        };
+        self.report(report, obs);
     }
 
     fn drain_effect_queue(&mut self, obs: &mut impl Observer) {
