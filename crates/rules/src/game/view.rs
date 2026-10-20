@@ -122,11 +122,12 @@ impl Game {
 
     fn board_card(&self, _viewer: PlayerId, card: OnBoard<'_>) -> BoardCard {
         let object_id = card.object_id();
+        let cards = self.cards();
         BoardCard {
             object_id,
             def_id: self.def_id(object_id),
-            attack: self.cards().minion_attack(card),
-            health: self.cards().character_health(card.into()),
+            attack: cards.minion_attack(card),
+            health: cards.character_health(card.into()),
         }
     }
 

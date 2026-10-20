@@ -1,5 +1,4 @@
-//! A new game: the objects, the players and their zones, then the opening hands and the first
-//! turn.
+//! A new game, up to the start of its first turn.
 
 use crate::cards::binder::sets::base::static_card_definition::HERO;
 use crate::cards::binder::store::Binder;
@@ -28,7 +27,7 @@ impl Game {
     fn setup(seed: u64, decks: [Vec<DefId>; 2], shuffle: bool) -> Self {
         let rng = Rng::new(seed);
 
-        // may explode not sure how to handle yet
+        // Fails only on invalid built-in definitions.
         let binder = Binder::built_in().unwrap();
 
         let mut objects = ObjectBag::default();

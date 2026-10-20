@@ -29,7 +29,7 @@ impl CharacterFilter {
         }
     }
 
-    /// Whether `asking` sees a card of `owner` with this character kind pass. `None` is a card
+    /// Whether a card of `kind` owned by `owner` passes, from `asking`'s side. `None` is a card
     /// that is no character.
     pub(crate) fn matches(
         &self,
@@ -43,7 +43,7 @@ impl CharacterFilter {
 }
 
 impl CardFilter {
-    /// Whether `asking` sees a card of `owner` with this card kind pass.
+    /// Whether a card of `kind` owned by `owner` passes, from `asking`'s side.
     pub(crate) fn matches(&self, asking: PlayerId, owner: PlayerId, kind: CardKind) -> bool {
         fulfill_side_filter(self.side, asking, owner) && self.kind.contains(kind)
     }

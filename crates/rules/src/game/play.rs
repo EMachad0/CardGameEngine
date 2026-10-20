@@ -1,5 +1,4 @@
-//! Playing a card: paying its cost, taking it from the hand and pushing its effects, then
-//! reporting the play and putting a card with board presence onto the board.
+//! Playing a card from its owner's hand.
 
 use crate::cards::object::ObjectId;
 use crate::event::Event;
