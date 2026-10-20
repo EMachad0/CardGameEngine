@@ -270,7 +270,7 @@ impl Zones {
         self.board(player_id).iter().copied().map(OnBoard::new)
     }
 
-    /// Every player's board, by `PlayerId`, each left to right.
+    /// Every player's board, players by `PlayerId`, the cards in each from left to right.
     pub(crate) fn boards(&self) -> impl Iterator<Item = (PlayerId, &[ObjectId])> {
         self.players
             .iter()
