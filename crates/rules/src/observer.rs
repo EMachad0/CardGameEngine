@@ -1,5 +1,5 @@
 use crate::event::Event;
-use crate::game::Game;
+use crate::game::state::Game;
 use crate::game::view::View;
 use crate::ids::PlayerId;
 

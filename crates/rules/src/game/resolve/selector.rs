@@ -4,7 +4,7 @@
 use crate::cards::definition::{CharacterSelector, PlayerSelector, PlayerSelectorFilter};
 use crate::cards::filter::fulfill_side_filter;
 use crate::cards::object::ObjectId;
-use crate::game::Game;
+use crate::game::state::Game;
 use crate::ids::PlayerId;
 
 impl Game {

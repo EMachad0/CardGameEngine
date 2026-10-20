@@ -3,8 +3,8 @@
 
 use crate::cards::object::ObjectId;
 use crate::event::Event;
-use crate::game::Game;
 use crate::game::reporting::Report;
+use crate::game::state::Game;
 use crate::ids::PlayerId;
 use crate::observer::{Observer, Views};
 

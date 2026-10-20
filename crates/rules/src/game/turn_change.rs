@@ -1,7 +1,7 @@
 //! What happens as a turn ends and the next one starts.
 
-use crate::game::Game;
 use crate::game::reporting::Report;
+use crate::game::state::Game;
 use crate::observer::Observer;
 
 impl Game {

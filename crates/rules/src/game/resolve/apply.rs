@@ -5,9 +5,9 @@
 
 use crate::action::{Action, IllegalAction};
 use crate::cards::object::ObjectId;
-use crate::game::Game;
 use crate::game::effect_stack::NextEffect;
 use crate::game::reporting::Report;
+use crate::game::state::Game;
 use crate::ids::PlayerId;
 use crate::observer::{Observer, Views};
 

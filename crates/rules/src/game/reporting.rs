@@ -4,11 +4,11 @@
 
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::event::Event;
-use crate::game::Game;
 use crate::game::effect_stack::EffectStack;
 use crate::game::play::Play;
 use crate::game::resolve::aftermath::death::Death;
 use crate::game::resolve::aftermath::standings::Ending;
+use crate::game::state::Game;
 use crate::game::triggering::MatchedTrigger;
 use crate::history::History;
 use crate::ids::PlayerId;

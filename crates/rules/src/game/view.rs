@@ -2,8 +2,8 @@
 
 use crate::cards::definition::DefId;
 use crate::cards::object::ObjectId;
-use crate::game::Game;
 use crate::game::player::Player;
+use crate::game::state::Game;
 use crate::ids::PlayerId;
 use crate::outcome::Outcome;
 use crate::zones::{InHand, OnBoard};

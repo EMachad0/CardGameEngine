@@ -3,8 +3,8 @@
 
 use crate::cards::object::ObjectId;
 use crate::effect::EffectAmount;
-use crate::game::Game;
 use crate::game::cards::Cards;
+use crate::game::state::Game;
 use crate::ids::PlayerId;
 use crate::zones::{InHand, InPlay, OnBoard};
 

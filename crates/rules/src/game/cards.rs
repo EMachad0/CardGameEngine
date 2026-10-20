@@ -6,7 +6,7 @@ use crate::cards::definition::{CardDef, DefId};
 use crate::cards::filter::CharacterFilter;
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::effect::Effect;
-use crate::game::Game;
+use crate::game::state::Game;
 use crate::history::History;
 use crate::ids::PlayerId;
 use crate::turn::TurnOrder;
