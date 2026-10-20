@@ -126,15 +126,15 @@ impl Game {
                 .iter()
                 .map(|p| p.id)
                 .filter(|&player_id| fulfill_side_filter(side, owner, player_id))
-                .collect()
+                .collect::<Vec<_>>()
         };
         match selector {
             PlayerSelector::All(filter) => all(filter),
             PlayerSelector::Owner => vec![owner],
-            PlayerSelector::Random(filter) => match self.select_random(&all(filter)) {
-                Some(v) => vec![v],
-                None => Vec::new(),
-            },
+            PlayerSelector::Random(filter) => {
+                let candidates = all(filter);
+                self.rng.choose(&candidates).copied().into_iter().collect()
+            }
         }
     }
 
@@ -149,10 +149,8 @@ impl Game {
             CharacterSelector::Itself => vec![object_id],
             CharacterSelector::OwnerHero => vec![self.hero_id(owner)],
             CharacterSelector::Random(filter) => {
-                match self.select_random(&self.scan_characters_with_filter(owner, filter)) {
-                    Some(v) => vec![v],
-                    None => Vec::new(),
-                }
+                let candidates = self.scan_characters_with_filter(owner, filter);
+                self.rng.choose(&candidates).copied().into_iter().collect()
             }
             CharacterSelector::Targeted(target_id) => self
                 .player_input
@@ -160,12 +158,5 @@ impl Game {
                 .expect("Target not fulfilled")
                 .to_vec(),
         }
-    }
-
-    fn select_random<T: Clone>(&mut self, values: &[T]) -> Option<T> {
-        (!values.is_empty()).then(|| {
-            let idx = self.rng.below(values.len());
-            values[idx].clone()
-        })
     }
 }

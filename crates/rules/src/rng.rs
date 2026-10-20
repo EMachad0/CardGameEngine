@@ -28,6 +28,11 @@ impl Rng {
         (self.next_u64() % n as u64) as usize
     }
 
+    /// One of `values`, at random. With none, `None`, and the stream doesn't move.
+    pub(crate) fn choose<'v, T>(&mut self, values: &'v [T]) -> Option<&'v T> {
+        (!values.is_empty()).then(|| &values[self.below(values.len())])
+    }
+
     /// Fisher-Yates shuffle.
     pub fn shuffle<T>(&mut self, items: &mut [T]) {
         for i in (1..items.len()).rev() {
@@ -56,6 +61,23 @@ mod tests {
         for _ in 0..100 {
             assert_eq!(a.next_u64(), b.next_u64());
         }
+    }
+
+    #[test]
+    fn choosing_from_nothing_leaves_the_stream_as_it_was() {
+        let mut rng = Rng::new(3);
+
+        assert_eq!(rng.choose::<u32>(&[]), None);
+        assert_eq!(rng, Rng::new(3));
+    }
+
+    #[test]
+    fn a_choice_is_the_value_at_one_draw_below_the_count() {
+        let values = [10, 20, 30];
+
+        let chosen = Rng::new(5).choose(&values);
+
+        assert_eq!(chosen, Some(&values[Rng::new(5).below(3)]));
     }
 
     #[test]
