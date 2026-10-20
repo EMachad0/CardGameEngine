@@ -18,8 +18,8 @@ impl Game {
         }
 
         if card_def.receives_auras() {
-            for other_player_id in self.players().into_iter() {
-                for other_object_id in self.player_board(other_player_id).iter().copied() {
+            for (other_player_id, board) in self.zones.boards() {
+                for other_object_id in board.iter().copied() {
                     if object_id == other_object_id {
                         continue;
                     }
