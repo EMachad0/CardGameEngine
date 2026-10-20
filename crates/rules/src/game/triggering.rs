@@ -82,7 +82,8 @@ impl Game {
                 else {
                     return false;
                 };
-                self.fulfill_card_filter(trigger_owner, *player_id, *object_id, &card_filter)
+                let kind = self.card_def(*object_id).card_kind();
+                card_filter.matches(trigger_owner, *player_id, kind)
             }
             TriggerPattern::Damaged(subject) => {
                 let Event::Damaged { target, .. } = event else {
@@ -104,7 +105,8 @@ impl Game {
             TriggerSubject::Itself => trigger_object == event_object,
             TriggerSubject::Character(character_filter) => {
                 let owner = self.objects.get(event_object).player_id;
-                self.fulfill_character_filter(trigger_owner, owner, event_object, &character_filter)
+                let kind = self.card_def(event_object).character_kind();
+                character_filter.matches(trigger_owner, owner, kind)
             }
         }
     }
