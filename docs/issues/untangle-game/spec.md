@@ -142,9 +142,6 @@ The course takes these on later. Keep each as it is, even where your ticket's co
 Each fix is a rules change, and the card game course makes it test-first. Keep each one exactly as
 it behaves today, even when your refactor makes the fix look like one line.
 
-- A dying minion hears an older minion's death in the same state check, because `kill` reports one
-  death at a time. Filed as `docs/issues/dying-mourner-hears-older-death.md`. The card game
-  course fixes it before ticket 13 starts.
 - A dead hero stays among the trigger listeners and hears its own death a second time.
 - With three players or more, an eliminated player's hero stays a target. Setup takes two decks,
   so it can't happen yet.
