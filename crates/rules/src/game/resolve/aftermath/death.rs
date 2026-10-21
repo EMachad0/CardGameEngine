@@ -1,10 +1,10 @@
-use crate::{
-    cards::object::ObjectId,
-    event::Event,
-    game::{Game, reporting::Report, triggering::MatchedTrigger},
-    ids::PlayerId,
-    observer::{Observer, Views},
-};
+use crate::cards::object::ObjectId;
+use crate::event::Event;
+use crate::game::Game;
+use crate::game::reporting::Report;
+use crate::game::triggering::MatchedTrigger;
+use crate::ids::PlayerId;
+use crate::observer::{Observer, Views};
 
 pub(in crate::game) struct Death {
     object_id: ObjectId,

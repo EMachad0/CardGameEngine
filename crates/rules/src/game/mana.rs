@@ -33,9 +33,9 @@ impl Mana {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use pretty_assertions::assert_eq;
+
+    use super::*;
 
     #[test]
     fn a_refill_fills_mana_to_a_max_one_higher() {

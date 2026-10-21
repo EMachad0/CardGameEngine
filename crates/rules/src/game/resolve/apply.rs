@@ -3,12 +3,11 @@
 //!
 //! `apply` checks legality once, and nothing after its check re-checks it.
 
-use crate::{
-    action::{Action, IllegalAction},
-    game::{Game, effect_stack::NextEffect},
-    ids::PlayerId,
-    observer::{Observer, Views},
-};
+use crate::action::{Action, IllegalAction};
+use crate::game::Game;
+use crate::game::effect_stack::NextEffect;
+use crate::ids::PlayerId;
+use crate::observer::{Observer, Views};
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum ApplyError {

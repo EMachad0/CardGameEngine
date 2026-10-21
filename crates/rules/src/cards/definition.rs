@@ -1,14 +1,10 @@
 use enumset::EnumSet;
 
-use crate::{
-    cards::{
-        filter::{CharacterFilter, Side},
-        modifier::ModifierEffect,
-    },
-    effect::EffectSequence,
-    target::{CharacterTarget, TargetId},
-    trigger::TriggerPattern,
-};
+use crate::cards::filter::{CharacterFilter, Side};
+use crate::cards::modifier::ModifierEffect;
+use crate::effect::EffectSequence;
+use crate::target::{CharacterTarget, TargetId};
+use crate::trigger::TriggerPattern;
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct DefId(&'static str);

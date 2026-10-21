@@ -1,7 +1,6 @@
-use crate::{
-    game::{Game, reporting::Report},
-    observer::{Observer, Views},
-};
+use crate::game::Game;
+use crate::game::reporting::Report;
+use crate::observer::{Observer, Views};
 
 impl Game {
     pub(in crate::game::resolve) fn check_state(&mut self, obs: &mut impl Observer) {

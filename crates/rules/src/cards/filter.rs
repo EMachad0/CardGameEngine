@@ -1,9 +1,7 @@
 use enumset::EnumSet;
 
-use crate::{
-    cards::definition::{CardKind, CharacterKind},
-    ids::PlayerId,
-};
+use crate::cards::definition::{CardKind, CharacterKind};
+use crate::ids::PlayerId;
 
 #[derive(Debug, enumset::EnumSetType)]
 pub enum Side {

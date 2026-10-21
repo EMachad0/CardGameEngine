@@ -1,12 +1,12 @@
 //! What one player can see. `Game::view` is the one definition of it.
 
-use crate::{
-    cards::{definition::DefId, object::ObjectId},
-    game::{Game, player::Player},
-    ids::PlayerId,
-    outcome::Outcome,
-    zones::{InHand, OnBoard},
-};
+use crate::cards::definition::DefId;
+use crate::cards::object::ObjectId;
+use crate::game::Game;
+use crate::game::player::Player;
+use crate::ids::PlayerId;
+use crate::outcome::Outcome;
+use crate::zones::{InHand, OnBoard};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct View {

@@ -1,10 +1,6 @@
-use crate::{
-    cards::{
-        definition::{CharacterSelector, DefId, PlayerSelector},
-        modifier::ModifierEffect,
-    },
-    history::HistoryQuery,
-};
+use crate::cards::definition::{CharacterSelector, DefId, PlayerSelector};
+use crate::cards::modifier::ModifierEffect;
+use crate::history::HistoryQuery;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EffectAmount {

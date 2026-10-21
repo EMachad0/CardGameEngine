@@ -1,13 +1,11 @@
 //! Cost, attack and health: the printed values, changed by the object's modifiers and, for
 //! health, its damage.
 
-use crate::{
-    cards::object::ObjectId,
-    effect::EffectAmount,
-    game::Game,
-    ids::PlayerId,
-    zones::{InHand, InPlay, OnBoard},
-};
+use crate::cards::object::ObjectId;
+use crate::effect::EffectAmount;
+use crate::game::Game;
+use crate::ids::PlayerId;
+use crate::zones::{InHand, InPlay, OnBoard};
 
 impl Game {
     /// `None` unless the card is in its owner's hand. Panics on an id the game never made.

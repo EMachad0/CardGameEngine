@@ -1,10 +1,8 @@
-use crate::{
-    cards::{
-        definition::{CardDef, CardKindDef, HeroCardDef, MinionCardDef, SpellCardDef, TriggerDef},
-        modifier::ModifierEffect,
-    },
-    effect::{Effect, EffectSequence},
+use crate::cards::definition::{
+    CardDef, CardKindDef, HeroCardDef, MinionCardDef, SpellCardDef, TriggerDef,
 };
+use crate::cards::modifier::ModifierEffect;
+use crate::effect::{Effect, EffectSequence};
 
 /// Whether a sequence is the card's play effects or a trigger's effects.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -120,14 +118,11 @@ fn collect_trigger<'a>(sequences: &mut Vec<Sequence<'a>>, trigger: &'a TriggerDe
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use pretty_assertions::assert_eq;
 
-    use crate::{
-        cards::definition::{CharacterSelector, DefId, PlayerSelector},
-        trigger::{TriggerPattern, TriggerSubject},
-    };
+    use super::*;
+    use crate::cards::definition::{CharacterSelector, DefId, PlayerSelector};
+    use crate::trigger::{TriggerPattern, TriggerSubject};
 
     fn spell() -> CardDef {
         CardDef {

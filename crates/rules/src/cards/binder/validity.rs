@@ -1,12 +1,9 @@
-use crate::{
-    cards::{
-        binder::sets::base::{PLACEHOLDER, static_card_definition::ALL_DEF_ID},
-        definition::{CardDef, CharacterSelector, DefId},
-        sequences::{SequenceOrigin, effect_sequences},
-    },
-    effect::{Effect, PickId},
-    target::TargetId,
-};
+use crate::cards::binder::sets::base::PLACEHOLDER;
+use crate::cards::binder::sets::base::static_card_definition::ALL_DEF_ID;
+use crate::cards::definition::{CardDef, CharacterSelector, DefId};
+use crate::cards::sequences::{SequenceOrigin, effect_sequences};
+use crate::effect::{Effect, PickId};
+use crate::target::TargetId;
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub(crate) enum CardDefError {
@@ -175,19 +172,15 @@ fn validate_pick_order(def_id: DefId, effects: &[Effect]) -> Result<(), CardDefE
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use pretty_assertions::assert_eq;
 
-    use crate::{
-        cards::{
-            binder::sets::base::{self, static_card_definition::*},
-            definition::{CardKindDef, TriggerDef},
-            modifier::ModifierEffect,
-        },
-        effect::EffectSequence,
-        trigger::{TriggerPattern, TriggerSubject},
-    };
+    use super::*;
+    use crate::cards::binder::sets::base;
+    use crate::cards::binder::sets::base::static_card_definition::*;
+    use crate::cards::definition::{CardKindDef, TriggerDef};
+    use crate::cards::modifier::ModifierEffect;
+    use crate::effect::EffectSequence;
+    use crate::trigger::{TriggerPattern, TriggerSubject};
 
     #[test]
     fn the_built_in_table_is_valid() {

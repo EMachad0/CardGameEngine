@@ -1,11 +1,10 @@
-use crate::{
-    cards::object::ObjectId,
-    effect::ZoneMove,
-    event::Event,
-    game::{Game, reporting::Report},
-    ids::PlayerId,
-    observer::{Observer, Views},
-};
+use crate::cards::object::ObjectId;
+use crate::effect::ZoneMove;
+use crate::event::Event;
+use crate::game::Game;
+use crate::game::reporting::Report;
+use crate::ids::PlayerId;
+use crate::observer::{Observer, Views};
 
 pub(super) struct Play {
     player_id: PlayerId,

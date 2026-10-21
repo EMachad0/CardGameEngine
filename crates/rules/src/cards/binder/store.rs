@@ -1,12 +1,9 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
+use std::sync::Arc;
 
-use crate::cards::{
-    binder::{
-        sets::base,
-        validity::{self, CardDefError},
-    },
-    definition::{CardDef, DefId},
-};
+use crate::cards::binder::sets::base;
+use crate::cards::binder::validity::{self, CardDefError};
+use crate::cards::definition::{CardDef, DefId};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Binder {

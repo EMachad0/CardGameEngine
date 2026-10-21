@@ -1,8 +1,6 @@
-use crate::{
-    cards::object::{ObjectBag, ObjectId},
-    event::Event,
-    ids::PlayerId,
-};
+use crate::cards::object::{ObjectBag, ObjectId};
+use crate::event::Event;
+use crate::ids::PlayerId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum HistoryKind {
@@ -123,10 +121,9 @@ impl History {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use pretty_assertions::assert_eq;
 
+    use super::*;
     use crate::cards::binder::sets::base::static_card_definition::{RECRUIT, SPARK};
 
     const P0: PlayerId = PlayerId::new(0);
