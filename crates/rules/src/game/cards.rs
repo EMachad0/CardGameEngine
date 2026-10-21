@@ -51,15 +51,15 @@ impl<'g> Cards<'g> {
     ) -> Vec<ObjectId> {
         self.zones
             .characters_in_play()
-            .filter(|&object_id| self.object_passes(object_id, asking, filter))
+            .filter(|&object_id| self.object_passes(asking, filter, object_id))
             .collect()
     }
 
     pub(super) fn object_passes(
         &self,
-        object_id: ObjectId,
         asking: PlayerId,
         filter: &CharacterFilter,
+        object_id: ObjectId,
     ) -> bool {
         let owner = self.objects.get(object_id).player_id;
         filter.passes(asking, owner, self.card_def(object_id).character_kind())

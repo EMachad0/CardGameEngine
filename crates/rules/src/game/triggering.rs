@@ -115,7 +115,7 @@ fn fulfill_trigger_subject(
     match subject {
         TriggerSubject::Itself => trigger_object == event_object,
         TriggerSubject::Character(character_filter) => {
-            cards.object_passes(event_object, trigger_owner, &character_filter)
+            cards.object_passes(trigger_owner, &character_filter, event_object)
         }
     }
 }
