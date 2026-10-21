@@ -83,8 +83,10 @@ interface that holds still when the decision moves.
   has to know that step's rule. Either way, one decision lands in several modules. When an
   interface needs separate steps, keep them as entry points, and move each rule they share into
   one module that both ask.
-- Steps still run, inside one coordinator that calls the modules in order. It knows the order and
-  nothing about any format. It holds only orders that carry no decision, so it holds no rules.
+- Steps still run, inside code that calls the modules in order. That code knows the order and
+  nothing about any format. If an order between its steps is an order rule, it is the rule's
+  keeper. If every order it holds is free or forced by data, it is a coordinator and holds no
+  rules.
 - Passing data between modules is fine when its layout is a decision you expect to stay put. The
   module that builds the data keeps the decision that moves.
 - Make a decision its own module when its knowledge sits in more than one place, today or in
@@ -125,14 +127,23 @@ it. Inside one of the module's functions it may be false for a while. Any code t
 data can break it.
 
 An owner is a module that privately owns all the data an invariant mentions, so it keeps the
-invariant through every command on its interface. Data tied by an invariant shares one owner.
+invariant through every command on its interface. It keeps the rules for how that data may change
+the same way. Data tied by an invariant shares one owner.
 
-- Handing out write access to the data makes the invariant breakable from outside.
+- Handing out write access to the data makes the invariant breakable from outside. That includes
+  the field that holds the owner. Replacing the owner whole can't break its invariant. But putting
+  an older value back undoes every change since, and putting any value in can break a rule that
+  ties the owner to other data.
 - Merge owners only for an invariant the domain needs. A rule nothing depends on unnecessarily grows
   its owner.
-- An owner answers questions about its own data.
-- A decision that combines several owners' data gets its own module with no data, under their
-  lowest common ancestor. Inside one of the owners, it would make that owner depend on the others.
+- An owner answers questions about its own data, and may ask other owners questions. Reading can't
+  break their rules, and a stable question costs nothing.
+- An owner's rules are about its own data, so a write to another owner never serves them. Code
+  that writes several owners sits outside each of them, as the keeper of a rule that ties the
+  writes or as their coordinator.
+- A decision that reads several owners' data and belongs to none of them gets its own module with
+  no data, under the lowest common ancestor of the code that asks it. Inside an owner or a caller,
+  it would make that module hold two decisions.
 
 ### Rules no owner guards
 
@@ -180,6 +191,10 @@ is then formal, and the later steps have nothing left to assume.
   it's used.
 - Don't hand a parsed type to code that can keep it while the data changes, or use it on other
   data. Take that code's input plain, and parse it where it arrives.
+- Where no type can rule out a wrong input, the command that would act on it checks it. If some
+  reachable state sends that input, the command refuses it in its return type, so every caller has
+  to handle it. If only a bug in a caller can send it, the command fails on the spot. That keeps
+  the check in one place, instead of an assumption in every caller. Doing nothing hides the bug.
 
 ### Names exclude
 
@@ -205,8 +220,9 @@ files to open when they look for a decision or a place for new code.
 - A module in the general sense is a `mod` whose private items include the data its decision is
   stored in.
 - Privacy flows down the module tree: a child reads its parent's private items, and a parent
-  can't read a child's. So code in a parent is open to every child, and child files that add
-  `impl` blocks to their parent's type are part of the parent's module.
+  can't read a child's. So code in a parent is open to every child.
+- Keep a type's inherent `impl` blocks in the module that defines it, so its whole interface sits
+  in one file. Code elsewhere that builds on the type takes it as a parameter.
 - Keep definitions in leaf modules, so that every module can hide its decision. A module with
   children is a directory whose `mod.rs` holds only `mod` declarations. A leaf's private items are
   hidden from its siblings and its parent, and siblings share only what they mark `pub(super)`.
@@ -214,7 +230,9 @@ files to open when they look for a decision or a place for new code.
 - A directory's own code, such as its main type or how its children combine, goes in a leaf named
   for that decision. A leaf named like its directory claims everything its siblings hold, so its
   name fails.
-- A module with no data holds free functions that take what they read as parameters. A struct
+- A module with no data holds free functions that take what they read as parameters. A function
+  that takes the whole holder instead hides what it reads, can start reading more with no change to
+  its signature, and keeps its callers from writing any part of the holder while it runs. A struct
   earns its place only when it holds borrows that several of the functions share, or implements a
   trait. It also earns it when many callers would pass the same parameters. One function builds it
   from the owners, so only that function knows what the module reads and writes.
@@ -261,7 +279,9 @@ own.
 
 No visibility opens an item to one sibling only. `pub(super)` opens it to the parent's whole
 subtree, and `pub(in path)` accepts only an ancestor. So a keeper that must be the only caller of a
-command picks its tool by where the command lives.
+command picks its tool by where the command lives. No tool restricts an item to one function, only
+to a module. Inside that module, which code may call or build it is informal knowledge, acceptable
+where its locality is high.
 
 - A command whose only rightful caller shares its file is private.
 - Enforce the rule through nesting when the command has one rightful caller and no reason to live
@@ -272,10 +292,10 @@ command picks its tool by where the command lives.
 - A token earns its place when the command has to live outside the keeper's subtree. The command
   takes a value with a private field, which only the keeper's subtree can build.
 - A Clippy ban fits when neither the tree nor a signature should carry the rule. An `#[expect]`
-  marks each rightful call.
+  marks each rightful call, including calls from the defining module's unit tests.
 - For a rule about one value of a shared command, put the token inside the value: the variant
   holds a type with a private field. When the command's input is also public output, decouple
-  them. An internal input type carries the token, and the command builds the public type from it.
+  them. An internal input type carries the token, and the public type is built from it.
 
 ## This project
 

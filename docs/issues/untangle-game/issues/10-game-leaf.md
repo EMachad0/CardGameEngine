@@ -33,10 +33,16 @@ Some of this may have moved in tickets 01 to 09. Start from what is on main.
 
 The doc's rules: "A child module counts as one item in its parent, since its decision is hidden
 from the parent too. Judge a parent by its own code, which should hold one decision, often how its
-children combine." "Steps still run, inside one coordinator that calls the modules in order. It
-knows the order and nothing about any format. It holds only orders that carry no decision." From
-the Rust section: "A directory's own code, such as its main type or how its children combine, goes
-in a leaf named for that decision."
+children combine." "Steps still run, inside code that calls the modules in order. That code knows
+the order and nothing about any format. If an order between its steps is an order rule, it is the
+rule's keeper. If every order it holds is free or forced by data, it is a coordinator and holds no
+rules." From the Rust section: "A directory's own code, such as its main type or how its children
+combine, goes in a leaf named for that decision." "Keep a type's inherent `impl` blocks in the
+module that defines it, so its whole interface sits in one file. Code elsewhere that builds on the
+type takes it as a parameter."
+
+PR #51 predates that last rule. Rework it on its branch, rebased on main, instead of opening a new
+PR.
 
 ## Behavior to watch
 
@@ -46,9 +52,9 @@ in a leaf named for that decision."
 ## Done when
 
 - `game/mod.rs` holds only `mod` declarations, and the `expect` is gone.
-- Every decision left in `game` has a home the doc supports, and the code that runs the steps in
-  order holds only orders that carry no decision.
+- Every decision left in `game` has a home the doc supports, and the code that runs steps knows
+  their order and nothing about any format. One exception: `Game`'s commands may stay `impl Game`
+  blocks outside its module, since a command that reports or checkpoints can't take less than
+  `Game`. Ticket 13 removes them.
 - Every item in `game/` has the narrowest visibility that compiles.
 - The checks pass, and the PR justifies every behavior change.
-- This PR finishes the effort, so it deletes `docs/issues/untangle-game/`. The decisions live in
-  the code and in `file-structure.md`.
