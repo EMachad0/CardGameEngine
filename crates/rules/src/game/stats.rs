@@ -31,7 +31,7 @@ pub(super) fn hero_health(cards: CardsRef, player_id: PlayerId) -> i32 {
     character_health(cards, cards.zones.hero_in_play(player_id))
 }
 
-pub(super) fn cost(cards: CardsRef, card: InHand<'_>) -> u8 {
+pub(super) fn cost(cards: CardsRef, card: InHand) -> u8 {
     let object_id = card.object_id();
     let printed_cost = cards.card_def(object_id).mana_cost;
     let reduction =
@@ -39,7 +39,7 @@ pub(super) fn cost(cards: CardsRef, card: InHand<'_>) -> u8 {
     printed_cost.saturating_sub(reduction)
 }
 
-pub(super) fn minion_attack(cards: CardsRef, card: OnBoard<'_>) -> i32 {
+pub(super) fn minion_attack(cards: CardsRef, card: OnBoard) -> i32 {
     let object_id = card.object_id();
     let printed_attack = cards
         .card_def(object_id)
@@ -49,7 +49,7 @@ pub(super) fn minion_attack(cards: CardsRef, card: OnBoard<'_>) -> i32 {
     printed_attack + bonus
 }
 
-pub(super) fn character_health(cards: CardsRef, character: InPlay<'_>) -> i32 {
+pub(super) fn character_health(cards: CardsRef, character: InPlay) -> i32 {
     let object_id = character.object_id();
     let printed_health = cards
         .card_def(object_id)

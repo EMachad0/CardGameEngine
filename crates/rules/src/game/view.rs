@@ -122,7 +122,7 @@ fn player_view(
     }
 }
 
-fn hand_card(cards: CardsRef, viewer: PlayerId, player_id: PlayerId, card: InHand<'_>) -> HandCard {
+fn hand_card(cards: CardsRef, viewer: PlayerId, player_id: PlayerId, card: InHand) -> HandCard {
     let object_id = card.object_id();
     let face = (player_id == viewer).then(|| Face {
         def_id: cards.def_id(object_id),
@@ -132,7 +132,7 @@ fn hand_card(cards: CardsRef, viewer: PlayerId, player_id: PlayerId, card: InHan
     HandCard { object_id, face }
 }
 
-fn board_card(cards: CardsRef, _viewer: PlayerId, card: OnBoard<'_>) -> BoardCard {
+fn board_card(cards: CardsRef, _viewer: PlayerId, card: OnBoard) -> BoardCard {
     let object_id = card.object_id();
     BoardCard {
         object_id,
