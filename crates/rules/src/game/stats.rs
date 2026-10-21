@@ -59,10 +59,10 @@ pub(super) fn character_health(cards: CardsRef, character: InPlay) -> i32 {
     printed_health + bonus - cards.objects.get(object_id).damage() as i32
 }
 
-fn evaluate_for_owner<'g>(
-    cards: CardsRef<'g>,
+fn evaluate_for_owner(
+    cards: CardsRef<'_>,
     object_id: ObjectId,
-) -> impl Fn(&EffectAmount) -> u8 + 'g {
+) -> impl Fn(&EffectAmount) -> u8 + '_ {
     let owner = cards.objects.get(object_id).player_id;
     move |amount| effect_amount(cards, amount, owner)
 }

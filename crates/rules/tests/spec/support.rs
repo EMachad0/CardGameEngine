@@ -254,7 +254,7 @@ impl Observer for Recorder {
         self.trailing.push(e.clone());
     }
 
-    fn checkpoint(&mut self, views: Views<'_>) {
+    fn checkpoint(&mut self, views: Views) {
         self.steps.push(Step {
             events: std::mem::take(&mut self.trailing),
             views: self.players.map(|p| views.of(p)),

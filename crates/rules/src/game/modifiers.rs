@@ -5,7 +5,7 @@ use crate::cards::modifier::SortedModifiers;
 use crate::cards::object::ObjectId;
 use crate::game::cards_ref::CardsRef;
 
-pub(super) fn modifiers<'g>(cards: CardsRef<'g>, object_id: ObjectId) -> SortedModifiers<'g> {
+pub(super) fn modifiers(cards: CardsRef<'_>, object_id: ObjectId) -> SortedModifiers<'_> {
     let object = cards.objects.get(object_id);
     let card_def = cards.card_def(object_id);
     let mut modifiers = SortedModifiers::default();
