@@ -14,7 +14,7 @@ As of ticket 10 (PR #51):
 - **`Game`'s data is open to every command.** `Game` lives in `game/state.rs` with its fields
   `pub(super)`, so every `impl Game` block under `game/` can read and write every owner. Which
   command writes which owner is convention. PR #51 says so under "Doc gaps" and "Left out". Only
-  the read-only card questions got a boundary, `Cards` in `game/cards.rs`.
+  the read-only card questions got a boundary, `CardsRef` in `game/cards_ref.rs`.
 - **Its commands sit outside its module.** Every command is an `impl Game` block in a file of its
   own, outside `game/state.rs`. Ticket 10 left them there, since a command that reports or
   checkpoints can't take less than `Game`.
@@ -23,7 +23,7 @@ As of ticket 10 (PR #51):
   that invariant by writing the ID or reordering `players`.
 - **Reporting runs inside the commands, between their writes.** `Game::report` in
   `game/reporting.rs` matches the event against the card state, then records it in history,
-  reports it to the observer and pushes each match onto the effect stack. Eleven commands call it,
+  reports it to the observer and pushes each match onto the effect stack. Twelve commands call it,
   `draw` twice: `play`; `draw`, `add_to_hand`, `bury` and `character_entered` in
   `game/zone_move.rs`; `end_turn` and `start_turn`; `pick`; `reveal` and `damage`; `kill`; and
   `check_state`.
@@ -55,6 +55,19 @@ signature, and keeps its callers from writing any part of the holder while it ru
 - Three designs are out: runtime borrow checks such as `RefCell`, which turn a build error into a
   panic; a hand-written state machine per command; and a reporter type shaped for each caller, to
   which the command lends its own borrows at every report.
+
+## Facts to work with
+
+- PR #51 weighed nesting under "Choices" and deferred it here, since this ticket changes which
+  code touches `Game`'s fields. A subtree holding `Game` and the files that touch its fields
+  today (`state`, `cards_ref`, `setup`, `play`, `zone_move`, `turn_change`, `reporting` and
+  `resolve/`) would close the fields, and `pub(super)` commands such as `draw`, `start_turn` and
+  `report`, to the rest of `game`. It would leave the owners' commands, such as `Mana::refill`
+  and `EffectStack::push`, open to all of `game`, and would not make formal which owners each
+  command writes.
+- The doc doesn't say whether a main type may sit in a subtree with its commands. "Enforce the
+  rule through nesting" covers a command with one rightful caller, and `Game`'s fields have about
+  ten. PR #51 lists this under "Doc gaps".
 
 ## Leave alone
 
