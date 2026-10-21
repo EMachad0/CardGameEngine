@@ -183,6 +183,10 @@ pub(crate) struct HandSlot {
 }
 
 impl HandSlot {
+    pub(crate) fn player_id(&self) -> PlayerId {
+        self.player_id
+    }
+
     pub(crate) fn object_id(&self) -> ObjectId {
         self.object_id
     }
@@ -631,10 +635,11 @@ mod tests {
     fn a_hand_slot_cannot_be_used_once_its_hand_changes() {
         let (mut zones, [a, b, _]) = three_in_hand();
         let player = PlayerId::new(0);
-        let found = zones.find_in_hand(player, b).unwrap().slot();
-        take_from_hand(&mut zones, player, a);
+        let first = zones.find_in_hand(player, a).unwrap().slot();
+        let second = zones.find_in_hand(player, b).unwrap().slot();
+        zones.take_from_hand(first);
 
-        zones.take_from_hand(found);
+        zones.take_from_hand(second);
     }
 
     #[test]

@@ -16,15 +16,33 @@ pub(super) struct Play {
     object_id: ObjectId,
 }
 
-/// A card its player can play now: where it is in their hand, and the payment of its cost.
+/// A card its player can play now: where it is in their hand, the payment of its cost, and their
+/// targeting of it if they play it from there.
 pub(super) struct Playable {
     card: HandSlot,
     payment: Payment,
+    targeting: Option<TargetingSlot>,
 }
 
 impl Playable {
     pub(super) fn new(card: HandSlot, payment: Payment) -> Self {
-        Self { card, payment }
+        Self {
+            card,
+            payment,
+            targeting: None,
+        }
+    }
+
+    /// Played from `targeting`, which must be of this card.
+    pub(super) fn with_targeting(self, targeting: TargetingSlot) -> Self {
+        assert!(
+            targeting.object_id() == self.card.object_id(),
+            "a card is played from its own targeting",
+        );
+        Self {
+            targeting: Some(targeting),
+            ..self
+        }
     }
 
     pub(super) fn object_id(&self) -> ObjectId {
@@ -42,15 +60,14 @@ impl From<Play> for Event {
 }
 
 impl Game {
-    /// Closes the player's targeting first, if they played the card from there.
-    pub(super) fn play(
-        &mut self,
-        player_id: PlayerId,
-        card: Playable,
-        targeting: Option<TargetingSlot>,
-        obs: &mut impl Observer,
-    ) {
-        let Playable { card, payment } = card;
+    /// Closes the player's targeting first, if they play the card from there.
+    pub(super) fn play(&mut self, card: Playable, obs: &mut impl Observer) {
+        let Playable {
+            card,
+            payment,
+            targeting,
+        } = card;
+        let player_id = card.player_id();
         if let Some(targeting) = targeting {
             let target_ids = CardsRef::new(self)
                 .card_def(card.object_id())
@@ -79,5 +96,34 @@ impl Game {
             self.summon(player_id, object_id, obs);
             obs.checkpoint(Views::new(self));
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cards::binder::sets::base::static_card_definition::SPARK;
+    use crate::cards::object::ObjectBag;
+    use crate::game::mana::Mana;
+    use crate::game::player_input::{Awaiting, PlayerInput};
+    use crate::zones::Zones;
+
+    #[test]
+    #[should_panic(expected = "a card is played from its own targeting")]
+    fn a_card_cannot_be_played_from_another_cards_targeting() {
+        let player = PlayerId::new(0);
+        let mut bag = ObjectBag::default();
+        let [hero, card, other] = std::array::from_fn(|_| bag.insert(SPARK, player));
+        let mut zones = Zones::new([(hero, vec![card, other])]);
+        zones.draw(player);
+        let mut input = PlayerInput::default();
+        input.start_targeting(input.nothing_awaited().unwrap(), player, other);
+        let Some(Awaiting::Targets(targeting)) = input.awaiting(player) else {
+            panic!("the player must be targeting");
+        };
+        let found = zones.find_in_hand(player, card).unwrap().slot();
+        let playable = Playable::new(found, Mana::default().payment(0).unwrap());
+
+        playable.with_targeting(targeting.slot());
     }
 }

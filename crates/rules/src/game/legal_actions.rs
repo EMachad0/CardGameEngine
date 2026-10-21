@@ -13,11 +13,7 @@ use crate::zones::InHand;
 /// An action legal for one player, with what the check learned about the game. What it learned
 /// holds until the game changes.
 pub(super) enum LegalAction {
-    /// `targeting` is the player's targeting of the card, if they played it from there.
-    Play {
-        card: Playable,
-        targeting: Option<TargetingSlot>,
-    },
+    Play(Playable),
     Pick(PickOption),
     StartTargeting {
         object_id: ObjectId,
@@ -36,7 +32,7 @@ impl LegalAction {
     /// What a player sends for this action.
     pub(super) fn action(&self) -> Action {
         match *self {
-            Self::Play { ref card, .. } => Action::Play {
+            Self::Play(ref card) => Action::Play {
                 object_id: card.object_id(),
             },
             Self::Pick(ref option) => Action::Pick {
@@ -89,10 +85,7 @@ pub(super) fn legal_actions(
 
                 match cards.card_def(object_id).targets.is_empty() {
                     true => {
-                        actions.push(LegalAction::Play {
-                            card: playable,
-                            targeting: None,
-                        });
+                        actions.push(LegalAction::Play(playable));
                     }
                     false => {
                         if can_start_targeting(cards, object_id) {
@@ -126,10 +119,7 @@ pub(super) fn legal_actions(
                     .find_in_hand(player_id, object_id)
                     .and_then(|card| playable(cards, player, card))
             {
-                actions.push(LegalAction::Play {
-                    card,
-                    targeting: Some(awaited.slot()),
-                });
+                actions.push(LegalAction::Play(card.with_targeting(awaited.slot())));
             }
             actions.push(LegalAction::Cancel(awaited.slot()));
         }

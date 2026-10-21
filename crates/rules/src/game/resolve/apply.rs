@@ -1,7 +1,7 @@
 //! The mutation half of `Game::apply`. It runs an action and resolves any card
 //! the action plays.
 //!
-//! `apply` checks legality once, and every step after it takes what the check learned.
+//! `apply` checks legality once, and each step that relies on the check takes what it learned.
 
 use crate::action::{Action, IllegalAction};
 use crate::game::effect_stack::NextEffect;
@@ -39,8 +39,8 @@ impl Game {
 
     fn apply_action(&mut self, player_id: PlayerId, action: LegalAction, obs: &mut impl Observer) {
         match action {
-            LegalAction::Play { card, targeting } => {
-                self.play(player_id, card, targeting, obs);
+            LegalAction::Play(card) => {
+                self.play(card, obs);
             }
             LegalAction::Pick(option) => {
                 self.pick(player_id, option, obs);

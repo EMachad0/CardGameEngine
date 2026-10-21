@@ -192,14 +192,9 @@ pub(super) struct PlayerInput {
 
 impl PlayerInput {
     pub(super) fn awaiting(&self, player_id: PlayerId) -> Option<Awaiting<'_>> {
-        if let Ok(idx) = slot(&self.targeting, player_id) {
-            let targeting = &self.targeting[idx].1;
-            return Some(Awaiting::Targets(AwaitedTargeting { idx, targeting }));
-        }
-        slot(&self.pending_picks, player_id).ok().map(|idx| {
-            let pick = &self.pending_picks[idx].1;
-            Awaiting::Pick(AwaitedPick { idx, pick })
-        })
+        self.awaited_targeting(player_id)
+            .map(Awaiting::Targets)
+            .or_else(|| self.awaited_pick(player_id).map(Awaiting::Pick))
     }
 
     pub(super) fn any_awaiting(&self) -> bool {
@@ -213,16 +208,13 @@ impl PlayerInput {
 
     /// A pending pick's options. Empty while awaiting anything else, or nothing.
     pub(super) fn revealed(&self, player_id: PlayerId) -> &[ObjectId] {
-        match slot(&self.pending_picks, player_id) {
-            Ok(idx) => self.pending_picks[idx].1.options.as_slice(),
-            Err(_) => &[],
-        }
+        self.awaited_pick(player_id)
+            .map_or(&[], |awaited| awaited.pick.options.as_slice())
     }
 
     pub(super) fn targeting(&self, player_id: PlayerId) -> Option<&Targeting> {
-        slot(&self.targeting, player_id)
-            .ok()
-            .map(|idx| &self.targeting[idx].1)
+        self.awaited_targeting(player_id)
+            .map(AwaitedTargeting::targeting)
     }
 
     /// `None` unless the card was played after targeting and declares `target_id`.
@@ -300,10 +292,10 @@ impl PlayerInput {
         if options.is_empty() {
             return false;
         }
-        let Err(idx) = slot(&self.pending_picks, player_id) else {
+        let Err(idx) = entry_idx(&self.pending_picks, player_id) else {
             panic!("a pending pick closes only when the player picks");
         };
-        if let Ok(targeting) = slot(&self.targeting, player_id) {
+        if let Ok(targeting) = entry_idx(&self.targeting, player_id) {
             self.targeting.remove(targeting);
         }
         let pick = PendingPick {
@@ -348,6 +340,18 @@ impl PlayerInput {
         picked
     }
 
+    fn awaited_targeting(&self, player_id: PlayerId) -> Option<AwaitedTargeting<'_>> {
+        let idx = entry_idx(&self.targeting, player_id).ok()?;
+        let targeting = &self.targeting[idx].1;
+        Some(AwaitedTargeting { idx, targeting })
+    }
+
+    fn awaited_pick(&self, player_id: PlayerId) -> Option<AwaitedPick<'_>> {
+        let idx = entry_idx(&self.pending_picks, player_id).ok()?;
+        let pick = &self.pending_picks[idx].1;
+        Some(AwaitedPick { idx, pick })
+    }
+
     /// Where the slot's targeting is. Panics if it isn't there any more.
     fn targeting_idx(&self, targeting: TargetingSlot) -> usize {
         let named = self.targeting.get(targeting.idx);
@@ -360,7 +364,7 @@ impl PlayerInput {
 }
 
 /// Where the player's entry is, or would go, in entries sorted by player.
-fn slot<T>(entries: &[(PlayerId, T)], player_id: PlayerId) -> Result<usize, usize> {
+fn entry_idx<T>(entries: &[(PlayerId, T)], player_id: PlayerId) -> Result<usize, usize> {
     entries.binary_search_by_key(&player_id.idx(), |(p, _)| p.idx())
 }
 
@@ -534,10 +538,11 @@ mod tests {
         let player = PlayerId::new(0);
         let mut input = PlayerInput::default();
         start_targeting(&mut input, player, card);
-        let stale = targeting_slot(&input, player);
-        cancel(&mut input, player);
+        let first = targeting_slot(&input, player);
+        let second = targeting_slot(&input, player);
+        input.cancel(first);
 
-        input.cancel(stale);
+        input.cancel(second);
     }
 
     #[test]
