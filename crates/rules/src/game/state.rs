@@ -1,4 +1,4 @@
-//! `Game`, the whole state of one game, how one starts, and what callers ask it.
+//! `Game`, the whole state of one game, its constructors, and what callers ask it.
 
 use crate::action::Action;
 use crate::cards::binder::store::Binder;
@@ -55,8 +55,7 @@ impl Game {
             Cards::new(self),
             &self.standings,
             &self.player_input,
-            &self.get_player(player_id).mana,
-            player_id,
+            self.get_player(player_id),
         )
     }
 

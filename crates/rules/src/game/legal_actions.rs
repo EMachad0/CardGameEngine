@@ -1,20 +1,19 @@
 use crate::action::Action;
 use crate::game::cards::Cards;
-use crate::game::mana::Mana;
+use crate::game::player::Player;
 use crate::game::player_input::{Awaiting, PlayerInput};
 use crate::game::resolve::aftermath::standings::Standings;
 use crate::game::stats::cost;
 use crate::game::targeting_walk::{can_start_targeting, may_stop_targeting, next_candidates};
-use crate::ids::PlayerId;
 
 /// The one definition of legality.
 pub(super) fn legal_actions(
     cards: Cards<'_>,
     standings: &Standings,
     player_input: &PlayerInput,
-    mana: &Mana,
-    player_id: PlayerId,
+    player: &Player,
 ) -> Vec<Action> {
+    let player_id = player.id;
     if standings.outcome().is_some() {
         return Vec::new();
     }
@@ -28,7 +27,7 @@ pub(super) fn legal_actions(
 
             for card in cards.zones.hand_cards(player_id) {
                 let object_id = card.object_id();
-                if !mana.can_pay(cost(cards, card)) {
+                if !player.mana.can_pay(cost(cards, card)) {
                     continue;
                 }
 
