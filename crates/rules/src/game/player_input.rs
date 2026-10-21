@@ -264,8 +264,7 @@ impl PlayerInput {
     /// Closes the targeting and stores its card's targeted objects for each target in
     /// `target_ids`, replacing any it had.
     pub(super) fn commit_targeting(&mut self, targeting: TargetingSlot, target_ids: &[TargetId]) {
-        let idx = self.targeting_idx(targeting);
-        let (_, closed) = self.targetings.remove(idx);
+        let (_, closed) = self.targetings.remove(self.targeting_idx(targeting));
         let object_id = closed.object_id;
         self.targets.retain(|entry| entry.object_id != object_id);
         let idx = self
