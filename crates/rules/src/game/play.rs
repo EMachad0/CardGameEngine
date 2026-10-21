@@ -8,25 +8,26 @@ use crate::game::reporting::Report;
 use crate::game::state::Game;
 use crate::ids::PlayerId;
 use crate::observer::{Observer, Views};
+use crate::zones::HandSlot;
 
 pub(super) struct Play {
     player_id: PlayerId,
     object_id: ObjectId,
 }
 
-/// A card its player can play now, with the payment of its cost.
+/// A card its player can play now: where it is in their hand, and the payment of its cost.
 pub(super) struct Playable {
-    object_id: ObjectId,
+    card: HandSlot,
     payment: Payment,
 }
 
 impl Playable {
-    pub(super) fn new(object_id: ObjectId, payment: Payment) -> Self {
-        Self { object_id, payment }
+    pub(super) fn new(card: HandSlot, payment: Payment) -> Self {
+        Self { card, payment }
     }
 
     pub(super) fn object_id(&self) -> ObjectId {
-        self.object_id
+        self.card.object_id()
     }
 }
 
@@ -41,11 +42,9 @@ impl From<Play> for Event {
 
 impl Game {
     pub(super) fn play(&mut self, player_id: PlayerId, card: Playable, obs: &mut impl Observer) {
-        let Playable { object_id, payment } = card;
+        let Playable { card, payment } = card;
         self.get_player_mut(player_id).mana.pay(payment);
-        self.zones
-            .take_from_hand(player_id, object_id)
-            .expect("legal actions guarantee playable cards are in hand");
+        let object_id = self.zones.take_from_hand(card);
 
         let play_effects = CardsRef::new(self).play_effects(object_id);
         if !play_effects.is_empty() {

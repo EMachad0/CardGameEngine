@@ -57,9 +57,9 @@ impl Hand {
         self.0.push(object_id);
     }
 
-    /// Removes one object_id. The others keep their order.
-    fn remove(&mut self, object_id: ObjectId) -> Option<ObjectId> {
-        self.position(object_id).map(|idx| self.0.remove(idx))
+    /// Removes the card at `idx`. The others keep their order.
+    fn take(&mut self, idx: usize) -> ObjectId {
+        self.0.remove(idx)
     }
 
     fn as_slice(&self) -> &[ObjectId] {
@@ -140,19 +140,46 @@ impl PlayerZones {
 /// A card found in a hand. It borrows the zones, so the card stays there while this lives.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct InHand<'a> {
+    player_id: PlayerId,
+    idx: usize,
     object_id: ObjectId,
     zones: PhantomData<&'a Zones>,
 }
 
 impl InHand<'_> {
-    fn new(object_id: ObjectId) -> Self {
+    fn new(player_id: PlayerId, idx: usize, object_id: ObjectId) -> Self {
         Self {
+            player_id,
+            idx,
             object_id,
             zones: PhantomData,
         }
     }
 
     pub(crate) fn object_id(self) -> ObjectId {
+        self.object_id
+    }
+
+    /// Where the card is, kept past the borrow.
+    pub(crate) fn slot(self) -> HandSlot {
+        HandSlot {
+            player_id: self.player_id,
+            idx: self.idx,
+            object_id: self.object_id,
+        }
+    }
+}
+
+/// A card found in a hand, by where it is there. It holds no borrow, so it stays true only until
+/// the hand changes.
+pub(crate) struct HandSlot {
+    player_id: PlayerId,
+    idx: usize,
+    object_id: ObjectId,
+}
+
+impl HandSlot {
+    pub(crate) fn object_id(&self) -> ObjectId {
         self.object_id
     }
 }
@@ -262,7 +289,10 @@ impl Zones {
 
     /// Oldest first.
     pub(crate) fn hand_cards(&self, player_id: PlayerId) -> impl Iterator<Item = InHand<'_>> {
-        self.hand(player_id).iter().copied().map(InHand::new)
+        self.hand(player_id)
+            .iter()
+            .enumerate()
+            .map(move |(idx, &object_id)| InHand::new(player_id, idx, object_id))
     }
 
     /// Left to right.
@@ -289,8 +319,8 @@ impl Zones {
     ) -> Option<InHand<'_>> {
         self.player(player_id)
             .hand
-            .contains(&object_id)
-            .then(|| InHand::new(object_id))
+            .position(object_id)
+            .map(|idx| InHand::new(player_id, idx, object_id))
     }
 
     pub(crate) fn find_on_board(
@@ -354,13 +384,9 @@ impl Zones {
         (0..count).map_while(|_| deck.pop_front()).collect()
     }
 
-    /// Takes a card out of the hand into no zone. `None` if it isn't there.
-    pub(crate) fn take_from_hand(
-        &mut self,
-        player_id: PlayerId,
-        object_id: ObjectId,
-    ) -> Option<ObjectId> {
-        self.player_mut(player_id).hand.remove(object_id)
+    /// Takes the card out of its hand into no zone.
+    pub(crate) fn take_from_hand(&mut self, card: HandSlot) -> ObjectId {
+        self.player_mut(card.player_id).hand.take(card.idx)
     }
 
     /// Takes a card off the board into no zone. `None` if it isn't there.
@@ -503,19 +529,15 @@ mod tests {
         let [a, b, c, d] = ids();
         let mut hand = hand_of(&[a, b, c, d]);
 
-        assert_eq!(hand.remove(b), Some(b));
+        assert_eq!(hand.take(1), b);
 
         assert_eq!(hand.as_slice(), [a, c, d]);
     }
 
-    #[test]
-    fn removing_a_card_not_in_the_hand_changes_nothing() {
-        let [a, b] = ids();
-        let mut hand = hand_of(&[a]);
-
-        assert_eq!(hand.remove(b), None);
-
-        assert_eq!(hand.as_slice(), [a]);
+    /// Takes `card` out of `player`'s hand, where it must be.
+    fn take_from_hand(zones: &mut Zones, player: PlayerId, card: ObjectId) {
+        let card = zones.find_in_hand(player, card).unwrap().slot();
+        zones.take_from_hand(card);
     }
 
     #[test]
@@ -527,7 +549,7 @@ mod tests {
         zones.draw(player);
         zones.draw(player);
         for card in [second, first] {
-            zones.take_from_hand(player, card);
+            take_from_hand(&mut zones, player, card);
             zones.enter_board(player, card);
         }
 
@@ -551,7 +573,7 @@ mod tests {
         ]);
         zones.draw(player);
         zones.draw(player);
-        zones.take_from_hand(player, summoned);
+        take_from_hand(&mut zones, player, summoned);
         zones.enter_board(player, summoned);
         (zones, [hero, other_hero, summoned, held, in_deck])
     }
@@ -563,6 +585,36 @@ mod tests {
         let found = zones.find_in_hand(PlayerId::new(0), held);
 
         assert_eq!(found.map(InHand::object_id), Some(held));
+    }
+
+    #[test]
+    fn a_card_found_in_a_hand_is_taken_from_there() {
+        let [hero, a, b, c] = ids();
+        let player = PlayerId::new(0);
+        let mut zones = Zones::new([(hero, vec![a, b, c])]);
+        for _ in 0..3 {
+            zones.draw(player);
+        }
+
+        let found = zones.find_in_hand(player, b).unwrap().slot();
+
+        assert_eq!(zones.take_from_hand(found), b);
+        assert_eq!(zones.hand(player), [a, c]);
+    }
+
+    #[test]
+    fn a_card_walked_to_in_a_hand_is_taken_from_there() {
+        let [hero, a, b, c] = ids();
+        let player = PlayerId::new(0);
+        let mut zones = Zones::new([(hero, vec![a, b, c])]);
+        for _ in 0..3 {
+            zones.draw(player);
+        }
+
+        let walked = zones.hand_cards(player).nth(2).unwrap().slot();
+
+        assert_eq!(zones.take_from_hand(walked), c);
+        assert_eq!(zones.hand(player), [a, b]);
     }
 
     #[test]
@@ -628,7 +680,7 @@ mod tests {
             zones.draw(player);
         }
         for card in [c, a] {
-            zones.take_from_hand(player, card);
+            take_from_hand(&mut zones, player, card);
             zones.enter_board(player, card);
         }
         (zones, [a, b, c, d])
@@ -663,7 +715,7 @@ mod tests {
         let mut zones = Zones::new([(hero, vec![a, b]), (other_hero, vec![c])]);
         for (player_id, card) in [(other, c), (player, a), (player, b)] {
             zones.draw(player_id);
-            zones.take_from_hand(player_id, card);
+            take_from_hand(&mut zones, player_id, card);
             zones.enter_board(player_id, card);
         }
 
