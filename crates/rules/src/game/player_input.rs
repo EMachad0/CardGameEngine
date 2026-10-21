@@ -181,7 +181,7 @@ impl Picks {
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(super) struct PlayerInput {
     /// Sorted by player. No player is in both this and `pending_picks`.
-    targeting: Vec<(PlayerId, Targeting)>,
+    targetings: Vec<(PlayerId, Targeting)>,
     /// Sorted by player.
     pending_picks: Vec<(PlayerId, PendingPick)>,
     /// Sorted by card, then in the order stored.
@@ -198,7 +198,7 @@ impl PlayerInput {
     }
 
     pub(super) fn any_awaiting(&self) -> bool {
-        !self.targeting.is_empty() || !self.pending_picks.is_empty()
+        !self.targetings.is_empty() || !self.pending_picks.is_empty()
     }
 
     /// `None` while the game awaits anything from any player.
@@ -243,7 +243,7 @@ impl PlayerInput {
             !self.any_awaiting(),
             "a targeting starts only while nothing is awaited",
         );
-        self.targeting.push((player_id, Targeting::new(object_id)));
+        self.targetings.push((player_id, Targeting::new(object_id)));
     }
 
     pub(super) fn target(
@@ -253,19 +253,19 @@ impl PlayerInput {
         target_id: TargetId,
     ) {
         let idx = self.targeting_idx(targeting);
-        self.targeting[idx].1.targeted.push((object_id, target_id));
+        self.targetings[idx].1.targeted.push((object_id, target_id));
     }
 
     pub(super) fn cancel(&mut self, targeting: TargetingSlot) {
         let idx = self.targeting_idx(targeting);
-        self.targeting.remove(idx);
+        self.targetings.remove(idx);
     }
 
     /// Closes the targeting and stores its card's targeted objects for each target in
     /// `target_ids`, replacing any it had.
     pub(super) fn commit_targeting(&mut self, targeting: TargetingSlot, target_ids: &[TargetId]) {
         let idx = self.targeting_idx(targeting);
-        let (_, closed) = self.targeting.remove(idx);
+        let (_, closed) = self.targetings.remove(idx);
         let object_id = closed.object_id;
         self.targets.retain(|entry| entry.object_id != object_id);
         let idx = self
@@ -294,8 +294,8 @@ impl PlayerInput {
         let Err(idx) = entry_idx(&self.pending_picks, player_id) else {
             panic!("a pending pick closes only when the player picks");
         };
-        if let Ok(replaced) = entry_idx(&self.targeting, player_id) {
-            self.targeting.remove(replaced);
+        if let Ok(replaced) = entry_idx(&self.targetings, player_id) {
+            self.targetings.remove(replaced);
         }
         let pick = PendingPick {
             source,
@@ -340,8 +340,8 @@ impl PlayerInput {
     }
 
     fn awaited_targeting(&self, player_id: PlayerId) -> Option<AwaitedTargeting<'_>> {
-        let idx = entry_idx(&self.targeting, player_id).ok()?;
-        let targeting = &self.targeting[idx].1;
+        let idx = entry_idx(&self.targetings, player_id).ok()?;
+        let targeting = &self.targetings[idx].1;
         Some(AwaitedTargeting { idx, targeting })
     }
 
@@ -352,7 +352,7 @@ impl PlayerInput {
     }
 
     fn targeting_idx(&self, targeting: TargetingSlot) -> usize {
-        let named = self.targeting.get(targeting.idx);
+        let named = self.targetings.get(targeting.idx);
         assert!(
             named.is_some_and(|(_, open)| open.object_id == targeting.object_id),
             "a targeting slot is used before what the game awaits changes",
