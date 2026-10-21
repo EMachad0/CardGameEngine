@@ -265,8 +265,8 @@ impl PlayerInput {
     /// `target_ids`, replacing any it had.
     pub(super) fn commit_targeting(&mut self, targeting: TargetingSlot, target_ids: &[TargetId]) {
         let idx = self.targeting_idx(targeting);
-        let (_, targeting) = self.targeting.remove(idx);
-        let object_id = targeting.object_id;
+        let (_, closed) = self.targeting.remove(idx);
+        let object_id = closed.object_id;
         self.targets.retain(|entry| entry.object_id != object_id);
         let idx = self
             .targets
@@ -274,7 +274,7 @@ impl PlayerInput {
         let entries = target_ids.iter().map(|&target_id| StoredTargets {
             object_id,
             target_id,
-            targeted: targeting.targeted_for(target_id).collect(),
+            targeted: closed.targeted_for(target_id).collect(),
         });
         self.targets.splice(idx..idx, entries);
     }
@@ -294,8 +294,8 @@ impl PlayerInput {
         let Err(idx) = entry_idx(&self.pending_picks, player_id) else {
             panic!("a pending pick closes only when the player picks");
         };
-        if let Ok(targeting) = entry_idx(&self.targeting, player_id) {
-            self.targeting.remove(targeting);
+        if let Ok(replaced) = entry_idx(&self.targeting, player_id) {
+            self.targeting.remove(replaced);
         }
         let pick = PendingPick {
             source,
@@ -351,7 +351,6 @@ impl PlayerInput {
         Some(AwaitedPick { idx, pick })
     }
 
-    /// Where the slot's targeting is. Panics if it isn't there any more.
     fn targeting_idx(&self, targeting: TargetingSlot) -> usize {
         let named = self.targeting.get(targeting.idx);
         assert!(

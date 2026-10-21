@@ -57,7 +57,7 @@ impl Hand {
         self.0.push(object_id);
     }
 
-    /// Removes the card at `idx`, which must be `object_id`. The others keep their order.
+    /// Removes the card at `idx`. The others keep their order.
     fn take(&mut self, idx: usize, object_id: ObjectId) -> ObjectId {
         assert!(
             self.0.get(idx) == Some(&object_id),
@@ -485,8 +485,8 @@ mod tests {
 
     /// Takes `card` out of `player`'s hand, where it must be.
     fn take_from_hand(zones: &mut Zones, player: PlayerId, card: ObjectId) {
-        let card = zones.find_in_hand(player, card).unwrap().slot();
-        zones.take_from_hand(card);
+        let found = zones.find_in_hand(player, card).unwrap().slot();
+        zones.take_from_hand(found);
     }
 
     /// Player 0 has drawn `[a, b, c]`.
