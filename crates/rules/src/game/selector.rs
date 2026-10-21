@@ -45,7 +45,7 @@ pub(super) fn select_players(
 }
 
 pub(super) fn select_characters(
-    cards: CardsRef<'_>,
+    cards: CardsRef,
     player_input: &PlayerInput,
     owner: PlayerId,
     source: ObjectId,

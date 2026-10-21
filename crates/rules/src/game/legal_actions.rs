@@ -8,7 +8,7 @@ use crate::game::targeting_walk::{can_start_targeting, may_stop_targeting, next_
 
 /// The one definition of legality.
 pub(super) fn legal_actions(
-    cards: CardsRef<'_>,
+    cards: CardsRef,
     standings: &Standings,
     player_input: &PlayerInput,
     player: &Player,

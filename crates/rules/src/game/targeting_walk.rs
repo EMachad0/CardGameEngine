@@ -8,21 +8,18 @@ use crate::game::player_input::Targeting;
 use crate::target::{CharacterTarget, TargetId};
 
 /// Whether the card's targeting can be finished from nothing targeted.
-pub(super) fn can_start_targeting(cards: CardsRef<'_>, object_id: ObjectId) -> bool {
+pub(super) fn can_start_targeting(cards: CardsRef, object_id: ObjectId) -> bool {
     can_finish_targeting(cards, &mut Targeting::new(object_id))
 }
 
 /// Whether the player may stop at every target and play the card.
-pub(super) fn may_stop_targeting(cards: CardsRef<'_>, targeting: &Targeting) -> bool {
+pub(super) fn may_stop_targeting(cards: CardsRef, targeting: &Targeting) -> bool {
     first_unsatisfied_target(cards, targeting).is_none()
 }
 
 /// The objects the player may target next, for the first target they may not stop at. Each one
 /// leaves the targeting finishable.
-pub(super) fn next_candidates(
-    cards: CardsRef<'_>,
-    targeting: &Targeting,
-) -> Vec<(TargetId, ObjectId)> {
+pub(super) fn next_candidates(cards: CardsRef, targeting: &Targeting) -> Vec<(TargetId, ObjectId)> {
     let Some(target) = first_unsatisfied_target(cards, targeting) else {
         return Vec::new();
     };
@@ -31,7 +28,7 @@ pub(super) fn next_candidates(
         .collect()
 }
 
-fn can_finish_targeting(cards: CardsRef<'_>, targeting: &mut Targeting) -> bool {
+fn can_finish_targeting(cards: CardsRef, targeting: &mut Targeting) -> bool {
     match first_unsatisfied_target(cards, targeting) {
         None => true,
         Some(target) => finishing_candidates(cards, target, targeting)
@@ -67,7 +64,7 @@ fn first_unsatisfied_target<'g>(
 }
 
 fn untargeted_matches(
-    cards: CardsRef<'_>,
+    cards: CardsRef,
     target: &CharacterTarget,
     targeting: &Targeting,
 ) -> Vec<ObjectId> {
@@ -90,7 +87,7 @@ fn untargeted_matches(
         .collect()
 }
 
-fn required_count(cards: CardsRef<'_>, object_id: ObjectId, target: &CharacterTarget) -> u8 {
+fn required_count(cards: CardsRef, object_id: ObjectId, target: &CharacterTarget) -> u8 {
     let owner = cards.objects.get(object_id).player_id;
     effect_amount(cards, &target.count, owner)
 }

@@ -13,7 +13,7 @@ pub(super) struct MatchedTrigger {
     pub(super) effects: EffectSequence,
 }
 
-pub(super) fn matched_triggers(cards: CardsRef<'_>, event: &Event) -> Vec<MatchedTrigger> {
+pub(super) fn matched_triggers(cards: CardsRef, event: &Event) -> Vec<MatchedTrigger> {
     let mut matched = Vec::new();
     for object_id in characters_in_order_of_play(cards.zones).into_iter() {
         let player_id = cards.objects.get(object_id).player_id;
@@ -33,7 +33,7 @@ pub(super) fn matched_triggers(cards: CardsRef<'_>, event: &Event) -> Vec<Matche
     matched
 }
 
-pub(super) fn death_rattles(cards: CardsRef<'_>, object_id: ObjectId) -> Vec<MatchedTrigger> {
+pub(super) fn death_rattles(cards: CardsRef, object_id: ObjectId) -> Vec<MatchedTrigger> {
     triggers(cards, object_id)
         .into_iter()
         .filter(|t| matches!(t.def.pattern, TriggerPattern::Died(TriggerSubject::Itself)))
@@ -50,7 +50,7 @@ fn characters_in_order_of_play(zones: &Zones) -> Vec<ObjectId> {
     characters
 }
 
-fn triggers(cards: CardsRef<'_>, object_id: ObjectId) -> Vec<Trigger> {
+fn triggers(cards: CardsRef, object_id: ObjectId) -> Vec<Trigger> {
     let modifiers = modifiers(cards, object_id);
     let granted = modifiers
         .granted_triggers()
@@ -72,7 +72,7 @@ fn triggers(cards: CardsRef<'_>, object_id: ObjectId) -> Vec<Trigger> {
 }
 
 fn fulfill_trigger_pattern(
-    cards: CardsRef<'_>,
+    cards: CardsRef,
     trigger_owner: PlayerId,
     trigger_object: ObjectId,
     pattern: TriggerPattern,
@@ -106,7 +106,7 @@ fn fulfill_trigger_pattern(
 }
 
 fn fulfill_trigger_subject(
-    cards: CardsRef<'_>,
+    cards: CardsRef,
     subject: TriggerSubject,
     trigger_owner: PlayerId,
     trigger_object: ObjectId,

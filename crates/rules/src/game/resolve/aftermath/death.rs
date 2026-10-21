@@ -78,7 +78,7 @@ impl Game {
     }
 }
 
-fn find_dead(cards: CardsRef<'_>, players: &[PlayerId]) -> Vec<ObjectId> {
+fn find_dead(cards: CardsRef, players: &[PlayerId]) -> Vec<ObjectId> {
     let mut death_pass = Vec::new();
     for &player_id in players {
         for card in cards.zones.board_cards(player_id) {

@@ -78,7 +78,7 @@ pub struct TargetingView {
 }
 
 pub(super) fn view(
-    cards: CardsRef<'_>,
+    cards: CardsRef,
     players: &[Player],
     player_input: &PlayerInput,
     standings: &Standings,
@@ -96,7 +96,7 @@ pub(super) fn view(
 }
 
 fn player_view(
-    cards: CardsRef<'_>,
+    cards: CardsRef,
     player_input: &PlayerInput,
     viewer: PlayerId,
     player: &Player,
@@ -122,12 +122,7 @@ fn player_view(
     }
 }
 
-fn hand_card(
-    cards: CardsRef<'_>,
-    viewer: PlayerId,
-    player_id: PlayerId,
-    card: InHand<'_>,
-) -> HandCard {
+fn hand_card(cards: CardsRef, viewer: PlayerId, player_id: PlayerId, card: InHand<'_>) -> HandCard {
     let object_id = card.object_id();
     let face = (player_id == viewer).then(|| Face {
         def_id: cards.def_id(object_id),
@@ -137,7 +132,7 @@ fn hand_card(
     HandCard { object_id, face }
 }
 
-fn board_card(cards: CardsRef<'_>, _viewer: PlayerId, card: OnBoard<'_>) -> BoardCard {
+fn board_card(cards: CardsRef, _viewer: PlayerId, card: OnBoard<'_>) -> BoardCard {
     let object_id = card.object_id();
     BoardCard {
         object_id,
@@ -148,7 +143,7 @@ fn board_card(cards: CardsRef<'_>, _viewer: PlayerId, card: OnBoard<'_>) -> Boar
 }
 
 fn revealed_view(
-    cards: CardsRef<'_>,
+    cards: CardsRef,
     player_input: &PlayerInput,
     viewer: PlayerId,
     player_id: PlayerId,
@@ -163,7 +158,7 @@ fn revealed_view(
         .collect()
 }
 
-fn hero_card(cards: CardsRef<'_>, _viewer: PlayerId, player_id: PlayerId) -> HeroCard {
+fn hero_card(cards: CardsRef, _viewer: PlayerId, player_id: PlayerId) -> HeroCard {
     let object_id = cards.zones.hero(player_id);
     HeroCard {
         object_id,
