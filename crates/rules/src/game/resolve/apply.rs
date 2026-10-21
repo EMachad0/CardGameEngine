@@ -7,6 +7,7 @@ use crate::action::{Action, IllegalAction};
 use crate::cards::object::ObjectId;
 use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::NextEffect;
+use crate::game::legal_actions::LegalAction;
 use crate::game::reporting::Report;
 use crate::game::state::Game;
 use crate::ids::PlayerId;
@@ -27,20 +28,19 @@ impl Game {
         action: Action,
         obs: &mut impl Observer,
     ) -> Result<(), ApplyError> {
-        if !self.legal_actions(player_id).contains(&action) {
-            Err(ApplyError::IllegalAction(IllegalAction::new(
+        let Some(legal) = self.legal_action(player_id, action) else {
+            return Err(ApplyError::IllegalAction(IllegalAction::new(
                 player_id, action,
-            )))
-        } else {
-            self.apply_action(player_id, action, obs);
-            self.drain_effect_queue(obs);
-            Ok(())
-        }
+            )));
+        };
+        self.apply_action(player_id, legal, obs);
+        self.drain_effect_queue(obs);
+        Ok(())
     }
 
-    fn apply_action(&mut self, player_id: PlayerId, action: Action, obs: &mut impl Observer) {
+    fn apply_action(&mut self, player_id: PlayerId, action: LegalAction, obs: &mut impl Observer) {
         match action {
-            Action::Play { object_id } => {
+            LegalAction::Play(card) => {
                 if let Some(targeting) = self.player_input.targeting(player_id) {
                     let target_ids = CardsRef::new(self)
                         .card_def(targeting.object_id())
@@ -51,28 +51,28 @@ impl Game {
                     self.player_input.commit_targeting(player_id, &target_ids);
                 }
 
-                self.play(player_id, object_id, obs);
+                self.play(player_id, card, obs);
             }
-            Action::Pick { object_id } => {
+            LegalAction::Pick { object_id } => {
                 self.pick(player_id, object_id, obs);
                 obs.checkpoint(Views::new(self));
             }
-            Action::EndTurn => {
+            LegalAction::EndTurn => {
                 self.end_turn(obs);
                 obs.checkpoint(Views::new(self));
             }
-            Action::StartTargeting { object_id } => {
+            LegalAction::StartTargeting { object_id } => {
                 self.player_input.start_targeting(player_id, object_id);
                 obs.checkpoint(Views::new(self));
             }
-            Action::Target {
+            LegalAction::Target {
                 target_id,
                 object_id,
             } => {
                 self.player_input.target(player_id, object_id, target_id);
                 obs.checkpoint(Views::new(self));
             }
-            Action::Cancel { .. } => {
+            LegalAction::Cancel { .. } => {
                 self.player_input.cancel(player_id);
                 obs.checkpoint(Views::new(self));
             }

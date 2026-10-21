@@ -6,6 +6,7 @@ use crate::cards::definition::DefId;
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::EffectStack;
+use crate::game::legal_actions::LegalAction;
 use crate::game::player::Player;
 use crate::game::player_input::PlayerInput;
 use crate::game::resolve::aftermath::standings::Standings;
@@ -51,12 +52,17 @@ impl Game {
     }
 
     pub fn legal_actions(&self, player_id: PlayerId) -> Vec<Action> {
-        legal_actions::legal_actions(
-            CardsRef::new(self),
-            &self.standings,
-            &self.player_input,
-            self.get_player(player_id),
-        )
+        self.parsed_legal_actions(player_id)
+            .iter()
+            .map(LegalAction::action)
+            .collect()
+    }
+
+    /// `None` unless `legal_actions(player_id)` lists `action`.
+    pub(super) fn legal_action(&self, player_id: PlayerId, action: Action) -> Option<LegalAction> {
+        self.parsed_legal_actions(player_id)
+            .into_iter()
+            .find(|legal| legal.action() == action)
     }
 
     pub fn view(&self, viewer: PlayerId) -> View {
@@ -124,6 +130,15 @@ impl Game {
 
     pub fn players(&self) -> Vec<PlayerId> {
         self.players.iter().map(|p| p.id).collect()
+    }
+
+    fn parsed_legal_actions(&self, player_id: PlayerId) -> Vec<LegalAction> {
+        legal_actions::legal_actions(
+            CardsRef::new(self),
+            &self.standings,
+            &self.player_input,
+            self.get_player(player_id),
+        )
     }
 
     fn get_player(&self, player_id: PlayerId) -> &Player {

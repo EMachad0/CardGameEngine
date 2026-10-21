@@ -13,6 +13,22 @@ pub(super) struct Play {
     object_id: ObjectId,
 }
 
+/// A card its player can play now, with its cost.
+pub(super) struct Playable {
+    object_id: ObjectId,
+    cost: u8,
+}
+
+impl Playable {
+    pub(super) fn new(object_id: ObjectId, cost: u8) -> Self {
+        Self { object_id, cost }
+    }
+
+    pub(super) fn object_id(&self) -> ObjectId {
+        self.object_id
+    }
+}
+
 impl From<Play> for Event {
     fn from(play: Play) -> Self {
         Event::Played {
@@ -23,16 +39,9 @@ impl From<Play> for Event {
 }
 
 impl Game {
-    pub(super) fn play(
-        &mut self,
-        player_id: PlayerId,
-        object_id: ObjectId,
-        obs: &mut impl Observer,
-    ) {
-        let mana_cost = self
-            .mana_cost(object_id)
-            .expect("legal actions guarantee playable cards are in hand");
-        self.get_player_mut(player_id).mana.pay(mana_cost);
+    pub(super) fn play(&mut self, player_id: PlayerId, card: Playable, obs: &mut impl Observer) {
+        let Playable { object_id, cost } = card;
+        self.get_player_mut(player_id).mana.pay(cost);
         self.zones
             .take_from_hand(player_id, object_id)
             .expect("legal actions guarantee playable cards are in hand");
