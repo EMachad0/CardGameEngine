@@ -49,21 +49,21 @@ pub(super) fn select_characters(
     cards: Cards<'_>,
     player_input: &PlayerInput,
     owner: PlayerId,
-    object_id: ObjectId,
+    source: ObjectId,
     selector: &CharacterSelector,
 ) -> Selection<ObjectId> {
     Selection(match selector {
         CharacterSelector::All(filter) => {
             Values::Each(cards.scan_characters_with_filter(owner, filter))
         }
-        CharacterSelector::Itself => Values::Each(vec![object_id]),
+        CharacterSelector::Itself => Values::Each(vec![source]),
         CharacterSelector::OwnerHero => Values::Each(vec![cards.zones.hero(owner)]),
         CharacterSelector::Random(filter) => {
             Values::OneOf(cards.scan_characters_with_filter(owner, filter))
         }
         CharacterSelector::Targeted(target_id) => Values::Each(
             player_input
-                .targeted(object_id, *target_id)
+                .targeted(source, *target_id)
                 .expect("Target not fulfilled")
                 .to_vec(),
         ),
