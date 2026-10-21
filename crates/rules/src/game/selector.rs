@@ -9,7 +9,6 @@ use crate::game::player_input::PlayerInput;
 use crate::ids::PlayerId;
 use crate::rng::Rng;
 
-/// What a selector says an effect acts on: each of some values, or one of them at random.
 pub(super) struct Selection<T>(Values<T>);
 
 enum Values<T> {
