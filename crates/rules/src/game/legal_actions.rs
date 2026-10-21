@@ -32,8 +32,8 @@ impl LegalAction {
     /// What a player sends for this action.
     pub(super) fn action(&self) -> Action {
         match *self {
-            Self::Play(ref card) => Action::Play {
-                object_id: card.object_id(),
+            Self::Play(ref playable) => Action::Play {
+                object_id: playable.object_id(),
             },
             Self::Pick(ref option) => Action::Pick {
                 object_id: option.object_id(),

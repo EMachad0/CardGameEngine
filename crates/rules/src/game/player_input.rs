@@ -232,7 +232,7 @@ impl PlayerInput {
             .find(|entry| entry.source == source && entry.pick_id == pick_id)
     }
 
-    /// Starts the player's targeting of `object_id`, with nothing targeted.
+    /// With nothing targeted yet.
     pub(super) fn start_targeting(
         &mut self,
         _: NothingAwaited,
