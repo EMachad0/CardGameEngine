@@ -1,13 +1,12 @@
 //! The mutation half of `Game::apply`. It runs an action and resolves any card
 //! the action plays.
 //!
-//! `apply` checks legality once, and nothing after its check re-checks it.
+//! `apply` checks legality once, and every step after it takes what the check learned.
 
 use crate::action::{Action, IllegalAction};
-use crate::cards::object::ObjectId;
-use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::NextEffect;
 use crate::game::legal_actions::LegalAction;
+use crate::game::player_input::PickOption;
 use crate::game::reporting::Report;
 use crate::game::state::Game;
 use crate::ids::PlayerId;
@@ -40,47 +39,42 @@ impl Game {
 
     fn apply_action(&mut self, player_id: PlayerId, action: LegalAction, obs: &mut impl Observer) {
         match action {
-            LegalAction::Play(card) => {
-                if let Some(targeting) = self.player_input.targeting(player_id) {
-                    let target_ids = CardsRef::new(self)
-                        .card_def(targeting.object_id())
-                        .targets
-                        .iter()
-                        .map(|t| t.id)
-                        .collect::<Vec<_>>();
-                    self.player_input.commit_targeting(player_id, &target_ids);
-                }
-
-                self.play(player_id, card, obs);
+            LegalAction::Play { card, targeting } => {
+                self.play(player_id, card, targeting, obs);
             }
-            LegalAction::Pick { object_id } => {
-                self.pick(player_id, object_id, obs);
+            LegalAction::Pick(option) => {
+                self.pick(player_id, option, obs);
                 obs.checkpoint(Views::new(self));
             }
             LegalAction::EndTurn => {
                 self.end_turn(obs);
                 obs.checkpoint(Views::new(self));
             }
-            LegalAction::StartTargeting { object_id } => {
-                self.player_input.start_targeting(player_id, object_id);
+            LegalAction::StartTargeting {
+                object_id,
+                nothing_awaited,
+            } => {
+                self.player_input
+                    .start_targeting(nothing_awaited, player_id, object_id);
                 obs.checkpoint(Views::new(self));
             }
             LegalAction::Target {
+                targeting,
                 target_id,
                 object_id,
             } => {
-                self.player_input.target(player_id, object_id, target_id);
+                self.player_input.target(targeting, object_id, target_id);
                 obs.checkpoint(Views::new(self));
             }
-            LegalAction::Cancel { .. } => {
-                self.player_input.cancel(player_id);
+            LegalAction::Cancel { targeting, .. } => {
+                self.player_input.cancel(targeting);
                 obs.checkpoint(Views::new(self));
             }
         };
     }
 
-    fn pick(&mut self, player_id: PlayerId, object_id: ObjectId, obs: &mut impl Observer) {
-        self.player_input.pick(player_id, object_id);
+    fn pick(&mut self, player_id: PlayerId, option: PickOption, obs: &mut impl Observer) {
+        let object_id = self.player_input.pick(option);
 
         let report = Report::Picked {
             player_id,

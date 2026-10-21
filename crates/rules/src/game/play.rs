@@ -4,6 +4,7 @@ use crate::cards::object::ObjectId;
 use crate::event::Event;
 use crate::game::cards_ref::CardsRef;
 use crate::game::mana::Payment;
+use crate::game::player_input::TargetingSlot;
 use crate::game::reporting::Report;
 use crate::game::state::Game;
 use crate::ids::PlayerId;
@@ -41,8 +42,24 @@ impl From<Play> for Event {
 }
 
 impl Game {
-    pub(super) fn play(&mut self, player_id: PlayerId, card: Playable, obs: &mut impl Observer) {
+    /// Closes the player's targeting first, if they played the card from there.
+    pub(super) fn play(
+        &mut self,
+        player_id: PlayerId,
+        card: Playable,
+        targeting: Option<TargetingSlot>,
+        obs: &mut impl Observer,
+    ) {
         let Playable { card, payment } = card;
+        if let Some(targeting) = targeting {
+            let target_ids = CardsRef::new(self)
+                .card_def(card.object_id())
+                .targets
+                .iter()
+                .map(|t| t.id)
+                .collect::<Vec<_>>();
+            self.player_input.commit_targeting(targeting, &target_ids);
+        }
         self.get_player_mut(player_id).mana.pay(payment);
         let object_id = self.zones.take_from_hand(card);
 
