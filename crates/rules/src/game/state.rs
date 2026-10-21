@@ -1,5 +1,4 @@
-//! `Game`, the whole state of one game, and every method on it but the commands that report or
-//! checkpoint.
+//! `Game`, the whole state of one game, how one starts, and what callers ask it.
 
 use crate::action::Action;
 use crate::cards::binder::store::Binder;
@@ -11,9 +10,8 @@ use crate::game::player::Player;
 use crate::game::player_input::PlayerInput;
 use crate::game::resolve::aftermath::standings::Standings;
 use crate::game::resolve::apply::ApplyError;
-use crate::game::setup::setup;
 use crate::game::view::{self, View};
-use crate::game::{legal_actions, stats};
+use crate::game::{legal_actions, setup, stats};
 use crate::history::History;
 use crate::ids::PlayerId;
 use crate::outcome::Outcome;
@@ -38,12 +36,12 @@ pub struct Game {
 impl Game {
     /// Seeds the `Rng`, shuffles both decks, deals 3 cards each and starts player 0's turn.
     pub fn new(seed: u64, decks: [Vec<DefId>; 2]) -> Self {
-        setup(seed, decks, true)
+        setup::setup(seed, decks, true)
     }
 
     /// Like `new`, but keeps each deck in the given order, index 0 on top.
     pub fn with_deck_order(seed: u64, decks: [Vec<DefId>; 2]) -> Self {
-        setup(seed, decks, false)
+        setup::setup(seed, decks, false)
     }
 
     pub fn applied(&self, player_id: PlayerId, action: Action) -> Result<Self, ApplyError> {
