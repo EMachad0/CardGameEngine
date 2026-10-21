@@ -1,5 +1,5 @@
 //! The cards of one game, borrowed together for the questions asked about them: what each object
-//! is, and which characters in play pass a filter.
+//! is, and which characters pass a filter.
 
 use crate::cards::binder::store::Binder;
 use crate::cards::definition::{CardDef, DefId};
