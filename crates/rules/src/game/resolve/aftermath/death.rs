@@ -7,6 +7,7 @@ use crate::game::stats::character_health;
 use crate::game::triggering::{MatchedTrigger, death_rattles};
 use crate::ids::PlayerId;
 use crate::observer::{Observer, Views};
+use crate::zones::Zones;
 
 pub(in crate::game) struct Death {
     object_id: ObjectId,
@@ -21,22 +22,9 @@ impl From<Death> for Event {
 }
 
 impl Game {
-    fn find_dead(&self) -> Vec<ObjectId> {
-        let cards = Cards::new(self);
-        let mut death_pass = Vec::new();
-        for player_id in self.players().into_iter() {
-            for card in self.zones.board_cards(player_id) {
-                if character_health(cards, card.into()) <= 0 {
-                    death_pass.push(card.object_id());
-                }
-            }
-        }
-        death_pass
-    }
-
     pub(super) fn remove_dead(&mut self, obs: &mut impl Observer) {
         loop {
-            let dead_minions = self.find_dead();
+            let dead_minions = find_dead(Cards::new(self), &self.players());
             let minion_died = !dead_minions.is_empty();
 
             let dead_players = self
@@ -79,33 +67,47 @@ impl Game {
 
         for death in deaths.into_iter() {
             let object_id = death.object_id;
-            let object = self.objects.get(object_id);
-            if Cards::new(self).card_def(object_id).leaves_zone_on_death() {
-                self.destroy(object.player_id, object_id);
+            let player_id = self.objects.get(object_id).player_id;
+            let card_def = Cards::new(self).card_def(object_id);
+            if card_def.leaves_zone_on_death() {
+                let to_graveyard = card_def.goes_to_graveyard();
+                destroy(&mut self.zones, player_id, object_id, to_graveyard);
             }
             self.report(Report::Died(death), obs);
         }
     }
+}
 
-    fn destroy(&mut self, player_id: PlayerId, object_id: ObjectId) {
-        #[expect(
-            clippy::disallowed_methods,
-            reason = "the one removal from the board, made as the state check removes the dead"
-        )]
-        self.zones
-            .leave_board(player_id, object_id)
-            .expect("object not in board");
-
-        if Cards::new(self).card_def(object_id).goes_to_graveyard() {
-            self.entomb(player_id, object_id);
+fn find_dead(cards: Cards<'_>, players: &[PlayerId]) -> Vec<ObjectId> {
+    let mut death_pass = Vec::new();
+    for &player_id in players {
+        for card in cards.zones.board_cards(player_id) {
+            if character_health(cards, card.into()) <= 0 {
+                death_pass.push(card.object_id());
+            }
         }
     }
+    death_pass
+}
 
-    fn entomb(&mut self, player_id: PlayerId, object_id: ObjectId) {
-        #[expect(
-            clippy::disallowed_methods,
-            reason = "the one entry into a graveyard, made as the state check removes the dead"
-        )]
-        self.zones.entomb(player_id, object_id);
+fn destroy(zones: &mut Zones, player_id: PlayerId, object_id: ObjectId, to_graveyard: bool) {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the one removal from the board, made as the state check removes the dead"
+    )]
+    zones
+        .leave_board(player_id, object_id)
+        .expect("object not in board");
+
+    if to_graveyard {
+        entomb(zones, player_id, object_id);
     }
+}
+
+fn entomb(zones: &mut Zones, player_id: PlayerId, object_id: ObjectId) {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the one entry into a graveyard, made as the state check removes the dead"
+    )]
+    zones.entomb(player_id, object_id);
 }
