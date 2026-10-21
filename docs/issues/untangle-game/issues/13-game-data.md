@@ -15,6 +15,12 @@ As of ticket 10 (PR #51):
   `pub(super)`, so every `impl Game` block under `game/` can read and write every owner. Which
   command writes which owner is convention. PR #51 says so under "Doc gaps" and "Left out". Only
   the read-only card questions got a boundary, `Cards` in `game/cards.rs`.
+- **Its commands sit outside its module.** Every command is an `impl Game` block in a file of its
+  own, outside `game/state.rs`. Ticket 10 left them there, since a command that reports or
+  checkpoints can't take less than `Game`.
+- **A player's ID is open too.** `Player.id` in `game/player.rs` is `pub(super)`, and
+  `get_player` finds a player at the index of its ID in `players`. Any child of `game` can break
+  that invariant by writing the ID or reordering `players`.
 - **Reporting runs inside the commands, between their writes.** `Game::report` in
   `game/reporting.rs` matches the event against the card state, then records it in history,
   reports it to the observer and pushes each match onto the effect stack. Eleven commands call it,
@@ -37,6 +43,10 @@ As of ticket 10 (PR #51):
 The doc's rules: "A module in the general sense is a `mod` whose private items include the data
 its decision is stored in." "The keeper must be the only code that can make the writes the rule is
 about." "Make a decision its own module when its knowledge sits in more than one place [...]".
+"Keep a type's inherent `impl` blocks in the module that defines it, so its whole interface sits
+in one file. Code elsewhere that builds on the type takes it as a parameter." "A function that
+takes the whole holder instead hides what it reads, can start reading more with no change to its
+signature, and keeps its callers from writing any part of the holder while it runs."
 
 ## Rulings
 
@@ -62,6 +72,7 @@ about." "Make a decision its own module when its knowledge sits in more than one
 - Which owners each command writes is formal: a command that writes an owner it doesn't write today
   fails the build.
 - No command holds data only to hand it to reporting or to a checkpoint.
+- `Game`'s inherent `impl` blocks sit only in the module that defines it.
 - One place decides where checkpoints fall.
 - The same events come out in the same order, each matching the same triggers, with the
   checkpoints and RNG draws at the same points among them.

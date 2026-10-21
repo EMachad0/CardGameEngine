@@ -237,6 +237,13 @@ up.
   evaluate matching per step, a rules change, with a split wherever a step must not batch, accepted
   the structure, then had the ticket state the problem only: "let the agents arive on it or
   something better".
+- Doc review after 02f: rejected my "a plausible change to one leaves the other alone" test for
+  asking against combining as vacuous, since such a change always exists. Drew the line himself:
+  "asking questions to other modules is fine, but mutating several modules sounds like
+  coordination". Argued that a combining decision always earns its own module, since a caller
+  holding it would hold two decisions. Against `impl` blocks scattered over sibling files at first
+  sight, and ordered the work so reporting leaves the steps before commands become free
+  functions.
 
 ### Checks and proofs
 
@@ -394,8 +401,11 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
    state problems and leave the shape to the agents, with no exercise and no audit (done, PR #37).
    02f: review the untangling PRs as they land, and put the doc gaps they surface into the doc.
    Done in 02f for PR #51's open question, how a command reports and checkpoints without holding
-   all of `Game`: the problem, six families and their costs, his verdict, ticket 13. The doc gaps
-   of PR #51 and tickets 11 to 13 wait for session 02h, after 13's review.
+   all of `Game`: the problem, six families and their costs, his verdict, ticket 13. After 02f, a
+   review outside a session judged the doc gaps of PRs #39 to #51 one by one with him, and the
+   settled ones went into `file-structure.md`. #51's struct-of-borrows gaps and tickets 11 to 13
+   wait for session 02h, after 13's review. Order: #51 reworked to the new `impl` rule, then 11,
+   12, the Mourner fix, 13.
    Unused material: `research/02b-pass-and-coordinator/scope.md` (Forge and XMage, the Process
    Manager). Session 02g, its own node: parse, don't validate (Alexis King,
    2019). A check's result carried forward as a type, not an assumption; who can build the proof,
@@ -558,11 +568,12 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   (`Played` before `summon`): ADR 0012 already batches deaths, and `Damaged` batches safely.
   Ticket 13 states the problem only, with the matching ruling and his three rejections.
   Restricting one owner command to its caller, such as `Mana::refill` to the turn start, is out of
-  13, since `&mut Mana` reaches `refill` (probe 3). A later ticket if he wants it. PR #51's doc
-  gaps are unsettled: a struct of borrows mirroring its owner, a main type under a subtree of its
-  commands, methods on a sibling's struct, a second builder for the selectors, and no coordinator
-  free of decisions. Ticket 13 may answer the first two and the last. He chose a verdict and the
-  families, not doc rules, so nothing went into `file-structure.md`.
+  13, since `&mut Mana` reaches `refill` (probe 3). A later ticket if he wants it. Of PR #51's doc
+  gaps, the doc review after 02f settled two: inherent `impl` blocks stay in the defining module,
+  and the code that runs steps keeps their order rules as keeper. Still open: a struct of borrows
+  mirroring its owner, a main type under a subtree of its commands, and a second builder for the
+  selectors. Ticket 13 may answer the first two. Clippy's `multiple_inherent_impl` could enforce
+  the `impl` rule, his call.
 - The stack owner (02c), for 02e and #17's redo in 02f. Private `effect_stack` and
   `resolving_effect`. `next_effect() -> Next { Effect(ObjectId, Effect), Finished, Empty }` reads
   and advances in one command. It returns `Finished` at every boundary between resolving effects,
@@ -759,7 +770,7 @@ graph TD
 | 02e | untangle | Untangle `Game` as tickets | done (exercises dropped at his call, since applying settled rules is the agent's part; ten tickets in `docs/issues/untangle-game/` state problems, not shapes, and carry one ruling, matching stays with reporting; one ticket at a time, one to five review rounds; behavior changes allowed when justified, except rules changes and known bugs; no audit; PR #37) |
 | 02f | CMD | Commands and the whole-state readers, PR #51's open question | done (probe 3 of 3 on borrow mechanics; the problem is the readers inside every command, not the number of parameters; six families, checked by three researchers; runtime checks, lend and per-command state machines ruled out; matching per step with forced splits evaluated and accepted; ticket 13 states the problem only; review rounds unlimited) |
 | 02g | PDV | Parse, don't validate: `apply` and `legal_actions`, `ObjectId` by zone | done (probe edge was a proof's reach, he let `apply` skip the check; four nodes, each a rule in "Parse, don't validate", plus a Rust bullet on proofs that borrow; `apply` exercise reached "&mut or owned values" after one question; `ObjectId`: identity in stored IDs, per-zone proofs from the location owner, his first proof borrowed the ID; no audit, findings 33 to 35 and 12 ticketed as 08, 11 and 12, PR #38) |
-| 02h | review | The doc gaps of PR #51 and tickets 11 to 13 | once ticket 13 lands |
+| 02h | review | #51's open doc gaps and those of tickets 11 to 13 | once ticket 13 lands |
 | 03 | DOD | Data-oriented design, ECS organization, the rules core beside Bevy | next |
 | 04 | R3, P, T | Ports, anti-corruption layers, contract tests, tests as feedback | |
 | 05 | F | Feature-first, shared code, naming | |
