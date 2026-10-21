@@ -53,7 +53,8 @@ Understand card game systems well enough to design MTG, Hearthstone, or Yu-Gi-Oh
 - Death is committed because it has consequences, and deriving it creates a fixed-point cycle. Collect then commit, loop to a fixed point, outcome needs `Draw`, and N-player elimination must be committed because a restore undoes a derived one (02). Saw the Medic case depend on board order in his one-at-a-time loop ("I don't like it", 02 review), and that a hero left at 0 makes the removal loop run forever (04c).
 - No state check inside a card, derived unprompted, and a checkpoint is not a state check (04).
 - He holds when things run, in concept: he places drain points, separates matching from resolving (05) and places pauses (06).
-- Edge: in code the state check lands in the wrong place. It ran during a pause twice (06 exercise) and only red tests caught it.
+- Edge: in code the state check lands in the wrong place. It ran during a pause twice (06 exercise) and only red tests caught it. In 05a he got the order right on the first try: `remove_dead` runs `kill` (death rattles, then removal), eliminates, then reports every `Died`.
+- Who hears (05a): traced `kill`'s one-at-a-time bug right, but didn't know a dead hero stays in `characters_in_play` and matches its own `Died(Itself)` twice. It landed at once. He proposed "hearing is not in play, alive is" himself, and the Rally Banner test settled Alive as "not killed by a state check" over Health above 0 (ADR 0016, glossary Alive). He believed a Hearthstone minion stays on the board until its deathrattle resolves. The Death Creation Step landed it: in all four games a death rattle is read before removal and resolves after.
 
 ### Events and visibility
 
@@ -103,13 +104,14 @@ Understand card game systems well enough to design MTG, Hearthstone, or Yu-Gi-Oh
 
 - Strong TDD discipline: didn't implement WildBolt because no test pinned it (01). Wrote `docs/conventions/testing.md`, moved rule tests to `tests/spec/` (02), added benchmarks before optimizing (02), and adds his own tests and tooling (a Mourner case, `pretty_assertions`, indexed event listings, 05). In 04a he wrote bodies before tests, with the existing tests pinning the refactor.
 - Edge: property-based testing. He sees crashes and rejected legal moves as fuzz findings, but missed invariants you assert yourself, such as a card in two zones or replay divergence (00).
+- Order twins (05a): a one-at-a-time bug leaks from what is handled earlier to what still waits, so a rule about one pass needs a test per order. The Mourner test pinned only the order that hid the bug. He transferred it to the Medic right.
 
 ### Rust
 
 - Reading is solid (01): `Clone` for search, `self` by value loses the game on `Err`, `?` does no rollback, owned `Vec` vs a borrowed iterator. `Rc` and `&'a` block a Bevy `Resource` (02).
 - Produces newtypes, a private-field `PlayerId` with `const fn new`, enum pending state, `std::mem::take`, `let`-`else`, `VecDeque` (01), `macro_rules!` (`def_ids!`, after missing the `$( ... ),*` group syntax, 02) and a generic `select_random<T: Clone>` unprompted (04a).
 - Fixed misreadings: `&mut impl Trait` is a generic, not `dyn` (03); fn pointers and `Arc<dyn Fn>` are `Clone`, fn pointers `Copy` (04); an integer `as` keeps the low bits and never panics, overflow checks sit on arithmetic (04a). He then applied the last one unprompted (`u8` amounts, `try_from`, `saturating_sub`). Precise on clone vs copy (06).
-- Edge: traits, generics and lifetimes don't come naturally when designing. Explain why each trait, generic or ownership choice is the one to make. He worries a generic parameter ripples through every function (03), which is a sound instinct.
+- Edge: traits, generics and lifetimes don't come naturally when designing. Explain why each trait, generic or ownership choice is the one to make. He worries a generic parameter ripples through every function (03), which is a sound instinct. In 05a he asked to make `kill` a free function. `CardsRef` borrows `Zones`, so a free function can't take it beside `&mut Zones`. Left to architecture ticket 13.
 
 ### How he learns
 
@@ -120,7 +122,7 @@ Understand card game systems well enough to design MTG, Hearthstone, or Yu-Gi-Oh
 - He pushes back well and is often right: `TurnOrder` (01), the versioned table (02), premature brackets, per-`Effect` checkpoints, fatigue as its own event (03), target slots (04), Hearthstone tokens (04c), remembered targets (04b). Concede when he is.
 - For design he prefers guiding questions over a presented answer (02), and production-level designs not shaped by today's code, backed by research (06). His "why" questions often open a node (counters multiply, 02; minion entry order, 06). He asks for a card to pin each order rule (Gravedigger, Drummer).
 - He makes interface calls quickly and well (eight in 04c) and splits large exercises into parts himself. He skips the retrieval quiz when the previous session ended hours before.
-- He builds structure for cases no test reaches (`Player.playing`, hero replacement on play, `AtMost` and `AtLeast`, `Choosing`, `CharacterEntered`), keeps some by choice, and cuts them once shown broken.
+- He builds structure for cases no test reaches (`Player.playing`, hero replacement on play, `AtMost` and `AtLeast`, `Choosing`, `CharacterEntered`), keeps some by choice, and cuts them once shown broken. In 05a he chose to fix the dead-hero case, then to fix it without a test once no two-player game could reach it, then deferred it himself when it needed `Standings` interface work.
 - In review he fixes every finding quickly but misses bugs no test shows; throwaway probes and red tests surface them. He dislikes call-scoped temporary fields in `Game` ("mutable temp field") and prefers passing a value through.
 
 ## Course plan
@@ -135,7 +137,6 @@ Understand card game systems well enough to design MTG, Hearthstone, or Yu-Gi-Oh
 
 ## Open threads
 
-- The Mourner fix, `docs/issues/dying-mourner-hears-older-death.md`: test-first under the course roles, and before architecture ticket 13 (`docs/issues/untangle-game/issues/13-game-data.md`), which waits for it (his call, architecture 02f). Its PR deletes the issue file and the bug's line under the untangle spec's known bugs.
 - Outside a pending pick, only the active player has legal actions, so an opponent's response is never offered. Session 08.
 - Signed modifiers: `ModifierEffect` amounts are `u8` since 04a, so "-2 Attack" or "costs (1) more" needs its own verb (the sign in the verb, like restore). He didn't say whether that's intended. Settle it with the first debuff or cost-increase card.
 - Random with no candidates: Stray Shot stays playable into an empty board and does nothing (Bomb Lobber), his 04b call "at least for now". `can_finish_targeting` reads only declared targets. The alternative is Deadly Shot's `REQ_MINIMUM_ENEMY_MINIONS`, a play condition that no target implies.
@@ -149,7 +150,7 @@ Understand card game systems well enough to design MTG, Hearthstone, or Yu-Gi-Oh
 - Cross-target "different" is "differs from everything targeted earlier" (Forge `TargetUnique$`). XMage's tags (differ from only some of it) wait for a card that needs them. If `Cancel`-only undo proves clumsy, `Back` undoes the last `Target` and works the same on every card.
 - Card wording: loose-then-tight filters (Shove) make the look-ahead hide a matching minion, and tight-first wording avoids it. A candidate for session H's card validation.
 - Hero replacement (concept in 04c, not built): a new object, with the card's data saying whether damage carries over (Hearthstone hero cards keep it, Jaraxxus sets 15). Queries about "your hero" key by `PlayerId`. No event reports a swap yet.
-- N-player elimination: `Player.playing` is his committed record, kept by choice. Test it when setup takes more than two decks.
+- N-player elimination: `Standings` holds who is still playing, his committed record. Test it when setup takes more than two decks.
 - Glossary terms he deferred until used more (Owner, Side, Friendly and Enemy went in during 04a, Draft and Choose in 04b): token (Hearthstone's uncollectible vs MTG's created by an effect, a flagged pair when it lands), summon (the code now says `summon`), graveyard (and the `emtomb` spelling). Character was added in 04c.
 - `lib.rs`'s docstring still lists `cards` among the public data types, but the module is private now, and its layout list doesn't mention `choice`.
 - Dependent sequencing (sessions 06b and 08): "if A succeeded, B" is a second axis beside together/then. Each verb reports what it did, a later effect's condition reads the report, and the report lives only while the card resolves (the resolving effect, or its context in 06b). Open 08 with the YGO conjunction table. What "succeeded" means differs per game, as MTG 118.12 in the verified facts shows, so it belongs in the data.
@@ -175,9 +176,9 @@ Understand card game systems well enough to design MTG, Hearthstone, or Yu-Gi-Oh
 - A card being resolved is in no zone: a spell leaves the hand and goes nowhere. MTG has a stack zone. Decide when a card asks where a resolving card is.
 - Waiting entries clone their effects at match time (kept, ADR 0011). A definition address (the card holding the list, which list, an index) is the smaller, serializable alternative, like Ink's saved call stack.
 - Self-modifiers can restate printed text (a static `BuffAtk`, or a `GrantTrigger` in `modifier_effects`). Session H's validation. He rejected narrowing the type unless the static self-buff is closed too.
-- Dead heroes stay in their zone and in `board_characters`, so a future hero trigger would hear deaths after its hero died. ADR 0012's "a removed object hears nothing" covers minions only.
+- ADR 0016's hero half is not built. The state check already eliminates before it reports deaths (05a), but `matched_triggers` still walks every hero, so a dead hero hears every later event and its own `Died` matches its death rattles a second time. His calls (05a): `matched_triggers` takes `&Standings`, and `alive_characters_in_order_of_play` in `triggering.rs` replaces `characters_in_order_of_play`. `Standings::playing` is `pub(super)` to `aftermath`, so `Standings` needs a question `game` can reach. No test reaches it until setup takes more than two decks, since a two-player hero death ends the game in the same state check and nothing resolves after. With N players, also decide whether a lost player's objects leave (MTG 800.4a) and whether selectors and targeting ask Alive (an eliminated player's hero stays a target, a known bug in the untangle spec).
 - Naming: `PendingEffect.object_id` and `ResolvingEffect.object_id` were agreed as `source_id`; a granted `Trigger.source` is the aura's source and is used only to sort.
-- Untested speculative branches in `rules` (`HistoryQueryKind::MinionDied`, whose scope and turn filters no card reads, `HistoryKind::CharacterEntered`, written and never read, `PlayerFilter::Active`, `TurnFilter::Current`, hostile auras, `has_deck_presence`, `Player.playing`, `PlayerSelector::All` and `Random`, `CharacterSelector::Itself` and `OwnerHero`, `Effect::AddFriendlyAura`, `TriggerPattern::Damaged` with a filter, `CardKindFilter::Minions` and `Heroes`). The 04a ones are kept by his choice. Cut them or give each a test card when its session comes.
+- Untested speculative branches in `rules` (`HistoryQueryKind::MinionDied`, whose scope and turn filters no card reads, `HistoryKind::CharacterEntered`, written and never read, `PlayerFilter::Active`, `TurnFilter::Current`, hostile auras, `has_deck_presence`, N-player `Standings`, `PlayerSelector::All` and `Random`, `CharacterSelector::Itself` and `OwnerHero`, `Effect::AddFriendlyAura`, `TriggerPattern::Damaged` with a filter, `CardKindFilter::Minions` and `Heroes`). The 04a ones are kept by his choice. Cut them or give each a test card when its session comes.
 - Hand to board keeps the `ObjectId` and the bag keeps objects forever, so a "+500 until end of turn" in `obj.modifiers` would survive a bounce. Raise this when bounce arrives (the zone-reset table).
 - `setup` draws and runs `start_turn` with no drain and no state check, so triggers matched during setup wait on the effect stack until the first `apply`. No card triggers at setup or at turn start yet. Decide with the first one (architecture audit, session 02b).
 
@@ -248,6 +249,7 @@ graph TD
 | 04b | E, G | Exercise: targeting draft | done (green: 20 unit + 142 spec; ADR 0009 and 0010; choices on the card, `Draft`/`Choose`/`Cancel`/`Play`, a look-ahead search; Ping, Twin Shot, Crossfire, Shove; drafting benches; `4bb2960`) |
 | 05 | F | Triggers, replacements, statics | done (green: 21 unit + 168 spec; ADRs 0011, 0012, 0014; triggers derived on read, one `emit`, a stack, collect then commit; Medic, Mourner, Drillmaster, Rally Banner, Bomber, Gravedigger; a clippy ban on `Observer::event`) |
 | 06 | R4, G | Resolution loop: pausable resolution and the decider | done (green: 26 unit + 177 spec; ADR 0015; the resolving effect apart from the effect stack, one loop, per-player pending picks with a derived decider, `Reveal` and `ResolvePick` by pick id with load checks, minions enter before their play effects; Sweep, Hoarder, Drummer; five research reports and a prototype) |
+| 05a | F | Mourner fix: the dead leave before any death of their pass is reported | done (green: 130 unit + 179 spec; ADR 0016 and glossary Alive; order twins for the Mourner and Medic; PR #56) |
 | 06b | G | Named results and composable reveals, the first nesting effect (`If`) and frames | next, after his refactor PRs. |
 | 06c | G | Choices inside triggers and remembered choices | |
 | 06d | G | Simultaneous picks | |
