@@ -2,6 +2,7 @@
 
 use crate::cards::object::ObjectId;
 use crate::event::Event;
+use crate::game::cards::Cards;
 use crate::game::reporting::Report;
 use crate::game::state::Game;
 use crate::ids::PlayerId;
@@ -36,7 +37,7 @@ impl Game {
             .take_from_hand(player_id, object_id)
             .expect("legal actions guarantee playable cards are in hand");
 
-        let play_effects = self.cards().play_effects(object_id);
+        let play_effects = Cards::new(self).play_effects(object_id);
         if !play_effects.is_empty() {
             self.effect_stack.push(object_id, play_effects.to_vec());
         }
@@ -48,7 +49,7 @@ impl Game {
         self.report(report, obs);
 
         obs.checkpoint(Views::new(self));
-        if self.cards().card_def(object_id).has_board_presence() {
+        if Cards::new(self).card_def(object_id).has_board_presence() {
             self.summon(player_id, object_id, obs);
             obs.checkpoint(Views::new(self));
         }

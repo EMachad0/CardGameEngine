@@ -1,6 +1,9 @@
 use crate::action::Action;
+use crate::game::cards::Cards;
 use crate::game::player_input::Awaiting;
 use crate::game::state::Game;
+use crate::game::stats::cost;
+use crate::game::targeting_walk::{can_start_targeting, may_stop_targeting, next_candidates};
 use crate::ids::PlayerId;
 
 impl Game {
@@ -10,7 +13,7 @@ impl Game {
             return Vec::new();
         }
 
-        let cards = self.cards();
+        let cards = Cards::new(self);
         let mut actions = Vec::new();
         match self.player_input.awaiting(player_id) {
             None => {
@@ -23,7 +26,7 @@ impl Game {
                 let mana = &self.get_player(player_id).mana;
                 for card in self.zones.hand_cards(player_id) {
                     let object_id = card.object_id();
-                    if !mana.can_pay(cards.cost(card)) {
+                    if !mana.can_pay(cost(cards, card)) {
                         continue;
                     }
 
@@ -32,7 +35,7 @@ impl Game {
                             actions.push(Action::Play { object_id });
                         }
                         false => {
-                            if cards.can_start_targeting(object_id) {
+                            if can_start_targeting(cards, object_id) {
                                 actions.push(Action::StartTargeting { object_id });
                             }
                         }
@@ -51,13 +54,13 @@ impl Game {
             }
             Some(Awaiting::Targets(targeting)) => {
                 let object_id = targeting.object_id();
-                actions.extend(cards.next_candidates(targeting).into_iter().map(
+                actions.extend(next_candidates(cards, targeting).into_iter().map(
                     |(target_id, object_id)| Action::Target {
                         target_id,
                         object_id,
                     },
                 ));
-                if cards.may_stop_targeting(targeting) {
+                if may_stop_targeting(cards, targeting) {
                     actions.push(Action::Play { object_id });
                 }
                 actions.push(Action::Cancel { object_id });

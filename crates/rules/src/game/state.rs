@@ -1,7 +1,9 @@
 //! `Game`, the whole state of one game, and the questions that read one of its owners.
 
 use crate::cards::binder::store::Binder;
+use crate::cards::definition::DefId;
 use crate::cards::object::{ObjectBag, ObjectId};
+use crate::game::cards::Cards;
 use crate::game::effect_stack::EffectStack;
 use crate::game::player::Player;
 use crate::game::player_input::PlayerInput;
@@ -43,6 +45,10 @@ impl Game {
 
     pub fn hero_id(&self, player_id: PlayerId) -> ObjectId {
         self.zones.hero(player_id)
+    }
+
+    pub fn def_id(&self, object_id: ObjectId) -> DefId {
+        Cards::new(self).def_id(object_id)
     }
 
     pub fn mana(&self, player_id: PlayerId) -> u8 {

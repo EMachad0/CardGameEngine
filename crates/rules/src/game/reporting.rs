@@ -4,12 +4,13 @@
 
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::event::Event;
+use crate::game::cards::Cards;
 use crate::game::effect_stack::EffectStack;
 use crate::game::play::Play;
 use crate::game::resolve::aftermath::death::Death;
 use crate::game::resolve::aftermath::standings::Ending;
 use crate::game::state::Game;
-use crate::game::triggering::MatchedTrigger;
+use crate::game::triggering::{MatchedTrigger, matched_triggers};
 use crate::history::History;
 use crate::ids::PlayerId;
 use crate::observer::Observer;
@@ -135,7 +136,7 @@ impl Report {
 impl Game {
     pub(super) fn report(&mut self, report: Report, obs: &mut impl Observer) {
         let event = report.into_event();
-        let matched = self.cards().matched_triggers(&event);
+        let matched = matched_triggers(Cards::new(self), &event);
         report_event(
             &event,
             matched,

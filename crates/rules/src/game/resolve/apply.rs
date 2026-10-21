@@ -5,6 +5,7 @@
 
 use crate::action::{Action, IllegalAction};
 use crate::cards::object::ObjectId;
+use crate::game::cards::Cards;
 use crate::game::effect_stack::NextEffect;
 use crate::game::reporting::Report;
 use crate::game::state::Game;
@@ -47,8 +48,7 @@ impl Game {
         match action {
             Action::Play { object_id } => {
                 if let Some(targeting) = self.player_input.targeting(player_id) {
-                    let target_ids = self
-                        .cards()
+                    let target_ids = Cards::new(self)
                         .card_def(targeting.object_id())
                         .targets
                         .iter()

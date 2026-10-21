@@ -21,24 +21,18 @@ pub(super) struct Cards<'g> {
     pub(super) turn_order: &'g TurnOrder,
 }
 
-impl Game {
-    pub(super) fn cards(&self) -> Cards<'_> {
-        Cards {
-            binder: &self.binder,
-            objects: &self.objects,
-            zones: &self.zones,
-            history: &self.history,
-            turn_order: &self.turn_order,
+impl<'g> Cards<'g> {
+    pub(super) fn new(game: &'g Game) -> Self {
+        Self {
+            binder: &game.binder,
+            objects: &game.objects,
+            zones: &game.zones,
+            history: &game.history,
+            turn_order: &game.turn_order,
         }
     }
 
-    pub fn def_id(&self, object_id: ObjectId) -> DefId {
-        self.cards().def_id(object_id)
-    }
-}
-
-impl<'g> Cards<'g> {
-    fn def_id(&self, object_id: ObjectId) -> DefId {
+    pub(super) fn def_id(&self, object_id: ObjectId) -> DefId {
         self.objects.get(object_id).def_id
     }
 

@@ -2,8 +2,10 @@
 
 use crate::cards::definition::DefId;
 use crate::cards::object::ObjectId;
+use crate::game::cards::Cards;
 use crate::game::player::Player;
 use crate::game::state::Game;
+use crate::game::stats::{character_health, cost, minion_attack};
 use crate::ids::PlayerId;
 use crate::outcome::Outcome;
 use crate::zones::{InHand, OnBoard};
@@ -114,7 +116,7 @@ impl Game {
         let object_id = card.object_id();
         let face = (player_id == viewer).then(|| Face {
             def_id: self.def_id(object_id),
-            mana_cost: self.cards().cost(card),
+            mana_cost: cost(Cards::new(self), card),
         });
 
         HandCard { object_id, face }
@@ -122,12 +124,12 @@ impl Game {
 
     fn board_card(&self, _viewer: PlayerId, card: OnBoard<'_>) -> BoardCard {
         let object_id = card.object_id();
-        let cards = self.cards();
+        let cards = Cards::new(self);
         BoardCard {
             object_id,
             def_id: self.def_id(object_id),
-            attack: cards.minion_attack(card),
-            health: cards.character_health(card.into()),
+            attack: minion_attack(cards, card),
+            health: character_health(cards, card.into()),
         }
     }
 

@@ -1,6 +1,8 @@
 use crate::cards::modifier::Modifier;
 use crate::cards::object::ObjectId;
 use crate::effect::{Effect, PickId};
+use crate::game::amount::effect_amount;
+use crate::game::cards::Cards;
 use crate::game::reporting::Report;
 use crate::game::selector::{select_characters, select_players};
 use crate::game::state::Game;
@@ -17,7 +19,7 @@ impl Game {
     ) {
         match effect {
             Effect::Draw { selector, amount } => {
-                let amount = self.cards().effect_amount(amount, owner);
+                let amount = effect_amount(Cards::new(self), amount, owner);
                 let selection = select_players(&self.players(), owner, selector);
                 let targets = selection.resolve(&mut self.rng);
                 for target in targets.into_iter() {
@@ -29,7 +31,7 @@ impl Game {
                 selector,
                 amount,
             } => {
-                let amount = self.cards().effect_amount(amount, owner);
+                let amount = effect_amount(Cards::new(self), amount, owner);
                 let selection = select_players(&self.players(), owner, selector);
                 let targets = selection.resolve(&mut self.rng);
                 for target in targets.into_iter() {
@@ -56,17 +58,27 @@ impl Game {
                 }
             }
             Effect::Damage { selector, amount } => {
-                let amount = self.cards().effect_amount(amount, owner);
-                let selection =
-                    select_characters(self.cards(), &self.player_input, owner, source, selector);
+                let amount = effect_amount(Cards::new(self), amount, owner);
+                let selection = select_characters(
+                    Cards::new(self),
+                    &self.player_input,
+                    owner,
+                    source,
+                    selector,
+                );
                 let targets = selection.resolve(&mut self.rng);
                 for target in targets.into_iter() {
                     self.damage(target, amount, source, obs);
                 }
             }
             Effect::Buff { selector, effect } => {
-                let selection =
-                    select_characters(self.cards(), &self.player_input, owner, source, selector);
+                let selection = select_characters(
+                    Cards::new(self),
+                    &self.player_input,
+                    owner,
+                    source,
+                    selector,
+                );
                 let targets = selection.resolve(&mut self.rng);
                 for target in targets.into_iter() {
                     let modifier = Modifier {
@@ -77,8 +89,13 @@ impl Game {
                 }
             }
             Effect::AddFriendlyAura { selector, effect } => {
-                let selection =
-                    select_characters(self.cards(), &self.player_input, owner, source, selector);
+                let selection = select_characters(
+                    Cards::new(self),
+                    &self.player_input,
+                    owner,
+                    source,
+                    selector,
+                );
                 let targets = selection.resolve(&mut self.rng);
                 for target in targets.into_iter() {
                     let modifier = Modifier {
