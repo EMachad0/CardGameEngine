@@ -123,7 +123,7 @@ mod tests {
         }
     }
 
-    fn sorted<'a>(granted_by: ObjectId, effects: &'a [ModifierEffect]) -> SortedModifiers<'a> {
+    fn sorted(granted_by: ObjectId, effects: &[ModifierEffect]) -> SortedModifiers<'_> {
         let mut modifiers = SortedModifiers::default();
         for effect in effects {
             modifiers.add(granted_by, effect);

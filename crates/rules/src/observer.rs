@@ -19,11 +19,11 @@ impl Views<'_> {
 
 pub trait Observer {
     fn event(&mut self, event: &Event);
-    fn checkpoint(&mut self, views: Views<'_>);
+    fn checkpoint(&mut self, views: Views);
 }
 
 impl Observer for () {
     fn event(&mut self, _event: &Event) {}
 
-    fn checkpoint(&mut self, _views: Views<'_>) {}
+    fn checkpoint(&mut self, _views: Views) {}
 }
