@@ -43,10 +43,14 @@ impl Game {
             let deaths = death_pass
                 .into_iter()
                 .map(|object_id| Death { object_id })
-                .collect();
-            self.kill(deaths, obs);
+                .collect::<Vec<_>>();
+            self.kill(&deaths);
 
             self.standings.eliminate(&dead_players);
+
+            for death in deaths.into_iter() {
+                self.report(Report::Died(death), obs);
+            }
 
             if player_died || minion_died {
                 obs.checkpoint(Views::new(self));
@@ -56,7 +60,7 @@ impl Game {
         }
     }
 
-    fn kill(&mut self, deaths: Vec<Death>, obs: &mut impl Observer) {
+    fn kill(&mut self, deaths: &[Death]) {
         for death in deaths.iter() {
             for MatchedTrigger { source, effects } in
                 death_rattles(CardsRef::new(self), death.object_id)
@@ -65,7 +69,7 @@ impl Game {
             }
         }
 
-        for death in deaths.into_iter() {
+        for death in deaths.iter() {
             let object_id = death.object_id;
             let player_id = self.objects.get(object_id).player_id;
             let card_def = CardsRef::new(self).card_def(object_id);
@@ -73,7 +77,6 @@ impl Game {
                 let to_graveyard = card_def.goes_to_graveyard();
                 destroy(&mut self.zones, player_id, object_id, to_graveyard);
             }
-            self.report(Report::Died(death), obs);
         }
     }
 }

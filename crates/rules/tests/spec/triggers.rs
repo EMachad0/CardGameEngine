@@ -98,7 +98,7 @@ fn a_mourner_does_not_draw_for_its_own_death() {
 }
 
 #[test]
-fn a_mourner_dying_in_the_same_pass_draws_nothing() {
+fn a_mourner_dying_in_the_same_pass_as_a_younger_minion_draws_nothing() {
     let mut b = boards(&[MOURNER, RECRUIT], &[], &[BLAST, RECRUIT, BLAST], 3);
     let mourner = b.mine[0];
     play_def(&mut b.game, b.p0, BLAST);
@@ -114,6 +114,28 @@ fn a_mourner_dying_in_the_same_pass_draws_nothing() {
     let events = observe(&mut b.game, b.p0, play(blast)).events();
 
     assert_eq!(b.game.health(mourner), None, "the second Blast kills it");
+    assert_eq!(
+        draws(&events, b.p0),
+        0,
+        "a removed minion hears no death from its own pass:\n{}",
+        listing(&events)
+    );
+}
+
+#[test]
+fn a_mourner_dying_in_the_same_pass_as_an_older_minion_draws_nothing() {
+    let mut b = boards(&[RECRUIT, MOURNER], &[], &[PING, BLAST], 4);
+    let [recruit, mourner] = [b.mine[0], b.mine[1]];
+    ping(&mut b, mourner);
+    let blast = in_hand(&b.game, b.p0, BLAST);
+
+    let events = observe(&mut b.game, b.p0, play(blast)).events();
+
+    assert_eq!(
+        [b.game.health(recruit), b.game.health(mourner)],
+        [None, None],
+        "Blast kills both in one pass"
+    );
     assert_eq!(
         draws(&events, b.p0),
         0,

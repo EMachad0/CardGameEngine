@@ -114,9 +114,23 @@ fn a_hero_brought_to_zero_stays_in_its_zone() {
 }
 
 #[test]
-fn medic_cannot_save_a_minion_dying_in_the_same_pass() {
+fn medic_cannot_save_a_younger_minion_dying_in_the_same_pass() {
     let mut b = boards(&[MEDIC, RECRUIT], &[], &[BLAST], 3);
     let recruit = b.mine[1];
+
+    play_def(&mut b.game, b.p0, BLAST);
+
+    assert_eq!(
+        b.game.health(recruit),
+        None,
+        "every minion at 0 leaves before the Medic's +2 Health resolves"
+    );
+}
+
+#[test]
+fn medic_cannot_save_an_older_minion_dying_in_the_same_pass() {
+    let mut b = boards(&[RECRUIT, MEDIC], &[], &[BLAST], 3);
+    let recruit = b.mine[0];
 
     play_def(&mut b.game, b.p0, BLAST);
 
