@@ -9,6 +9,7 @@ mod player;
 mod player_input;
 mod reporting;
 pub(crate) mod resolve;
+mod selector;
 mod setup;
 pub(crate) mod state;
 mod stats;
