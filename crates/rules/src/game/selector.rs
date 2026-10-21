@@ -1,5 +1,5 @@
-//! What an effect acts on: the players or the characters its selector names, each of them in the
-//! order they come, or one of them at random.
+//! What an effect acts on, as its selector says: players or characters, each of them in the order
+//! they come, or one of them at random.
 
 use crate::cards::definition::{CharacterSelector, PlayerSelector, PlayerSelectorFilter};
 use crate::cards::filter::fulfill_side_filter;
@@ -9,10 +9,10 @@ use crate::game::player_input::PlayerInput;
 use crate::ids::PlayerId;
 use crate::rng::Rng;
 
-/// What a selector names: each of some values, or one of them at random.
-pub(super) struct Selection<T>(Named<T>);
+/// What a selector says an effect acts on: each of some values, or one of them at random.
+pub(super) struct Selection<T>(Values<T>);
 
-enum Named<T> {
+enum Values<T> {
     Each(Vec<T>),
     OneOf(Vec<T>),
 }
@@ -20,8 +20,8 @@ enum Named<T> {
 impl<T: Copy> Selection<T> {
     pub(super) fn resolve(self, rng: &mut Rng) -> Vec<T> {
         match self.0 {
-            Named::Each(values) => values,
-            Named::OneOf(values) => rng.choose(&values).copied().into_iter().collect(),
+            Values::Each(values) => values,
+            Values::OneOf(values) => rng.choose(&values).copied().into_iter().collect(),
         }
     }
 }
@@ -39,9 +39,9 @@ pub(super) fn select_players(
             .collect::<Vec<_>>()
     };
     Selection(match selector {
-        PlayerSelector::All(filter) => Named::Each(all(filter)),
-        PlayerSelector::Owner => Named::Each(vec![owner]),
-        PlayerSelector::Random(filter) => Named::OneOf(all(filter)),
+        PlayerSelector::All(filter) => Values::Each(all(filter)),
+        PlayerSelector::Owner => Values::Each(vec![owner]),
+        PlayerSelector::Random(filter) => Values::OneOf(all(filter)),
     })
 }
 
@@ -54,14 +54,14 @@ pub(super) fn select_characters(
 ) -> Selection<ObjectId> {
     Selection(match selector {
         CharacterSelector::All(filter) => {
-            Named::Each(cards.scan_characters_with_filter(owner, filter))
+            Values::Each(cards.scan_characters_with_filter(owner, filter))
         }
-        CharacterSelector::Itself => Named::Each(vec![object_id]),
-        CharacterSelector::OwnerHero => Named::Each(vec![cards.zones.hero(owner)]),
+        CharacterSelector::Itself => Values::Each(vec![object_id]),
+        CharacterSelector::OwnerHero => Values::Each(vec![cards.zones.hero(owner)]),
         CharacterSelector::Random(filter) => {
-            Named::OneOf(cards.scan_characters_with_filter(owner, filter))
+            Values::OneOf(cards.scan_characters_with_filter(owner, filter))
         }
-        CharacterSelector::Targeted(target_id) => Named::Each(
+        CharacterSelector::Targeted(target_id) => Values::Each(
             player_input
                 .targeted(object_id, *target_id)
                 .expect("Target not fulfilled")
@@ -77,26 +77,26 @@ mod tests {
     use super::*;
 
     #[test]
-    fn each_value_named_comes_back_in_order() {
-        let selection = Selection(Named::Each(vec![30, 10, 20]));
+    fn resolving_each_value_keeps_their_order() {
+        let selection = Selection(Values::Each(vec![30, 10, 20]));
 
         assert_eq!(selection.resolve(&mut Rng::new(3)), vec![30, 10, 20]);
     }
 
     #[test]
-    fn each_value_named_leaves_the_stream_as_it_was() {
+    fn resolving_each_value_takes_no_draw_from_the_stream() {
         let mut rng = Rng::new(3);
 
-        Selection(Named::Each(vec![30, 10, 20])).resolve(&mut rng);
+        Selection(Values::Each(vec![30, 10, 20])).resolve(&mut rng);
 
         assert_eq!(rng, Rng::new(3));
     }
 
     #[test]
-    fn one_value_at_random_is_one_of_those_named() {
+    fn resolving_one_at_random_gives_one_of_the_values() {
         let values = [30, 10, 20];
         for seed in 0..100 {
-            let resolved = Selection(Named::OneOf(values.to_vec())).resolve(&mut Rng::new(seed));
+            let resolved = Selection(Values::OneOf(values.to_vec())).resolve(&mut Rng::new(seed));
 
             assert!(
                 resolved.len() == 1 && values.contains(&resolved[0]),
@@ -106,12 +106,12 @@ mod tests {
     }
 
     #[test]
-    fn one_value_at_random_takes_one_draw_from_the_stream() {
+    fn resolving_one_at_random_takes_one_draw_from_the_stream() {
         for seed in 0..100 {
             let mut resolver = Rng::new(seed);
             let mut drawer = Rng::new(seed);
 
-            Selection(Named::OneOf(vec![30, 10, 20])).resolve(&mut resolver);
+            Selection(Values::OneOf(vec![30, 10, 20])).resolve(&mut resolver);
             drawer.next_u64();
 
             assert_eq!(resolver, drawer, "seed {seed}");

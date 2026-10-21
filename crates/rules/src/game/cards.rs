@@ -1,4 +1,4 @@
-//! The cards of one game, borrowed together for the questions card text asks: what each object
+//! The cards of one game, borrowed together for the questions asked about them: what each object
 //! is, and which characters in play pass a filter.
 
 use crate::cards::binder::store::Binder;

@@ -1,4 +1,5 @@
-//! `Game`, the whole state of one game: how one starts, and the questions it answers.
+//! `Game`, the whole state of one game, and every method on it but the commands that report or
+//! checkpoint.
 
 use crate::action::Action;
 use crate::cards::binder::store::Binder;
@@ -51,7 +52,6 @@ impl Game {
         Ok(game)
     }
 
-    /// The one definition of legality.
     pub fn legal_actions(&self, player_id: PlayerId) -> Vec<Action> {
         legal_actions::legal_actions(
             Cards::new(self),
