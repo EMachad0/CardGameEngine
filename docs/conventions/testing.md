@@ -9,9 +9,9 @@ decides who writes what.
 ## Two layers, kept apart
 
 Unit tests live in the module they cover, in a `#[cfg(test)] mod tests` at the bottom of the file.
-Their subject is that module's own type, and their setup builds only that type. They may use the
-module's internals, such as `pub(crate)` items and private helpers. `rng.rs` tests `Rng` this way,
-and `turn.rs` tests `TurnOrder`.
+Their subject is that module's own type. Their setup builds that type, and other types only to make
+its inputs. They may use the module's internals, such as `pub(crate)` items and private helpers.
+`rng.rs` tests `Rng` this way, and `turn.rs` tests `TurnOrder`.
 
 Crate tests live in `crates/<crate>/tests/` and use only the crate's public interface. A test
 whose setup builds a `Game` is a crate test, even when it checks one rule that one `src/` file
