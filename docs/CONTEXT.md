@@ -122,6 +122,9 @@ _Avoid_: battlefield, field, play area
 **In play**:
 Being a hero, or a card on a board.
 
+**Alive**:
+A minion on a board, or a hero whose player is still playing.
+
 **Graveyard**:
 A zone where a player puts his dead minions.
 _Avoid_: discard pile, cemetery
@@ -286,6 +289,8 @@ The part of a card that can be hidden from a player: its definition and cost.
   The state check is the pass that settles it.
 - **Standings** and **Outcome**: the standings say who is still playing at any moment. The outcome
   exists only once the game is over, and the standings hold it from then on.
+- **In play** and **Alive**: a hero stays in play after it dies, so a dead hero is in play but not
+  alive. For a minion the two are the same.
 - **Draw** a card and a **draw** as an outcome: the first moves a card from deck to hand, the second
   is a finished game with no winner.
 - **View** and **game state**: a view is what one player may see. The game state is all of it,
