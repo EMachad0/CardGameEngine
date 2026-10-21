@@ -106,6 +106,13 @@ mod tests {
     }
 
     #[test]
+    fn resolving_one_at_random_from_nothing_gives_nothing() {
+        let selection = Selection::<u32>(Values::OneOf(Vec::new()));
+
+        assert_eq!(selection.resolve(&mut Rng::new(3)), Vec::new());
+    }
+
+    #[test]
     fn resolving_one_at_random_takes_one_draw_from_the_stream() {
         for seed in 0..100 {
             let mut resolver = Rng::new(seed);

@@ -58,14 +58,10 @@ impl Game {
                 }
             }
             Effect::Damage { selector, amount } => {
-                let amount = effect_amount(Cards::new(self), amount, owner);
-                let selection = select_characters(
-                    Cards::new(self),
-                    &self.player_input,
-                    owner,
-                    source,
-                    selector,
-                );
+                let cards = Cards::new(self);
+                let amount = effect_amount(cards, amount, owner);
+                let selection =
+                    select_characters(cards, &self.player_input, owner, source, selector);
                 let targets = selection.resolve(&mut self.rng);
                 for target in targets.into_iter() {
                     self.damage(target, amount, source, obs);
