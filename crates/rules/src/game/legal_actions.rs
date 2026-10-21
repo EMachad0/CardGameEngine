@@ -114,12 +114,12 @@ pub(super) fn legal_actions(
                 },
             ));
             if may_stop_targeting(cards, targeting)
-                && let Some(card) = cards
+                && let Some(playable) = cards
                     .zones
                     .find_in_hand(player_id, object_id)
                     .and_then(|card| playable(cards, player, card))
             {
-                actions.push(LegalAction::Play(card.with_targeting(awaited.slot())));
+                actions.push(LegalAction::Play(playable.with_targeting(awaited.slot())));
             }
             actions.push(LegalAction::Cancel(awaited.slot()));
         }

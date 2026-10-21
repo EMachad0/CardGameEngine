@@ -256,7 +256,6 @@ impl PlayerInput {
         self.targeting[idx].1.targeted.push((object_id, target_id));
     }
 
-    /// Drops the targeting.
     pub(super) fn cancel(&mut self, targeting: TargetingSlot) {
         let idx = self.targeting_idx(targeting);
         self.targeting.remove(idx);
@@ -308,8 +307,8 @@ impl PlayerInput {
     }
 
     /// Closes the option's pending pick, stores the option as picked and the other options as
-    /// the others, and returns the picked object.
-    pub(super) fn pick(&mut self, option: PickOption) -> ObjectId {
+    /// the others, and returns the player who picked and the picked object.
+    pub(super) fn pick(&mut self, option: PickOption) -> (PlayerId, ObjectId) {
         let named = self
             .pending_picks
             .get(option.pick_idx)
@@ -319,7 +318,7 @@ impl PlayerInput {
             "a pick option is used before what the game awaits changes",
         );
         let (
-            _,
+            player_id,
             PendingPick {
                 source,
                 pick_id,
@@ -337,7 +336,7 @@ impl PlayerInput {
                 others: options,
             },
         );
-        picked
+        (player_id, picked)
     }
 
     fn awaited_targeting(&self, player_id: PlayerId) -> Option<AwaitedTargeting<'_>> {
@@ -420,7 +419,7 @@ mod tests {
         pick.options().collect()
     }
 
-    fn pick(input: &mut PlayerInput, player: PlayerId, object: ObjectId) -> ObjectId {
+    fn pick(input: &mut PlayerInput, player: PlayerId, object: ObjectId) -> (PlayerId, ObjectId) {
         let option = pick_options(input, player)
             .into_iter()
             .find(|option| option.object_id() == object)
@@ -467,13 +466,13 @@ mod tests {
     }
 
     #[test]
-    fn a_pick_names_the_object_picked() {
+    fn a_pick_names_the_player_and_the_object_picked() {
         let [source, a, b] = ids();
-        let player = PlayerId::new(0);
+        let player = PlayerId::new(1);
         let mut input = PlayerInput::default();
         input.ask_pick(player, source, PickId(0), vec![a, b]);
 
-        assert_eq!(pick(&mut input, player, b), b);
+        assert_eq!(pick(&mut input, player, b), (player, b));
     }
 
     #[test]

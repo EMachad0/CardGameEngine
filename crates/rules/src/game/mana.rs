@@ -23,7 +23,6 @@ impl Mana {
         self.max
     }
 
-    /// `None` if the cost is more than the current mana.
     pub(super) fn payment(&self, cost: u8) -> Option<Payment> {
         (cost <= self.current).then_some(Payment { cost })
     }

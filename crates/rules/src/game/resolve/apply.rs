@@ -37,13 +37,13 @@ impl Game {
         Ok(())
     }
 
-    fn apply_action(&mut self, player_id: PlayerId, action: LegalAction, obs: &mut impl Observer) {
-        match action {
-            LegalAction::Play(card) => {
-                self.play(card, obs);
+    fn apply_action(&mut self, player_id: PlayerId, legal: LegalAction, obs: &mut impl Observer) {
+        match legal {
+            LegalAction::Play(playable) => {
+                self.play(playable, obs);
             }
             LegalAction::Pick(option) => {
-                self.pick(player_id, option, obs);
+                self.pick(option, obs);
                 obs.checkpoint(Views::new(self));
             }
             LegalAction::EndTurn => {
@@ -73,8 +73,8 @@ impl Game {
         };
     }
 
-    fn pick(&mut self, player_id: PlayerId, option: PickOption, obs: &mut impl Observer) {
-        let object_id = self.player_input.pick(option);
+    fn pick(&mut self, option: PickOption, obs: &mut impl Observer) {
+        let (player_id, object_id) = self.player_input.pick(option);
 
         let report = Report::Picked {
             player_id,

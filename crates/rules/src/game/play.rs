@@ -33,7 +33,6 @@ impl Playable {
         }
     }
 
-    /// Played from `targeting`, which must be of this card.
     pub(super) fn with_targeting(self, targeting: TargetingSlot) -> Self {
         assert!(
             targeting.object_id() == self.card.object_id(),
@@ -61,12 +60,12 @@ impl From<Play> for Event {
 
 impl Game {
     /// Closes the player's targeting first, if they play the card from there.
-    pub(super) fn play(&mut self, card: Playable, obs: &mut impl Observer) {
+    pub(super) fn play(&mut self, playable: Playable, obs: &mut impl Observer) {
         let Playable {
             card,
             payment,
             targeting,
-        } = card;
+        } = playable;
         let player_id = card.player_id();
         if let Some(targeting) = targeting {
             let target_ids = CardsRef::new(self)
