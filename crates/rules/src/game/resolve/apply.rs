@@ -66,7 +66,7 @@ impl Game {
                 self.player_input.target(targeting, object_id, target_id);
                 obs.checkpoint(Views::new(self));
             }
-            LegalAction::Cancel { targeting, .. } => {
+            LegalAction::Cancel(targeting) => {
                 self.player_input.cancel(targeting);
                 obs.checkpoint(Views::new(self));
             }

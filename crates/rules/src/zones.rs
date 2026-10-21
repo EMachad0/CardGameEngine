@@ -57,8 +57,12 @@ impl Hand {
         self.0.push(object_id);
     }
 
-    /// Removes the card at `idx`. The others keep their order.
-    fn take(&mut self, idx: usize) -> ObjectId {
+    /// Removes the card at `idx`, which must be `object_id`. The others keep their order.
+    fn take(&mut self, idx: usize, object_id: ObjectId) -> ObjectId {
+        assert!(
+            self.0.get(idx) == Some(&object_id),
+            "a hand slot is used before its hand changes",
+        );
         self.0.remove(idx)
     }
 
@@ -386,7 +390,9 @@ impl Zones {
 
     /// Takes the card out of its hand into no zone.
     pub(crate) fn take_from_hand(&mut self, card: HandSlot) -> ObjectId {
-        self.player_mut(card.player_id).hand.take(card.idx)
+        self.player_mut(card.player_id)
+            .hand
+            .take(card.idx, card.object_id)
     }
 
     /// Takes a card off the board into no zone. `None` if it isn't there.
@@ -473,6 +479,23 @@ mod tests {
         hand
     }
 
+    /// Takes `card` out of `player`'s hand, where it must be.
+    fn take_from_hand(zones: &mut Zones, player: PlayerId, card: ObjectId) {
+        let card = zones.find_in_hand(player, card).unwrap().slot();
+        zones.take_from_hand(card);
+    }
+
+    /// Player 0 has drawn `[a, b, c]`.
+    fn three_in_hand() -> (Zones, [ObjectId; 3]) {
+        let [hero, a, b, c] = ids();
+        let player = PlayerId::new(0);
+        let mut zones = Zones::new([(hero, vec![a, b, c])]);
+        for _ in 0..3 {
+            zones.draw(player);
+        }
+        (zones, [a, b, c])
+    }
+
     #[test]
     fn a_deck_takes_from_the_top_and_puts_on_the_bottom() {
         let [a, b, c, d] = ids();
@@ -525,19 +548,13 @@ mod tests {
     }
 
     #[test]
-    fn removing_from_a_hand_keeps_the_rest_in_order() {
+    fn taking_from_a_hand_keeps_the_rest_in_order() {
         let [a, b, c, d] = ids();
         let mut hand = hand_of(&[a, b, c, d]);
 
-        assert_eq!(hand.take(1), b);
+        assert_eq!(hand.take(1, b), b);
 
         assert_eq!(hand.as_slice(), [a, c, d]);
-    }
-
-    /// Takes `card` out of `player`'s hand, where it must be.
-    fn take_from_hand(zones: &mut Zones, player: PlayerId, card: ObjectId) {
-        let card = zones.find_in_hand(player, card).unwrap().slot();
-        zones.take_from_hand(card);
     }
 
     #[test]
@@ -589,12 +606,8 @@ mod tests {
 
     #[test]
     fn a_card_found_in_a_hand_is_taken_from_there() {
-        let [hero, a, b, c] = ids();
+        let (mut zones, [a, b, c]) = three_in_hand();
         let player = PlayerId::new(0);
-        let mut zones = Zones::new([(hero, vec![a, b, c])]);
-        for _ in 0..3 {
-            zones.draw(player);
-        }
 
         let found = zones.find_in_hand(player, b).unwrap().slot();
 
@@ -604,17 +617,24 @@ mod tests {
 
     #[test]
     fn a_card_walked_to_in_a_hand_is_taken_from_there() {
-        let [hero, a, b, c] = ids();
+        let (mut zones, [a, b, c]) = three_in_hand();
         let player = PlayerId::new(0);
-        let mut zones = Zones::new([(hero, vec![a, b, c])]);
-        for _ in 0..3 {
-            zones.draw(player);
-        }
 
         let walked = zones.hand_cards(player).nth(2).unwrap().slot();
 
         assert_eq!(zones.take_from_hand(walked), c);
         assert_eq!(zones.hand(player), [a, b]);
+    }
+
+    #[test]
+    #[should_panic(expected = "a hand slot is used before its hand changes")]
+    fn a_hand_slot_cannot_be_used_once_its_hand_changes() {
+        let (mut zones, [a, b, _]) = three_in_hand();
+        let player = PlayerId::new(0);
+        let found = zones.find_in_hand(player, b).unwrap().slot();
+        take_from_hand(&mut zones, player, a);
+
+        zones.take_from_hand(found);
     }
 
     #[test]

@@ -28,10 +28,7 @@ pub(super) enum LegalAction {
         target_id: TargetId,
         object_id: ObjectId,
     },
-    Cancel {
-        targeting: TargetingSlot,
-        object_id: ObjectId,
-    },
+    Cancel(TargetingSlot),
     EndTurn,
 }
 
@@ -54,7 +51,9 @@ impl LegalAction {
                 target_id,
                 object_id,
             },
-            Self::Cancel { object_id, .. } => Action::Cancel { object_id },
+            Self::Cancel(ref targeting) => Action::Cancel {
+                object_id: targeting.object_id(),
+            },
             Self::EndTurn => Action::EndTurn,
         }
     }
@@ -132,10 +131,7 @@ pub(super) fn legal_actions(
                     targeting: Some(awaited.slot()),
                 });
             }
-            actions.push(LegalAction::Cancel {
-                targeting: awaited.slot(),
-                object_id,
-            });
+            actions.push(LegalAction::Cancel(awaited.slot()));
         }
     }
     actions

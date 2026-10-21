@@ -29,6 +29,10 @@ impl Mana {
     }
 
     pub(super) fn pay(&mut self, payment: Payment) {
+        assert!(
+            payment.cost <= self.current,
+            "a payment is spent before its mana drops below it",
+        );
         self.current -= payment.cost;
     }
 
@@ -94,6 +98,18 @@ mod tests {
         mana.refill();
 
         assert!(mana.payment(2).is_some(), "2 mana pays a cost of 2");
+    }
+
+    #[test]
+    #[should_panic(expected = "a payment is spent before its mana drops below it")]
+    fn a_payment_cannot_be_spent_once_mana_drops_below_it() {
+        let mut mana = Mana::default();
+        mana.refill();
+        let first = mana.payment(1).unwrap();
+        let second = mana.payment(1).unwrap();
+        mana.pay(first);
+
+        mana.pay(second);
     }
 
     #[test]
