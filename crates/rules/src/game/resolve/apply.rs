@@ -19,12 +19,6 @@ pub enum ApplyError {
 }
 
 impl Game {
-    pub fn applied(&self, player_id: PlayerId, action: Action) -> Result<Self, ApplyError> {
-        let mut game = self.clone();
-        game.apply(player_id, action, &mut ())?;
-        Ok(game)
-    }
-
     /// `Ok` if and only if `action` is in `legal_actions(player_id)`.
     /// An `Err` leaves the game unchanged.
     pub fn apply(

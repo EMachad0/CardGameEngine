@@ -6,50 +6,28 @@ use crate::effect::EffectAmount;
 use crate::game::amount::effect_amount;
 use crate::game::cards::Cards;
 use crate::game::modifiers::modifiers;
-use crate::game::state::Game;
 use crate::ids::PlayerId;
 use crate::zones::{InHand, InPlay, OnBoard};
 
-impl Game {
-    /// `None` unless the card is in its owner's hand. Panics on an id the game never made.
-    pub fn mana_cost(&self, object_id: ObjectId) -> Option<u8> {
-        mana_cost(Cards::new(self), object_id)
-    }
-
-    /// `None` unless the card is on its owner's board. Panics on an id the game never made.
-    pub fn attack(&self, object_id: ObjectId) -> Option<i32> {
-        attack(Cards::new(self), object_id)
-    }
-
-    /// `None` unless the object is a character in play. Panics on an id the game never made.
-    pub fn health(&self, object_id: ObjectId) -> Option<i32> {
-        health(Cards::new(self), object_id)
-    }
-
-    pub fn hero_health(&self, player_id: PlayerId) -> i32 {
-        hero_health(Cards::new(self), player_id)
-    }
-}
-
-fn mana_cost(cards: Cards<'_>, object_id: ObjectId) -> Option<u8> {
+pub(super) fn mana_cost(cards: Cards<'_>, object_id: ObjectId) -> Option<u8> {
     let owner = cards.objects.get(object_id).player_id;
     let card = cards.zones.find_in_hand(owner, object_id)?;
     Some(cost(cards, card))
 }
 
-fn attack(cards: Cards<'_>, object_id: ObjectId) -> Option<i32> {
+pub(super) fn attack(cards: Cards<'_>, object_id: ObjectId) -> Option<i32> {
     let owner = cards.objects.get(object_id).player_id;
     let card = cards.zones.find_on_board(owner, object_id)?;
     Some(minion_attack(cards, card))
 }
 
-fn health(cards: Cards<'_>, object_id: ObjectId) -> Option<i32> {
+pub(super) fn health(cards: Cards<'_>, object_id: ObjectId) -> Option<i32> {
     cards.objects.get(object_id);
     let character = cards.zones.find_in_play(object_id)?;
     Some(character_health(cards, character))
 }
 
-fn hero_health(cards: Cards<'_>, player_id: PlayerId) -> i32 {
+pub(super) fn hero_health(cards: Cards<'_>, player_id: PlayerId) -> i32 {
     character_health(cards, cards.zones.hero_in_play(player_id))
 }
 

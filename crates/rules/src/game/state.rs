@@ -1,5 +1,6 @@
-//! `Game`, the whole state of one game, and the questions that read one of its owners.
+//! `Game`, the whole state of one game: how one starts, and the questions it answers.
 
+use crate::action::Action;
 use crate::cards::binder::store::Binder;
 use crate::cards::definition::DefId;
 use crate::cards::object::{ObjectBag, ObjectId};
@@ -8,6 +9,10 @@ use crate::game::effect_stack::EffectStack;
 use crate::game::player::Player;
 use crate::game::player_input::PlayerInput;
 use crate::game::resolve::aftermath::standings::Standings;
+use crate::game::resolve::apply::ApplyError;
+use crate::game::setup::setup;
+use crate::game::view::{self, View};
+use crate::game::{legal_actions, stats};
 use crate::history::History;
 use crate::ids::PlayerId;
 use crate::outcome::Outcome;
@@ -30,6 +35,43 @@ pub struct Game {
 }
 
 impl Game {
+    /// Seeds the `Rng`, shuffles both decks, deals 3 cards each and starts player 0's turn.
+    pub fn new(seed: u64, decks: [Vec<DefId>; 2]) -> Self {
+        setup(seed, decks, true)
+    }
+
+    /// Like `new`, but keeps each deck in the given order, index 0 on top.
+    pub fn with_deck_order(seed: u64, decks: [Vec<DefId>; 2]) -> Self {
+        setup(seed, decks, false)
+    }
+
+    pub fn applied(&self, player_id: PlayerId, action: Action) -> Result<Self, ApplyError> {
+        let mut game = self.clone();
+        game.apply(player_id, action, &mut ())?;
+        Ok(game)
+    }
+
+    /// The one definition of legality.
+    pub fn legal_actions(&self, player_id: PlayerId) -> Vec<Action> {
+        legal_actions::legal_actions(
+            Cards::new(self),
+            &self.standings,
+            &self.player_input,
+            &self.get_player(player_id).mana,
+            player_id,
+        )
+    }
+
+    pub fn view(&self, viewer: PlayerId) -> View {
+        view::view(
+            Cards::new(self),
+            &self.players,
+            &self.player_input,
+            &self.standings,
+            viewer,
+        )
+    }
+
     pub fn hand(&self, player_id: PlayerId) -> &[ObjectId] {
         self.zones.hand(player_id)
     }
@@ -51,6 +93,25 @@ impl Game {
         Cards::new(self).def_id(object_id)
     }
 
+    /// `None` unless the card is in its owner's hand. Panics on an id the game never made.
+    pub fn mana_cost(&self, object_id: ObjectId) -> Option<u8> {
+        stats::mana_cost(Cards::new(self), object_id)
+    }
+
+    /// `None` unless the card is on its owner's board. Panics on an id the game never made.
+    pub fn attack(&self, object_id: ObjectId) -> Option<i32> {
+        stats::attack(Cards::new(self), object_id)
+    }
+
+    /// `None` unless the object is a character in play. Panics on an id the game never made.
+    pub fn health(&self, object_id: ObjectId) -> Option<i32> {
+        stats::health(Cards::new(self), object_id)
+    }
+
+    pub fn hero_health(&self, player_id: PlayerId) -> i32 {
+        stats::hero_health(Cards::new(self), player_id)
+    }
+
     pub fn mana(&self, player_id: PlayerId) -> u8 {
         self.get_player(player_id).mana.current()
     }
@@ -68,7 +129,7 @@ impl Game {
         self.players.iter().map(|p| p.id).collect()
     }
 
-    pub(super) fn get_player(&self, player_id: PlayerId) -> &Player {
+    fn get_player(&self, player_id: PlayerId) -> &Player {
         &self.players[player_id.idx()]
     }
 
