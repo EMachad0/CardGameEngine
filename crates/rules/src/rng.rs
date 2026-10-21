@@ -28,6 +28,11 @@ impl Rng {
         (self.next_u64() % n as u64) as usize
     }
 
+    /// One of `values`, at random. With none, `None`, and the stream doesn't move.
+    pub(crate) fn choose<'v, T>(&mut self, values: &'v [T]) -> Option<&'v T> {
+        (!values.is_empty()).then(|| &values[self.below(values.len())])
+    }
+
     /// Fisher-Yates shuffle.
     pub fn shuffle<T>(&mut self, items: &mut [T]) {
         for i in (1..items.len()).rev() {
@@ -55,6 +60,46 @@ mod tests {
         let mut b = Rng::new(42);
         for _ in 0..100 {
             assert_eq!(a.next_u64(), b.next_u64());
+        }
+    }
+
+    #[test]
+    fn choosing_from_nothing_gives_nothing() {
+        assert_eq!(Rng::new(3).choose::<u32>(&[]), None);
+    }
+
+    #[test]
+    fn choosing_from_nothing_leaves_the_stream_as_it_was() {
+        let mut rng = Rng::new(3);
+
+        rng.choose::<u32>(&[]);
+
+        assert_eq!(rng, Rng::new(3));
+    }
+
+    #[test]
+    fn a_choice_is_one_of_the_values() {
+        let values = [10, 20, 30];
+        for seed in 0..100 {
+            let chosen = Rng::new(seed).choose(&values).copied();
+
+            assert!(
+                chosen.is_some_and(|value| values.contains(&value)),
+                "seed {seed} chose {chosen:?}",
+            );
+        }
+    }
+
+    #[test]
+    fn a_choice_takes_one_draw_from_the_stream() {
+        for seed in 0..100 {
+            let mut chooser = Rng::new(seed);
+            let mut drawer = Rng::new(seed);
+
+            chooser.choose(&[10, 20, 30]);
+            drawer.next_u64();
+
+            assert_eq!(chooser, drawer, "seed {seed}");
         }
     }
 

@@ -1,5 +1,5 @@
-use crate::game::Game;
 use crate::game::reporting::Report;
+use crate::game::state::Game;
 use crate::observer::{Observer, Views};
 
 impl Game {

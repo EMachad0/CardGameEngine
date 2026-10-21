@@ -1,10 +1,11 @@
-use crate::cards::definition::{CharacterSelector, PlayerSelector, PlayerSelectorFilter};
-use crate::cards::filter::fulfill_side_filter;
 use crate::cards::modifier::Modifier;
 use crate::cards::object::ObjectId;
 use crate::effect::{Effect, PickId};
-use crate::game::Game;
+use crate::game::amount::effect_amount;
+use crate::game::cards_ref::CardsRef;
 use crate::game::reporting::Report;
+use crate::game::selector::{select_characters, select_players};
+use crate::game::state::Game;
 use crate::ids::PlayerId;
 use crate::observer::Observer;
 
@@ -18,8 +19,9 @@ impl Game {
     ) {
         match effect {
             Effect::Draw { selector, amount } => {
-                let amount = self.effect_amount(amount, owner);
-                let targets = self.resolve_player_selector(owner, selector);
+                let amount = effect_amount(CardsRef::new(self), amount, owner);
+                let selection = select_players(&self.players(), owner, selector);
+                let targets = selection.resolve(&mut self.rng);
                 for target in targets.into_iter() {
                     self.draw(target, amount, obs);
                 }
@@ -29,8 +31,9 @@ impl Game {
                 selector,
                 amount,
             } => {
-                let amount = self.effect_amount(amount, owner);
-                let targets = self.resolve_player_selector(owner, selector);
+                let amount = effect_amount(CardsRef::new(self), amount, owner);
+                let selection = select_players(&self.players(), owner, selector);
+                let targets = selection.resolve(&mut self.rng);
                 for target in targets.into_iter() {
                     self.reveal(target, source, *pick_id, amount, obs);
                 }
@@ -55,14 +58,24 @@ impl Game {
                 }
             }
             Effect::Damage { selector, amount } => {
-                let amount = self.effect_amount(amount, owner);
-                let targets = self.resolve_character_selector(owner, source, selector);
+                let cards = CardsRef::new(self);
+                let amount = effect_amount(cards, amount, owner);
+                let selection =
+                    select_characters(cards, &self.player_input, owner, source, selector);
+                let targets = selection.resolve(&mut self.rng);
                 for target in targets.into_iter() {
                     self.damage(target, amount, source, obs);
                 }
             }
             Effect::Buff { selector, effect } => {
-                let targets = self.resolve_character_selector(owner, source, selector);
+                let selection = select_characters(
+                    CardsRef::new(self),
+                    &self.player_input,
+                    owner,
+                    source,
+                    selector,
+                );
+                let targets = selection.resolve(&mut self.rng);
                 for target in targets.into_iter() {
                     let modifier = Modifier {
                         granted_by: source,
@@ -72,7 +85,14 @@ impl Game {
                 }
             }
             Effect::AddFriendlyAura { selector, effect } => {
-                let targets = self.resolve_character_selector(owner, source, selector);
+                let selection = select_characters(
+                    CardsRef::new(self),
+                    &self.player_input,
+                    owner,
+                    source,
+                    selector,
+                );
+                let targets = selection.resolve(&mut self.rng);
                 for target in targets.into_iter() {
                     let modifier = Modifier {
                         granted_by: source,
@@ -82,7 +102,8 @@ impl Game {
                 }
             }
             Effect::Summon { selector, def_id } => {
-                let targets = self.resolve_player_selector(owner, selector);
+                let selection = select_players(&self.players(), owner, selector);
+                let targets = selection.resolve(&mut self.rng);
                 for player_id in targets.into_iter() {
                     let object_id = self.objects.insert(*def_id, player_id);
                     self.summon(player_id, object_id, obs);
@@ -116,56 +137,13 @@ impl Game {
         }
     }
 
-    fn resolve_player_selector(
-        &mut self,
-        owner: PlayerId,
-        selector: &PlayerSelector,
-    ) -> Vec<PlayerId> {
-        let all = |&PlayerSelectorFilter { side }| {
-            self.players
-                .iter()
-                .map(|p| p.id)
-                .filter(|&player_id| fulfill_side_filter(side, owner, player_id))
-                .collect()
+    fn damage(&mut self, target: ObjectId, amount: u8, source: ObjectId, obs: &mut impl Observer) {
+        self.objects.add_damage(target, amount);
+        let report = Report::Damaged {
+            target,
+            amount,
+            source,
         };
-        match selector {
-            PlayerSelector::All(filter) => all(filter),
-            PlayerSelector::Owner => vec![owner],
-            PlayerSelector::Random(filter) => match self.select_random(&all(filter)) {
-                Some(v) => vec![v],
-                None => Vec::new(),
-            },
-        }
-    }
-
-    fn resolve_character_selector(
-        &mut self,
-        owner: PlayerId,
-        object_id: ObjectId,
-        selector: &CharacterSelector,
-    ) -> Vec<ObjectId> {
-        match selector {
-            CharacterSelector::All(filter) => self.scan_characters_with_filter(owner, filter),
-            CharacterSelector::Itself => vec![object_id],
-            CharacterSelector::OwnerHero => vec![self.hero_id(owner)],
-            CharacterSelector::Random(filter) => {
-                match self.select_random(&self.scan_characters_with_filter(owner, filter)) {
-                    Some(v) => vec![v],
-                    None => Vec::new(),
-                }
-            }
-            CharacterSelector::Targeted(target_id) => self
-                .player_input
-                .targeted(object_id, *target_id)
-                .expect("Target not fulfilled")
-                .to_vec(),
-        }
-    }
-
-    fn select_random<T: Clone>(&mut self, values: &[T]) -> Option<T> {
-        (!values.is_empty()).then(|| {
-            let idx = self.rng.below(values.len());
-            values[idx].clone()
-        })
+        self.report(report, obs);
     }
 }

@@ -1,9 +1,12 @@
-//! What one player can see. `Game::view` is the one definition of it.
+//! What one player can see. `view` is the one definition of it.
 
 use crate::cards::definition::DefId;
 use crate::cards::object::ObjectId;
-use crate::game::Game;
+use crate::game::cards_ref::CardsRef;
 use crate::game::player::Player;
+use crate::game::player_input::PlayerInput;
+use crate::game::resolve::aftermath::standings::Standings;
+use crate::game::stats::{character_health, cost, hero_health, minion_attack};
 use crate::ids::PlayerId;
 use crate::outcome::Outcome;
 use crate::zones::{InHand, OnBoard};
@@ -74,88 +77,101 @@ pub struct TargetingView {
     pub targeted: Vec<ObjectId>,
 }
 
-impl Game {
-    pub fn view(&self, viewer: PlayerId) -> View {
-        View {
-            viewer,
-            active_player: self.turn_order.get_active_player_id(),
-            players: self
-                .players
-                .iter()
-                .map(|p| self.player_view(viewer, p))
-                .collect(),
-            outcome: self.outcome(),
-        }
-    }
-
-    fn player_view(&self, viewer: PlayerId, player: &Player) -> PlayerView {
-        PlayerView {
-            player_id: player.id,
-            hero: self.hero_card(viewer, player.id),
-            mana: player.mana.current(),
-            max_mana: player.mana.max(),
-            hand: self
-                .zones
-                .hand_cards(player.id)
-                .map(|card| self.hand_card(viewer, player.id, card))
-                .collect(),
-            deck_size: self.zones.deck_size(player.id),
-            board: self
-                .zones
-                .board_cards(player.id)
-                .map(|card| self.board_card(viewer, card))
-                .collect(),
-            revealed: self.revealed_view(viewer, player.id),
-            targeting: self.targeting_view(player.id),
-        }
-    }
-
-    fn hand_card(&self, viewer: PlayerId, player_id: PlayerId, card: InHand<'_>) -> HandCard {
-        let object_id = card.object_id();
-        let face = (player_id == viewer).then(|| Face {
-            def_id: self.def_id(object_id),
-            mana_cost: self.cost(card),
-        });
-
-        HandCard { object_id, face }
-    }
-
-    fn board_card(&self, _viewer: PlayerId, card: OnBoard<'_>) -> BoardCard {
-        let object_id = card.object_id();
-        BoardCard {
-            object_id,
-            def_id: self.def_id(object_id),
-            attack: self.minion_attack(card),
-            health: self.character_health(card.into()),
-        }
-    }
-
-    fn revealed_view(&self, viewer: PlayerId, player_id: PlayerId) -> Vec<RevealedCard> {
-        self.player_input
-            .revealed(player_id)
+pub(super) fn view(
+    cards: CardsRef,
+    players: &[Player],
+    player_input: &PlayerInput,
+    standings: &Standings,
+    viewer: PlayerId,
+) -> View {
+    View {
+        viewer,
+        active_player: cards.turn_order.get_active_player_id(),
+        players: players
             .iter()
-            .map(|&object_id| RevealedCard {
-                object_id,
-                def_id: (player_id == viewer).then(|| self.def_id(object_id)),
-            })
-            .collect()
+            .map(|p| player_view(cards, player_input, viewer, p))
+            .collect(),
+        outcome: standings.outcome(),
     }
+}
 
-    fn hero_card(&self, _viewer: PlayerId, player_id: PlayerId) -> HeroCard {
-        let object_id = self.hero_id(player_id);
-        HeroCard {
+fn player_view(
+    cards: CardsRef,
+    player_input: &PlayerInput,
+    viewer: PlayerId,
+    player: &Player,
+) -> PlayerView {
+    PlayerView {
+        player_id: player.id,
+        hero: hero_card(cards, viewer, player.id),
+        mana: player.mana.current(),
+        max_mana: player.mana.max(),
+        hand: cards
+            .zones
+            .hand_cards(player.id)
+            .map(|card| hand_card(cards, viewer, player.id, card))
+            .collect(),
+        deck_size: cards.zones.deck_size(player.id),
+        board: cards
+            .zones
+            .board_cards(player.id)
+            .map(|card| board_card(cards, viewer, card))
+            .collect(),
+        revealed: revealed_view(cards, player_input, viewer, player.id),
+        targeting: targeting_view(player_input, player.id),
+    }
+}
+
+fn hand_card(cards: CardsRef, viewer: PlayerId, player_id: PlayerId, card: InHand) -> HandCard {
+    let object_id = card.object_id();
+    let face = (player_id == viewer).then(|| Face {
+        def_id: cards.def_id(object_id),
+        mana_cost: cost(cards, card),
+    });
+
+    HandCard { object_id, face }
+}
+
+fn board_card(cards: CardsRef, _viewer: PlayerId, card: OnBoard) -> BoardCard {
+    let object_id = card.object_id();
+    BoardCard {
+        object_id,
+        def_id: cards.def_id(object_id),
+        attack: minion_attack(cards, card),
+        health: character_health(cards, card.into()),
+    }
+}
+
+fn revealed_view(
+    cards: CardsRef,
+    player_input: &PlayerInput,
+    viewer: PlayerId,
+    player_id: PlayerId,
+) -> Vec<RevealedCard> {
+    player_input
+        .revealed(player_id)
+        .iter()
+        .map(|&object_id| RevealedCard {
             object_id,
-            def_id: self.def_id(object_id),
-            health: self.hero_health(player_id),
-        }
-    }
+            def_id: (player_id == viewer).then(|| cards.def_id(object_id)),
+        })
+        .collect()
+}
 
-    fn targeting_view(&self, player_id: PlayerId) -> Option<TargetingView> {
-        self.player_input
-            .targeting(player_id)
-            .map(|targeting| TargetingView {
-                object_id: targeting.object_id(),
-                targeted: targeting.targeted_objects().collect(),
-            })
+fn hero_card(cards: CardsRef, _viewer: PlayerId, player_id: PlayerId) -> HeroCard {
+    let object_id = cards.zones.hero(player_id);
+    HeroCard {
+        object_id,
+        def_id: cards.def_id(object_id),
+        health: hero_health(cards, player_id),
     }
+}
+
+fn targeting_view(player_input: &PlayerInput, player_id: PlayerId) -> Option<TargetingView> {
+    player_input
+        .targeting(player_id)
+        .map(|targeting| TargetingView {
+            object_id: targeting.object_id(),
+            targeted: targeting.targeted_objects().collect(),
+        })
 }

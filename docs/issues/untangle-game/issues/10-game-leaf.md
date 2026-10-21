@@ -1,6 +1,6 @@
 # `game` holds more than how its children combine
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 Blocked by: 09
@@ -58,3 +58,7 @@ PR.
   `Game`. Ticket 13 removes them.
 - Every item in `game/` has the narrowest visibility that compiles.
 - The checks pass, and the PR justifies every behavior change.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/51

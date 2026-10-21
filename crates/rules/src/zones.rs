@@ -270,6 +270,14 @@ impl Zones {
         self.board(player_id).iter().copied().map(OnBoard::new)
     }
 
+    /// Every player's board, players by `PlayerId`, the cards in each from left to right.
+    pub(crate) fn boards(&self) -> impl Iterator<Item = (PlayerId, &[ObjectId])> {
+        self.players
+            .iter()
+            .enumerate()
+            .map(|(idx, player)| (PlayerId::new(idx), player.board.as_slice()))
+    }
+
     pub(crate) fn hero_in_play(&self, player_id: PlayerId) -> InPlay<'_> {
         InPlay::new(self.hero(player_id))
     }
@@ -646,6 +654,22 @@ mod tests {
             [c, a],
             "the card played first must come first",
         );
+    }
+
+    #[test]
+    fn boards_come_by_player_each_left_to_right() {
+        let [hero, other_hero, a, b, c] = ids();
+        let [player, other] = [PlayerId::new(0), PlayerId::new(1)];
+        let mut zones = Zones::new([(hero, vec![a, b]), (other_hero, vec![c])]);
+        for (player_id, card) in [(other, c), (player, a), (player, b)] {
+            zones.draw(player_id);
+            zones.take_from_hand(player_id, card);
+            zones.enter_board(player_id, card);
+        }
+
+        let boards = zones.boards().collect::<Vec<_>>();
+
+        assert_eq!(boards, [(player, &[a, b][..]), (other, &[c][..])]);
     }
 
     #[test]

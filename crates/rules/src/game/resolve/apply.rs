@@ -4,8 +4,11 @@
 //! `apply` checks legality once, and nothing after its check re-checks it.
 
 use crate::action::{Action, IllegalAction};
-use crate::game::Game;
+use crate::cards::object::ObjectId;
+use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::NextEffect;
+use crate::game::reporting::Report;
+use crate::game::state::Game;
 use crate::ids::PlayerId;
 use crate::observer::{Observer, Views};
 
@@ -16,12 +19,6 @@ pub enum ApplyError {
 }
 
 impl Game {
-    pub fn applied(&self, player_id: PlayerId, action: Action) -> Result<Self, ApplyError> {
-        let mut game = self.clone();
-        game.apply(player_id, action, &mut ())?;
-        Ok(game)
-    }
-
     /// `Ok` if and only if `action` is in `legal_actions(player_id)`.
     /// An `Err` leaves the game unchanged.
     pub fn apply(
@@ -45,7 +42,7 @@ impl Game {
         match action {
             Action::Play { object_id } => {
                 if let Some(targeting) = self.player_input.targeting(player_id) {
-                    let target_ids = self
+                    let target_ids = CardsRef::new(self)
                         .card_def(targeting.object_id())
                         .targets
                         .iter()
@@ -62,7 +59,6 @@ impl Game {
             }
             Action::EndTurn => {
                 self.end_turn(obs);
-                self.start_turn(obs);
                 obs.checkpoint(Views::new(self));
             }
             Action::StartTargeting { object_id } => {
@@ -81,6 +77,16 @@ impl Game {
                 obs.checkpoint(Views::new(self));
             }
         };
+    }
+
+    fn pick(&mut self, player_id: PlayerId, object_id: ObjectId, obs: &mut impl Observer) {
+        self.player_input.pick(player_id, object_id);
+
+        let report = Report::Picked {
+            player_id,
+            object_id,
+        };
+        self.report(report, obs);
     }
 
     fn drain_effect_queue(&mut self, obs: &mut impl Observer) {
