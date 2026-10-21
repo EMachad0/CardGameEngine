@@ -2,18 +2,18 @@
 
 use crate::cards::definition::{CardKind, CharacterKind};
 use crate::effect::EffectAmount;
-use crate::game::cards::Cards;
+use crate::game::cards_ref::CardsRef;
 use crate::history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter};
 use crate::ids::PlayerId;
 
-pub(super) fn effect_amount(cards: Cards<'_>, amount: &EffectAmount, player_id: PlayerId) -> u8 {
+pub(super) fn effect_amount(cards: CardsRef<'_>, amount: &EffectAmount, player_id: PlayerId) -> u8 {
     match amount {
         EffectAmount::Static(value) => *value,
         EffectAmount::History(query) => history_query(cards, *query, player_id),
     }
 }
 
-fn history_query(cards: Cards<'_>, query: HistoryQuery, player_id: PlayerId) -> u8 {
+fn history_query(cards: CardsRef<'_>, query: HistoryQuery, player_id: PlayerId) -> u8 {
     let scope = match query.scope {
         PlayerFilter::All => None,
         PlayerFilter::Owner => Some(player_id),

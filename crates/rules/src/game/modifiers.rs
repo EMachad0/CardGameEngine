@@ -3,9 +3,9 @@
 
 use crate::cards::modifier::SortedModifiers;
 use crate::cards::object::ObjectId;
-use crate::game::cards::Cards;
+use crate::game::cards_ref::CardsRef;
 
-pub(super) fn modifiers<'g>(cards: Cards<'g>, object_id: ObjectId) -> SortedModifiers<'g> {
+pub(super) fn modifiers<'g>(cards: CardsRef<'g>, object_id: ObjectId) -> SortedModifiers<'g> {
     let object = cards.objects.get(object_id);
     let card_def = cards.card_def(object_id);
     let mut modifiers = SortedModifiers::default();
@@ -36,7 +36,7 @@ pub(super) fn modifiers<'g>(cards: Cards<'g>, object_id: ObjectId) -> SortedModi
 }
 
 fn add_friendly_aura<'g>(
-    cards: Cards<'g>,
+    cards: CardsRef<'g>,
     object_id: ObjectId,
     modifiers: &mut SortedModifiers<'g>,
 ) {
@@ -49,7 +49,7 @@ fn add_friendly_aura<'g>(
 }
 
 fn add_hostile_aura<'g>(
-    cards: Cards<'g>,
+    cards: CardsRef<'g>,
     object_id: ObjectId,
     modifiers: &mut SortedModifiers<'g>,
 ) {

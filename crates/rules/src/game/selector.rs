@@ -4,7 +4,7 @@
 use crate::cards::definition::{CharacterSelector, PlayerSelector, PlayerSelectorFilter};
 use crate::cards::filter::fulfill_side_filter;
 use crate::cards::object::ObjectId;
-use crate::game::cards::Cards;
+use crate::game::cards_ref::CardsRef;
 use crate::game::player_input::PlayerInput;
 use crate::ids::PlayerId;
 use crate::rng::Rng;
@@ -45,7 +45,7 @@ pub(super) fn select_players(
 }
 
 pub(super) fn select_characters(
-    cards: Cards<'_>,
+    cards: CardsRef<'_>,
     player_input: &PlayerInput,
     owner: PlayerId,
     source: ObjectId,

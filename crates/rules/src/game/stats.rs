@@ -4,34 +4,34 @@
 use crate::cards::object::ObjectId;
 use crate::effect::EffectAmount;
 use crate::game::amount::effect_amount;
-use crate::game::cards::Cards;
+use crate::game::cards_ref::CardsRef;
 use crate::game::modifiers::modifiers;
 use crate::ids::PlayerId;
 use crate::zones::{InHand, InPlay, OnBoard};
 
-pub(super) fn mana_cost(cards: Cards<'_>, object_id: ObjectId) -> Option<u8> {
+pub(super) fn mana_cost(cards: CardsRef<'_>, object_id: ObjectId) -> Option<u8> {
     let owner = cards.objects.get(object_id).player_id;
     let card = cards.zones.find_in_hand(owner, object_id)?;
     Some(cost(cards, card))
 }
 
-pub(super) fn attack(cards: Cards<'_>, object_id: ObjectId) -> Option<i32> {
+pub(super) fn attack(cards: CardsRef<'_>, object_id: ObjectId) -> Option<i32> {
     let owner = cards.objects.get(object_id).player_id;
     let card = cards.zones.find_on_board(owner, object_id)?;
     Some(minion_attack(cards, card))
 }
 
-pub(super) fn health(cards: Cards<'_>, object_id: ObjectId) -> Option<i32> {
+pub(super) fn health(cards: CardsRef<'_>, object_id: ObjectId) -> Option<i32> {
     cards.objects.get(object_id);
     let character = cards.zones.find_in_play(object_id)?;
     Some(character_health(cards, character))
 }
 
-pub(super) fn hero_health(cards: Cards<'_>, player_id: PlayerId) -> i32 {
+pub(super) fn hero_health(cards: CardsRef<'_>, player_id: PlayerId) -> i32 {
     character_health(cards, cards.zones.hero_in_play(player_id))
 }
 
-pub(super) fn cost(cards: Cards<'_>, card: InHand<'_>) -> u8 {
+pub(super) fn cost(cards: CardsRef<'_>, card: InHand<'_>) -> u8 {
     let object_id = card.object_id();
     let printed_cost = cards.card_def(object_id).mana_cost;
     let reduction =
@@ -39,7 +39,7 @@ pub(super) fn cost(cards: Cards<'_>, card: InHand<'_>) -> u8 {
     printed_cost.saturating_sub(reduction)
 }
 
-pub(super) fn minion_attack(cards: Cards<'_>, card: OnBoard<'_>) -> i32 {
+pub(super) fn minion_attack(cards: CardsRef<'_>, card: OnBoard<'_>) -> i32 {
     let object_id = card.object_id();
     let printed_attack = cards
         .card_def(object_id)
@@ -49,7 +49,7 @@ pub(super) fn minion_attack(cards: Cards<'_>, card: OnBoard<'_>) -> i32 {
     printed_attack + bonus
 }
 
-pub(super) fn character_health(cards: Cards<'_>, character: InPlay<'_>) -> i32 {
+pub(super) fn character_health(cards: CardsRef<'_>, character: InPlay<'_>) -> i32 {
     let object_id = character.object_id();
     let printed_health = cards
         .card_def(object_id)
@@ -59,7 +59,7 @@ pub(super) fn character_health(cards: Cards<'_>, character: InPlay<'_>) -> i32 {
     printed_health + bonus - cards.objects.get(object_id).damage() as i32
 }
 
-fn evaluate_for_owner(cards: Cards<'_>, object_id: ObjectId) -> impl Fn(&EffectAmount) -> u8 {
+fn evaluate_for_owner(cards: CardsRef<'_>, object_id: ObjectId) -> impl Fn(&EffectAmount) -> u8 {
     let owner = cards.objects.get(object_id).player_id;
     move |amount| effect_amount(cards, amount, owner)
 }

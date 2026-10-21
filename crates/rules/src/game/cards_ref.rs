@@ -13,7 +13,7 @@ use crate::turn::TurnOrder;
 use crate::zones::Zones;
 
 #[derive(Clone, Copy)]
-pub(super) struct Cards<'g> {
+pub(super) struct CardsRef<'g> {
     binder: &'g Binder,
     pub(super) objects: &'g ObjectBag,
     pub(super) zones: &'g Zones,
@@ -21,7 +21,7 @@ pub(super) struct Cards<'g> {
     pub(super) turn_order: &'g TurnOrder,
 }
 
-impl<'g> Cards<'g> {
+impl<'g> CardsRef<'g> {
     pub(super) fn new(game: &'g Game) -> Self {
         Self {
             binder: &game.binder,

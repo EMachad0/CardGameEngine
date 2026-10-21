@@ -1,5 +1,5 @@
 mod amount;
-mod cards;
+mod cards_ref;
 mod effect_stack;
 mod legal_actions;
 mod mana;

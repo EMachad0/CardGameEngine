@@ -2,7 +2,7 @@ use crate::cards::modifier::Modifier;
 use crate::cards::object::ObjectId;
 use crate::effect::{Effect, PickId};
 use crate::game::amount::effect_amount;
-use crate::game::cards::Cards;
+use crate::game::cards_ref::CardsRef;
 use crate::game::reporting::Report;
 use crate::game::selector::{select_characters, select_players};
 use crate::game::state::Game;
@@ -19,7 +19,7 @@ impl Game {
     ) {
         match effect {
             Effect::Draw { selector, amount } => {
-                let amount = effect_amount(Cards::new(self), amount, owner);
+                let amount = effect_amount(CardsRef::new(self), amount, owner);
                 let selection = select_players(&self.players(), owner, selector);
                 let targets = selection.resolve(&mut self.rng);
                 for target in targets.into_iter() {
@@ -31,7 +31,7 @@ impl Game {
                 selector,
                 amount,
             } => {
-                let amount = effect_amount(Cards::new(self), amount, owner);
+                let amount = effect_amount(CardsRef::new(self), amount, owner);
                 let selection = select_players(&self.players(), owner, selector);
                 let targets = selection.resolve(&mut self.rng);
                 for target in targets.into_iter() {
@@ -58,7 +58,7 @@ impl Game {
                 }
             }
             Effect::Damage { selector, amount } => {
-                let cards = Cards::new(self);
+                let cards = CardsRef::new(self);
                 let amount = effect_amount(cards, amount, owner);
                 let selection =
                     select_characters(cards, &self.player_input, owner, source, selector);
@@ -69,7 +69,7 @@ impl Game {
             }
             Effect::Buff { selector, effect } => {
                 let selection = select_characters(
-                    Cards::new(self),
+                    CardsRef::new(self),
                     &self.player_input,
                     owner,
                     source,
@@ -86,7 +86,7 @@ impl Game {
             }
             Effect::AddFriendlyAura { selector, effect } => {
                 let selection = select_characters(
-                    Cards::new(self),
+                    CardsRef::new(self),
                     &self.player_input,
                     owner,
                     source,

@@ -1,5 +1,5 @@
 use crate::action::Action;
-use crate::game::cards::Cards;
+use crate::game::cards_ref::CardsRef;
 use crate::game::player::Player;
 use crate::game::player_input::{Awaiting, PlayerInput};
 use crate::game::resolve::aftermath::standings::Standings;
@@ -8,7 +8,7 @@ use crate::game::targeting_walk::{can_start_targeting, may_stop_targeting, next_
 
 /// The one definition of legality.
 pub(super) fn legal_actions(
-    cards: Cards<'_>,
+    cards: CardsRef<'_>,
     standings: &Standings,
     player_input: &PlayerInput,
     player: &Player,

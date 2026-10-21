@@ -1,6 +1,6 @@
 use crate::cards::object::ObjectId;
 use crate::event::Event;
-use crate::game::cards::Cards;
+use crate::game::cards_ref::CardsRef;
 use crate::game::reporting::Report;
 use crate::game::state::Game;
 use crate::game::stats::character_health;
@@ -24,7 +24,7 @@ impl From<Death> for Event {
 impl Game {
     pub(super) fn remove_dead(&mut self, obs: &mut impl Observer) {
         loop {
-            let dead_minions = find_dead(Cards::new(self), &self.players());
+            let dead_minions = find_dead(CardsRef::new(self), &self.players());
             let minion_died = !dead_minions.is_empty();
 
             let dead_players = self
@@ -59,7 +59,7 @@ impl Game {
     fn kill(&mut self, deaths: Vec<Death>, obs: &mut impl Observer) {
         for death in deaths.iter() {
             for MatchedTrigger { source, effects } in
-                death_rattles(Cards::new(self), death.object_id)
+                death_rattles(CardsRef::new(self), death.object_id)
             {
                 self.effect_stack.push(source, effects);
             }
@@ -68,7 +68,7 @@ impl Game {
         for death in deaths.into_iter() {
             let object_id = death.object_id;
             let player_id = self.objects.get(object_id).player_id;
-            let card_def = Cards::new(self).card_def(object_id);
+            let card_def = CardsRef::new(self).card_def(object_id);
             if card_def.leaves_zone_on_death() {
                 let to_graveyard = card_def.goes_to_graveyard();
                 destroy(&mut self.zones, player_id, object_id, to_graveyard);
@@ -78,7 +78,7 @@ impl Game {
     }
 }
 
-fn find_dead(cards: Cards<'_>, players: &[PlayerId]) -> Vec<ObjectId> {
+fn find_dead(cards: CardsRef<'_>, players: &[PlayerId]) -> Vec<ObjectId> {
     let mut death_pass = Vec::new();
     for &player_id in players {
         for card in cards.zones.board_cards(player_id) {

@@ -4,7 +4,7 @@ use crate::action::Action;
 use crate::cards::binder::store::Binder;
 use crate::cards::definition::DefId;
 use crate::cards::object::{ObjectBag, ObjectId};
-use crate::game::cards::Cards;
+use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::EffectStack;
 use crate::game::player::Player;
 use crate::game::player_input::PlayerInput;
@@ -52,7 +52,7 @@ impl Game {
 
     pub fn legal_actions(&self, player_id: PlayerId) -> Vec<Action> {
         legal_actions::legal_actions(
-            Cards::new(self),
+            CardsRef::new(self),
             &self.standings,
             &self.player_input,
             self.get_player(player_id),
@@ -61,7 +61,7 @@ impl Game {
 
     pub fn view(&self, viewer: PlayerId) -> View {
         view::view(
-            Cards::new(self),
+            CardsRef::new(self),
             &self.players,
             &self.player_input,
             &self.standings,
@@ -87,26 +87,26 @@ impl Game {
     }
 
     pub fn def_id(&self, object_id: ObjectId) -> DefId {
-        Cards::new(self).def_id(object_id)
+        CardsRef::new(self).def_id(object_id)
     }
 
     /// `None` unless the card is in its owner's hand. Panics on an id the game never made.
     pub fn mana_cost(&self, object_id: ObjectId) -> Option<u8> {
-        stats::mana_cost(Cards::new(self), object_id)
+        stats::mana_cost(CardsRef::new(self), object_id)
     }
 
     /// `None` unless the card is on its owner's board. Panics on an id the game never made.
     pub fn attack(&self, object_id: ObjectId) -> Option<i32> {
-        stats::attack(Cards::new(self), object_id)
+        stats::attack(CardsRef::new(self), object_id)
     }
 
     /// `None` unless the object is a character in play. Panics on an id the game never made.
     pub fn health(&self, object_id: ObjectId) -> Option<i32> {
-        stats::health(Cards::new(self), object_id)
+        stats::health(CardsRef::new(self), object_id)
     }
 
     pub fn hero_health(&self, player_id: PlayerId) -> i32 {
-        stats::hero_health(Cards::new(self), player_id)
+        stats::hero_health(CardsRef::new(self), player_id)
     }
 
     pub fn mana(&self, player_id: PlayerId) -> u8 {

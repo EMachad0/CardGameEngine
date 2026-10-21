@@ -2,7 +2,7 @@
 
 use crate::cards::definition::DefId;
 use crate::cards::object::ObjectId;
-use crate::game::cards::Cards;
+use crate::game::cards_ref::CardsRef;
 use crate::game::player::Player;
 use crate::game::player_input::PlayerInput;
 use crate::game::resolve::aftermath::standings::Standings;
@@ -78,7 +78,7 @@ pub struct TargetingView {
 }
 
 pub(super) fn view(
-    cards: Cards<'_>,
+    cards: CardsRef<'_>,
     players: &[Player],
     player_input: &PlayerInput,
     standings: &Standings,
@@ -96,7 +96,7 @@ pub(super) fn view(
 }
 
 fn player_view(
-    cards: Cards<'_>,
+    cards: CardsRef<'_>,
     player_input: &PlayerInput,
     viewer: PlayerId,
     player: &Player,
@@ -123,7 +123,7 @@ fn player_view(
 }
 
 fn hand_card(
-    cards: Cards<'_>,
+    cards: CardsRef<'_>,
     viewer: PlayerId,
     player_id: PlayerId,
     card: InHand<'_>,
@@ -137,7 +137,7 @@ fn hand_card(
     HandCard { object_id, face }
 }
 
-fn board_card(cards: Cards<'_>, _viewer: PlayerId, card: OnBoard<'_>) -> BoardCard {
+fn board_card(cards: CardsRef<'_>, _viewer: PlayerId, card: OnBoard<'_>) -> BoardCard {
     let object_id = card.object_id();
     BoardCard {
         object_id,
@@ -148,7 +148,7 @@ fn board_card(cards: Cards<'_>, _viewer: PlayerId, card: OnBoard<'_>) -> BoardCa
 }
 
 fn revealed_view(
-    cards: Cards<'_>,
+    cards: CardsRef<'_>,
     player_input: &PlayerInput,
     viewer: PlayerId,
     player_id: PlayerId,
@@ -163,7 +163,7 @@ fn revealed_view(
         .collect()
 }
 
-fn hero_card(cards: Cards<'_>, _viewer: PlayerId, player_id: PlayerId) -> HeroCard {
+fn hero_card(cards: CardsRef<'_>, _viewer: PlayerId, player_id: PlayerId) -> HeroCard {
     let object_id = cards.zones.hero(player_id);
     HeroCard {
         object_id,
