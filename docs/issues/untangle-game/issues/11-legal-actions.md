@@ -1,6 +1,6 @@
 # `apply` checks legality, then assumes it
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 Blocked by: 10
@@ -46,3 +46,7 @@ it arrives."
   fact that nothing keeps true up to the write and the write doesn't ask again.
 - Legality still has one definition.
 - The checks pass, and the PR justifies every behavior change.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/55
