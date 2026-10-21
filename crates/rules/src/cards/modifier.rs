@@ -1,7 +1,6 @@
-use crate::{
-    cards::{definition::TriggerDef, object::ObjectId},
-    effect::EffectAmount,
-};
+use crate::cards::definition::TriggerDef;
+use crate::cards::object::ObjectId;
+use crate::effect::EffectAmount;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(super) struct Modifiers(Vec<Modifier>);
@@ -70,10 +69,9 @@ impl<'a> SortedModifiers<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use pretty_assertions::assert_eq;
 
+    use super::*;
     use crate::cards::binder::sets::base::static_card_definition::SPARK;
     use crate::cards::object::ObjectBag;
     use crate::history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter};

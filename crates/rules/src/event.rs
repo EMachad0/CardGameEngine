@@ -2,7 +2,9 @@
 //! Events name objects by `ObjectId` only:
 //! a card's identity and current values reach a viewer through its `View`.
 
-use crate::{cards::object::ObjectId, ids::PlayerId, outcome::Outcome};
+use crate::cards::object::ObjectId;
+use crate::ids::PlayerId;
+use crate::outcome::Outcome;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Event {

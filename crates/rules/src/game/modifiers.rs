@@ -1,10 +1,9 @@
 //! The modifiers that reach an object: its printed ones, those granted it, and the auras of the
 //! other cards on the boards.
 
-use crate::{
-    cards::{modifier::SortedModifiers, object::ObjectId},
-    game::Game,
-};
+use crate::cards::modifier::SortedModifiers;
+use crate::cards::object::ObjectId;
+use crate::game::Game;
 
 impl Game {
     pub(super) fn modifiers(&self, object_id: ObjectId) -> SortedModifiers<'_> {

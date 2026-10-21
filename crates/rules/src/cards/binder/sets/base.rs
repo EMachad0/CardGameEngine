@@ -1,20 +1,16 @@
 use enumset::EnumSet;
 
-use crate::{
-    cards::{
-        binder::sets::base::static_card_definition::*,
-        definition::{
-            CardDef, CardKind, CardKindDef, CharacterKind, CharacterSelector, DefId, HeroCardDef,
-            MinionCardDef, PlayerSelector, SpellCardDef, TriggerDef,
-        },
-        filter::{CardFilter, CharacterFilter, Side},
-        modifier::ModifierEffect,
-    },
-    effect::{Effect, EffectAmount, EffectSequence, PickId, ZoneMove},
-    history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter},
-    target::{AmountBound, CharacterTarget, TargetId},
-    trigger::{TriggerPattern, TriggerSubject},
+use crate::cards::binder::sets::base::static_card_definition::*;
+use crate::cards::definition::{
+    CardDef, CardKind, CardKindDef, CharacterKind, CharacterSelector, DefId, HeroCardDef,
+    MinionCardDef, PlayerSelector, SpellCardDef, TriggerDef,
 };
+use crate::cards::filter::{CardFilter, CharacterFilter, Side};
+use crate::cards::modifier::ModifierEffect;
+use crate::effect::{Effect, EffectAmount, EffectSequence, PickId, ZoneMove};
+use crate::history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter};
+use crate::target::{AmountBound, CharacterTarget, TargetId};
+use crate::trigger::{TriggerPattern, TriggerSubject};
 
 pub(in crate::cards::binder) const PLACEHOLDER: DefId = DefId::new("placeholder");
 

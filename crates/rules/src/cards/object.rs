@@ -1,12 +1,8 @@
 use std::collections::BTreeMap;
 
-use crate::{
-    cards::{
-        definition::DefId,
-        modifier::{Modifier, Modifiers},
-    },
-    ids::PlayerId,
-};
+use crate::cards::definition::DefId;
+use crate::cards::modifier::{Modifier, Modifiers};
+use crate::ids::PlayerId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ObjectId(u64);
@@ -91,10 +87,9 @@ impl ObjectBag {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use pretty_assertions::{assert_eq, assert_ne};
 
+    use super::*;
     use crate::cards::binder::sets::base::static_card_definition::{RECRUIT, SPARK};
     use crate::cards::modifier::ModifierEffect;
 

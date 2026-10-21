@@ -1,7 +1,9 @@
 //! Who is still playing, and the outcome once the game is over. The game ends once, when at most
 //! one player is left.
 
-use crate::{event::Event, ids::PlayerId, outcome::Outcome};
+use crate::event::Event;
+use crate::ids::PlayerId;
+use crate::outcome::Outcome;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(in crate::game) struct Standings {
@@ -64,9 +66,9 @@ impl Standings {
     reason = "each test starts the standings it tests"
 )]
 mod tests {
-    use super::*;
-
     use pretty_assertions::assert_eq;
+
+    use super::*;
 
     fn players<const N: usize>() -> [PlayerId; N] {
         std::array::from_fn(PlayerId::new)

@@ -2,20 +2,17 @@
 //! A variant that holds a value with private fields can be built only in the file that defines
 //! the value.
 
-use crate::{
-    cards::object::{ObjectBag, ObjectId},
-    event::Event,
-    game::{
-        Game,
-        effect_stack::EffectStack,
-        resolve::aftermath::{death::Death, standings::Ending},
-        triggering::MatchedTrigger,
-        zone_move::Play,
-    },
-    history::History,
-    ids::PlayerId,
-    observer::Observer,
-};
+use crate::cards::object::{ObjectBag, ObjectId};
+use crate::event::Event;
+use crate::game::Game;
+use crate::game::effect_stack::EffectStack;
+use crate::game::resolve::aftermath::death::Death;
+use crate::game::resolve::aftermath::standings::Ending;
+use crate::game::triggering::MatchedTrigger;
+use crate::game::zone_move::Play;
+use crate::history::History;
+use crate::ids::PlayerId;
+use crate::observer::Observer;
 
 pub(super) enum Report {
     TurnStarted {

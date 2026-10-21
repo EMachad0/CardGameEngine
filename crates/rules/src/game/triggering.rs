@@ -1,12 +1,10 @@
-use crate::{
-    cards::{definition::TriggerDef, object::ObjectId},
-    effect::EffectSequence,
-    event::Event,
-    game::Game,
-    ids::PlayerId,
-    trigger::Trigger,
-    trigger::{TriggerPattern, TriggerSubject},
-};
+use crate::cards::definition::TriggerDef;
+use crate::cards::object::ObjectId;
+use crate::effect::EffectSequence;
+use crate::event::Event;
+use crate::game::Game;
+use crate::ids::PlayerId;
+use crate::trigger::{Trigger, TriggerPattern, TriggerSubject};
 
 pub(super) struct MatchedTrigger {
     pub(super) source: ObjectId,

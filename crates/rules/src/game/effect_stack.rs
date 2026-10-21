@@ -1,10 +1,8 @@
 //! The effect stack and the resolving effect. The newest pending effect resolves first, and one
 //! resolves at a time: the next is taken off the stack only once the resolving one finishes.
 
-use crate::{
-    cards::object::ObjectId,
-    effect::{Effect, EffectSequence},
-};
+use crate::cards::object::ObjectId;
+use crate::effect::{Effect, EffectSequence};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(super) struct EffectStack {
@@ -87,10 +85,9 @@ impl EffectStack {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use pretty_assertions::assert_eq;
 
+    use super::*;
     use crate::cards::binder::sets::base::static_card_definition::SPARK;
     use crate::cards::definition::PlayerSelector;
     use crate::cards::object::ObjectBag;

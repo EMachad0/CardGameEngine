@@ -1,15 +1,11 @@
 //! An object's definition, a player's hero, and amounts computed from history.
 
-use crate::{
-    cards::{
-        definition::{CardDef, CardKind, CharacterKind, DefId},
-        object::{Object, ObjectId},
-    },
-    effect::{Effect, EffectAmount},
-    game::Game,
-    history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter},
-    ids::PlayerId,
-};
+use crate::cards::definition::{CardDef, CardKind, CharacterKind, DefId};
+use crate::cards::object::{Object, ObjectId};
+use crate::effect::{Effect, EffectAmount};
+use crate::game::Game;
+use crate::history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter};
+use crate::ids::PlayerId;
 
 impl Game {
     fn object(&self, object_id: ObjectId) -> &Object {

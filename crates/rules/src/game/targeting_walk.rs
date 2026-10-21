@@ -1,11 +1,10 @@
 //! Whether a card's targeting can be finished, which objects the player may target next, and
 //! whether they may stop.
 
-use crate::{
-    cards::object::ObjectId,
-    game::{Game, player_input::Targeting},
-    target::{CharacterTarget, TargetId},
-};
+use crate::cards::object::ObjectId;
+use crate::game::Game;
+use crate::game::player_input::Targeting;
+use crate::target::{CharacterTarget, TargetId};
 
 impl Game {
     /// Whether the card's targeting can be finished from nothing targeted.

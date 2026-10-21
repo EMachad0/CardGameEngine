@@ -1,4 +1,5 @@
-use crate::{cards::filter::CharacterFilter, effect::EffectAmount};
+use crate::cards::filter::CharacterFilter;
+use crate::effect::EffectAmount;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AmountBound {

@@ -1,14 +1,10 @@
 use enumset::EnumSet;
 
-use crate::{
-    cards::{
-        definition::{CardKind, CharacterKind},
-        filter::{CardFilter, CharacterFilter, fulfill_side_filter},
-        object::ObjectId,
-    },
-    game::Game,
-    ids::PlayerId,
-};
+use crate::cards::definition::{CardKind, CharacterKind};
+use crate::cards::filter::{CardFilter, CharacterFilter, fulfill_side_filter};
+use crate::cards::object::ObjectId;
+use crate::game::Game;
+use crate::ids::PlayerId;
 
 impl Game {
     pub(crate) fn scan_characters_with_filter(
