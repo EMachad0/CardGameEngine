@@ -3,6 +3,7 @@
 use crate::cards::object::ObjectId;
 use crate::event::Event;
 use crate::game::cards_ref::CardsRef;
+use crate::game::mana::Payment;
 use crate::game::reporting::Report;
 use crate::game::state::Game;
 use crate::ids::PlayerId;
@@ -13,15 +14,15 @@ pub(super) struct Play {
     object_id: ObjectId,
 }
 
-/// A card its player can play now, with its cost.
+/// A card its player can play now, with the payment of its cost.
 pub(super) struct Playable {
     object_id: ObjectId,
-    cost: u8,
+    payment: Payment,
 }
 
 impl Playable {
-    pub(super) fn new(object_id: ObjectId, cost: u8) -> Self {
-        Self { object_id, cost }
+    pub(super) fn new(object_id: ObjectId, payment: Payment) -> Self {
+        Self { object_id, payment }
     }
 
     pub(super) fn object_id(&self) -> ObjectId {
@@ -40,8 +41,8 @@ impl From<Play> for Event {
 
 impl Game {
     pub(super) fn play(&mut self, player_id: PlayerId, card: Playable, obs: &mut impl Observer) {
-        let Playable { object_id, cost } = card;
-        self.get_player_mut(player_id).mana.pay(cost);
+        let Playable { object_id, payment } = card;
+        self.get_player_mut(player_id).mana.pay(payment);
         self.zones
             .take_from_hand(player_id, object_id)
             .expect("legal actions guarantee playable cards are in hand");

@@ -122,9 +122,6 @@ pub(super) fn legal_actions(
 
 /// The card, if its player can pay its cost now.
 fn playable(cards: CardsRef, player: &Player, card: InHand) -> Option<Playable> {
-    let cost = cost(cards, card);
-    player
-        .mana
-        .can_pay(cost)
-        .then(|| Playable::new(card.object_id(), cost))
+    let payment = player.mana.payment(cost(cards, card))?;
+    Some(Playable::new(card.object_id(), payment))
 }

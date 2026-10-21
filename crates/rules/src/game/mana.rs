@@ -8,6 +8,12 @@ pub(super) struct Mana {
     max: u8,
 }
 
+/// A cost the mana could pay when asked. It holds no borrow, so it stays true only until the
+/// mana changes.
+pub(super) struct Payment {
+    cost: u8,
+}
+
 impl Mana {
     pub(super) fn current(&self) -> u8 {
         self.current
@@ -17,12 +23,13 @@ impl Mana {
         self.max
     }
 
-    pub(super) fn can_pay(&self, cost: u8) -> bool {
-        cost <= self.current
+    /// `None` if the cost is more than the current mana.
+    pub(super) fn payment(&self, cost: u8) -> Option<Payment> {
+        (cost <= self.current).then_some(Payment { cost })
     }
 
-    pub(super) fn pay(&mut self, cost: u8) {
-        self.current -= cost;
+    pub(super) fn pay(&mut self, payment: Payment) {
+        self.current -= payment.cost;
     }
 
     pub(super) fn refill(&mut self) {
@@ -41,7 +48,7 @@ mod tests {
     fn a_refill_fills_mana_to_a_max_one_higher() {
         let mut mana = Mana::default();
         mana.refill();
-        mana.pay(1);
+        mana.pay(mana.payment(1).unwrap());
         mana.refill();
 
         assert_eq!(
@@ -71,7 +78,7 @@ mod tests {
         for _ in 0..3 {
             mana.refill();
         }
-        mana.pay(2);
+        mana.pay(mana.payment(2).unwrap());
 
         assert_eq!(
             (mana.current(), mana.max()),
@@ -86,7 +93,7 @@ mod tests {
         mana.refill();
         mana.refill();
 
-        assert!(mana.can_pay(2), "2 mana pays a cost of 2");
+        assert!(mana.payment(2).is_some(), "2 mana pays a cost of 2");
     }
 
     #[test]
@@ -95,6 +102,6 @@ mod tests {
         mana.refill();
         mana.refill();
 
-        assert!(!mana.can_pay(3), "2 mana does not pay a cost of 3");
+        assert!(mana.payment(3).is_none(), "2 mana does not pay a cost of 3");
     }
 }
