@@ -117,9 +117,9 @@ impl CardDef {
             .iter()
             .map(|effect| {
                 effect.clone().map_targeted(|_| {
-                    let target_id = target_ids
-                        .next()
-                        .expect("every target the play effects declare should be in targets");
+                    let target_id = target_ids.next().expect(
+                        "every target the play effects declare should be listed by `targets`",
+                    );
                     targeted(target_id)
                 })
             })

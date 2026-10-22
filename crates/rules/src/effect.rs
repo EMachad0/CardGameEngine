@@ -115,7 +115,7 @@ mod tests {
 
     use super::*;
 
-    fn targeted<T>([damaged, buffed, aura]: [T; 3]) -> [Effect<T>; 3] {
+    fn targeted_effects<T>([damaged, buffed, aura]: [T; 3]) -> [Effect<T>; 3] {
         let buff = ModifierEffect::BuffAtk { amount: 1.into() };
         [
             Effect::Damage {
@@ -144,7 +144,7 @@ mod tests {
     #[test]
     fn an_effect_gives_what_its_targeted_selector_holds() {
         assert_eq!(
-            targeted([3, 4, 5]).each_ref().map(Effect::targeted),
+            targeted_effects([3, 4, 5]).each_ref().map(Effect::targeted),
             [Some(&3), Some(&4), Some(&5)],
         );
     }
@@ -157,13 +157,13 @@ mod tests {
     #[test]
     fn mapping_the_targeted_selector_maps_what_it_holds() {
         assert_eq!(
-            targeted([3, 4, 5]).map(|effect| effect.map_targeted(|n| n * 2)),
-            targeted([6, 8, 10]),
+            targeted_effects([3, 4, 5]).map(|effect| effect.map_targeted(|n| n * 2)),
+            targeted_effects([6, 8, 10]),
         );
     }
 
     #[test]
-    fn mapping_the_targeted_selector_keeps_an_effect_with_no_character_selector() {
+    fn mapping_keeps_an_effect_with_no_character_selector() {
         assert_eq!(
             resolve_pick::<usize>().map_targeted(|n| n * 2),
             resolve_pick(),
