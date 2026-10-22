@@ -29,6 +29,15 @@ impl AmountBound {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TargetId(pub usize);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct DeclaredTarget(TargetId);
+
+impl DeclaredTarget {
+    pub(crate) fn id(self) -> TargetId {
+        self.0
+    }
+}
+
 /// What a `Targeted` selector holds in text that resolves with no targeting, such as a trigger's.
 /// It has no values, so that text can't name a target.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -51,7 +60,6 @@ impl Targets {
         self.0.is_empty()
     }
 
-    /// In the order declared.
     pub(crate) fn iter(&self) -> impl Iterator<Item = (TargetId, &CharacterTarget)> {
         self.0
             .iter()
@@ -59,8 +67,8 @@ impl Targets {
             .map(|(idx, target)| (TargetId(idx), target))
     }
 
-    pub(crate) fn get(&self, id: TargetId) -> Option<&CharacterTarget> {
-        self.0.get(id.0)
+    pub(crate) fn declared(&self, id: TargetId) -> Option<DeclaredTarget> {
+        (id.0 < self.0.len()).then_some(DeclaredTarget(id))
     }
 }
 
@@ -107,17 +115,19 @@ mod tests {
     }
 
     #[test]
-    fn a_target_is_found_by_its_id() {
-        let (first, second) = (target(true), target(false));
-        let targets = Targets::from(vec![first, second]);
+    fn the_id_of_a_target_on_the_list_is_declared() {
+        let targets = Targets::from(vec![target(true), target(false)]);
 
-        assert_eq!(targets.get(TargetId(1)), Some(&second));
+        assert_eq!(
+            targets.declared(TargetId(1)).map(DeclaredTarget::id),
+            Some(TargetId(1))
+        );
     }
 
     #[test]
-    fn an_id_past_the_last_target_finds_none() {
+    fn an_id_past_the_last_target_is_not_declared() {
         let targets = Targets::from(vec![target(true), target(false)]);
 
-        assert_eq!(targets.get(TargetId(2)), None);
+        assert_eq!(targets.declared(TargetId(2)), None);
     }
 }

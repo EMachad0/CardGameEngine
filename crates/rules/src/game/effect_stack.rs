@@ -3,7 +3,7 @@
 
 use crate::cards::object::ObjectId;
 use crate::effect::Effect;
-use crate::target::{NoTarget, TargetId};
+use crate::target::{DeclaredTarget, NoTarget};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(super) struct EffectStack {
@@ -19,7 +19,7 @@ struct PendingEffect {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum PendingText {
-    Played(Vec<Effect<TargetId>>),
+    Played(Vec<Effect<DeclaredTarget>>),
     Triggered(Vec<Effect<NoTarget>>),
 }
 
@@ -32,8 +32,8 @@ impl PendingText {
     }
 }
 
-impl From<Vec<Effect<TargetId>>> for PendingText {
-    fn from(effects: Vec<Effect<TargetId>>) -> Self {
+impl From<Vec<Effect<DeclaredTarget>>> for PendingText {
+    fn from(effects: Vec<Effect<DeclaredTarget>>) -> Self {
         PendingText::Played(effects)
     }
 }
@@ -54,7 +54,7 @@ struct ResolvingEffect {
 pub(super) enum NextEffect {
     Played {
         source: ObjectId,
-        effect: Effect<TargetId>,
+        effect: Effect<DeclaredTarget>,
     },
     Triggered {
         source: ObjectId,
@@ -182,7 +182,7 @@ mod tests {
     #[test]
     fn a_played_cards_effects_are_handed_out_as_played_text() {
         let [source] = sources();
-        let draw = Effect::<TargetId>::Draw {
+        let draw = Effect::<DeclaredTarget>::Draw {
             selector: PlayerSelector::Owner,
             amount: EffectAmount::Static(1),
         };

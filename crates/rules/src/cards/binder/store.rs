@@ -5,6 +5,7 @@ use crate::cards::binder::sets::base;
 use crate::cards::binder::sets::base::static_card_definition::ALL_DEF_ID;
 use crate::cards::binder::validity::{self, CardDefError};
 use crate::cards::definition::CardDef;
+use crate::target::{DeclaredTarget, TargetId};
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct DefId(&'static str);
@@ -29,7 +30,7 @@ enum BinderError {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Binder {
     /// Arc so clone and eq are cheap
-    defs: Arc<BTreeMap<DefId, CardDef>>,
+    defs: Arc<BTreeMap<DefId, CardDef<DeclaredTarget>>>,
 }
 
 impl Binder {
@@ -37,25 +38,32 @@ impl Binder {
         Self::new(base::definitions()).expect("the built-in card definitions should be valid")
     }
 
-    fn new(table: Vec<(DefId, CardDef)>) -> Result<Self, BinderError> {
-        let mut defs = BTreeMap::new();
+    fn new(table: Vec<(DefId, CardDef<TargetId>)>) -> Result<Self, BinderError> {
+        let mut written = BTreeMap::new();
         for (def_id, def) in table {
-            if defs.insert(def_id, def).is_some() {
+            if written.insert(def_id, def).is_some() {
                 return Err(BinderError::Duplicate(def_id));
             }
         }
-        if let Some(&def_id) = ALL_DEF_ID.iter().find(|def_id| !defs.contains_key(def_id)) {
+        if let Some(&def_id) = ALL_DEF_ID
+            .iter()
+            .find(|def_id| !written.contains_key(def_id))
+        {
             return Err(BinderError::NotFound(def_id));
         }
-        for (&def_id, def) in &defs {
-            validity::validate(def).map_err(|error| BinderError::Invalid(def_id, error))?;
-        }
+        let defs = written
+            .into_iter()
+            .map(|(def_id, def)| match validity::parse(def) {
+                Ok(def) => Ok((def_id, def)),
+                Err(error) => Err(BinderError::Invalid(def_id, error)),
+            })
+            .collect::<Result<_, _>>()?;
         Ok(Self {
             defs: Arc::new(defs),
         })
     }
 
-    pub(crate) fn get(&self, def_id: DefId) -> &CardDef {
+    pub(crate) fn get(&self, def_id: DefId) -> &CardDef<DeclaredTarget> {
         self.defs
             .get(&def_id)
             .expect("the binder should hold a definition for every def id")
@@ -68,9 +76,9 @@ mod tests {
 
     use super::*;
     use crate::cards::binder::sets::base::static_card_definition::{BOLT, PING, SPARK};
-    use crate::target::{TargetId, Targets};
+    use crate::target::Targets;
 
-    fn built(table: Vec<(DefId, CardDef)>) -> Result<(), BinderError> {
+    fn built(table: Vec<(DefId, CardDef<TargetId>)>) -> Result<(), BinderError> {
         Binder::new(table).map(drop)
     }
 

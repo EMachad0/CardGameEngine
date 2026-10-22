@@ -7,7 +7,7 @@ use crate::target::NoTarget;
 
 /// The effects of every trigger on a card, printed or granted through modifier effects, auras,
 /// `Buff` and `AddFriendlyAura`, at any depth. Those its play effects grant come first.
-pub(super) fn trigger_sequences(def: &CardDef) -> Vec<&[Effect<NoTarget>]> {
+pub(super) fn trigger_sequences<T>(def: &CardDef<T>) -> Vec<&[Effect<NoTarget>]> {
     let CardDef {
         name: _,
         kind,
@@ -106,10 +106,10 @@ mod tests {
 
     use super::*;
     use crate::cards::definition::{CharacterSelector, PlayerSelector};
-    use crate::target::Targets;
+    use crate::target::{TargetId, Targets};
     use crate::trigger::{TriggerPattern, TriggerSubject};
 
-    fn spell() -> CardDef {
+    fn spell() -> CardDef<TargetId> {
         CardDef {
             name: "Spell".to_string(),
             kind: CardKindDef::Spell(SpellCardDef),
@@ -124,7 +124,7 @@ mod tests {
     fn minion(
         friendly_aura_effects: Vec<ModifierEffect>,
         hostile_aura_effects: Vec<ModifierEffect>,
-    ) -> CardDef {
+    ) -> CardDef<TargetId> {
         CardDef {
             kind: CardKindDef::Minion(MinionCardDef {
                 attack: 1,

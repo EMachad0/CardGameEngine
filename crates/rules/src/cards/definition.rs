@@ -3,21 +3,21 @@ use enumset::EnumSet;
 use crate::cards::filter::{CharacterFilter, Side};
 use crate::cards::modifier::ModifierEffect;
 use crate::effect::Effect;
-use crate::target::{NoTarget, TargetId, Targets};
+use crate::target::{NoTarget, Targets};
 use crate::trigger::TriggerPattern;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CardDef {
+pub struct CardDef<T> {
     pub name: String,
     pub kind: CardKindDef,
     pub mana_cost: u8,
     pub modifier_effects: Vec<ModifierEffect>,
-    pub play_effects: Vec<Effect<TargetId>>,
+    pub play_effects: Vec<Effect<T>>,
     pub triggers: Vec<TriggerDef>,
     pub targets: Targets,
 }
 
-impl CardDef {
+impl<T> CardDef<T> {
     pub(crate) fn health(&self) -> Option<i32> {
         match &self.kind {
             CardKindDef::Spell(_) => None,
@@ -179,4 +179,19 @@ pub enum CharacterSelector<T> {
     OwnerHero,
     Random(CharacterFilter),
     Targeted(T),
+}
+
+impl<T> CharacterSelector<T> {
+    pub(crate) fn try_map_targeted<U, E>(
+        self,
+        f: impl FnOnce(T) -> Result<U, E>,
+    ) -> Result<CharacterSelector<U>, E> {
+        Ok(match self {
+            CharacterSelector::All(filter) => CharacterSelector::All(filter),
+            CharacterSelector::Itself => CharacterSelector::Itself,
+            CharacterSelector::OwnerHero => CharacterSelector::OwnerHero,
+            CharacterSelector::Random(filter) => CharacterSelector::Random(filter),
+            CharacterSelector::Targeted(target) => CharacterSelector::Targeted(f(target)?),
+        })
+    }
 }

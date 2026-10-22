@@ -13,7 +13,7 @@ use crate::history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter};
 use crate::target::{AmountBound, CharacterTarget, TargetId, Targets};
 use crate::trigger::{TriggerPattern, TriggerSubject};
 
-impl Default for CardDef {
+impl Default for CardDef<TargetId> {
     fn default() -> Self {
         Self {
             name: Default::default(),
@@ -74,7 +74,7 @@ def_ids!(
     DRUMMER = "base.drummer.v0",
 );
 
-pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
+pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef<TargetId>)> {
     vec![
         (
             SPARK,

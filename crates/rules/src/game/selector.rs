@@ -8,17 +8,17 @@ use crate::game::cards_ref::CardsRef;
 use crate::game::player_input::PlayerInput;
 use crate::ids::PlayerId;
 use crate::rng::Rng;
-use crate::target::{NoTarget, TargetId};
+use crate::target::{DeclaredTarget, NoTarget};
 
 pub(super) trait SelectorTarget: Copy {
     fn targeted(self, player_input: &PlayerInput, source: ObjectId) -> Vec<ObjectId>;
 }
 
-impl SelectorTarget for TargetId {
+impl SelectorTarget for DeclaredTarget {
     fn targeted(self, player_input: &PlayerInput, source: ObjectId) -> Vec<ObjectId> {
         player_input
-            .targeted(source, self)
-            .expect("Target not fulfilled")
+            .targeted(source, self.id())
+            .expect("a card that declares targets should be played from its targeting")
             .to_vec()
     }
 }
