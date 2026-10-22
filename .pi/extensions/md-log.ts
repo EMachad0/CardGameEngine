@@ -21,6 +21,9 @@
  *   /md-log <filepath>  — Link a markdown file and backfill the session.
  *   /md-unlog           — Stop logging.
  *
+ * Both commands also send a custom message so the agent knows whether the
+ * session is being logged. The message is not written to the log file.
+ *
  * Append-only. No send-back-to-agent functionality (that lived in the old
  * .md-link extension this was modeled on).
  */
@@ -52,6 +55,16 @@ export default function mdLog(pi: ExtensionAPI) {
 			);
 		}
 	});
+
+	function notifyAgent(file: string | null): void {
+		const content = file
+			? `This session is now mirrored to the markdown file ${file}: user prompts, assistant text, and quiz and ask_user_question Q&A. Other tool calls are not logged.`
+			: "This session is no longer mirrored to a markdown file.";
+		pi.sendMessage(
+			{ customType: "md-log", content, display: true, details: { file } },
+			{ triggerTurn: false },
+		);
+	}
 
 	// --- Serialization: events can fire close together; keep appends ordered ---
 
@@ -317,6 +330,7 @@ export default function mdLog(pi: ExtensionAPI) {
 				theme.fg("accent", "🗒 ") + theme.fg("dim", path.basename(resolved)),
 			);
 			ctx.ui.notify(`Linked: ${resolved} (${written} entries backfilled)`, "success");
+			notifyAgent(resolved);
 		},
 	});
 
@@ -332,6 +346,7 @@ export default function mdLog(pi: ExtensionAPI) {
 			pi.appendEntry("md-log", { file: null });
 			ctx.ui.setStatus("md-log", undefined);
 			ctx.ui.notify(`Unlinked: ${name}`, "info");
+			notifyAgent(null);
 		},
 	});
 
