@@ -151,7 +151,7 @@ fn both_players_see_each_minions_definition_and_current_stats() {
 }
 
 #[test]
-fn only_the_player_picking_sees_a_pending_forages_options() {
+fn only_the_player_picking_sees_a_forages_options() {
     let deck0 = vec![FORAGE, SPARK, SPARK, SPARK, RECRUIT, CAPTAIN, BOLT];
     let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
     let [p0, p1] = players(&game);
