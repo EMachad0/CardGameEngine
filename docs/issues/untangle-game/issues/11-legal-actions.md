@@ -30,9 +30,10 @@ is the problem. ADR 0002 makes `legal_actions` the one definition of legality.
 
 The doc's rules: "A check validates when it returns nothing, or hands back the type it was given.
 What it learned is lost, and every later step that relies on it holds "the check passed" as
-informal knowledge." "Keep each fact true wherever its type can go." "Don't hand a parsed type to
-code that can keep it while the data changes, or use it on other data. Take that code's input
-plain, and parse it where it arrives."
+informal knowledge." "When no value keeps the check's facts true up to the write, the write asks
+again the question its precondition rests on." "Don't hand a parsed type to code that can keep it
+while the data changes, or use it on other data. Take that code's input plain, and parse it where
+it arrives."
 
 ## Leave alone
 
@@ -41,7 +42,7 @@ plain, and parse it where it arrives."
 
 ## Done when
 
-- No step after `apply`'s check relies on it through `expect`, `unreachable!` or a write with no
-  guard.
+- No step after `apply`'s check relies on it through `unreachable!`, a write with no guard, or a
+  fact that nothing keeps true up to the write and the write doesn't ask again.
 - Legality still has one definition.
 - The checks pass, and the PR justifies every behavior change.

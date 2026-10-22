@@ -171,30 +171,57 @@ pass. Give a rule an owner whenever its data can share one.
 
 A check validates when it returns nothing, or hands back the type it was given. What it learned is
 lost, and every later step that relies on it holds "the check passed" as informal knowledge. A
-check parses when it returns what it learned in a new type that later steps take. That knowledge
-is then formal, and the later steps have nothing left to assume.
+check parses when it returns what it learned in a new type that later steps take. Where the build
+checks types and only the check can build the new type, a step that takes it can't run without the
+check. Whether the check's facts are still true when the step runs depends on the data they are
+about.
 
+- A later step relies on a check when, without it, the step could get input its contract rules
+  out. The check's facts are then the step's precondition. A check that only decides whether the
+  input is allowed establishes no precondition, so no step takes a value from it or checks it
+  again. To make forgetting that check fail the build, the code that runs the steps for that input
+  takes a value only the check can build.
+- A fact about the parsed value's own data stays true while no code can write that data. The code
+  that can build or write the type is the code trusted to keep its guarantee. When the type's
+  shape rules out every wrong value and the build checks types, no code can build a wrong one, and
+  nothing needs trusting. Prefer shape wherever the guarantee fits a layout. A relation between
+  values doesn't, so the type needs an owner that keeps the guarantee as an invariant.
+- A fact about data the parsed value doesn't hold stays true only until something writes that
+  data, so one type can carry facts with different reaches. A fact about data nothing writes never
+  goes stale, and its type can be stored and passed anywhere. "Checks before writes" covers the
+  facts a write can change.
 - A question that answers "maybe" to callers who already know the answer repeats the check on
   every call. Take the parsed type instead, and answer plainly.
-- The code that can build or write the parsed type is the code trusted to keep its guarantee. When
-  the type's shape rules out every wrong value, no code can build a wrong one, and nothing needs
-  trusting. Prefer shape wherever the guarantee fits a layout. A relation between values doesn't,
-  so the type needs an owner that keeps the guarantee as an invariant.
-- A parsed type holds facts about data as the check read it. Each fact stays true until something
-  writes the data it is about, so one type can carry facts with different reaches. A fact about
-  data nothing writes never goes stale, and its type can be stored and passed anywhere.
-- Keep each fact true wherever its type can go. Either the type stops writes to the data while it
-  exists, or it never leaves the command that checked it, and no step of that command writes the
-  data before the step that uses the fact.
-- A stored reference names its target by a fact nothing writes, such as its identity. A fact a
-  write can change, such as where the target is, stays out of the reference's type. Parse it where
-  it's used.
+- A reference that can outlive a write to its target's data names the target by a fact nothing
+  writes, such as its identity. A fact a write can change, such as where the target is, stays out
+  of the reference's type. Parse it where it's used.
 - Don't hand a parsed type to code that can keep it while the data changes, or use it on other
   data. Take that code's input plain, and parse it where it arrives.
-- Where no type can rule out a wrong input, the command that would act on it checks it. If some
-  reachable state sends that input, the command refuses it in its return type, so every caller has
-  to handle it. If only a bug in a caller can send it, the command fails on the spot. That keeps
-  the check in one place, instead of an assumption in every caller. Doing nothing hides the bug.
+
+### Checks before writes
+
+A write that relies on an earlier check holds the check's facts as informal knowledge, and any
+write to their data in between makes them false.
+
+- A command can check its own input and refuse it only if it makes the action's first write. An
+  action that writes several owners checks every precondition before that first write, or it
+  needs a rollback. So the code that runs the action knows the preconditions of every write after
+  the first. A step that can fail whatever was checked, such as a network call, goes before the
+  first write too, or the action needs a rollback. A call that changes another system's state
+  counts as a write.
+- A later write's precondition becomes formal when the write takes a value only the check can
+  build. That value proves the check ran. It keeps the check's facts true only while it stops every
+  other write to their data, up to the write it makes itself. Such a value belongs to the owner of
+  that data and offers only the writes the check permits.
+- When no value keeps the check's facts true up to the write, the write asks again the question
+  its precondition rests on. Only a bug can make the answer false there, so the write fails on the
+  spot. Refusing in its return type would make every caller handle a case that can't happen. A
+  failure that a reachable state or another system can cause isn't a bug, so the write refuses it
+  in its return type.
+- A command whose input no type and no earlier check covers checks the input itself, so the check
+  sits in one place instead of an assumption in every caller. If a reachable state or another
+  system can send a wrong input, the command refuses it in its return type. If only a bug in a
+  caller can, it fails on the spot. Doing nothing hides the bug.
 
 ### Names exclude
 
@@ -271,9 +298,21 @@ own.
   When several filters together decide what each variant means, give that decision one exhaustive
   match.
 - A clippy `disallowed_methods` or `disallowed_types` ban, for "only this place may call that".
-- A proof that borrows the data it describes, so the borrow checker keeps it fresh. A shared
-  borrow allows only reads while the proof lives. An exclusive borrow sends every write through
-  the proof, as `HashMap`'s `OccupiedEntry` does.
+
+### Checks before writes
+
+- A proof that holds `&mut` to an owner keeps the check's facts fresh up to its write, as
+  `HashMap`'s `OccupiedEntry` does. The owner defines it, with the borrow in a private field and
+  methods only for the writes the check permits, each taking `self`. A check that lists many
+  options can't hand these out, because only one `&mut` to the owner can exist at a time. A proof
+  that holds a shared borrow serves only reads, because it has to end before any write.
+- An owned token isn't `Clone` or `Copy`, and the write takes it by value, so each check serves one
+  write. A token whose fact is about data nothing writes is a parsed value, and copying it is fine.
+- Name a proof for the fact its check established. A proof that holds `&mut` adds the `Mut`
+  suffix std uses for exclusive borrows. An owned token puts the fact in the past tense, since it
+  holds the fact only as the check saw it.
+- Fail on the spot by panicking. The message says what should have made the fact true, in std's
+  "expect as precondition" style.
 
 ### Restricting callers
 
