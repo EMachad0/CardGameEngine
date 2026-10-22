@@ -2,7 +2,7 @@
 name: researcher
 description: Web researcher — searches the web and synthesizes findings
 tools: web_search, fetch_content, source_check, get_search_content
-extensions: [pi-web-access]
+extensions: npm:pi-web-access
 model: anthropic/claude-opus-5-5
 thinking: medium
 system-prompt: append
