@@ -192,9 +192,9 @@ about.
   facts a write can change.
 - A question that answers "maybe" to callers who already know the answer repeats the check on
   every call. Take the parsed type instead, and answer plainly.
-- A stored reference names its target by a fact nothing writes, such as its identity. A fact a
-  write can change, such as where the target is, stays out of the reference's type. Parse it where
-  it's used.
+- A reference that can outlive a write to its target's data names the target by a fact nothing
+  writes, such as its identity. A fact a write can change, such as where the target is, stays out
+  of the reference's type. Parse it where it's used.
 - Don't hand a parsed type to code that can keep it while the data changes, or use it on other
   data. Take that code's input plain, and parse it where it arrives.
 
@@ -213,13 +213,15 @@ write to their data in between makes them false.
   build. That value proves the check ran. It keeps the check's facts true only while it stops every
   other write to their data, up to the write it makes itself. Such a value belongs to the owner of
   that data and offers only the writes the check permits.
-- When no value keeps the check's facts true up to the write, the write asks the check's question
-  again. Only a bug can make the answer false there, so the write fails on the spot. Refusing in
-  its return type would make every caller handle a case that can't happen. A failure that a
-  reachable state or another system can cause isn't a bug, so the write refuses it in its return
-  type.
+- When no value keeps the check's facts true up to the write, the write asks again the question
+  its precondition rests on. Only a bug can make the answer false there, so the write fails on the
+  spot. Refusing in its return type would make every caller handle a case that can't happen. A
+  failure that a reachable state or another system can cause isn't a bug, so the write refuses it
+  in its return type.
 - A command whose input no type and no earlier check covers checks the input itself, so the check
-  sits in one place instead of an assumption in every caller. Doing nothing hides the bug.
+  sits in one place instead of an assumption in every caller. If a reachable state or another
+  system can send a wrong input, the command refuses it in its return type. If only a bug in a
+  caller can, it fails on the spot. Doing nothing hides the bug.
 
 ### Names exclude
 
@@ -304,6 +306,8 @@ own.
   methods only for the writes the check permits, each taking `self`. A check that lists many
   options can't hand these out, because only one `&mut` to the owner can exist at a time. A proof
   that holds a shared borrow serves only reads, because it has to end before any write.
+- An owned token isn't `Clone` or `Copy`, and the write takes it by value, so each check serves one
+  write. A token whose fact is about data nothing writes is a parsed value, and copying it is fine.
 - Name a proof for the fact its check established. A proof that holds `&mut` adds the `Mut`
   suffix std uses for exclusive borrows. An owned token puts the fact in the past tense, since it
   holds the fact only as the check saw it.
