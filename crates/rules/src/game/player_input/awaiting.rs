@@ -123,7 +123,7 @@ pub(in crate::game) struct PlayerInput {
     targetings: Vec<(PlayerId, Targeting)>,
     /// Sorted by player.
     pickings: Vec<(PlayerId, Picking)>,
-    picks: StoredPicks,
+    stored_picks: StoredPicks,
 }
 
 impl PlayerInput {
@@ -153,7 +153,7 @@ impl PlayerInput {
     }
 
     pub(in crate::game) fn picks(&self, source: ObjectId, pick_id: PickId) -> Option<&Picks> {
-        self.picks.find(source, pick_id)
+        self.stored_picks.find(source, pick_id)
     }
 
     /// With nothing targeted yet. Panics if the game awaits anything from the player.
@@ -242,7 +242,7 @@ impl PlayerInput {
         let (picking_idx, option_idx) =
             found.expect("a card found among a picking's options should stay there until picked");
         let (player_id, picking) = self.pickings.remove(picking_idx);
-        self.picks.store(picking.pick(option_idx));
+        self.stored_picks.store(picking.pick(option_idx));
         (player_id, awaiting_picking.object_id)
     }
 

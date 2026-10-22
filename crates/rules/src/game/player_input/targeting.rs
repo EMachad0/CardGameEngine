@@ -54,7 +54,7 @@ impl Targeting {
         target_id: TargetId,
         f: impl FnOnce(&mut Self) -> R,
     ) -> R {
-        self.targeted.push((object_id, target_id));
+        self.target(object_id, target_id);
         let result = f(self);
         self.targeted.pop();
         result

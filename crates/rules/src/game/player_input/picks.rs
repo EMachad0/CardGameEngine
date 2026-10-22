@@ -26,7 +26,7 @@ impl Picking {
     }
 
     /// Closes the picking with the option at `option_idx` as picked and the other options as the
-    /// others.
+    /// others. Panics unless `option_idx` names an option.
     pub(super) fn pick(mut self, option_idx: usize) -> Picks {
         let picked = self.options.remove(option_idx);
         Picks {
