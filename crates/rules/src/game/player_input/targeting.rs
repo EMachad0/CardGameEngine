@@ -1,3 +1,6 @@
+//! How a targeting is built: its card, and each object targeted for one of the card's targets, in
+//! the order targeted.
+
 use crate::cards::object::ObjectId;
 use crate::target::TargetId;
 

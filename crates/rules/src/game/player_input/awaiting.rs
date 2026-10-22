@@ -152,6 +152,7 @@ impl PlayerInput {
             .map(AwaitsTargeting::targeting)
     }
 
+    /// The first picks `source` stored for `pick_id`.
     pub(in crate::game) fn picks(&self, source: ObjectId, pick_id: PickId) -> Option<&Picks> {
         self.stored_picks.find(source, pick_id)
     }

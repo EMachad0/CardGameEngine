@@ -71,7 +71,6 @@ impl StoredPicks {
         self.picks.insert(idx, picks);
     }
 
-    /// The first picks `source` stored for `pick_id`.
     pub(super) fn find(&self, source: ObjectId, pick_id: PickId) -> Option<&Picks> {
         self.picks
             .iter()
