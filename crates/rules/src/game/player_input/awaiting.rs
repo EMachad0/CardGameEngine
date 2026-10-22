@@ -1,11 +1,11 @@
 //! What the game awaits from each player, and what they picked. The game awaits at most one thing
-//! from a player: targeting while playing a card, or picking while a card resolves. A revealed
-//! card sits in a picking's options until picked, then in its picks.
+//! from a player: targeting while playing a card, or picking while a card resolves.
 
 use std::marker::PhantomData;
 
 use crate::cards::object::ObjectId;
 use crate::effect::PickId;
+use crate::game::player_input::picks::{Picking, Picks, StoredPicks};
 use crate::game::player_input::targeting::Targeting;
 use crate::ids::PlayerId;
 use crate::target::TargetId;
@@ -39,7 +39,7 @@ impl<'a> AwaitsPicking<'a> {
     pub(in crate::game) fn options(self) -> impl Iterator<Item = WasAwaitingPicking> + 'a {
         let player_id = self.player_id;
         self.picking
-            .options
+            .options()
             .iter()
             .map(move |&object_id| WasAwaitingPicking {
                 player_id,
@@ -117,40 +117,13 @@ impl WasAwaitingPicking {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct Picking {
-    source: ObjectId,
-    pick_id: PickId,
-    options: Vec<ObjectId>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(in crate::game) struct Picks {
-    source: ObjectId,
-    pick_id: PickId,
-    picked: Vec<ObjectId>,
-    others: Vec<ObjectId>,
-}
-
-impl Picks {
-    pub(in crate::game) fn picked(&self) -> &[ObjectId] {
-        &self.picked
-    }
-
-    /// The options not picked, in reveal order.
-    pub(in crate::game) fn others(&self) -> &[ObjectId] {
-        &self.others
-    }
-}
-
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(in crate::game) struct PlayerInput {
     /// Sorted by player. No player is in both this and `pickings`.
     targetings: Vec<(PlayerId, Targeting)>,
     /// Sorted by player.
     pickings: Vec<(PlayerId, Picking)>,
-    /// Sorted by source, then in the order picked.
-    picks: Vec<Picks>,
+    picks: StoredPicks,
 }
 
 impl PlayerInput {
@@ -171,9 +144,7 @@ impl PlayerInput {
     /// A picking's options. Empty while awaiting anything else, or nothing.
     pub(in crate::game) fn revealed(&self, player_id: PlayerId) -> &[ObjectId] {
         self.awaiting_picking(player_id)
-            .map_or(&[], |awaits_picking| {
-                awaits_picking.picking.options.as_slice()
-            })
+            .map_or(&[], |awaits_picking| awaits_picking.picking.options())
     }
 
     pub(in crate::game) fn targeting(&self, player_id: PlayerId) -> Option<&Targeting> {
@@ -181,11 +152,8 @@ impl PlayerInput {
             .map(AwaitsTargeting::targeting)
     }
 
-    /// The first picks `source` stored for `pick_id`.
     pub(in crate::game) fn picks(&self, source: ObjectId, pick_id: PickId) -> Option<&Picks> {
-        self.picks
-            .iter()
-            .find(|entry| entry.source == source && entry.pick_id == pick_id)
+        self.picks.find(source, pick_id)
     }
 
     /// With nothing targeted yet. Panics if the game awaits anything from the player.
@@ -251,18 +219,13 @@ impl PlayerInput {
         if let Ok(replaced) = entry_idx(&self.targetings, player_id) {
             self.targetings.remove(replaced);
         }
-        let picking = Picking {
-            source,
-            pick_id,
-            options,
-        };
+        let picking = Picking::new(source, pick_id, options);
         self.pickings.insert(idx, (player_id, picking));
         true
     }
 
-    /// Closes the option's picking, stores the option as picked and the other options as
-    /// the others, and returns the player who picked and the picked object. Panics unless the
-    /// card is still among the picking's options.
+    /// Closes the option's picking and stores its picks. Returns the player who picked and the
+    /// picked object. Panics unless the card is still among the picking's options.
     pub(in crate::game) fn pick(
         &mut self,
         awaiting_picking: WasAwaitingPicking,
@@ -270,7 +233,7 @@ impl PlayerInput {
         let found = entry_idx(&self.pickings, awaiting_picking.player_id)
             .ok()
             .and_then(|picking_idx| {
-                let options = &self.pickings[picking_idx].1.options;
+                let options = self.pickings[picking_idx].1.options();
                 let option_idx = options
                     .iter()
                     .position(|&o| o == awaiting_picking.object_id)?;
@@ -278,26 +241,9 @@ impl PlayerInput {
             });
         let (picking_idx, option_idx) =
             found.expect("a card found among a picking's options should stay there until picked");
-        let (
-            player_id,
-            Picking {
-                source,
-                pick_id,
-                mut options,
-            },
-        ) = self.pickings.remove(picking_idx);
-        let picked = options.remove(option_idx);
-        let idx = self.picks.partition_point(|entry| entry.source <= source);
-        self.picks.insert(
-            idx,
-            Picks {
-                source,
-                pick_id,
-                picked: vec![picked],
-                others: options,
-            },
-        );
-        (player_id, picked)
+        let (player_id, picking) = self.pickings.remove(picking_idx);
+        self.picks.store(picking.pick(option_idx));
+        (player_id, awaiting_picking.object_id)
     }
 
     fn awaiting_targeting(&self, player_id: PlayerId) -> Option<AwaitsTargeting<'_>> {
