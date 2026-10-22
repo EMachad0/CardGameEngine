@@ -281,7 +281,7 @@ mod tests {
         ]
     }
 
-    fn untargeted() -> [CharacterSelector<usize>; 4] {
+    fn untargeted_selectors() -> [CharacterSelector<usize>; 4] {
         [
             CharacterSelector::All(CharacterFilter::all()),
             CharacterSelector::Itself,
@@ -339,7 +339,9 @@ mod tests {
     #[test]
     fn a_selector_that_targets_nothing_has_no_target() {
         assert_eq!(
-            untargeted().each_ref().map(CharacterSelector::target),
+            untargeted_selectors()
+                .each_ref()
+                .map(CharacterSelector::target),
             [None; 4]
         );
     }
@@ -355,8 +357,8 @@ mod tests {
     #[test]
     fn mapping_keeps_a_selector_that_targets_nothing() {
         assert_eq!(
-            untargeted().map(|selector| selector.map_targeted(|n| n * 2)),
-            untargeted(),
+            untargeted_selectors().map(|selector| selector.map_targeted(|n| n * 2)),
+            untargeted_selectors(),
         );
     }
 }
