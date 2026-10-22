@@ -41,7 +41,7 @@ impl<'g> CardsRef<'g> {
     }
 
     pub(super) fn play_effects(&self, object_id: ObjectId) -> &'g [Effect] {
-        self.card_def(object_id).play_effects.as_slice()
+        &self.card_def(object_id).play_effects
     }
 
     pub(super) fn scan_characters_with_filter(

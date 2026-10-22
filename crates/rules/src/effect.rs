@@ -56,18 +56,3 @@ pub enum Effect {
         other_move: ZoneMove,
     },
 }
-
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct EffectSequence(pub Vec<Effect>);
-
-impl EffectSequence {
-    pub fn as_slice(&self) -> &[Effect] {
-        self.0.as_slice()
-    }
-}
-
-impl From<Vec<Effect>> for EffectSequence {
-    fn from(value: Vec<Effect>) -> Self {
-        Self(value)
-    }
-}

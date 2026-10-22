@@ -7,7 +7,7 @@ use crate::cards::definition::{
 };
 use crate::cards::filter::{CardFilter, CharacterFilter, Side};
 use crate::cards::modifier::ModifierEffect;
-use crate::effect::{Effect, EffectAmount, EffectSequence, PickId, ZoneMove};
+use crate::effect::{Effect, EffectAmount, PickId, ZoneMove};
 use crate::history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter};
 use crate::target::{AmountBound, CharacterTarget, TargetId};
 use crate::trigger::{TriggerPattern, TriggerSubject};
@@ -83,13 +83,13 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             name: "Spark".to_string(),
             kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 1,
-            play_effects: EffectSequence(vec![Effect::Damage {
+            play_effects: vec![Effect::Damage {
                 selector: CharacterSelector::All(CharacterFilter {
                     kind: EnumSet::only(CharacterKind::Hero),
                     side: EnumSet::only(Side::Enemy),
                 }),
                 amount: 1.into(),
-            }]),
+            }],
             ..Default::default()
         },
         CardDef {
@@ -97,13 +97,13 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             name: "Bolt".to_string(),
             kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 2,
-            play_effects: EffectSequence(vec![Effect::Damage {
+            play_effects: vec![Effect::Damage {
                 selector: CharacterSelector::All(CharacterFilter {
                     kind: EnumSet::only(CharacterKind::Hero),
                     side: EnumSet::only(Side::Enemy),
                 }),
                 amount: 2.into(),
-            }]),
+            }],
             ..Default::default()
         },
         CardDef {
@@ -111,13 +111,13 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             name: "Wild Bolt".to_string(),
             kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 1,
-            play_effects: EffectSequence(vec![Effect::Damage {
+            play_effects: vec![Effect::Damage {
                 selector: CharacterSelector::Random(CharacterFilter {
                     kind: EnumSet::only(CharacterKind::Hero),
                     side: EnumSet::all(),
                 }),
                 amount: 3.into(),
-            }]),
+            }],
             ..Default::default()
         },
         CardDef {
@@ -125,10 +125,10 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             name: "Blast".to_string(),
             kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 3,
-            play_effects: EffectSequence(vec![Effect::Damage {
+            play_effects: vec![Effect::Damage {
                 selector: CharacterSelector::All(CharacterFilter::all()),
                 amount: 2.into(),
-            }]),
+            }],
             ..Default::default()
         },
         CardDef {
@@ -136,7 +136,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             name: "Forage".to_string(),
             kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 1,
-            play_effects: EffectSequence(vec![
+            play_effects: vec![
                 Effect::Reveal {
                     pick_id: PickId(0),
                     selector: PlayerSelector::Owner,
@@ -147,7 +147,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                     picked_move: ZoneMove::AddToHand,
                     other_move: ZoneMove::Bury,
                 },
-            ]),
+            ],
             ..Default::default()
         },
         CardDef {
@@ -204,10 +204,10 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             name: "Barracks".to_string(),
             kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 2,
-            play_effects: EffectSequence(vec![Effect::Summon {
+            play_effects: vec![Effect::Summon {
                 selector: PlayerSelector::Owner,
                 def_id: SQUIRE,
-            }]),
+            }],
             ..Default::default()
         },
         CardDef {
@@ -215,7 +215,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             name: "Zap".to_string(),
             kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 2,
-            play_effects: EffectSequence(vec![
+            play_effects: vec![
                 Effect::Damage {
                     selector: CharacterSelector::All(CharacterFilter {
                         kind: EnumSet::only(CharacterKind::Hero),
@@ -227,7 +227,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                     selector: PlayerSelector::Owner,
                     amount: 1.into(),
                 },
-            ]),
+            ],
             ..Default::default()
         },
         CardDef {
@@ -235,13 +235,13 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             name: "Stray Shot".to_string(),
             kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 1,
-            play_effects: EffectSequence(vec![Effect::Damage {
+            play_effects: vec![Effect::Damage {
                 selector: CharacterSelector::Random(CharacterFilter {
                     kind: EnumSet::only(CharacterKind::Minion),
                     side: EnumSet::only(Side::Enemy),
                 }),
                 amount: 2.into(),
-            }]),
+            }],
             ..Default::default()
         },
         CardDef {
@@ -249,10 +249,10 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             name: "Ping".to_string(),
             kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 1,
-            play_effects: EffectSequence(vec![Effect::Damage {
+            play_effects: vec![Effect::Damage {
                 selector: CharacterSelector::Targeted(TargetId(0)),
                 amount: 2.into(),
-            }]),
+            }],
             targets: vec![CharacterTarget {
                 id: TargetId(0),
                 filter: CharacterFilter {
@@ -270,7 +270,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             name: "Shove".to_string(),
             kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 1,
-            play_effects: EffectSequence(vec![
+            play_effects: vec![
                 Effect::Damage {
                     selector: CharacterSelector::Targeted(TargetId(0)),
                     amount: 1.into(),
@@ -279,7 +279,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                     selector: CharacterSelector::Targeted(TargetId(1)),
                     amount: 1.into(),
                 },
-            ]),
+            ],
             targets: vec![
                 CharacterTarget {
                     id: TargetId(0),
@@ -309,10 +309,10 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             name: "Twin Shot".to_string(),
             kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 2,
-            play_effects: EffectSequence(vec![Effect::Damage {
+            play_effects: vec![Effect::Damage {
                 selector: CharacterSelector::Targeted(TargetId(0)),
                 amount: 1.into(),
-            }]),
+            }],
             targets: vec![CharacterTarget {
                 id: TargetId(0),
                 filter: CharacterFilter {
@@ -330,7 +330,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             name: "Crossfire".to_string(),
             kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 2,
-            play_effects: EffectSequence(vec![
+            play_effects: vec![
                 Effect::Damage {
                     selector: CharacterSelector::Targeted(TargetId(0)),
                     amount: 1.into(),
@@ -339,7 +339,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                     selector: CharacterSelector::Targeted(TargetId(1)),
                     amount: 1.into(),
                 },
-            ]),
+            ],
             targets: vec![
                 CharacterTarget {
                     id: TargetId(0),
@@ -371,13 +371,13 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             mana_cost: 2,
             triggers: vec![TriggerDef {
                 pattern: TriggerPattern::Died(TriggerSubject::Itself),
-                effects: EffectSequence(vec![Effect::Buff {
+                effects: vec![Effect::Buff {
                     selector: CharacterSelector::All(CharacterFilter {
                         kind: EnumSet::only(CharacterKind::Minion),
                         side: EnumSet::only(Side::Friendly),
                     }),
                     effect: ModifierEffect::BuffHealth { amount: 2.into() },
-                }]),
+                }],
             }],
             ..Default::default()
         },
@@ -391,10 +391,10 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                     kind: EnumSet::only(CharacterKind::Minion),
                     side: EnumSet::only(Side::Friendly),
                 })),
-                effects: EffectSequence(vec![Effect::Draw {
+                effects: vec![Effect::Draw {
                     selector: PlayerSelector::Owner,
                     amount: 1.into(),
-                }]),
+                }],
             }],
             ..Default::default()
         },
@@ -408,10 +408,10 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                     kind: EnumSet::only(CardKind::Spell),
                     side: EnumSet::only(Side::Friendly),
                 }),
-                effects: EffectSequence(vec![Effect::Summon {
+                effects: vec![Effect::Summon {
                     selector: PlayerSelector::Owner,
                     def_id: SQUIRE,
-                }]),
+                }],
             }],
             ..Default::default()
         },
@@ -423,10 +423,10 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                 health: 5,
                 friendly_aura_effects: vec![ModifierEffect::GrantTrigger(TriggerDef {
                     pattern: TriggerPattern::Damaged(TriggerSubject::Itself),
-                    effects: EffectSequence(vec![Effect::Draw {
+                    effects: vec![Effect::Draw {
                         selector: PlayerSelector::Owner,
                         amount: 1.into(),
-                    }]),
+                    }],
                 })],
                 hostile_aura_effects: Default::default(),
             }),
@@ -440,13 +440,13 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             mana_cost: 2,
             triggers: vec![TriggerDef {
                 pattern: TriggerPattern::Died(TriggerSubject::Itself),
-                effects: EffectSequence(vec![Effect::Damage {
+                effects: vec![Effect::Damage {
                     selector: CharacterSelector::All(CharacterFilter {
                         kind: EnumSet::only(CharacterKind::Minion),
                         side: EnumSet::all(),
                     }),
                     amount: 1.into(),
-                }]),
+                }],
             }],
             ..Default::default()
         },
@@ -460,13 +460,13 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                     kind: EnumSet::only(CharacterKind::Minion),
                     side: EnumSet::all(),
                 })),
-                effects: EffectSequence(vec![Effect::Damage {
+                effects: vec![Effect::Damage {
                     selector: CharacterSelector::All(CharacterFilter {
                         kind: EnumSet::only(CharacterKind::Hero),
                         side: EnumSet::only(Side::Enemy),
                     }),
                     amount: 1.into(),
-                }]),
+                }],
             }],
             ..Default::default()
         },
@@ -475,7 +475,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             name: "Sweep".to_string(),
             kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 2,
-            play_effects: EffectSequence(vec![
+            play_effects: vec![
                 Effect::Damage {
                     selector: CharacterSelector::All(CharacterFilter {
                         kind: EnumSet::only(CharacterKind::Minion),
@@ -497,7 +497,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                     selector: PlayerSelector::Owner,
                     amount: 1.into(),
                 },
-            ]),
+            ],
             ..Default::default()
         },
         CardDef {
@@ -507,7 +507,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             mana_cost: 1,
             triggers: vec![TriggerDef {
                 pattern: TriggerPattern::Died(TriggerSubject::Itself),
-                effects: EffectSequence(vec![
+                effects: vec![
                     Effect::Reveal {
                         pick_id: PickId(0),
                         selector: PlayerSelector::Owner,
@@ -518,7 +518,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                         picked_move: ZoneMove::AddToHand,
                         other_move: ZoneMove::Bury,
                     },
-                ]),
+                ],
             }],
             ..Default::default()
         },
@@ -527,13 +527,13 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
             name: "Drummer".to_string(),
             kind: CardKindDef::Minion(MinionCardDef::new(1, 1)),
             mana_cost: 2,
-            play_effects: EffectSequence(vec![Effect::Buff {
+            play_effects: vec![Effect::Buff {
                 selector: CharacterSelector::All(CharacterFilter {
                     kind: EnumSet::only(CharacterKind::Minion),
                     side: EnumSet::only(Side::Friendly),
                 }),
                 effect: ModifierEffect::BuffHealth { amount: 1.into() },
-            }]),
+            }],
             ..Default::default()
         },
     ]

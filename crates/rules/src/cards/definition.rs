@@ -2,7 +2,7 @@ use enumset::EnumSet;
 
 use crate::cards::filter::{CharacterFilter, Side};
 use crate::cards::modifier::ModifierEffect;
-use crate::effect::EffectSequence;
+use crate::effect::Effect;
 use crate::target::{CharacterTarget, TargetId};
 use crate::trigger::TriggerPattern;
 
@@ -22,7 +22,7 @@ pub struct CardDef {
     pub kind: CardKindDef,
     pub mana_cost: u8,
     pub modifier_effects: Vec<ModifierEffect>,
-    pub play_effects: EffectSequence,
+    pub play_effects: Vec<Effect>,
     pub triggers: Vec<TriggerDef>,
     pub targets: Vec<CharacterTarget>,
 }
@@ -163,7 +163,7 @@ pub struct HeroCardDef {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TriggerDef {
     pub pattern: TriggerPattern,
-    pub effects: EffectSequence,
+    pub effects: Vec<Effect>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

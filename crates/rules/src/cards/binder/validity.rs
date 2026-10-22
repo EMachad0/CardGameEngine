@@ -179,7 +179,6 @@ mod tests {
     use crate::cards::binder::sets::base::static_card_definition::*;
     use crate::cards::definition::{CardKindDef, TriggerDef};
     use crate::cards::modifier::ModifierEffect;
-    use crate::effect::EffectSequence;
     use crate::trigger::{TriggerPattern, TriggerSubject};
 
     #[test]
@@ -243,10 +242,10 @@ mod tests {
     fn targeted_damage_trigger() -> TriggerDef {
         TriggerDef {
             pattern: TriggerPattern::Died(TriggerSubject::Itself),
-            effects: EffectSequence(vec![Effect::Damage {
+            effects: vec![Effect::Damage {
                 selector: CharacterSelector::Targeted(TargetId(0)),
                 amount: 1.into(),
-            }]),
+            }],
         }
     }
 
@@ -340,10 +339,10 @@ mod tests {
             &mut defs,
             vec![ModifierEffect::GrantTrigger(TriggerDef {
                 pattern: TriggerPattern::Damaged(TriggerSubject::Itself),
-                effects: EffectSequence(vec![Effect::Buff {
+                effects: vec![Effect::Buff {
                     selector: CharacterSelector::Itself,
                     effect: ModifierEffect::GrantTrigger(targeted_damage_trigger()),
-                }]),
+                }],
             })],
         );
 
@@ -375,12 +374,11 @@ mod tests {
             .find(|def| def.id == def_id)
             .unwrap()
             .play_effects
-            .0
     }
 
     fn hoarder_trigger_with_an_unresolved_pick(defs: &[CardDef]) -> TriggerDef {
         let mut trigger = defs.iter().find(|def| def.id == HOARDER).unwrap().triggers[0].clone();
-        trigger.effects.0.truncate(1);
+        trigger.effects.truncate(1);
         trigger
     }
 
@@ -423,7 +421,7 @@ mod tests {
     fn a_triggers_pick_must_be_resolved_too() {
         let mut defs = base::definitions();
         let hoarder = defs.iter_mut().find(|def| def.id == HOARDER).unwrap();
-        hoarder.triggers[0].effects.0.truncate(1);
+        hoarder.triggers[0].effects.truncate(1);
 
         assert_eq!(
             validate(&defs),

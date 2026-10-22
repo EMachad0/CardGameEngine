@@ -2,7 +2,7 @@
 //! resolves at a time: the next is taken off the stack only once the resolving one finishes.
 
 use crate::cards::object::ObjectId;
-use crate::effect::{Effect, EffectSequence};
+use crate::effect::Effect;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(super) struct EffectStack {
@@ -13,7 +13,7 @@ pub(super) struct EffectStack {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PendingEffect {
     source: ObjectId,
-    effects: EffectSequence,
+    effects: Vec<Effect>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -30,7 +30,7 @@ pub(super) struct NextEffect {
 
 impl ResolvingEffect {
     fn next_effect(&mut self) -> Option<NextEffect> {
-        let effect = self.pending.effects.as_slice().get(self.idx)?.clone();
+        let effect = self.pending.effects.get(self.idx)?.clone();
         self.idx += 1;
         Some(NextEffect {
             source: self.pending.source,
@@ -39,16 +39,13 @@ impl ResolvingEffect {
     }
 
     fn is_done(&self) -> bool {
-        self.pending.effects.as_slice().len() <= self.idx
+        self.pending.effects.len() <= self.idx
     }
 }
 
 impl EffectStack {
-    pub(super) fn push(&mut self, source: ObjectId, effects: impl Into<EffectSequence>) {
-        self.pending.push(PendingEffect {
-            source,
-            effects: effects.into(),
-        });
+    pub(super) fn push(&mut self, source: ObjectId, effects: Vec<Effect>) {
+        self.pending.push(PendingEffect { source, effects });
     }
 
     /// Takes the newest pending effect off the stack to resolve it. Does nothing while another

@@ -1,6 +1,6 @@
 use crate::cards::definition::TriggerDef;
 use crate::cards::object::ObjectId;
-use crate::effect::EffectSequence;
+use crate::effect::Effect;
 use crate::event::Event;
 use crate::game::cards_ref::CardsRef;
 use crate::game::modifiers::modifiers;
@@ -10,7 +10,7 @@ use crate::zones::Zones;
 
 pub(super) struct MatchedTrigger {
     pub(super) source: ObjectId,
-    pub(super) effects: EffectSequence,
+    pub(super) effects: Vec<Effect>,
 }
 
 pub(super) fn matched_triggers(cards: CardsRef, event: &Event) -> Vec<MatchedTrigger> {

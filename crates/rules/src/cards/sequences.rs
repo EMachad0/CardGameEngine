@@ -2,7 +2,7 @@ use crate::cards::definition::{
     CardDef, CardKindDef, HeroCardDef, MinionCardDef, SpellCardDef, TriggerDef,
 };
 use crate::cards::modifier::ModifierEffect;
-use crate::effect::{Effect, EffectSequence};
+use crate::effect::Effect;
 
 /// Whether a sequence is the card's play effects or a trigger's effects.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -59,9 +59,8 @@ pub(super) fn effect_sequences(def: &CardDef) -> Vec<Sequence<'_>> {
 fn collect_sequence<'a>(
     sequences: &mut Vec<Sequence<'a>>,
     origin: SequenceOrigin,
-    sequence: &'a EffectSequence,
+    effects: &'a [Effect],
 ) {
-    let EffectSequence(effects) = sequence;
     sequences.push(Sequence { origin, effects });
     for effect in effects {
         match effect {
@@ -131,7 +130,7 @@ mod tests {
             kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 1,
             modifier_effects: Vec::new(),
-            play_effects: EffectSequence::default(),
+            play_effects: Vec::new(),
             triggers: Vec::new(),
             targets: Vec::new(),
         }
@@ -162,7 +161,7 @@ mod tests {
     fn trigger(effects: Vec<Effect>) -> TriggerDef {
         TriggerDef {
             pattern: TriggerPattern::Died(TriggerSubject::Itself),
-            effects: EffectSequence(effects),
+            effects,
         }
     }
 
@@ -187,7 +186,7 @@ mod tests {
     #[test]
     fn play_effects_are_a_play_sequence() {
         let def = CardDef {
-            play_effects: EffectSequence(vec![draw()]),
+            play_effects: vec![draw()],
             ..spell()
         };
 
@@ -247,7 +246,7 @@ mod tests {
             effect: grant(vec![draw()]),
         };
         let def = CardDef {
-            play_effects: EffectSequence(vec![buff.clone()]),
+            play_effects: vec![buff.clone()],
             ..spell()
         };
 
@@ -264,7 +263,7 @@ mod tests {
             effect: grant(vec![draw()]),
         };
         let def = CardDef {
-            play_effects: EffectSequence(vec![aura.clone()]),
+            play_effects: vec![aura.clone()],
             ..spell()
         };
 
@@ -299,7 +298,7 @@ mod tests {
         };
         let def = CardDef {
             modifier_effects: vec![ModifierEffect::ReduceManaCost { amount: 1.into() }],
-            play_effects: EffectSequence(vec![buff.clone()]),
+            play_effects: vec![buff.clone()],
             ..spell()
         };
 
