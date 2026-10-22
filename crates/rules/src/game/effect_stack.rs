@@ -3,6 +3,7 @@
 
 use crate::cards::object::ObjectId;
 use crate::effect::Effect;
+use crate::target::{NoTarget, TargetId};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(super) struct EffectStack {
@@ -13,7 +14,34 @@ pub(super) struct EffectStack {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PendingEffect {
     source: ObjectId,
-    effects: Vec<Effect>,
+    text: PendingText,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) enum PendingText {
+    Played(Vec<Effect<TargetId>>),
+    Triggered(Vec<Effect<NoTarget>>),
+}
+
+impl PendingText {
+    fn len(&self) -> usize {
+        match self {
+            PendingText::Played(effects) => effects.len(),
+            PendingText::Triggered(effects) => effects.len(),
+        }
+    }
+}
+
+impl From<Vec<Effect<TargetId>>> for PendingText {
+    fn from(effects: Vec<Effect<TargetId>>) -> Self {
+        PendingText::Played(effects)
+    }
+}
+
+impl From<Vec<Effect<NoTarget>>> for PendingText {
+    fn from(effects: Vec<Effect<NoTarget>>) -> Self {
+        PendingText::Triggered(effects)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -23,29 +51,45 @@ struct ResolvingEffect {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(super) struct NextEffect {
-    pub(super) source: ObjectId,
-    pub(super) effect: Effect,
+pub(super) enum NextEffect {
+    Played {
+        source: ObjectId,
+        effect: Effect<TargetId>,
+    },
+    Triggered {
+        source: ObjectId,
+        effect: Effect<NoTarget>,
+    },
 }
 
 impl ResolvingEffect {
     fn next_effect(&mut self) -> Option<NextEffect> {
-        let effect = self.pending.effects.get(self.idx)?.clone();
+        let source = self.pending.source;
+        let next = match &self.pending.text {
+            PendingText::Played(effects) => NextEffect::Played {
+                source,
+                effect: effects.get(self.idx)?.clone(),
+            },
+            PendingText::Triggered(effects) => NextEffect::Triggered {
+                source,
+                effect: effects.get(self.idx)?.clone(),
+            },
+        };
         self.idx += 1;
-        Some(NextEffect {
-            source: self.pending.source,
-            effect,
-        })
+        Some(next)
     }
 
     fn is_done(&self) -> bool {
-        self.pending.effects.len() <= self.idx
+        self.pending.text.len() <= self.idx
     }
 }
 
 impl EffectStack {
-    pub(super) fn push(&mut self, source: ObjectId, effects: Vec<Effect>) {
-        self.pending.push(PendingEffect { source, effects });
+    pub(super) fn push(&mut self, source: ObjectId, text: impl Into<PendingText>) {
+        self.pending.push(PendingEffect {
+            source,
+            text: text.into(),
+        });
     }
 
     /// Takes the newest pending effect off the stack to resolve it. Does nothing while another
@@ -96,15 +140,15 @@ mod tests {
         std::array::from_fn(|_| objects.insert(SPARK, PlayerId::new(0)))
     }
 
-    fn draw(amount: u8) -> Effect {
+    fn draw(amount: u8) -> Effect<NoTarget> {
         Effect::Draw {
             selector: PlayerSelector::Owner,
             amount: EffectAmount::Static(amount),
         }
     }
 
-    fn next(source: ObjectId, effect: Effect) -> Option<NextEffect> {
-        Some(NextEffect { source, effect })
+    fn next(source: ObjectId, effect: Effect<NoTarget>) -> Option<NextEffect> {
+        Some(NextEffect::Triggered { source, effect })
     }
 
     #[test]
@@ -133,6 +177,26 @@ mod tests {
         ];
 
         assert_eq!(steps, [next(source, draw(1)), next(source, draw(2)), None]);
+    }
+
+    #[test]
+    fn a_played_cards_effects_are_handed_out_as_played_text() {
+        let [source] = sources();
+        let draw = Effect::<TargetId>::Draw {
+            selector: PlayerSelector::Owner,
+            amount: EffectAmount::Static(1),
+        };
+        let mut stack = EffectStack::default();
+        stack.push(source, vec![draw.clone()]);
+        stack.start_next();
+
+        assert_eq!(
+            stack.next_effect(),
+            Some(NextEffect::Played {
+                source,
+                effect: draw
+            }),
+        );
     }
 
     #[test]

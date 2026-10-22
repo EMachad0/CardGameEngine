@@ -9,6 +9,7 @@ use crate::effect::Effect;
 use crate::game::state::Game;
 use crate::history::History;
 use crate::ids::PlayerId;
+use crate::target::TargetId;
 use crate::turn::TurnOrder;
 use crate::zones::Zones;
 
@@ -40,7 +41,7 @@ impl<'g> CardsRef<'g> {
         self.binder.get(self.def_id(object_id))
     }
 
-    pub(super) fn play_effects(&self, object_id: ObjectId) -> &'g [Effect] {
+    pub(super) fn play_effects(&self, object_id: ObjectId) -> &'g [Effect<TargetId>] {
         &self.card_def(object_id).play_effects
     }
 

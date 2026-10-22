@@ -3,7 +3,7 @@ use enumset::EnumSet;
 use crate::cards::filter::{CharacterFilter, Side};
 use crate::cards::modifier::ModifierEffect;
 use crate::effect::Effect;
-use crate::target::{CharacterTarget, TargetId};
+use crate::target::{CharacterTarget, NoTarget, TargetId};
 use crate::trigger::TriggerPattern;
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -22,7 +22,7 @@ pub struct CardDef {
     pub kind: CardKindDef,
     pub mana_cost: u8,
     pub modifier_effects: Vec<ModifierEffect>,
-    pub play_effects: Vec<Effect>,
+    pub play_effects: Vec<Effect<TargetId>>,
     pub triggers: Vec<TriggerDef>,
     pub targets: Vec<CharacterTarget>,
 }
@@ -163,7 +163,7 @@ pub struct HeroCardDef {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TriggerDef {
     pub pattern: TriggerPattern,
-    pub effects: Vec<Effect>,
+    pub effects: Vec<Effect<NoTarget>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -187,10 +187,10 @@ pub enum PlayerSelector {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CharacterSelector {
+pub enum CharacterSelector<T> {
     All(CharacterFilter),
     Itself,
     OwnerHero,
     Random(CharacterFilter),
-    Targeted(TargetId),
+    Targeted(T),
 }

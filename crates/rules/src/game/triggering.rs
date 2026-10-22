@@ -5,12 +5,13 @@ use crate::event::Event;
 use crate::game::cards_ref::CardsRef;
 use crate::game::modifiers::modifiers;
 use crate::ids::PlayerId;
+use crate::target::NoTarget;
 use crate::trigger::{Trigger, TriggerPattern, TriggerSubject};
 use crate::zones::Zones;
 
 pub(super) struct MatchedTrigger {
     pub(super) source: ObjectId,
-    pub(super) effects: Vec<Effect>,
+    pub(super) effects: Vec<Effect<NoTarget>>,
 }
 
 pub(super) fn matched_triggers(cards: CardsRef, event: &Event) -> Vec<MatchedTrigger> {

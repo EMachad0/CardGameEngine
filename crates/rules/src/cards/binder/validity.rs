@@ -1,7 +1,7 @@
 use crate::cards::binder::sets::base::PLACEHOLDER;
 use crate::cards::binder::sets::base::static_card_definition::ALL_DEF_ID;
 use crate::cards::definition::{CardDef, CharacterSelector, DefId};
-use crate::cards::sequences::{SequenceOrigin, effect_sequences};
+use crate::cards::sequences::trigger_sequences;
 use crate::effect::{Effect, PickId};
 use crate::target::TargetId;
 
@@ -17,8 +17,6 @@ pub(crate) enum CardDefError {
     DuplicateTarget(DefId, TargetId),
     #[error("Target {1:?} not found on {0:?}")]
     TargetNotFound(DefId, TargetId),
-    #[error("Target {1:?} used by a trigger on {0:?}")]
-    TargetInTrigger(DefId, TargetId),
     #[error("Pick {1:?} resolved with no reveal before it on {0:?}")]
     PickNotFound(DefId, PickId),
     #[error("Pick {1:?} revealed and never resolved on {0:?}")]
@@ -31,7 +29,6 @@ pub(super) fn validate(defs: &[CardDef]) -> Result<(), CardDefError> {
     validate_not_found(defs)?;
     validate_target_duplicates(defs)?;
     validate_target_not_found(defs)?;
-    validate_target_on_trigger(defs)?;
     validate_picks(defs)?;
     Ok(())
 }
@@ -77,11 +74,7 @@ fn validate_target_duplicates(defs: &[CardDef]) -> Result<(), CardDefError> {
 /// Rejects a play effect that names a target the card doesn't declare.
 fn validate_target_not_found(defs: &[CardDef]) -> Result<(), CardDefError> {
     for def in defs {
-        let effects = effect_sequences(def)
-            .into_iter()
-            .filter(|sequence| resolves_with_targeting(sequence.origin))
-            .flat_map(|sequence| sequence.effects);
-        for target_id in effects.filter_map(targeted_id) {
+        for target_id in def.play_effects.iter().filter_map(targeted_id) {
             if def.target(target_id).is_none() {
                 return Err(CardDefError::TargetNotFound(def.id, target_id));
             }
@@ -90,7 +83,7 @@ fn validate_target_not_found(defs: &[CardDef]) -> Result<(), CardDefError> {
     Ok(())
 }
 
-fn targeted_id(effect: &Effect) -> Option<TargetId> {
+fn targeted_id(effect: &Effect<TargetId>) -> Option<TargetId> {
     let selector = match effect {
         Effect::Damage { selector, .. }
         | Effect::Buff { selector, .. }
@@ -109,35 +102,13 @@ fn targeted_id(effect: &Effect) -> Option<TargetId> {
     }
 }
 
-/// Rejects a trigger effect that names a target, whether the trigger is printed or granted. A
-/// trigger resolves with no targeting to read the target from.
-fn validate_target_on_trigger(defs: &[CardDef]) -> Result<(), CardDefError> {
-    for def in defs {
-        let mut effects = effect_sequences(def)
-            .into_iter()
-            .filter(|sequence| !resolves_with_targeting(sequence.origin))
-            .flat_map(|sequence| sequence.effects);
-        if let Some(target_id) = effects.find_map(targeted_id) {
-            return Err(CardDefError::TargetInTrigger(def.id, target_id));
-        }
-    }
-    Ok(())
-}
-
-/// Whether a sequence resolves with what the card's targeting targeted.
-fn resolves_with_targeting(origin: SequenceOrigin) -> bool {
-    match origin {
-        SequenceOrigin::Play => true,
-        SequenceOrigin::Trigger => false,
-    }
-}
-
 /// Rejects a card whose effect sequences, triggers included, resolve a pick with no `Reveal`
 /// before it, or reveal cards they never resolve.
 fn validate_picks(defs: &[CardDef]) -> Result<(), CardDefError> {
     for def in defs {
-        for sequence in effect_sequences(def) {
-            validate_pick_order(def.id, sequence.effects)?;
+        validate_pick_order(def.id, &def.play_effects)?;
+        for sequence in trigger_sequences(def) {
+            validate_pick_order(def.id, sequence)?;
         }
     }
     Ok(())
@@ -145,7 +116,7 @@ fn validate_picks(defs: &[CardDef]) -> Result<(), CardDefError> {
 
 /// Pairs each `ResolvePick` with an earlier `Reveal` of the same pick. Revealed cards sit in no
 /// zone until their pick resolves.
-fn validate_pick_order(def_id: DefId, effects: &[Effect]) -> Result<(), CardDefError> {
+fn validate_pick_order<T>(def_id: DefId, effects: &[Effect<T>]) -> Result<(), CardDefError> {
     let mut unresolved = Vec::new();
     for effect in effects {
         match effect {
@@ -179,7 +150,6 @@ mod tests {
     use crate::cards::binder::sets::base::static_card_definition::*;
     use crate::cards::definition::{CardKindDef, TriggerDef};
     use crate::cards::modifier::ModifierEffect;
-    use crate::trigger::{TriggerPattern, TriggerSubject};
 
     #[test]
     fn the_built_in_table_is_valid() {
@@ -239,117 +209,12 @@ mod tests {
         );
     }
 
-    fn targeted_damage_trigger() -> TriggerDef {
-        TriggerDef {
-            pattern: TriggerPattern::Died(TriggerSubject::Itself),
-            effects: vec![Effect::Damage {
-                selector: CharacterSelector::Targeted(TargetId(0)),
-                amount: 1.into(),
-            }],
-        }
-    }
-
     fn replace_rally_banner_friendly_auras(defs: &mut [CardDef], auras: Vec<ModifierEffect>) {
         let banner = defs.iter_mut().find(|def| def.id == RALLY_BANNER).unwrap();
         let CardKindDef::Minion(minion) = &mut banner.kind else {
             panic!("Rally Banner is a minion");
         };
         minion.friendly_aura_effects = auras;
-    }
-
-    #[test]
-    fn a_trigger_effect_naming_a_target_is_rejected() {
-        let mut defs = base::definitions();
-        let ping = defs.iter_mut().find(|def| def.id == PING).unwrap();
-        ping.triggers.push(targeted_damage_trigger());
-
-        assert_eq!(
-            validate(&defs),
-            Err(CardDefError::TargetInTrigger(PING, TargetId(0))),
-            "a trigger resolves with no targeting, even on a card that declares the target"
-        );
-    }
-
-    #[test]
-    fn a_granted_trigger_effect_naming_a_target_is_rejected() {
-        let mut defs = base::definitions();
-        let ping_target = defs.iter().find(|def| def.id == PING).unwrap().targets[0];
-        let banner = defs.iter_mut().find(|def| def.id == RALLY_BANNER).unwrap();
-        banner.targets.push(ping_target);
-        replace_rally_banner_friendly_auras(
-            &mut defs,
-            vec![ModifierEffect::GrantTrigger(targeted_damage_trigger())],
-        );
-
-        assert_eq!(
-            validate(&defs),
-            Err(CardDefError::TargetInTrigger(RALLY_BANNER, TargetId(0)))
-        );
-    }
-
-    #[test]
-    fn a_trigger_granted_by_a_modifier_effect_naming_a_target_is_rejected() {
-        let mut defs = base::definitions();
-        let ping = defs.iter_mut().find(|def| def.id == PING).unwrap();
-        ping.modifier_effects
-            .push(ModifierEffect::GrantTrigger(targeted_damage_trigger()));
-
-        assert_eq!(
-            validate(&defs),
-            Err(CardDefError::TargetInTrigger(PING, TargetId(0)))
-        );
-    }
-
-    #[test]
-    fn a_trigger_granted_by_a_buff_naming_a_target_is_rejected() {
-        let mut defs = base::definitions();
-        play_effects_of(&mut defs, PING).push(Effect::Buff {
-            selector: CharacterSelector::OwnerHero,
-            effect: ModifierEffect::GrantTrigger(targeted_damage_trigger()),
-        });
-
-        assert_eq!(
-            validate(&defs),
-            Err(CardDefError::TargetInTrigger(PING, TargetId(0))),
-            "the buff resolves during play, but the trigger it grants resolves with no targeting"
-        );
-    }
-
-    #[test]
-    fn a_trigger_granted_by_an_added_aura_naming_a_target_is_rejected() {
-        let mut defs = base::definitions();
-        play_effects_of(&mut defs, PING).push(Effect::AddFriendlyAura {
-            selector: CharacterSelector::OwnerHero,
-            effect: ModifierEffect::GrantTrigger(targeted_damage_trigger()),
-        });
-
-        assert_eq!(
-            validate(&defs),
-            Err(CardDefError::TargetInTrigger(PING, TargetId(0)))
-        );
-    }
-
-    #[test]
-    fn a_trigger_granted_inside_a_granted_trigger_naming_a_target_is_rejected() {
-        let mut defs = base::definitions();
-        let ping_target = defs.iter().find(|def| def.id == PING).unwrap().targets[0];
-        let banner = defs.iter_mut().find(|def| def.id == RALLY_BANNER).unwrap();
-        banner.targets.push(ping_target);
-        replace_rally_banner_friendly_auras(
-            &mut defs,
-            vec![ModifierEffect::GrantTrigger(TriggerDef {
-                pattern: TriggerPattern::Damaged(TriggerSubject::Itself),
-                effects: vec![Effect::Buff {
-                    selector: CharacterSelector::Itself,
-                    effect: ModifierEffect::GrantTrigger(targeted_damage_trigger()),
-                }],
-            })],
-        );
-
-        assert_eq!(
-            validate(&defs),
-            Err(CardDefError::TargetInTrigger(RALLY_BANNER, TargetId(0)))
-        );
     }
 
     #[test]
@@ -368,7 +233,7 @@ mod tests {
         );
     }
 
-    fn play_effects_of(defs: &mut [CardDef], def_id: DefId) -> &mut Vec<Effect> {
+    fn play_effects_of(defs: &mut [CardDef], def_id: DefId) -> &mut Vec<Effect<TargetId>> {
         &mut defs
             .iter_mut()
             .find(|def| def.id == def_id)

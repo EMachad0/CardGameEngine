@@ -24,7 +24,7 @@ pub enum ZoneMove {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Effect {
+pub enum Effect<T> {
     Draw {
         selector: PlayerSelector,
         amount: EffectAmount,
@@ -35,15 +35,15 @@ pub enum Effect {
         amount: EffectAmount,
     },
     Damage {
-        selector: CharacterSelector,
+        selector: CharacterSelector<T>,
         amount: EffectAmount,
     },
     Buff {
-        selector: CharacterSelector,
+        selector: CharacterSelector<T>,
         effect: ModifierEffect,
     },
     AddFriendlyAura {
-        selector: CharacterSelector,
+        selector: CharacterSelector<T>,
         effect: ModifierEffect,
     },
     Summon {
