@@ -21,7 +21,7 @@ pub(super) struct Play {
 /// It holds no borrow, so the card may have become unplayable since.
 pub(super) struct WasPlayable {
     card: WasInHand,
-    targeting: Option<WasAwaitingTargeting>,
+    awaiting_targeting: Option<WasAwaitingTargeting>,
 }
 
 impl WasPlayable {
@@ -29,17 +29,17 @@ impl WasPlayable {
     pub(super) fn new(cards: CardsRef, mana: &Mana, card: InHand) -> Option<Self> {
         mana.can_pay(cost(cards, card)).then(|| Self {
             card: WasInHand::from(card),
-            targeting: None,
+            awaiting_targeting: None,
         })
     }
 
-    pub(super) fn with_targeting(self, targeting: WasAwaitingTargeting) -> Self {
+    pub(super) fn with_targeting(self, awaiting_targeting: WasAwaitingTargeting) -> Self {
         assert!(
-            targeting.object_id() == self.card.object_id(),
-            "a card should be paired with its own targeting",
+            awaiting_targeting.object_id() == self.card.object_id(),
+            "a card should be paired with the targeting it was found through",
         );
         Self {
-            targeting: Some(targeting),
+            awaiting_targeting: Some(awaiting_targeting),
             ..self
         }
     }
@@ -61,19 +61,23 @@ impl From<Play> for Event {
 impl Game {
     /// If the card is played from the player's targeting, closes it before reporting the play.
     pub(super) fn play(&mut self, playable: WasPlayable, obs: &mut impl Observer) {
-        let WasPlayable { card, targeting } = playable;
+        let WasPlayable {
+            card,
+            awaiting_targeting,
+        } = playable;
         let player_id = card.player_id();
         let cards = CardsRef::new(self);
         let mana_cost = cost(cards, cards.zones.still_in_hand(&card));
         self.get_player_mut(player_id).mana.pay(mana_cost);
-        if let Some(targeting) = targeting {
+        if let Some(awaiting_targeting) = awaiting_targeting {
             let target_ids = CardsRef::new(self)
                 .card_def(card.object_id())
                 .targets
                 .iter()
                 .map(|t| t.id)
                 .collect::<Vec<_>>();
-            self.player_input.commit_targeting(targeting, &target_ids);
+            self.player_input
+                .commit_targeting(awaiting_targeting, &target_ids);
         }
         let object_id = self.zones.take_from_hand(card);
 
@@ -105,7 +109,7 @@ mod tests {
     use crate::zones::Zones;
 
     #[test]
-    #[should_panic(expected = "a card should be paired with its own targeting")]
+    #[should_panic(expected = "a card should be paired with the targeting it was found through")]
     fn a_card_cannot_be_played_from_another_cards_targeting() {
         let player = PlayerId::new(0);
         let mut bag = ObjectBag::default();
@@ -122,7 +126,7 @@ mod tests {
         };
         let playable = WasPlayable {
             card: WasInHand::from(zones.find_in_hand(player, card).unwrap()),
-            targeting: None,
+            awaiting_targeting: None,
         };
 
         playable.with_targeting(WasAwaitingTargeting::from(awaits_targeting));

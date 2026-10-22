@@ -13,7 +13,7 @@ disallowed-types = [
 disallowed-methods = [
   { path = "std::time::Instant::now", reason = "The clock lives in the shell. Pass time in as an action." },
   { path = "std::time::SystemTime::now", reason = "The clock lives in the shell. Pass time in as an action." },
-  { path = "rules::zones::Zones::reveal", reason = "Revealed cards wait in a pending pick. Reveal through Game::reveal, which posts the pick." },
+  { path = "rules::zones::Zones::reveal", reason = "Revealed cards wait in a picking. Reveal through Game::reveal, which starts the picking." },
   { path = "rules::zones::Zones::leave_board", reason = "Only the dead leave the board. The state check removes them." },
   { path = "rules::zones::Zones::entomb", reason = "Only the dead enter a graveyard. The state check puts them there." },
   { path = "rules::game::resolve::aftermath::standings::Standings::new", reason = "Setup starts the standings. Only the state check changes them after that." },

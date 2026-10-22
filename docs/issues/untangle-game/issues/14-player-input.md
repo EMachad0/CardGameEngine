@@ -13,7 +13,7 @@ and the code that reads and writes each part:
 
 - **What the game awaits from each player.** `targetings` and `pickings`, each sorted by player,
   with "No player is in both". The `Awaiting` read, its shared-borrow proofs and owned tokens, and
-  the commands `start_targeting`, `target`, `cancel`, `commit_targeting`, `ask_pick` and `pick`.
+  the commands `start_targeting`, `target`, `cancel`, `commit_targeting`, `start_picking` and `pick`.
   `legal_actions`, `apply` and `play` read and write it.
 - **Where revealed cards wait.** A revealed card is in no zone. It sits in a picking's options
   until picked, then in `picks`, until `ResolvePick` in `game/resolve/effect.rs` moves it. `pick`

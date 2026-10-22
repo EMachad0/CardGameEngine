@@ -338,7 +338,7 @@ impl PlayerInput {
 
     /// Closes the option's picking, stores the option as picked and the other options as
     /// the others, and returns the player who picked and the picked object. Panics unless the
-    /// option is still pending.
+    /// card is still among the picking's options.
     pub(super) fn pick(&mut self, awaiting_picking: WasAwaitingPicking) -> (PlayerId, ObjectId) {
         let found = entry_idx(&self.pickings, awaiting_picking.player_id)
             .ok()
