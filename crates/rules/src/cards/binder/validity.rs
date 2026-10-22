@@ -1,12 +1,9 @@
 use crate::cards::binder::sets::base::PLACEHOLDER;
 use crate::cards::binder::sets::base::static_card_definition::ALL_DEF_ID;
-use crate::cards::definition::{
-    CardDef, CardKindDef, CharacterSelector, DefId, MinionCardDef, TriggerDef,
-};
-use crate::cards::modifier::ModifierEffect;
-use crate::cards::sequences::effect_sequences;
-use crate::effect::{Effect, EffectSequence, PickId};
-use crate::target::{CharacterTarget, NoTarget, TargetId};
+use crate::cards::definition::{CardDef, CharacterSelector, DefId};
+use crate::cards::sequences::{SequenceOrigin, effect_sequences};
+use crate::effect::{Effect, PickId};
+use crate::target::TargetId;
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub(crate) enum CardDefError {
@@ -28,90 +25,15 @@ pub(crate) enum CardDefError {
     PickNotResolved(DefId, PickId),
 }
 
-/// Its targets have distinct ids, and each of its effect sequences reveals a pick before resolving
-/// it and resolves every pick it reveals.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ValidCardDef {
-    id: DefId,
-    kind: CardKindDef<NoTarget>,
-    mana_cost: u8,
-    modifier_effects: Vec<ModifierEffect<NoTarget>>,
-    play_effects: Vec<Effect<DeclaredTarget, NoTarget>>,
-    triggers: Vec<TriggerDef<NoTarget>>,
-    targets: Vec<CharacterTarget>,
-}
-
-impl ValidCardDef {
-    pub(super) fn id(&self) -> DefId {
-        self.id
-    }
-
-    pub(crate) fn kind(&self) -> &CardKindDef<NoTarget> {
-        &self.kind
-    }
-
-    pub(crate) fn mana_cost(&self) -> u8 {
-        self.mana_cost
-    }
-
-    pub(crate) fn modifier_effects(&self) -> &[ModifierEffect<NoTarget>] {
-        &self.modifier_effects
-    }
-
-    pub(crate) fn play_effects(&self) -> &[Effect<DeclaredTarget, NoTarget>] {
-        &self.play_effects
-    }
-
-    pub(crate) fn triggers(&self) -> &[TriggerDef<NoTarget>] {
-        &self.triggers
-    }
-
-    pub(crate) fn targets(&self) -> &[CharacterTarget] {
-        &self.targets
-    }
-}
-
-/// Valid card definitions with distinct ids, among them one for every def id in `ALL_DEF_ID`.
-pub(super) struct ValidCardDefs(Vec<ValidCardDef>);
-
-impl IntoIterator for ValidCardDefs {
-    type Item = ValidCardDef;
-    type IntoIter = std::vec::IntoIter<ValidCardDef>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
-    }
-}
-
-/// A target that the card holding it declares.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct DeclaredTarget(TargetId);
-
-impl DeclaredTarget {
-    pub(crate) fn target_id(self) -> TargetId {
-        self.0
-    }
-}
-
-/// The definitions, or the first error found. Each check runs over every definition, in the
-/// order given, before the next one starts, so the order of the checks decides which error a table
-/// with several gets.
-pub(super) fn parse(defs: &[CardDef]) -> Result<ValidCardDefs, CardDefError> {
+pub(super) fn validate(defs: &[CardDef]) -> Result<(), CardDefError> {
     validate_placeholder(defs)?;
     validate_duplicates(defs)?;
     validate_not_found(defs)?;
     validate_target_duplicates(defs)?;
-    let play_effects = defs
-        .iter()
-        .map(parse_play_targets)
-        .collect::<Result<Vec<_>, _>>()?;
-    let valid = defs
-        .iter()
-        .zip(play_effects)
-        .map(|(def, play_effects)| parse_card(def, play_effects))
-        .collect::<Result<Vec<_>, _>>()?;
+    validate_target_not_found(defs)?;
+    validate_target_on_trigger(defs)?;
     validate_picks(defs)?;
-    Ok(ValidCardDefs(valid))
+    Ok(())
 }
 
 fn validate_placeholder(defs: &[CardDef]) -> Result<(), CardDefError> {
@@ -152,216 +74,70 @@ fn validate_target_duplicates(defs: &[CardDef]) -> Result<(), CardDefError> {
     Ok(())
 }
 
-/// The card's play effects, with the targets they name parsed. Rejects a target the card doesn't
-/// declare.
-fn parse_play_targets(
-    def: &CardDef,
-) -> Result<Vec<Effect<DeclaredTarget, TargetId>>, CardDefError> {
-    let declared = |&target_id: &TargetId| match def.target(target_id) {
-        Some(_) => Ok(DeclaredTarget(target_id)),
-        None => Err(CardDefError::TargetNotFound(def.id, target_id)),
-    };
-    def.play_effects
-        .as_slice()
-        .iter()
-        .map(|effect| parse_effect(effect, declared, |granted| Ok(granted.clone())))
-        .collect()
-}
-
-/// The valid card, from its parsed play effects. Rejects trigger text that names a target, whether
-/// the trigger is printed or granted, at any depth.
-fn parse_card(
-    def: &CardDef,
-    play_effects: Vec<Effect<DeclaredTarget, TargetId>>,
-) -> Result<ValidCardDef, CardDefError> {
-    let CardDef {
-        id,
-        name: _,
-        kind,
-        mana_cost,
-        modifier_effects,
-        play_effects: _,
-        triggers,
-        targets,
-    } = def;
-    let play_effects = play_effects
-        .iter()
-        .map(|effect| parse_grants(*id, effect))
-        .collect::<Result<Vec<_>, _>>()?;
-    let triggers = triggers
-        .iter()
-        .map(|trigger| parse_trigger(*id, trigger))
-        .collect::<Result<Vec<_>, _>>()?;
-    let modifier_effects = parse_modifiers(*id, modifier_effects)?;
-    let kind = parse_kind(*id, kind)?;
-    Ok(ValidCardDef {
-        id: *id,
-        kind,
-        mana_cost: *mana_cost,
-        modifier_effects,
-        play_effects,
-        triggers,
-        targets: targets.clone(),
-    })
-}
-
-/// The trigger with its text parsed. Rejects a target in its own effects before one in the
-/// triggers they grant.
-fn parse_trigger(
-    def_id: DefId,
-    trigger: &TriggerDef,
-) -> Result<TriggerDef<NoTarget>, CardDefError> {
-    let TriggerDef { pattern, effects } = trigger;
-    let untargeted = effects
-        .as_slice()
-        .iter()
-        .map(|effect| {
-            parse_effect(
-                effect,
-                |&target_id| Err(CardDefError::TargetInTrigger(def_id, target_id)),
-                |granted| Ok(granted.clone()),
-            )
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    let effects = untargeted
-        .iter()
-        .map(|effect| parse_grants(def_id, effect))
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(TriggerDef {
-        pattern: *pattern,
-        effects: EffectSequence(effects),
-    })
-}
-
-fn parse_kind(def_id: DefId, kind: &CardKindDef) -> Result<CardKindDef<NoTarget>, CardDefError> {
-    Ok(match kind {
-        CardKindDef::Spell(spell) => CardKindDef::Spell(spell.clone()),
-        CardKindDef::Minion(MinionCardDef {
-            attack,
-            health,
-            friendly_aura_effects,
-            hostile_aura_effects,
-        }) => CardKindDef::Minion(MinionCardDef {
-            attack: *attack,
-            health: *health,
-            friendly_aura_effects: parse_modifiers(def_id, friendly_aura_effects)?,
-            hostile_aura_effects: parse_modifiers(def_id, hostile_aura_effects)?,
-        }),
-        CardKindDef::Hero(hero) => CardKindDef::Hero(hero.clone()),
-    })
-}
-
-fn parse_modifiers(
-    def_id: DefId,
-    modifier_effects: &[ModifierEffect],
-) -> Result<Vec<ModifierEffect<NoTarget>>, CardDefError> {
-    modifier_effects
-        .iter()
-        .map(|modifier_effect| parse_modifier(def_id, modifier_effect))
-        .collect()
-}
-
-fn parse_modifier(
-    def_id: DefId,
-    modifier_effect: &ModifierEffect,
-) -> Result<ModifierEffect<NoTarget>, CardDefError> {
-    Ok(match modifier_effect {
-        ModifierEffect::BuffAtk { amount } => ModifierEffect::BuffAtk { amount: *amount },
-        ModifierEffect::BuffHealth { amount } => ModifierEffect::BuffHealth { amount: *amount },
-        ModifierEffect::ReduceManaCost { amount } => {
-            ModifierEffect::ReduceManaCost { amount: *amount }
+/// Rejects a play effect that names a target the card doesn't declare.
+fn validate_target_not_found(defs: &[CardDef]) -> Result<(), CardDefError> {
+    for def in defs {
+        let effects = effect_sequences(def)
+            .into_iter()
+            .filter(|sequence| resolves_with_targeting(sequence.origin))
+            .flat_map(|sequence| sequence.effects);
+        for target_id in effects.filter_map(targeted_id) {
+            if def.target(target_id).is_none() {
+                return Err(CardDefError::TargetNotFound(def.id, target_id));
+            }
         }
-        ModifierEffect::GrantTrigger(trigger) => {
-            ModifierEffect::GrantTrigger(parse_trigger(def_id, trigger)?)
-        }
-    })
+    }
+    Ok(())
 }
 
-/// Parses the triggers the effect grants, and keeps its own selector.
-fn parse_grants<T: Copy>(
-    def_id: DefId,
-    effect: &Effect<T, TargetId>,
-) -> Result<Effect<T, NoTarget>, CardDefError> {
-    parse_effect(
-        effect,
-        |&own| Ok(own),
-        |granted| parse_modifier(def_id, granted),
-    )
-}
-
-/// Rebuilds the effect with `own` applied to its own selector's target, and `grant` to the modifier
-/// it grants.
-fn parse_effect<T, U, G, H>(
-    effect: &Effect<T, G>,
-    own: impl Fn(&T) -> Result<U, CardDefError>,
-    grant: impl Fn(&ModifierEffect<G>) -> Result<ModifierEffect<H>, CardDefError>,
-) -> Result<Effect<U, H>, CardDefError> {
-    let selector = |selector: &CharacterSelector<T>| {
-        Ok(match selector {
-            CharacterSelector::All(filter) => CharacterSelector::All(*filter),
-            CharacterSelector::Itself => CharacterSelector::Itself,
-            CharacterSelector::OwnerHero => CharacterSelector::OwnerHero,
-            CharacterSelector::Random(filter) => CharacterSelector::Random(*filter),
-            CharacterSelector::Targeted(target) => CharacterSelector::Targeted(own(target)?),
-        })
+fn targeted_id(effect: &Effect) -> Option<TargetId> {
+    let selector = match effect {
+        Effect::Damage { selector, .. }
+        | Effect::Buff { selector, .. }
+        | Effect::AddFriendlyAura { selector, .. } => selector,
+        Effect::Draw { .. }
+        | Effect::Reveal { .. }
+        | Effect::Summon { .. }
+        | Effect::ResolvePick { .. } => return None,
     };
-    Ok(match effect {
-        Effect::Draw { selector, amount } => Effect::Draw {
-            selector: *selector,
-            amount: *amount,
-        },
-        Effect::Reveal {
-            pick_id,
-            selector,
-            amount,
-        } => Effect::Reveal {
-            pick_id: *pick_id,
-            selector: *selector,
-            amount: *amount,
-        },
-        Effect::Damage {
-            selector: own_selector,
-            amount,
-        } => Effect::Damage {
-            selector: selector(own_selector)?,
-            amount: *amount,
-        },
-        Effect::Buff {
-            selector: own_selector,
-            effect,
-        } => Effect::Buff {
-            selector: selector(own_selector)?,
-            effect: grant(effect)?,
-        },
-        Effect::AddFriendlyAura {
-            selector: own_selector,
-            effect,
-        } => Effect::AddFriendlyAura {
-            selector: selector(own_selector)?,
-            effect: grant(effect)?,
-        },
-        Effect::Summon { selector, def_id } => Effect::Summon {
-            selector: *selector,
-            def_id: *def_id,
-        },
-        Effect::ResolvePick {
-            pick_id,
-            picked_move,
-            other_move,
-        } => Effect::ResolvePick {
-            pick_id: *pick_id,
-            picked_move: *picked_move,
-            other_move: *other_move,
-        },
-    })
+    match selector {
+        CharacterSelector::Targeted(target_id) => Some(*target_id),
+        CharacterSelector::All(_)
+        | CharacterSelector::Itself
+        | CharacterSelector::OwnerHero
+        | CharacterSelector::Random(_) => None,
+    }
+}
+
+/// Rejects a trigger effect that names a target, whether the trigger is printed or granted. A
+/// trigger resolves with no targeting to read the target from.
+fn validate_target_on_trigger(defs: &[CardDef]) -> Result<(), CardDefError> {
+    for def in defs {
+        let mut effects = effect_sequences(def)
+            .into_iter()
+            .filter(|sequence| !resolves_with_targeting(sequence.origin))
+            .flat_map(|sequence| sequence.effects);
+        if let Some(target_id) = effects.find_map(targeted_id) {
+            return Err(CardDefError::TargetInTrigger(def.id, target_id));
+        }
+    }
+    Ok(())
+}
+
+/// Whether a sequence resolves with what the card's targeting targeted.
+fn resolves_with_targeting(origin: SequenceOrigin) -> bool {
+    match origin {
+        SequenceOrigin::Play => true,
+        SequenceOrigin::Trigger => false,
+    }
 }
 
 /// Rejects a card whose effect sequences, triggers included, resolve a pick with no `Reveal`
 /// before it, or reveal cards they never resolve.
 fn validate_picks(defs: &[CardDef]) -> Result<(), CardDefError> {
     for def in defs {
-        for effects in effect_sequences(def) {
-            validate_pick_order(def.id, effects)?;
+        for sequence in effect_sequences(def) {
+            validate_pick_order(def.id, sequence.effects)?;
         }
     }
     Ok(())
@@ -401,20 +177,10 @@ mod tests {
     use super::*;
     use crate::cards::binder::sets::base;
     use crate::cards::binder::sets::base::static_card_definition::*;
-    use crate::cards::definition::PlayerSelector;
+    use crate::cards::definition::{CardKindDef, TriggerDef};
+    use crate::cards::modifier::ModifierEffect;
+    use crate::effect::EffectSequence;
     use crate::trigger::{TriggerPattern, TriggerSubject};
-
-    fn validate(defs: &[CardDef]) -> Result<(), CardDefError> {
-        parse(defs).map(drop)
-    }
-
-    fn parsed(defs: &[CardDef], def_id: DefId) -> ValidCardDef {
-        parse(defs)
-            .unwrap()
-            .into_iter()
-            .find(|def| def.id() == def_id)
-            .unwrap()
-    }
 
     #[test]
     fn the_built_in_table_is_valid() {
@@ -610,109 +376,6 @@ mod tests {
             .unwrap()
             .play_effects
             .0
-    }
-
-    fn trigger_on<G>(pattern: TriggerPattern) -> TriggerDef<G> {
-        TriggerDef {
-            pattern,
-            effects: EffectSequence(vec![
-                Effect::Draw {
-                    selector: PlayerSelector::Owner,
-                    amount: 1.into(),
-                },
-                Effect::Damage {
-                    selector: CharacterSelector::OwnerHero,
-                    amount: 2.into(),
-                },
-            ]),
-        }
-    }
-
-    #[test]
-    fn a_play_effect_keeps_the_target_it_names() {
-        let mut defs = base::definitions();
-        play_effects_of(&mut defs, PING).push(Effect::Buff {
-            selector: CharacterSelector::Targeted(TargetId(0)),
-            effect: ModifierEffect::BuffHealth { amount: 3.into() },
-        });
-
-        assert_eq!(
-            parsed(&defs, PING).play_effects().last(),
-            Some(&Effect::Buff {
-                selector: CharacterSelector::Targeted(DeclaredTarget(TargetId(0))),
-                effect: ModifierEffect::BuffHealth { amount: 3.into() },
-            })
-        );
-    }
-
-    #[test]
-    fn printed_triggers_are_kept_as_written() {
-        let died = TriggerPattern::Died(TriggerSubject::Itself);
-        let damaged = TriggerPattern::Damaged(TriggerSubject::Itself);
-        let mut defs = base::definitions();
-        let ping = defs.iter_mut().find(|def| def.id == PING).unwrap();
-        ping.triggers = vec![trigger_on(died), trigger_on(damaged)];
-
-        assert_eq!(
-            parsed(&defs, PING).triggers(),
-            [trigger_on(died), trigger_on(damaged)]
-        );
-    }
-
-    #[test]
-    fn a_trigger_granted_by_a_play_effect_keeps_its_effects_in_order() {
-        let mut defs = base::definitions();
-        play_effects_of(&mut defs, DRUMMER).push(Effect::Buff {
-            selector: CharacterSelector::Itself,
-            effect: ModifierEffect::GrantTrigger(trigger_on(TriggerPattern::Damaged(
-                TriggerSubject::Itself,
-            ))),
-        });
-
-        assert_eq!(
-            parsed(&defs, DRUMMER).play_effects().last(),
-            Some(&Effect::Buff {
-                selector: CharacterSelector::Itself,
-                effect: ModifierEffect::GrantTrigger(trigger_on(TriggerPattern::Damaged(
-                    TriggerSubject::Itself
-                ))),
-            })
-        );
-    }
-
-    #[test]
-    fn a_trigger_granted_by_a_modifier_effect_keeps_its_effects_in_order() {
-        let mut defs = base::definitions();
-        let ping = defs.iter_mut().find(|def| def.id == PING).unwrap();
-        ping.modifier_effects
-            .push(ModifierEffect::GrantTrigger(trigger_on(
-                TriggerPattern::Damaged(TriggerSubject::Itself),
-            )));
-
-        assert_eq!(
-            parsed(&defs, PING).modifier_effects(),
-            [ModifierEffect::GrantTrigger(trigger_on(
-                TriggerPattern::Damaged(TriggerSubject::Itself)
-            ))]
-        );
-    }
-
-    #[test]
-    fn a_trigger_granted_by_an_aura_keeps_its_effects_in_order() {
-        let mut defs = base::definitions();
-        replace_rally_banner_friendly_auras(
-            &mut defs,
-            vec![ModifierEffect::GrantTrigger(trigger_on(
-                TriggerPattern::Damaged(TriggerSubject::Itself),
-            ))],
-        );
-
-        assert_eq!(
-            parsed(&defs, RALLY_BANNER).kind().friendly_aura_effects(),
-            [ModifierEffect::GrantTrigger(trigger_on(
-                TriggerPattern::Damaged(TriggerSubject::Itself)
-            ))]
-        );
     }
 
     fn hoarder_trigger_with_an_unresolved_pick(defs: &[CardDef]) -> TriggerDef {

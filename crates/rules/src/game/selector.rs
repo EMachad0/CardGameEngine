@@ -1,7 +1,6 @@
 //! What an effect acts on, as its selector says: players or characters, each of them in the order
 //! they come, or one of them at random.
 
-use crate::cards::binder::validity::DeclaredTarget;
 use crate::cards::definition::{CharacterSelector, PlayerSelector, PlayerSelectorFilter};
 use crate::cards::filter::fulfill_side_filter;
 use crate::cards::object::ObjectId;
@@ -9,26 +8,6 @@ use crate::game::cards_ref::CardsRef;
 use crate::game::player_input::PlayerInput;
 use crate::ids::PlayerId;
 use crate::rng::Rng;
-use crate::target::NoTarget;
-
-pub(super) trait SelectorTarget: Copy {
-    fn targeted(self, player_input: &PlayerInput, source: ObjectId) -> Vec<ObjectId>;
-}
-
-impl SelectorTarget for DeclaredTarget {
-    fn targeted(self, player_input: &PlayerInput, source: ObjectId) -> Vec<ObjectId> {
-        player_input
-            .targeted(source, self.target_id())
-            .expect("a card that declares targets should be played from its targeting")
-            .to_vec()
-    }
-}
-
-impl SelectorTarget for NoTarget {
-    fn targeted(self, _player_input: &PlayerInput, _source: ObjectId) -> Vec<ObjectId> {
-        match self {}
-    }
-}
 
 pub(super) struct Selection<T>(Values<T>);
 
@@ -65,12 +44,12 @@ pub(super) fn select_players(
     })
 }
 
-pub(super) fn select_characters<T: SelectorTarget>(
+pub(super) fn select_characters(
     cards: CardsRef,
     player_input: &PlayerInput,
     owner: PlayerId,
     source: ObjectId,
-    selector: &CharacterSelector<T>,
+    selector: &CharacterSelector,
 ) -> Selection<ObjectId> {
     Selection(match selector {
         CharacterSelector::All(filter) => {
@@ -81,7 +60,12 @@ pub(super) fn select_characters<T: SelectorTarget>(
         CharacterSelector::Random(filter) => {
             Values::OneOf(cards.scan_characters_with_filter(owner, filter))
         }
-        CharacterSelector::Targeted(target) => Values::Each(target.targeted(player_input, source)),
+        CharacterSelector::Targeted(target_id) => Values::Each(
+            player_input
+                .targeted(source, *target_id)
+                .expect("Target not fulfilled")
+                .to_vec(),
+        ),
     })
 }
 

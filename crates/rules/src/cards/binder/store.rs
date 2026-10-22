@@ -2,30 +2,31 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use crate::cards::binder::sets::base;
-use crate::cards::binder::validity::{self, CardDefError, ValidCardDef};
-use crate::cards::definition::DefId;
+use crate::cards::binder::validity::{self, CardDefError};
+use crate::cards::definition::{CardDef, DefId};
 
-/// Holds a definition for every def id in `ALL_DEF_ID`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Binder {
     /// Arc so clone and eq are cheap
-    defs: Arc<BTreeMap<DefId, ValidCardDef>>,
+    defs: Arc<BTreeMap<DefId, CardDef>>,
 }
 
 impl Binder {
     pub(crate) fn built_in() -> Result<Self, CardDefError> {
-        let defs = validity::parse(&base::definitions())?
-            .into_iter()
-            .map(|def| (def.id(), def))
-            .collect();
+        let defs = base::definitions();
+        validity::validate(&defs)?;
+
+        let mut map = BTreeMap::new();
+        defs.into_iter().for_each(|def| {
+            map.insert(def.id, def);
+        });
+
         Ok(Self {
-            defs: Arc::new(defs),
+            defs: Arc::new(map),
         })
     }
 
-    pub(crate) fn get(&self, def_id: DefId) -> &ValidCardDef {
-        self.defs
-            .get(&def_id)
-            .expect("a def id should name a built-in card")
+    pub(crate) fn get(&self, def_id: DefId) -> &CardDef {
+        self.defs.get(&def_id).expect("card def not found")
     }
 }

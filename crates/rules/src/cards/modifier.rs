@@ -1,7 +1,6 @@
 use crate::cards::definition::TriggerDef;
 use crate::cards::object::ObjectId;
 use crate::effect::EffectAmount;
-use crate::target::{NoTarget, TargetId};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(super) struct Modifiers(Vec<Modifier>);
@@ -19,15 +18,15 @@ impl Modifiers {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Modifier {
     pub granted_by: ObjectId,
-    pub effect: ModifierEffect<NoTarget>,
+    pub effect: ModifierEffect,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ModifierEffect<G = TargetId> {
+pub enum ModifierEffect {
     BuffAtk { amount: EffectAmount },
     BuffHealth { amount: EffectAmount },
     ReduceManaCost { amount: EffectAmount },
-    GrantTrigger(TriggerDef<G>),
+    GrantTrigger(TriggerDef),
 }
 
 /// Modifiers sorted by what each changes: a stat, or the triggers. Amounts stay unevaluated until
@@ -37,11 +36,11 @@ pub(crate) struct SortedModifiers<'a> {
     attack: Vec<&'a EffectAmount>,
     health: Vec<&'a EffectAmount>,
     cost: Vec<&'a EffectAmount>,
-    triggers: Vec<(ObjectId, &'a TriggerDef<NoTarget>)>,
+    triggers: Vec<(ObjectId, &'a TriggerDef)>,
 }
 
 impl<'a> SortedModifiers<'a> {
-    pub(crate) fn add(&mut self, granted_by: ObjectId, effect: &'a ModifierEffect<NoTarget>) {
+    pub(crate) fn add(&mut self, granted_by: ObjectId, effect: &'a ModifierEffect) {
         match effect {
             ModifierEffect::BuffAtk { amount } => self.attack.push(amount),
             ModifierEffect::BuffHealth { amount } => self.health.push(amount),
@@ -63,9 +62,7 @@ impl<'a> SortedModifiers<'a> {
     }
 
     /// In the order they were added, each with the object granting it.
-    pub(crate) fn granted_triggers(
-        &self,
-    ) -> impl Iterator<Item = (ObjectId, &'a TriggerDef<NoTarget>)> {
+    pub(crate) fn granted_triggers(&self) -> impl Iterator<Item = (ObjectId, &'a TriggerDef)> {
         self.triggers.iter().copied()
     }
 }
@@ -101,32 +98,32 @@ mod tests {
         })
     }
 
-    fn trigger(pattern: TriggerPattern) -> TriggerDef<NoTarget> {
+    fn trigger(pattern: TriggerPattern) -> TriggerDef {
         TriggerDef {
             pattern,
             effects: Vec::new().into(),
         }
     }
 
-    fn attack(amount: u8) -> ModifierEffect<NoTarget> {
+    fn attack(amount: u8) -> ModifierEffect {
         ModifierEffect::BuffAtk {
             amount: amount.into(),
         }
     }
 
-    fn health(amount: u8) -> ModifierEffect<NoTarget> {
+    fn health(amount: u8) -> ModifierEffect {
         ModifierEffect::BuffHealth {
             amount: amount.into(),
         }
     }
 
-    fn cost(amount: u8) -> ModifierEffect<NoTarget> {
+    fn cost(amount: u8) -> ModifierEffect {
         ModifierEffect::ReduceManaCost {
             amount: amount.into(),
         }
     }
 
-    fn sorted(granted_by: ObjectId, effects: &[ModifierEffect<NoTarget>]) -> SortedModifiers<'_> {
+    fn sorted(granted_by: ObjectId, effects: &[ModifierEffect]) -> SortedModifiers<'_> {
         let mut modifiers = SortedModifiers::default();
         for effect in effects {
             modifiers.add(granted_by, effect);

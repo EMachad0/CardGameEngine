@@ -16,7 +16,8 @@ use crate::zones::Zones;
 pub(super) fn setup(seed: u64, decks: [Vec<DefId>; 2], shuffle: bool) -> Game {
     let rng = Rng::new(seed);
 
-    let binder = Binder::built_in().expect("the built-in card definitions should be valid");
+    // Fails only on invalid built-in definitions.
+    let binder = Binder::built_in().unwrap();
 
     let mut objects = ObjectBag::default();
 

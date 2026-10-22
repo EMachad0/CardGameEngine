@@ -1,7 +1,6 @@
 use crate::cards::definition::{CharacterSelector, DefId, PlayerSelector};
 use crate::cards::modifier::ModifierEffect;
 use crate::history::HistoryQuery;
-use crate::target::TargetId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EffectAmount {
@@ -25,7 +24,7 @@ pub enum ZoneMove {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Effect<T = TargetId, G = T> {
+pub enum Effect {
     Draw {
         selector: PlayerSelector,
         amount: EffectAmount,
@@ -36,16 +35,16 @@ pub enum Effect<T = TargetId, G = T> {
         amount: EffectAmount,
     },
     Damage {
-        selector: CharacterSelector<T>,
+        selector: CharacterSelector,
         amount: EffectAmount,
     },
     Buff {
-        selector: CharacterSelector<T>,
-        effect: ModifierEffect<G>,
+        selector: CharacterSelector,
+        effect: ModifierEffect,
     },
     AddFriendlyAura {
-        selector: CharacterSelector<T>,
-        effect: ModifierEffect<G>,
+        selector: CharacterSelector,
+        effect: ModifierEffect,
     },
     Summon {
         selector: PlayerSelector,
@@ -58,23 +57,17 @@ pub enum Effect<T = TargetId, G = T> {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EffectSequence<T = TargetId>(pub Vec<Effect<T>>);
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct EffectSequence(pub Vec<Effect>);
 
-impl<T> EffectSequence<T> {
-    pub fn as_slice(&self) -> &[Effect<T>] {
+impl EffectSequence {
+    pub fn as_slice(&self) -> &[Effect] {
         self.0.as_slice()
     }
 }
 
-impl<T> Default for EffectSequence<T> {
-    fn default() -> Self {
-        Self(Vec::new())
-    }
-}
-
-impl<T> From<Vec<Effect<T>>> for EffectSequence<T> {
-    fn from(value: Vec<Effect<T>>) -> Self {
+impl From<Vec<Effect>> for EffectSequence {
+    fn from(value: Vec<Effect>) -> Self {
         Self(value)
     }
 }

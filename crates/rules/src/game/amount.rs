@@ -27,13 +27,13 @@ fn history_query(cards: CardsRef, query: HistoryQuery, player_id: PlayerId) -> u
         HistoryQueryKind::SpellsPlayed => cards
             .history
             .played(scope, turn)
-            .filter(|&object_id| cards.card_def(object_id).kind().card_kind() == CardKind::Spell)
+            .filter(|&object_id| cards.card_def(object_id).card_kind() == CardKind::Spell)
             .count(),
         HistoryQueryKind::MinionsDied => cards
             .history
             .died(scope, turn)
             .filter(|&object_id| {
-                cards.card_def(object_id).kind().character_kind() == Some(CharacterKind::Minion)
+                cards.card_def(object_id).character_kind() == Some(CharacterKind::Minion)
             })
             .count(),
     };

@@ -33,7 +33,7 @@ pub(super) fn hero_health(cards: CardsRef, player_id: PlayerId) -> i32 {
 
 pub(super) fn cost(cards: CardsRef, card: InHand) -> u8 {
     let object_id = card.object_id();
-    let printed_cost = cards.card_def(object_id).mana_cost();
+    let printed_cost = cards.card_def(object_id).mana_cost;
     let reduction =
         modifiers(cards, object_id).cost_reduction(evaluate_for_owner(cards, object_id));
     printed_cost.saturating_sub(reduction)
@@ -43,9 +43,8 @@ pub(super) fn minion_attack(cards: CardsRef, card: OnBoard) -> i32 {
     let object_id = card.object_id();
     let printed_attack = cards
         .card_def(object_id)
-        .kind()
         .attack()
-        .expect("only minions should be summoned to a board");
+        .expect("board objects always have attack");
     let bonus = modifiers(cards, object_id).attack_bonus(evaluate_for_owner(cards, object_id));
     printed_attack + bonus
 }
@@ -54,9 +53,8 @@ pub(super) fn character_health(cards: CardsRef, character: InPlay) -> i32 {
     let object_id = character.object_id();
     let printed_health = cards
         .card_def(object_id)
-        .kind()
         .health()
-        .expect("only heroes and minions should be put in play");
+        .expect("in play objects always have health");
     let bonus = modifiers(cards, object_id).health_bonus(evaluate_for_owner(cards, object_id));
     printed_health + bonus - cards.objects.get(object_id).damage() as i32
 }

@@ -73,7 +73,7 @@ impl Game {
         if let Some(awaiting_targeting) = awaiting_targeting {
             let target_ids = CardsRef::new(self)
                 .card_def(card.object_id())
-                .targets()
+                .targets
                 .iter()
                 .map(|t| t.id)
                 .collect::<Vec<_>>();
@@ -94,11 +94,7 @@ impl Game {
         self.report(report, obs);
 
         obs.checkpoint(Views::new(self));
-        if CardsRef::new(self)
-            .card_def(object_id)
-            .kind()
-            .has_board_presence()
-        {
+        if CardsRef::new(self).card_def(object_id).has_board_presence() {
             self.summon(player_id, object_id, obs);
             obs.checkpoint(Views::new(self));
         }

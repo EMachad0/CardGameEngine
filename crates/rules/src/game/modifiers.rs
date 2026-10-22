@@ -9,14 +9,14 @@ pub(super) fn modifiers(cards: CardsRef<'_>, object_id: ObjectId) -> SortedModif
     let object = cards.objects.get(object_id);
     let card_def = cards.card_def(object_id);
     let mut modifiers = SortedModifiers::default();
-    for effect in card_def.modifier_effects() {
+    for effect in &card_def.modifier_effects {
         modifiers.add(object_id, effect);
     }
     for modifier in object.modifiers() {
         modifiers.add(modifier.granted_by, &modifier.effect);
     }
 
-    if card_def.kind().receives_auras() {
+    if card_def.receives_auras() {
         for (other_player_id, board) in cards.zones.boards() {
             for other_object_id in board.iter().copied() {
                 if object_id == other_object_id {
@@ -40,7 +40,7 @@ fn add_friendly_aura<'g>(
     object_id: ObjectId,
     modifiers: &mut SortedModifiers<'g>,
 ) {
-    for effect in cards.card_def(object_id).kind().friendly_aura_effects() {
+    for effect in cards.card_def(object_id).friendly_aura_effects() {
         modifiers.add(object_id, effect);
     }
     for modifier in cards.objects.get(object_id).friendly_aura() {
@@ -53,7 +53,7 @@ fn add_hostile_aura<'g>(
     object_id: ObjectId,
     modifiers: &mut SortedModifiers<'g>,
 ) {
-    for effect in cards.card_def(object_id).kind().hostile_aura_effects() {
+    for effect in cards.card_def(object_id).hostile_aura_effects() {
         modifiers.add(object_id, effect);
     }
 }
