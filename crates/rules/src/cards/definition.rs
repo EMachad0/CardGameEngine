@@ -318,6 +318,17 @@ mod tests {
     }
 
     #[test]
+    fn binding_play_effects_that_declare_no_target_asks_for_nothing() {
+        let def = card(vec![draw(), damage(CharacterSelector::Itself)]);
+        let mut asked = Vec::new();
+
+        let bound = def.bind_play_effects(|target_id| asked.push(target_id));
+
+        assert_eq!(asked, Vec::<TargetId>::new());
+        assert_eq!(bound, [draw(), damage(CharacterSelector::Itself)]);
+    }
+
+    #[test]
     fn a_targeted_selector_gives_what_it_holds() {
         assert_eq!(CharacterSelector::Targeted(3).target(), Some(&3));
     }
