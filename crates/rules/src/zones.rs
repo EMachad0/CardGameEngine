@@ -483,7 +483,6 @@ mod tests {
         hand
     }
 
-    /// Takes `card` out of `player`'s hand, where it must be.
     fn take_from_hand(zones: &mut Zones, player: PlayerId, card: ObjectId) {
         let found = WasInHand::from(zones.find_in_hand(player, card).unwrap());
         zones.take_from_hand(found);

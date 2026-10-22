@@ -109,7 +109,7 @@ mod tests {
     use crate::game::player_input::{Awaiting, PlayerInput, WasAwaitingNothing};
     use crate::zones::Zones;
 
-    fn start_targeting(
+    fn started_targeting(
         input: &mut PlayerInput,
         player: PlayerId,
         card: ObjectId,
@@ -124,7 +124,7 @@ mod tests {
         WasAwaitingTargeting::from(awaits_targeting)
     }
 
-    fn playable(zones: &Zones, player: PlayerId, card: ObjectId) -> WasPlayable {
+    fn playable_without_mana_check(zones: &Zones, player: PlayerId, card: ObjectId) -> WasPlayable {
         WasPlayable {
             card: WasInHand::from(zones.find_in_hand(player, card).unwrap()),
             awaiting_targeting: None,
@@ -140,9 +140,9 @@ mod tests {
         let mut zones = Zones::new([(hero, vec![card, other])]);
         zones.draw(player);
         let mut input = PlayerInput::default();
-        let targeting = start_targeting(&mut input, player, other);
+        let targeting = started_targeting(&mut input, player, other);
 
-        playable(&zones, player, card).with_targeting(targeting);
+        playable_without_mana_check(&zones, player, card).with_targeting(targeting);
     }
 
     #[test]
@@ -150,12 +150,13 @@ mod tests {
     fn a_card_cannot_be_played_from_another_players_targeting() {
         let (player, other) = (PlayerId::new(0), PlayerId::new(1));
         let mut bag = ObjectBag::default();
-        let [hero, other_hero, card] = std::array::from_fn(|_| bag.insert(SPARK, player));
+        let [hero, card] = std::array::from_fn(|_| bag.insert(SPARK, player));
+        let other_hero = bag.insert(SPARK, other);
         let mut zones = Zones::new([(hero, vec![card]), (other_hero, Vec::new())]);
         zones.draw(player);
         let mut input = PlayerInput::default();
-        let targeting = start_targeting(&mut input, other, card);
+        let targeting = started_targeting(&mut input, other, card);
 
-        playable(&zones, player, card).with_targeting(targeting);
+        playable_without_mana_check(&zones, player, card).with_targeting(targeting);
     }
 }

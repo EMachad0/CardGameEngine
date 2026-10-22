@@ -119,7 +119,7 @@ impl Game {
         self.get_player(player_id).mana.current()
     }
 
-    /// The cards a pending Forage revealed. Empty if nothing is pending.
+    /// The options of the player's picking. Empty unless they are picking.
     pub fn revealed(&self, player_id: PlayerId) -> &[ObjectId] {
         self.player_input.revealed(player_id)
     }
