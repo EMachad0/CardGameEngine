@@ -189,7 +189,8 @@ fn parse_card(
     })
 }
 
-/// Checks every effect's own selector before the triggers any of them grants.
+/// The trigger with its text parsed. Rejects a target in its own effects before one in the
+/// triggers they grant.
 fn parse_trigger(
     def_id: DefId,
     trigger: &TriggerDef,
