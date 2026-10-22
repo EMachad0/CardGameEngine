@@ -30,9 +30,9 @@ impl Binder {
         Self::new(base::definitions()).expect("the built-in card definitions should be valid")
     }
 
-    fn new(table: Vec<(DefId, CardDef<TargetId>)>) -> Result<Self, BinderError> {
+    fn new(definitions: Vec<(DefId, CardDef<TargetId>)>) -> Result<Self, BinderError> {
         let mut unparsed = BTreeMap::new();
-        for (def_id, def) in table {
+        for (def_id, def) in definitions {
             if unparsed.insert(def_id, def).is_some() {
                 return Err(BinderError::Duplicate(def_id));
             }
@@ -70,8 +70,8 @@ mod tests {
     use crate::cards::binder::sets::base::static_card_definition::{BOLT, PING, SPARK};
     use crate::target::Targets;
 
-    fn validate(table: &[(DefId, CardDef<TargetId>)]) -> Result<(), BinderError> {
-        Binder::new(table.to_vec()).map(drop)
+    fn validate(definitions: &[(DefId, CardDef<TargetId>)]) -> Result<(), BinderError> {
+        Binder::new(definitions.to_vec()).map(drop)
     }
 
     #[test]
