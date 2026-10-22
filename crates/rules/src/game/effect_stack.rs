@@ -3,7 +3,6 @@
 
 use crate::cards::object::ObjectId;
 use crate::effect::Effect;
-use crate::target::NoTarget;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(super) struct EffectStack {
@@ -14,34 +13,7 @@ pub(super) struct EffectStack {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PendingEffect {
     source: ObjectId,
-    text: PendingText,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) enum PendingText {
-    Played(Vec<Effect<Vec<ObjectId>>>),
-    Triggered(Vec<Effect<NoTarget>>),
-}
-
-impl PendingText {
-    fn len(&self) -> usize {
-        match self {
-            PendingText::Played(effects) => effects.len(),
-            PendingText::Triggered(effects) => effects.len(),
-        }
-    }
-}
-
-impl From<Vec<Effect<Vec<ObjectId>>>> for PendingText {
-    fn from(effects: Vec<Effect<Vec<ObjectId>>>) -> Self {
-        PendingText::Played(effects)
-    }
-}
-
-impl From<Vec<Effect<NoTarget>>> for PendingText {
-    fn from(effects: Vec<Effect<NoTarget>>) -> Self {
-        PendingText::Triggered(effects)
-    }
+    effects: Vec<Effect<Vec<ObjectId>>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -51,45 +23,29 @@ struct ResolvingEffect {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(super) enum NextEffect {
-    Played {
-        source: ObjectId,
-        effect: Effect<Vec<ObjectId>>,
-    },
-    Triggered {
-        source: ObjectId,
-        effect: Effect<NoTarget>,
-    },
+pub(super) struct NextEffect {
+    pub(super) source: ObjectId,
+    pub(super) effect: Effect<Vec<ObjectId>>,
 }
 
 impl ResolvingEffect {
     fn next_effect(&mut self) -> Option<NextEffect> {
-        let source = self.pending.source;
-        let next = match &self.pending.text {
-            PendingText::Played(effects) => NextEffect::Played {
-                source,
-                effect: effects.get(self.idx)?.clone(),
-            },
-            PendingText::Triggered(effects) => NextEffect::Triggered {
-                source,
-                effect: effects.get(self.idx)?.clone(),
-            },
-        };
+        let effect = self.pending.effects.get(self.idx)?.clone();
         self.idx += 1;
-        Some(next)
+        Some(NextEffect {
+            source: self.pending.source,
+            effect,
+        })
     }
 
     fn is_done(&self) -> bool {
-        self.pending.text.len() <= self.idx
+        self.pending.effects.len() <= self.idx
     }
 }
 
 impl EffectStack {
-    pub(super) fn push(&mut self, source: ObjectId, text: impl Into<PendingText>) {
-        self.pending.push(PendingEffect {
-            source,
-            text: text.into(),
-        });
+    pub(super) fn push(&mut self, source: ObjectId, effects: Vec<Effect<Vec<ObjectId>>>) {
+        self.pending.push(PendingEffect { source, effects });
     }
 
     /// Takes the newest pending effect off the stack to resolve it. Does nothing while another
@@ -140,15 +96,15 @@ mod tests {
         std::array::from_fn(|_| objects.insert(SPARK, PlayerId::new(0)))
     }
 
-    fn draw(amount: u8) -> Effect<NoTarget> {
+    fn draw(amount: u8) -> Effect<Vec<ObjectId>> {
         Effect::Draw {
             selector: PlayerSelector::Owner,
             amount: EffectAmount::Static(amount),
         }
     }
 
-    fn next(source: ObjectId, effect: Effect<NoTarget>) -> Option<NextEffect> {
-        Some(NextEffect::Triggered { source, effect })
+    fn next(source: ObjectId, effect: Effect<Vec<ObjectId>>) -> Option<NextEffect> {
+        Some(NextEffect { source, effect })
     }
 
     #[test]
@@ -177,26 +133,6 @@ mod tests {
         ];
 
         assert_eq!(steps, [next(source, draw(1)), next(source, draw(2)), None]);
-    }
-
-    #[test]
-    fn a_played_cards_effects_are_handed_out_as_played_text() {
-        let [source] = sources();
-        let draw = Effect::<Vec<ObjectId>>::Draw {
-            selector: PlayerSelector::Owner,
-            amount: EffectAmount::Static(1),
-        };
-        let mut stack = EffectStack::default();
-        stack.push(source, vec![draw.clone()]);
-        stack.start_next();
-
-        assert_eq!(
-            stack.next_effect(),
-            Some(NextEffect::Played {
-                source,
-                effect: draw
-            }),
-        );
     }
 
     #[test]

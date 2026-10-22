@@ -11,7 +11,17 @@ use crate::zones::Zones;
 
 pub(super) struct MatchedTrigger {
     pub(super) source: ObjectId,
-    pub(super) effects: Vec<Effect<NoTarget>>,
+    pub(super) effects: Vec<Effect<Vec<ObjectId>>>,
+}
+
+impl MatchedTrigger {
+    fn new(source: ObjectId, effects: Vec<Effect<NoTarget>>) -> Self {
+        let effects = effects
+            .into_iter()
+            .map(|effect| effect.map_targeted(|no_target| match no_target {}))
+            .collect();
+        Self { source, effects }
+    }
 }
 
 pub(super) fn matched_triggers(cards: CardsRef, event: &Event) -> Vec<MatchedTrigger> {
@@ -24,10 +34,7 @@ pub(super) fn matched_triggers(cards: CardsRef, event: &Event) -> Vec<MatchedTri
         } in triggers(cards, object_id)
         {
             if fulfill_trigger_pattern(cards, player_id, object_id, pattern, event) {
-                matched.push(MatchedTrigger {
-                    source: object_id,
-                    effects,
-                });
+                matched.push(MatchedTrigger::new(object_id, effects));
             }
         }
     }
@@ -38,10 +45,7 @@ pub(super) fn death_rattles(cards: CardsRef, object_id: ObjectId) -> Vec<Matched
     triggers(cards, object_id)
         .into_iter()
         .filter(|t| matches!(t.def.pattern, TriggerPattern::Died(TriggerSubject::Itself)))
-        .map(|t| MatchedTrigger {
-            source: object_id,
-            effects: t.def.effects,
-        })
+        .map(|t| MatchedTrigger::new(object_id, t.def.effects))
         .collect()
 }
 
