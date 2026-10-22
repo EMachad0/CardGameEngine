@@ -1,6 +1,6 @@
 # Card text is validated, then assumed
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 Blocked by: 11
@@ -44,3 +44,7 @@ later step will do has to know that step's rule."
 
 - Each fact a validator checks reaches the code that relies on it as a type, not as an `expect`.
 - The checks pass, and the PR justifies every behavior change.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/62
