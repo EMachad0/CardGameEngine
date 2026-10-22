@@ -140,9 +140,9 @@ mod tests {
         let mut zones = Zones::new([(hero, vec![card, other])]);
         zones.draw(player);
         let mut input = PlayerInput::default();
-        let targeting = started_targeting(&mut input, player, other);
+        let awaiting_targeting = started_targeting(&mut input, player, other);
 
-        playable_without_mana_check(&zones, player, card).with_targeting(targeting);
+        playable_without_mana_check(&zones, player, card).with_targeting(awaiting_targeting);
     }
 
     #[test]
@@ -155,8 +155,8 @@ mod tests {
         let mut zones = Zones::new([(hero, vec![card]), (other_hero, Vec::new())]);
         zones.draw(player);
         let mut input = PlayerInput::default();
-        let targeting = started_targeting(&mut input, other, card);
+        let awaiting_targeting = started_targeting(&mut input, other, card);
 
-        playable_without_mana_check(&zones, player, card).with_targeting(targeting);
+        playable_without_mana_check(&zones, player, card).with_targeting(awaiting_targeting);
     }
 }
