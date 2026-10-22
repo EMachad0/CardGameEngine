@@ -21,6 +21,8 @@ impl Binder {
     }
 
     pub(crate) fn get(&self, def_id: DefId) -> &ValidCardDef {
-        self.defs.get(&def_id).expect("card def not found")
+        self.defs
+            .get(&def_id)
+            .expect("a binder should be built with a definition for every def id")
     }
 }

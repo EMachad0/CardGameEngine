@@ -19,7 +19,7 @@ impl SelectorTarget for DeclaredTarget {
     fn targeted(self, player_input: &PlayerInput, source: ObjectId) -> Vec<ObjectId> {
         player_input
             .targeted(source, self.target_id())
-            .expect("Target not fulfilled")
+            .expect("a card that declares targets should be played from its targeting")
             .to_vec()
     }
 }
