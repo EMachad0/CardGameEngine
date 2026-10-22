@@ -30,7 +30,7 @@ pub struct PlayerView {
     pub deck_size: usize,
     /// Left to right.
     pub board: Vec<BoardCard>,
-    /// A pending Forage's options, in reveal order. Empty if none is pending.
+    /// The options of this player's picking, in reveal order. Empty unless they are picking.
     pub revealed: Vec<RevealedCard>,
     /// The card in targeting and what it has targeted so far. `None` if not targeting.
     pub targeting: Option<TargetingView>,

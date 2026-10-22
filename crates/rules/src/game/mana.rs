@@ -22,7 +22,10 @@ impl Mana {
     }
 
     pub(super) fn pay(&mut self, cost: u8) {
-        self.current -= cost;
+        self.current = self
+            .current
+            .checked_sub(cost)
+            .expect("mana found to cover a cost should cover it until paid");
     }
 
     pub(super) fn refill(&mut self) {
@@ -87,6 +90,15 @@ mod tests {
         mana.refill();
 
         assert!(mana.can_pay(2), "2 mana pays a cost of 2");
+    }
+
+    #[test]
+    #[should_panic(expected = "mana found to cover a cost should cover it until paid")]
+    fn mana_cannot_pay_more_than_it_has() {
+        let mut mana = Mana::default();
+        mana.refill();
+
+        mana.pay(2);
     }
 
     #[test]

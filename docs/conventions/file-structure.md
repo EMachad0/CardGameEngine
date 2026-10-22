@@ -214,10 +214,11 @@ write to their data in between makes them false.
   other write to their data, up to the write it makes itself. Such a value belongs to the owner of
   that data and offers only the writes the check permits.
 - When no value keeps the check's facts true up to the write, the write asks again the question
-  its precondition rests on. Only a bug can make the answer false there, so the write fails on the
-  spot. Refusing in its return type would make every caller handle a case that can't happen. A
-  failure that a reachable state or another system can cause isn't a bug, so the write refuses it
-  in its return type.
+  its precondition rests on. That question stays at the write it guards, even after other writes,
+  since the check before the first write already answered it. Only a bug can make the answer false
+  there, so the write fails on the spot. Refusing in its return type would make every caller handle
+  a case that can't happen. A failure that a reachable state or another system can cause isn't a
+  bug, so the write refuses it in its return type.
 - A command whose input no type and no earlier check covers checks the input itself, so the check
   sits in one place instead of an assumption in every caller. If a reachable state or another
   system can send a wrong input, the command refuses it in its return type. If only a bug in a

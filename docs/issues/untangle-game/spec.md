@@ -6,8 +6,9 @@
 file of `game` reads its fields and most of them write them, so no decision is hidden from the
 others. Apply `docs/conventions/file-structure.md` to it. Each ticket takes one decision out of
 the tangle, behind the boundary the doc calls for. When ticket 10 merges, `game/mod.rs` holds only
-`mod` declarations. Tickets 11 and 12 then carry two checks' results forward as types. Ticket 13
-gives `Game`'s data the boundary ticket 10 couldn't.
+`mod` declarations. Tickets 11 and 12 then carry two checks' results forward as types. Ticket 14
+sorts player input by decision, and ticket 13 gives `Game`'s data the boundary ticket 10
+couldn't.
 
 A ticket describes a problem: what is wrong, where the code shows it, and which rule of the doc it
 breaks. It doesn't give the fix. The shape is yours, within the doc. Every ticket is a refactor,
@@ -61,7 +62,8 @@ reviewing it.
 | 10 | `game-leaf` | 09 |
 | 11 | `legal-actions` | 10 |
 | 12 | `card-text` | 11 |
-| 13 | `game-data` | 12, and the Mourner fix |
+| 14 | `player-input` | 12 |
+| 13 | `game-data` | 14, and the Mourner fix |
 
 The card game course fixes `docs/issues/dying-mourner-hears-older-death.md`. Ticket 13 starts once
 that file is gone from main.

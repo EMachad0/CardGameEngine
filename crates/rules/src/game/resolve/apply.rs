@@ -1,12 +1,12 @@
 //! The mutation half of `Game::apply`. It runs an action and resolves any card
 //! the action plays.
 //!
-//! `apply` checks legality once, and nothing after its check re-checks it.
+//! `apply` checks legality once, then runs the legal action the check built.
 
 use crate::action::{Action, IllegalAction};
-use crate::cards::object::ObjectId;
-use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::NextEffect;
+use crate::game::legal_actions::LegalAction;
+use crate::game::player_input::WasAwaitingPicking;
 use crate::game::reporting::Report;
 use crate::game::state::Game;
 use crate::ids::PlayerId;
@@ -27,60 +27,55 @@ impl Game {
         action: Action,
         obs: &mut impl Observer,
     ) -> Result<(), ApplyError> {
-        if !self.legal_actions(player_id).contains(&action) {
-            Err(ApplyError::IllegalAction(IllegalAction::new(
+        let Some(legal_action) = self.legal_action(player_id, action) else {
+            return Err(ApplyError::IllegalAction(IllegalAction::new(
                 player_id, action,
-            )))
-        } else {
-            self.apply_action(player_id, action, obs);
-            self.drain_effect_queue(obs);
-            Ok(())
-        }
+            )));
+        };
+        self.apply_action(legal_action, obs);
+        self.drain_effect_queue(obs);
+        Ok(())
     }
 
-    fn apply_action(&mut self, player_id: PlayerId, action: Action, obs: &mut impl Observer) {
-        match action {
-            Action::Play { object_id } => {
-                if let Some(targeting) = self.player_input.targeting(player_id) {
-                    let target_ids = CardsRef::new(self)
-                        .card_def(targeting.object_id())
-                        .targets
-                        .iter()
-                        .map(|t| t.id)
-                        .collect::<Vec<_>>();
-                    self.player_input.commit_targeting(player_id, &target_ids);
-                }
-
-                self.play(player_id, object_id, obs);
+    fn apply_action(&mut self, legal_action: LegalAction, obs: &mut impl Observer) {
+        match legal_action {
+            LegalAction::Play(playable) => {
+                self.play(playable, obs);
             }
-            Action::Pick { object_id } => {
-                self.pick(player_id, object_id, obs);
+            LegalAction::Pick(awaiting_picking) => {
+                self.pick(awaiting_picking, obs);
                 obs.checkpoint(Views::new(self));
             }
-            Action::EndTurn => {
+            LegalAction::EndTurn => {
                 self.end_turn(obs);
                 obs.checkpoint(Views::new(self));
             }
-            Action::StartTargeting { object_id } => {
-                self.player_input.start_targeting(player_id, object_id);
+            LegalAction::StartTargeting {
+                object_id,
+                awaiting_nothing,
+            } => {
+                self.player_input
+                    .start_targeting(awaiting_nothing, object_id);
                 obs.checkpoint(Views::new(self));
             }
-            Action::Target {
+            LegalAction::Target {
+                awaiting_targeting,
                 target_id,
                 object_id,
             } => {
-                self.player_input.target(player_id, object_id, target_id);
+                self.player_input
+                    .target(awaiting_targeting, object_id, target_id);
                 obs.checkpoint(Views::new(self));
             }
-            Action::Cancel { .. } => {
-                self.player_input.cancel(player_id);
+            LegalAction::Cancel(awaiting_targeting) => {
+                self.player_input.cancel(awaiting_targeting);
                 obs.checkpoint(Views::new(self));
             }
         };
     }
 
-    fn pick(&mut self, player_id: PlayerId, object_id: ObjectId, obs: &mut impl Observer) {
-        self.player_input.pick(player_id, object_id);
+    fn pick(&mut self, awaiting_picking: WasAwaitingPicking, obs: &mut impl Observer) {
+        let (player_id, object_id) = self.player_input.pick(awaiting_picking);
 
         let report = Report::Picked {
             player_id,

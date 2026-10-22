@@ -210,7 +210,7 @@ fn forage_reveals_the_top_two_cards_of_the_deck() {
 }
 
 #[test]
-fn a_pending_forage_offers_nothing_but_picks() {
+fn a_forages_picking_offers_nothing_but_picks() {
     let game = forage_revealing_recruit_and_captain();
     let [p0, p1] = players(&game);
 
@@ -242,7 +242,7 @@ fn the_unpicked_card_goes_to_the_bottom_of_the_deck() {
 }
 
 #[test]
-fn picking_ends_the_pending_forage() {
+fn a_pick_ends_the_forages_picking() {
     let mut game = forage_revealing_recruit_and_captain();
     let [p0, _] = players(&game);
 

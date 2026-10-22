@@ -6,6 +6,7 @@ use crate::cards::definition::DefId;
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::EffectStack;
+use crate::game::legal_actions::LegalAction;
 use crate::game::player::Player;
 use crate::game::player_input::PlayerInput;
 use crate::game::resolve::aftermath::standings::Standings;
@@ -51,12 +52,17 @@ impl Game {
     }
 
     pub fn legal_actions(&self, player_id: PlayerId) -> Vec<Action> {
-        legal_actions::legal_actions(
-            CardsRef::new(self),
-            &self.standings,
-            &self.player_input,
-            self.get_player(player_id),
-        )
+        self.list_legal_actions(player_id)
+            .iter()
+            .map(Action::from)
+            .collect()
+    }
+
+    /// `None` unless `legal_actions(player_id)` lists `action`.
+    pub(super) fn legal_action(&self, player_id: PlayerId, action: Action) -> Option<LegalAction> {
+        self.list_legal_actions(player_id)
+            .into_iter()
+            .find(|legal| Action::from(legal) == action)
     }
 
     pub fn view(&self, viewer: PlayerId) -> View {
@@ -113,7 +119,7 @@ impl Game {
         self.get_player(player_id).mana.current()
     }
 
-    /// The cards a pending Forage revealed. Empty if nothing is pending.
+    /// The options of the player's picking. Empty unless they are picking.
     pub fn revealed(&self, player_id: PlayerId) -> &[ObjectId] {
         self.player_input.revealed(player_id)
     }
@@ -124,6 +130,15 @@ impl Game {
 
     pub fn players(&self) -> Vec<PlayerId> {
         self.players.iter().map(|p| p.id).collect()
+    }
+
+    fn list_legal_actions(&self, player_id: PlayerId) -> Vec<LegalAction> {
+        legal_actions::legal_actions(
+            CardsRef::new(self),
+            &self.standings,
+            &self.player_input,
+            self.get_player(player_id),
+        )
     }
 
     fn get_player(&self, player_id: PlayerId) -> &Player {
