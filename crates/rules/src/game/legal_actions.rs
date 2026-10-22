@@ -79,7 +79,7 @@ pub(super) fn legal_actions(
                     continue;
                 };
 
-                match cards.card_def(object_id).targets.is_empty() {
+                match cards.card_def(object_id).targets().next().is_none() {
                     true => {
                         actions.push(LegalAction::Play(playable));
                     }

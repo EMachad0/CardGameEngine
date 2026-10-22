@@ -1,56 +1,18 @@
 use crate::cards::definition::CardDef;
 use crate::cards::sequences::trigger_sequences;
 use crate::effect::{Effect, PickId};
-use crate::target::{DeclaredTarget, TargetId};
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub(super) enum CardDefError {
-    #[error("Target {0:?} not found")]
-    TargetNotFound(TargetId),
     #[error("Pick {0:?} resolved with no reveal before it")]
     PickNotFound(PickId),
     #[error("Pick {0:?} revealed and never resolved")]
     PickNotResolved(PickId),
 }
 
-/// The card with its play effects' targets declared. Fails on an undeclared target before
-/// checking the picks.
-pub(super) fn parse(def: CardDef<TargetId>) -> Result<CardDef<DeclaredTarget>, CardDefError> {
-    let CardDef {
-        name,
-        kind,
-        mana_cost,
-        modifier_effects,
-        play_effects,
-        triggers,
-        targets,
-    } = def;
-    let play_effects = play_effects
-        .into_iter()
-        .map(|effect| {
-            effect.try_map_targeted(|target_id| {
-                targets
-                    .declared(target_id)
-                    .ok_or(CardDefError::TargetNotFound(target_id))
-            })
-        })
-        .collect::<Result<_, _>>()?;
-    let def = CardDef {
-        name,
-        kind,
-        mana_cost,
-        modifier_effects,
-        play_effects,
-        triggers,
-        targets,
-    };
-    validate_picks(&def)?;
-    Ok(def)
-}
-
 /// Rejects a card whose effect sequences, triggers included, resolve a pick with no `Reveal`
 /// before it, or reveal cards they never resolve.
-fn validate_picks<T>(def: &CardDef<T>) -> Result<(), CardDefError> {
+pub(super) fn validate(def: &CardDef) -> Result<(), CardDefError> {
     validate_pick_order(&def.play_effects)?;
     for sequence in trigger_sequences(def) {
         validate_pick_order(sequence)?;
@@ -95,69 +57,19 @@ mod tests {
     use crate::cards::binder::sets::base::static_card_definition::*;
     use crate::cards::definition::{CardKindDef, CharacterSelector, TriggerDef};
     use crate::cards::modifier::ModifierEffect;
-    use crate::target::Targets;
 
-    fn validate(def: CardDef<TargetId>) -> Result<(), CardDefError> {
-        parse(def).map(drop)
-    }
-
-    fn built_in_card(def_id: DefId) -> CardDef<TargetId> {
+    fn built_in_card(def_id: DefId) -> CardDef {
         base::definitions()
             .into_iter()
             .find_map(|(id, def)| (id == def_id).then_some(def))
             .unwrap()
     }
 
-    #[test]
-    fn each_play_effect_holds_the_target_declared_for_its_id() {
-        let shove = parse(built_in_card(SHOVE)).unwrap();
-
-        let targeted = shove
-            .play_effects
-            .iter()
-            .map(|effect| match effect {
-                Effect::Damage {
-                    selector: CharacterSelector::Targeted(target),
-                    ..
-                } => target.id(),
-                _ => panic!("each of Shove's effects must damage a targeted character"),
-            })
-            .collect::<Vec<_>>();
-        assert_eq!(targeted, [TargetId(0), TargetId(1)]);
-    }
-
-    #[test]
-    fn an_effect_naming_an_undeclared_target_is_not_found() {
-        let mut ping = built_in_card(PING);
-        ping.targets = Targets::default();
-
-        assert_eq!(
-            validate(ping),
-            Err(CardDefError::TargetNotFound(TargetId(0)))
-        );
-    }
-
-    fn replace_friendly_auras(def: &mut CardDef<TargetId>, auras: Vec<ModifierEffect>) {
+    fn replace_friendly_auras(def: &mut CardDef, auras: Vec<ModifierEffect>) {
         let CardKindDef::Minion(minion) = &mut def.kind else {
             panic!("the card must be a minion");
         };
         minion.friendly_aura_effects = auras;
-    }
-
-    #[test]
-    fn a_buff_in_play_effects_may_target_whom_it_grants_a_trigger_to() {
-        let death_rattle = built_in_card(HOARDER).triggers[0].clone();
-        let mut ping = built_in_card(PING);
-        ping.play_effects.push(Effect::Buff {
-            selector: CharacterSelector::Targeted(TargetId(0)),
-            effect: ModifierEffect::GrantTrigger(death_rattle),
-        });
-
-        assert_eq!(
-            validate(ping),
-            Ok(()),
-            "the buff's own selector resolves during play, where its target is named"
-        );
     }
 
     fn hoarder_trigger_with_an_unresolved_pick() -> TriggerDef {
@@ -171,7 +83,10 @@ mod tests {
         let mut forage = built_in_card(FORAGE);
         forage.play_effects.remove(0);
 
-        assert_eq!(validate(forage), Err(CardDefError::PickNotFound(PickId(0))));
+        assert_eq!(
+            validate(&forage),
+            Err(CardDefError::PickNotFound(PickId(0)))
+        );
     }
 
     #[test]
@@ -180,7 +95,7 @@ mod tests {
         forage.play_effects.swap(0, 1);
 
         assert_eq!(
-            validate(forage),
+            validate(&forage),
             Err(CardDefError::PickNotFound(PickId(0))),
             "resolving first would find no pick to move"
         );
@@ -192,7 +107,7 @@ mod tests {
         forage.play_effects.truncate(1);
 
         assert_eq!(
-            validate(forage),
+            validate(&forage),
             Err(CardDefError::PickNotResolved(PickId(0))),
             "the revealed cards would be left in no zone"
         );
@@ -204,7 +119,7 @@ mod tests {
         hoarder.triggers[0].effects.truncate(1);
 
         assert_eq!(
-            validate(hoarder),
+            validate(&hoarder),
             Err(CardDefError::PickNotResolved(PickId(0)))
         );
     }
@@ -220,7 +135,7 @@ mod tests {
         );
 
         assert_eq!(
-            validate(banner),
+            validate(&banner),
             Err(CardDefError::PickNotResolved(PickId(0)))
         );
     }
@@ -234,7 +149,7 @@ mod tests {
         });
 
         assert_eq!(
-            validate(drummer),
+            validate(&drummer),
             Err(CardDefError::PickNotResolved(PickId(0)))
         );
     }

@@ -6,11 +6,9 @@ use crate::cards::binder::store::Binder;
 use crate::cards::definition::CardDef;
 use crate::cards::filter::CharacterFilter;
 use crate::cards::object::{ObjectBag, ObjectId};
-use crate::effect::Effect;
 use crate::game::state::Game;
 use crate::history::History;
 use crate::ids::PlayerId;
-use crate::target::DeclaredTarget;
 use crate::turn::TurnOrder;
 use crate::zones::Zones;
 
@@ -38,12 +36,8 @@ impl<'g> CardsRef<'g> {
         self.objects.get(object_id).def_id
     }
 
-    pub(super) fn card_def(&self, object_id: ObjectId) -> &'g CardDef<DeclaredTarget> {
+    pub(super) fn card_def(&self, object_id: ObjectId) -> &'g CardDef {
         self.binder.get(self.def_id(object_id))
-    }
-
-    pub(super) fn play_effects(&self, object_id: ObjectId) -> &'g [Effect<DeclaredTarget>] {
-        &self.card_def(object_id).play_effects
     }
 
     pub(super) fn scan_characters_with_filter(

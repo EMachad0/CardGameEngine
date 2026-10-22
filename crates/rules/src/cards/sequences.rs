@@ -7,7 +7,7 @@ use crate::target::NoTarget;
 
 /// The effects of every trigger on a card, printed or granted through modifier effects, auras,
 /// `Buff` and `AddFriendlyAura`, at any depth. Those its play effects grant come first.
-pub(super) fn trigger_sequences<T>(def: &CardDef<T>) -> Vec<&[Effect<NoTarget>]> {
+pub(super) fn trigger_sequences(def: &CardDef) -> Vec<&[Effect<NoTarget>]> {
     let CardDef {
         name: _,
         kind,
@@ -15,7 +15,6 @@ pub(super) fn trigger_sequences<T>(def: &CardDef<T>) -> Vec<&[Effect<NoTarget>]>
         modifier_effects,
         play_effects,
         triggers,
-        targets: _,
     } = def;
     let mut sequences = Vec::new();
     collect_grants(&mut sequences, play_effects);
@@ -106,10 +105,9 @@ mod tests {
 
     use super::*;
     use crate::cards::definition::{CharacterSelector, PlayerSelector};
-    use crate::target::{TargetId, Targets};
     use crate::trigger::{TriggerPattern, TriggerSubject};
 
-    fn spell() -> CardDef<TargetId> {
+    fn spell() -> CardDef {
         CardDef {
             name: "Spell".to_string(),
             kind: CardKindDef::Spell(SpellCardDef),
@@ -117,14 +115,13 @@ mod tests {
             modifier_effects: Vec::new(),
             play_effects: Vec::new(),
             triggers: Vec::new(),
-            targets: Targets::default(),
         }
     }
 
     fn minion(
         friendly_aura_effects: Vec<ModifierEffect>,
         hostile_aura_effects: Vec<ModifierEffect>,
-    ) -> CardDef<TargetId> {
+    ) -> CardDef {
         CardDef {
             kind: CardKindDef::Minion(MinionCardDef {
                 attack: 1,

@@ -58,8 +58,7 @@ fn first_unsatisfied_target<'g>(
     let object_id = targeting.object_id();
     cards
         .card_def(object_id)
-        .targets
-        .iter()
+        .targets()
         .find(|&(target_id, target)| {
             let count = targeting.targeted_for(target_id).count() as u8;
             !target

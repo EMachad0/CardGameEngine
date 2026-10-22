@@ -10,10 +10,10 @@ use crate::cards::filter::{CardFilter, CharacterFilter, Side};
 use crate::cards::modifier::ModifierEffect;
 use crate::effect::{Effect, EffectAmount, PickId, ZoneMove};
 use crate::history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter};
-use crate::target::{AmountBound, CharacterTarget, TargetId, Targets};
+use crate::target::{AmountBound, CharacterTarget};
 use crate::trigger::{TriggerPattern, TriggerSubject};
 
-impl Default for CardDef<TargetId> {
+impl Default for CardDef {
     fn default() -> Self {
         Self {
             name: Default::default(),
@@ -22,7 +22,6 @@ impl Default for CardDef<TargetId> {
             modifier_effects: Default::default(),
             play_effects: Default::default(),
             triggers: Default::default(),
-            targets: Default::default(),
         }
     }
 }
@@ -74,7 +73,7 @@ def_ids!(
     DRUMMER = "base.drummer.v0",
 );
 
-pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef<TargetId>)> {
+pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
     vec![
         (
             SPARK,
@@ -275,18 +274,17 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef<TargetId>)>
                 kind: CardKindDef::Spell(SpellCardDef),
                 mana_cost: 1,
                 play_effects: vec![Effect::Damage {
-                    selector: CharacterSelector::Targeted(TargetId(0)),
+                    selector: CharacterSelector::Targeted(CharacterTarget {
+                        filter: CharacterFilter {
+                            kind: EnumSet::only(CharacterKind::Minion),
+                            side: EnumSet::all(),
+                        },
+                        count: 1.into(),
+                        bound: AmountBound::Exactly,
+                        different: true,
+                    }),
                     amount: 2.into(),
                 }],
-                targets: Targets::from(vec![CharacterTarget {
-                    filter: CharacterFilter {
-                        kind: EnumSet::only(CharacterKind::Minion),
-                        side: EnumSet::all(),
-                    },
-                    count: 1.into(),
-                    bound: AmountBound::Exactly,
-                    different: true,
-                }]),
                 ..Default::default()
             },
         ),
@@ -298,34 +296,30 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef<TargetId>)>
                 mana_cost: 1,
                 play_effects: vec![
                     Effect::Damage {
-                        selector: CharacterSelector::Targeted(TargetId(0)),
+                        selector: CharacterSelector::Targeted(CharacterTarget {
+                            filter: CharacterFilter {
+                                kind: EnumSet::only(CharacterKind::Minion),
+                                side: EnumSet::all(),
+                            },
+                            count: 1.into(),
+                            bound: AmountBound::Exactly,
+                            different: true,
+                        }),
                         amount: 1.into(),
                     },
                     Effect::Damage {
-                        selector: CharacterSelector::Targeted(TargetId(1)),
+                        selector: CharacterSelector::Targeted(CharacterTarget {
+                            filter: CharacterFilter {
+                                kind: EnumSet::only(CharacterKind::Minion),
+                                side: EnumSet::only(Side::Friendly),
+                            },
+                            count: 1.into(),
+                            bound: AmountBound::Exactly,
+                            different: true,
+                        }),
                         amount: 1.into(),
                     },
                 ],
-                targets: Targets::from(vec![
-                    CharacterTarget {
-                        filter: CharacterFilter {
-                            kind: EnumSet::only(CharacterKind::Minion),
-                            side: EnumSet::all(),
-                        },
-                        count: 1.into(),
-                        bound: AmountBound::Exactly,
-                        different: true,
-                    },
-                    CharacterTarget {
-                        filter: CharacterFilter {
-                            kind: EnumSet::only(CharacterKind::Minion),
-                            side: EnumSet::only(Side::Friendly),
-                        },
-                        count: 1.into(),
-                        bound: AmountBound::Exactly,
-                        different: true,
-                    },
-                ]),
                 ..Default::default()
             },
         ),
@@ -336,18 +330,17 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef<TargetId>)>
                 kind: CardKindDef::Spell(SpellCardDef),
                 mana_cost: 2,
                 play_effects: vec![Effect::Damage {
-                    selector: CharacterSelector::Targeted(TargetId(0)),
+                    selector: CharacterSelector::Targeted(CharacterTarget {
+                        filter: CharacterFilter {
+                            kind: EnumSet::only(CharacterKind::Minion),
+                            side: EnumSet::all(),
+                        },
+                        count: 2.into(),
+                        bound: AmountBound::Exactly,
+                        different: true,
+                    }),
                     amount: 1.into(),
                 }],
-                targets: Targets::from(vec![CharacterTarget {
-                    filter: CharacterFilter {
-                        kind: EnumSet::only(CharacterKind::Minion),
-                        side: EnumSet::all(),
-                    },
-                    count: 2.into(),
-                    bound: AmountBound::Exactly,
-                    different: true,
-                }]),
                 ..Default::default()
             },
         ),
@@ -359,34 +352,30 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef<TargetId>)>
                 mana_cost: 2,
                 play_effects: vec![
                     Effect::Damage {
-                        selector: CharacterSelector::Targeted(TargetId(0)),
+                        selector: CharacterSelector::Targeted(CharacterTarget {
+                            filter: CharacterFilter {
+                                kind: EnumSet::only(CharacterKind::Minion),
+                                side: EnumSet::all(),
+                            },
+                            count: 1.into(),
+                            bound: AmountBound::Exactly,
+                            different: true,
+                        }),
                         amount: 1.into(),
                     },
                     Effect::Damage {
-                        selector: CharacterSelector::Targeted(TargetId(1)),
+                        selector: CharacterSelector::Targeted(CharacterTarget {
+                            filter: CharacterFilter {
+                                kind: EnumSet::only(CharacterKind::Hero),
+                                side: EnumSet::all(),
+                            },
+                            count: 1.into(),
+                            bound: AmountBound::Exactly,
+                            different: true,
+                        }),
                         amount: 1.into(),
                     },
                 ],
-                targets: Targets::from(vec![
-                    CharacterTarget {
-                        filter: CharacterFilter {
-                            kind: EnumSet::only(CharacterKind::Minion),
-                            side: EnumSet::all(),
-                        },
-                        count: 1.into(),
-                        bound: AmountBound::Exactly,
-                        different: true,
-                    },
-                    CharacterTarget {
-                        filter: CharacterFilter {
-                            kind: EnumSet::only(CharacterKind::Hero),
-                            side: EnumSet::all(),
-                        },
-                        count: 1.into(),
-                        bound: AmountBound::Exactly,
-                        different: true,
-                    },
-                ]),
                 ..Default::default()
             },
         ),

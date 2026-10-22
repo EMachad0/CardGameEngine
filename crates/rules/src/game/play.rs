@@ -75,22 +75,16 @@ impl Game {
             .map(|awaiting_targeting| self.player_input.commit_targeting(awaiting_targeting));
         let object_id = self.zones.take_from_hand(card);
 
-        let play_effects = CardsRef::new(self).play_effects(object_id);
+        let play_effects = CardsRef::new(self)
+            .card_def(object_id)
+            .bind_play_effects(|target_id| {
+                targeting
+                    .as_ref()
+                    .expect("a card that declares targets should be played from its targeting")
+                    .targeted_for(target_id)
+                    .collect()
+            });
         if !play_effects.is_empty() {
-            let play_effects = play_effects
-                .iter()
-                .map(|effect| {
-                    effect.clone().map_targeted(|target| {
-                        targeting
-                            .as_ref()
-                            .expect(
-                                "a card that declares targets should be played from its targeting",
-                            )
-                            .targeted_for(target.id())
-                            .collect::<Vec<_>>()
-                    })
-                })
-                .collect::<Vec<_>>();
             self.effect_stack.push(object_id, play_effects);
         }
 
