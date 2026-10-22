@@ -15,39 +15,33 @@ pub(super) struct EffectStack {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PendingEffect {
     source: ObjectId,
-    effects: Effects,
+    effects: PendingText,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) enum Effects {
+pub(super) enum PendingText {
     Played(Vec<Effect<DeclaredTarget, NoTarget>>),
     Triggered(Vec<Effect<NoTarget>>),
 }
 
-impl Effects {
+impl PendingText {
     fn len(&self) -> usize {
         match self {
-            Effects::Played(effects) => effects.len(),
-            Effects::Triggered(effects) => effects.len(),
+            PendingText::Played(effects) => effects.len(),
+            PendingText::Triggered(effects) => effects.len(),
         }
     }
 }
 
-impl From<Vec<Effect<DeclaredTarget, NoTarget>>> for Effects {
+impl From<Vec<Effect<DeclaredTarget, NoTarget>>> for PendingText {
     fn from(effects: Vec<Effect<DeclaredTarget, NoTarget>>) -> Self {
-        Effects::Played(effects)
+        PendingText::Played(effects)
     }
 }
 
-impl From<Vec<Effect<NoTarget>>> for Effects {
-    fn from(effects: Vec<Effect<NoTarget>>) -> Self {
-        Effects::Triggered(effects)
-    }
-}
-
-impl From<EffectSequence<NoTarget>> for Effects {
+impl From<EffectSequence<NoTarget>> for PendingText {
     fn from(EffectSequence(effects): EffectSequence<NoTarget>) -> Self {
-        Effects::Triggered(effects)
+        PendingText::Triggered(effects)
     }
 }
 
@@ -73,11 +67,11 @@ impl ResolvingEffect {
     fn next_effect(&mut self) -> Option<NextEffect> {
         let source = self.pending.source;
         let next = match &self.pending.effects {
-            Effects::Played(effects) => NextEffect::Played {
+            PendingText::Played(effects) => NextEffect::Played {
                 source,
                 effect: effects.get(self.idx)?.clone(),
             },
-            Effects::Triggered(effects) => NextEffect::Triggered {
+            PendingText::Triggered(effects) => NextEffect::Triggered {
                 source,
                 effect: effects.get(self.idx)?.clone(),
             },
@@ -92,7 +86,7 @@ impl ResolvingEffect {
 }
 
 impl EffectStack {
-    pub(super) fn push(&mut self, source: ObjectId, effects: impl Into<Effects>) {
+    pub(super) fn push(&mut self, source: ObjectId, effects: impl Into<PendingText>) {
         self.pending.push(PendingEffect {
             source,
             effects: effects.into(),
@@ -147,15 +141,15 @@ mod tests {
         std::array::from_fn(|_| objects.insert(SPARK, PlayerId::new(0)))
     }
 
-    fn draw(amount: u8) -> Effect<NoTarget> {
+    fn draw(amount: u8) -> Effect<DeclaredTarget, NoTarget> {
         Effect::Draw {
             selector: PlayerSelector::Owner,
             amount: EffectAmount::Static(amount),
         }
     }
 
-    fn next(source: ObjectId, effect: Effect<NoTarget>) -> Option<NextEffect> {
-        Some(NextEffect::Triggered { source, effect })
+    fn next(source: ObjectId, effect: Effect<DeclaredTarget, NoTarget>) -> Option<NextEffect> {
+        Some(NextEffect::Played { source, effect })
     }
 
     #[test]
@@ -184,6 +178,23 @@ mod tests {
         ];
 
         assert_eq!(steps, [next(source, draw(1)), next(source, draw(2)), None]);
+    }
+
+    #[test]
+    fn a_matched_triggers_effects_are_handed_out_as_trigger_text() {
+        let [source] = sources();
+        let effect = Effect::Draw {
+            selector: PlayerSelector::Owner,
+            amount: EffectAmount::Static(1),
+        };
+        let mut stack = EffectStack::default();
+        stack.push(source, EffectSequence(vec![effect.clone()]));
+        stack.start_next();
+
+        assert_eq!(
+            stack.next_effect(),
+            Some(NextEffect::Triggered { source, effect }),
+        );
     }
 
     #[test]

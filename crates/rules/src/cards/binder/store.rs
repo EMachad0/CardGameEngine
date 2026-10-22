@@ -23,6 +23,6 @@ impl Binder {
     pub(crate) fn get(&self, def_id: DefId) -> &ValidCardDef {
         self.defs
             .get(&def_id)
-            .expect("a def id should name a card in the binder")
+            .expect("a def id should name a built-in card")
     }
 }

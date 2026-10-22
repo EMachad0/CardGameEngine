@@ -59,22 +59,22 @@ pub enum Effect<T = TargetId, G = T> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EffectSequence<T = TargetId, G = T>(pub Vec<Effect<T, G>>);
+pub struct EffectSequence<T = TargetId>(pub Vec<Effect<T>>);
 
-impl<T, G> EffectSequence<T, G> {
-    pub fn as_slice(&self) -> &[Effect<T, G>] {
+impl<T> EffectSequence<T> {
+    pub fn as_slice(&self) -> &[Effect<T>] {
         self.0.as_slice()
     }
 }
 
-impl<T, G> Default for EffectSequence<T, G> {
+impl<T> Default for EffectSequence<T> {
     fn default() -> Self {
         Self(Vec::new())
     }
 }
 
-impl<T, G> From<Vec<Effect<T, G>>> for EffectSequence<T, G> {
-    fn from(value: Vec<Effect<T, G>>) -> Self {
+impl<T> From<Vec<Effect<T>>> for EffectSequence<T> {
+    fn from(value: Vec<Effect<T>>) -> Self {
         Self(value)
     }
 }

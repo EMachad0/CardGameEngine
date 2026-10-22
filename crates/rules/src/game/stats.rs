@@ -45,7 +45,7 @@ pub(super) fn minion_attack(cards: CardsRef, card: OnBoard) -> i32 {
         .card_def(object_id)
         .kind()
         .attack()
-        .expect("a card on a board should be a minion");
+        .expect("only minions should be summoned to a board");
     let bonus = modifiers(cards, object_id).attack_bonus(evaluate_for_owner(cards, object_id));
     printed_attack + bonus
 }
@@ -56,7 +56,7 @@ pub(super) fn character_health(cards: CardsRef, character: InPlay) -> i32 {
         .card_def(object_id)
         .kind()
         .health()
-        .expect("a character in play should be a hero or a minion");
+        .expect("only heroes and minions should be put in play");
     let bonus = modifiers(cards, object_id).health_bonus(evaluate_for_owner(cards, object_id));
     printed_health + bonus - cards.objects.get(object_id).damage() as i32
 }

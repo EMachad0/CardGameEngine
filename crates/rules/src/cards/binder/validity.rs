@@ -30,9 +30,8 @@ pub(crate) enum CardDefError {
     PickNotResolved(DefId, PickId),
 }
 
-/// A card definition `parse` found valid. Its targets have distinct ids, and each of its effect
-/// sequences reveals a pick before resolving it and resolves every pick it reveals. Only `parse`
-/// builds one.
+/// A valid card definition. Its targets have distinct ids, and each of its effect sequences
+/// reveals a pick before resolving it and resolves every pick it reveals.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ValidCardDef {
     kind: CardKindDef<NoTarget>,
@@ -70,7 +69,7 @@ impl ValidCardDef {
     }
 }
 
-/// A target that the card holding it declares. Only `parse` builds one, for a play effect.
+/// A target that the card holding it declares.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct DeclaredTarget(TargetId);
 
@@ -154,8 +153,8 @@ fn parse_play_targets(
         .collect()
 }
 
-/// Rejects trigger text that names a target, whether the trigger is printed or granted, at any
-/// depth.
+/// The valid card, from its parsed play effects. Rejects trigger text that names a target, whether
+/// the trigger is printed or granted, at any depth.
 fn parse_card(
     def: &CardDef,
     play_effects: Vec<Effect<DeclaredTarget, TargetId>>,
@@ -624,7 +623,7 @@ mod tests {
     }
 
     #[test]
-    fn printed_triggers_keep_their_order_patterns_and_effects() {
+    fn printed_triggers_are_kept_as_written() {
         let died = TriggerPattern::Died(TriggerSubject::Itself);
         let damaged = TriggerPattern::Damaged(TriggerSubject::Itself);
         let mut defs = base::definitions();
