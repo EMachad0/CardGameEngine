@@ -61,13 +61,36 @@ pub enum Effect<T> {
 impl<T> Effect<T> {
     pub(crate) fn target(&self) -> Option<&T> {
         match self {
-            Effect::Draw { .. }
-            | Effect::Reveal { .. }
-            | Effect::Summon { .. }
-            | Effect::ResolvePick { .. } => None,
-            Effect::Damage { selector, .. }
-            | Effect::Buff { selector, .. }
-            | Effect::AddFriendlyAura { selector, .. } => selector.target(),
+            Effect::Draw {
+                selector: _,
+                amount: _,
+            }
+            | Effect::Reveal {
+                pick_id: _,
+                selector: _,
+                amount: _,
+            }
+            | Effect::Summon {
+                selector: _,
+                def_id: _,
+            }
+            | Effect::ResolvePick {
+                pick_id: _,
+                picked_move: _,
+                other_move: _,
+            } => None,
+            Effect::Damage {
+                selector,
+                amount: _,
+            }
+            | Effect::Buff {
+                selector,
+                effect: _,
+            }
+            | Effect::AddFriendlyAura {
+                selector,
+                effect: _,
+            } => selector.target(),
         }
     }
 
