@@ -11,7 +11,7 @@ use crate::target::TargetId;
 
 /// What the game awaits from one player, as read.
 #[derive(Debug, Clone, Copy)]
-pub(super) enum Awaiting<'a> {
+pub(in crate::game) enum Awaiting<'a> {
     Nothing(AwaitsNothing<'a>),
     Picking(AwaitsPicking<'a>),
     Targeting(AwaitsTargeting<'a>),
@@ -20,7 +20,7 @@ pub(super) enum Awaiting<'a> {
 /// That the game awaits nothing from a player. It borrows the player input, so nothing is awaited
 /// from them while this lives.
 #[derive(Debug, Clone, Copy)]
-pub(super) struct AwaitsNothing<'a> {
+pub(in crate::game) struct AwaitsNothing<'a> {
     player_id: PlayerId,
     input: PhantomData<&'a PlayerInput>,
 }
@@ -28,14 +28,14 @@ pub(super) struct AwaitsNothing<'a> {
 /// That the game awaits a player's picking. It borrows the player input, so the picking stays open
 /// while this lives.
 #[derive(Debug, Clone, Copy)]
-pub(super) struct AwaitsPicking<'a> {
+pub(in crate::game) struct AwaitsPicking<'a> {
     player_id: PlayerId,
     picking: &'a Picking,
 }
 
 impl<'a> AwaitsPicking<'a> {
     /// In reveal order.
-    pub(super) fn options(self) -> impl Iterator<Item = WasAwaitingPicking> + 'a {
+    pub(in crate::game) fn options(self) -> impl Iterator<Item = WasAwaitingPicking> + 'a {
         let player_id = self.player_id;
         self.picking
             .options
@@ -50,20 +50,20 @@ impl<'a> AwaitsPicking<'a> {
 /// That the game awaits a player's targeting. It borrows the player input, so the targeting stays
 /// open while this lives.
 #[derive(Debug, Clone, Copy)]
-pub(super) struct AwaitsTargeting<'a> {
+pub(in crate::game) struct AwaitsTargeting<'a> {
     player_id: PlayerId,
     targeting: &'a Targeting,
 }
 
 impl<'a> AwaitsTargeting<'a> {
-    pub(super) fn targeting(self) -> &'a Targeting {
+    pub(in crate::game) fn targeting(self) -> &'a Targeting {
         self.targeting
     }
 }
 
 /// That the game was awaiting nothing from a player. It holds no borrow, so the game may have
 /// started waiting on them since.
-pub(super) struct WasAwaitingNothing {
+pub(in crate::game) struct WasAwaitingNothing {
     player_id: PlayerId,
 }
 
@@ -77,7 +77,7 @@ impl From<AwaitsNothing<'_>> for WasAwaitingNothing {
 
 /// That the game was awaiting a player's targeting of a card. It holds no borrow, so the targeting
 /// may have closed since.
-pub(super) struct WasAwaitingTargeting {
+pub(in crate::game) struct WasAwaitingTargeting {
     player_id: PlayerId,
     object_id: ObjectId,
 }
@@ -92,26 +92,26 @@ impl From<AwaitsTargeting<'_>> for WasAwaitingTargeting {
 }
 
 impl WasAwaitingTargeting {
-    pub(super) fn player_id(&self) -> PlayerId {
+    pub(in crate::game) fn player_id(&self) -> PlayerId {
         self.player_id
     }
 
     /// The card being targeted for.
-    pub(super) fn object_id(&self) -> ObjectId {
+    pub(in crate::game) fn object_id(&self) -> ObjectId {
         self.object_id
     }
 }
 
 /// That the game was awaiting a player's picking, and one of its options. It holds no borrow, so
 /// the picking may have closed since.
-pub(super) struct WasAwaitingPicking {
+pub(in crate::game) struct WasAwaitingPicking {
     player_id: PlayerId,
     object_id: ObjectId,
 }
 
 impl WasAwaitingPicking {
     /// The option.
-    pub(super) fn object_id(&self) -> ObjectId {
+    pub(in crate::game) fn object_id(&self) -> ObjectId {
         self.object_id
     }
 }
@@ -124,31 +124,34 @@ struct Picking {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct Targeting {
+pub(in crate::game) struct Targeting {
     object_id: ObjectId,
     targeted: Vec<(ObjectId, TargetId)>,
 }
 
 impl Targeting {
     /// With nothing targeted yet.
-    pub(super) fn new(object_id: ObjectId) -> Self {
+    pub(in crate::game) fn new(object_id: ObjectId) -> Self {
         Self {
             object_id,
             targeted: Vec::new(),
         }
     }
 
-    pub(super) fn object_id(&self) -> ObjectId {
+    pub(in crate::game) fn object_id(&self) -> ObjectId {
         self.object_id
     }
 
     /// In the order targeted.
-    pub(super) fn targeted_objects(&self) -> impl Iterator<Item = ObjectId> {
+    pub(in crate::game) fn targeted_objects(&self) -> impl Iterator<Item = ObjectId> {
         self.targeted.iter().map(|&(object_id, _)| object_id)
     }
 
     /// In the order targeted.
-    pub(super) fn targeted_for(&self, target_id: TargetId) -> impl Iterator<Item = ObjectId> {
+    pub(in crate::game) fn targeted_for(
+        &self,
+        target_id: TargetId,
+    ) -> impl Iterator<Item = ObjectId> {
         self.targeted
             .iter()
             .filter(move |&&(_, id)| id == target_id)
@@ -156,14 +159,14 @@ impl Targeting {
     }
 
     /// Whether `object_id` is targeted for any target.
-    pub(super) fn is_targeted(&self, object_id: ObjectId) -> bool {
+    pub(in crate::game) fn is_targeted(&self, object_id: ObjectId) -> bool {
         self.targeted_objects()
             .any(|targeted| targeted == object_id)
     }
 
     /// Runs `f` on this targeting with `object_id` also targeted for `target_id`, then takes it
     /// back out.
-    pub(super) fn with_targeted<R>(
+    pub(in crate::game) fn with_targeted<R>(
         &mut self,
         object_id: ObjectId,
         target_id: TargetId,
@@ -177,7 +180,7 @@ impl Targeting {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct Picks {
+pub(in crate::game) struct Picks {
     source: ObjectId,
     pick_id: PickId,
     picked: Vec<ObjectId>,
@@ -185,18 +188,18 @@ pub(super) struct Picks {
 }
 
 impl Picks {
-    pub(super) fn picked(&self) -> &[ObjectId] {
+    pub(in crate::game) fn picked(&self) -> &[ObjectId] {
         &self.picked
     }
 
     /// The options not picked, in reveal order.
-    pub(super) fn others(&self) -> &[ObjectId] {
+    pub(in crate::game) fn others(&self) -> &[ObjectId] {
         &self.others
     }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub(super) struct PlayerInput {
+pub(in crate::game) struct PlayerInput {
     /// Sorted by player. No player is in both this and `pickings`.
     targetings: Vec<(PlayerId, Targeting)>,
     /// Sorted by player.
@@ -206,7 +209,7 @@ pub(super) struct PlayerInput {
 }
 
 impl PlayerInput {
-    pub(super) fn awaiting(&self, player_id: PlayerId) -> Awaiting<'_> {
+    pub(in crate::game) fn awaiting(&self, player_id: PlayerId) -> Awaiting<'_> {
         self.awaiting_targeting(player_id)
             .map(Awaiting::Targeting)
             .or_else(|| self.awaiting_picking(player_id).map(Awaiting::Picking))
@@ -216,32 +219,32 @@ impl PlayerInput {
             }))
     }
 
-    pub(super) fn any_awaiting(&self) -> bool {
+    pub(in crate::game) fn any_awaiting(&self) -> bool {
         !self.targetings.is_empty() || !self.pickings.is_empty()
     }
 
     /// A picking's options. Empty while awaiting anything else, or nothing.
-    pub(super) fn revealed(&self, player_id: PlayerId) -> &[ObjectId] {
+    pub(in crate::game) fn revealed(&self, player_id: PlayerId) -> &[ObjectId] {
         self.awaiting_picking(player_id)
             .map_or(&[], |awaits_picking| {
                 awaits_picking.picking.options.as_slice()
             })
     }
 
-    pub(super) fn targeting(&self, player_id: PlayerId) -> Option<&Targeting> {
+    pub(in crate::game) fn targeting(&self, player_id: PlayerId) -> Option<&Targeting> {
         self.awaiting_targeting(player_id)
             .map(AwaitsTargeting::targeting)
     }
 
     /// The first picks `source` stored for `pick_id`.
-    pub(super) fn picks(&self, source: ObjectId, pick_id: PickId) -> Option<&Picks> {
+    pub(in crate::game) fn picks(&self, source: ObjectId, pick_id: PickId) -> Option<&Picks> {
         self.picks
             .iter()
             .find(|entry| entry.source == source && entry.pick_id == pick_id)
     }
 
     /// With nothing targeted yet. Panics if the game awaits anything from the player.
-    pub(super) fn start_targeting(
+    pub(in crate::game) fn start_targeting(
         &mut self,
         awaiting_nothing: WasAwaitingNothing,
         object_id: ObjectId,
@@ -258,7 +261,7 @@ impl PlayerInput {
     }
 
     /// Panics unless the player is still targeting the card.
-    pub(super) fn target(
+    pub(in crate::game) fn target(
         &mut self,
         awaiting_targeting: WasAwaitingTargeting,
         object_id: ObjectId,
@@ -269,13 +272,13 @@ impl PlayerInput {
     }
 
     /// Panics unless the player is still targeting the card.
-    pub(super) fn cancel(&mut self, awaiting_targeting: WasAwaitingTargeting) {
+    pub(in crate::game) fn cancel(&mut self, awaiting_targeting: WasAwaitingTargeting) {
         let idx = self.targeting_idx(&awaiting_targeting);
         self.targetings.remove(idx);
     }
 
     /// Closes the targeting and returns it. Panics unless the player is still targeting the card.
-    pub(super) fn commit_targeting(
+    pub(in crate::game) fn commit_targeting(
         &mut self,
         awaiting_targeting: WasAwaitingTargeting,
     ) -> Targeting {
@@ -287,7 +290,7 @@ impl PlayerInput {
 
     /// Starts the player's picking from `options`, replacing any targeting they have. With no
     /// options, starts nothing and returns `false`. Panics if they are picking.
-    pub(super) fn start_picking(
+    pub(in crate::game) fn start_picking(
         &mut self,
         player_id: PlayerId,
         source: ObjectId,
@@ -315,7 +318,10 @@ impl PlayerInput {
     /// Closes the option's picking, stores the option as picked and the other options as
     /// the others, and returns the player who picked and the picked object. Panics unless the
     /// card is still among the picking's options.
-    pub(super) fn pick(&mut self, awaiting_picking: WasAwaitingPicking) -> (PlayerId, ObjectId) {
+    pub(in crate::game) fn pick(
+        &mut self,
+        awaiting_picking: WasAwaitingPicking,
+    ) -> (PlayerId, ObjectId) {
         let found = entry_idx(&self.pickings, awaiting_picking.player_id)
             .ok()
             .and_then(|picking_idx| {

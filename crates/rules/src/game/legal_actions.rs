@@ -3,7 +3,7 @@ use crate::cards::object::ObjectId;
 use crate::game::cards_ref::CardsRef;
 use crate::game::play::WasPlayable;
 use crate::game::player::Player;
-use crate::game::player_input::{
+use crate::game::player_input::awaiting::{
     Awaiting, PlayerInput, WasAwaitingNothing, WasAwaitingPicking, WasAwaitingTargeting,
 };
 use crate::game::resolve::aftermath::standings::Standings;

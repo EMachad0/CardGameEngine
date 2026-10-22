@@ -8,7 +8,7 @@ use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::EffectStack;
 use crate::game::legal_actions::LegalAction;
 use crate::game::player::Player;
-use crate::game::player_input::PlayerInput;
+use crate::game::player_input::awaiting::PlayerInput;
 use crate::game::resolve::aftermath::standings::Standings;
 use crate::game::resolve::apply::ApplyError;
 use crate::game::view::{self, View};

@@ -4,7 +4,7 @@ use crate::cards::object::ObjectId;
 use crate::event::Event;
 use crate::game::cards_ref::CardsRef;
 use crate::game::mana::Mana;
-use crate::game::player_input::WasAwaitingTargeting;
+use crate::game::player_input::awaiting::WasAwaitingTargeting;
 use crate::game::reporting::Report;
 use crate::game::state::Game;
 use crate::game::stats::cost;
@@ -106,7 +106,7 @@ mod tests {
     use super::*;
     use crate::cards::binder::sets::base::static_card_definition::SPARK;
     use crate::cards::object::ObjectBag;
-    use crate::game::player_input::{Awaiting, PlayerInput, WasAwaitingNothing};
+    use crate::game::player_input::awaiting::{Awaiting, PlayerInput, WasAwaitingNothing};
     use crate::zones::Zones;
 
     fn started_targeting(
