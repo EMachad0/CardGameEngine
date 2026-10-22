@@ -1,4 +1,7 @@
 {
   "$schema": "https://pi.dev/schemas/settings.schema.json",
-  "defaultThinkingLevel": "medium"
+  "defaultThinkingLevel": "medium",
+  "subagents": {
+    "defaultThinking": "medium"
+  }
 }
