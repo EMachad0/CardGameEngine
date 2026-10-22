@@ -5,7 +5,6 @@ use crate::cards::definition::{CharacterSelector, PlayerSelector, PlayerSelector
 use crate::cards::filter::fulfill_side_filter;
 use crate::cards::object::ObjectId;
 use crate::game::cards_ref::CardsRef;
-use crate::game::player_input::PlayerInput;
 use crate::ids::PlayerId;
 use crate::rng::Rng;
 
@@ -46,10 +45,9 @@ pub(super) fn select_players(
 
 pub(super) fn select_characters(
     cards: CardsRef,
-    player_input: &PlayerInput,
     owner: PlayerId,
     source: ObjectId,
-    selector: &CharacterSelector,
+    selector: &CharacterSelector<Vec<ObjectId>>,
 ) -> Selection<ObjectId> {
     Selection(match selector {
         CharacterSelector::All(filter) => {
@@ -60,12 +58,7 @@ pub(super) fn select_characters(
         CharacterSelector::Random(filter) => {
             Values::OneOf(cards.scan_characters_with_filter(owner, filter))
         }
-        CharacterSelector::Targeted(target_id) => Values::Each(
-            player_input
-                .targeted(source, *target_id)
-                .expect("Target not fulfilled")
-                .to_vec(),
-        ),
+        CharacterSelector::Targeted(targeted) => Values::Each(targeted.clone()),
     })
 }
 

@@ -2,29 +2,18 @@ use enumset::EnumSet;
 
 use crate::cards::filter::{CharacterFilter, Side};
 use crate::cards::modifier::ModifierEffect;
-use crate::effect::EffectSequence;
-use crate::target::{CharacterTarget, TargetId};
+use crate::effect::Effect;
+use crate::target::{CharacterTarget, NoTarget, TargetId};
 use crate::trigger::TriggerPattern;
-
-#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
-pub struct DefId(&'static str);
-
-impl DefId {
-    pub(super) const fn new(id: &'static str) -> Self {
-        Self(id)
-    }
-}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CardDef {
-    pub id: DefId,
     pub name: String,
     pub kind: CardKindDef,
     pub mana_cost: u8,
     pub modifier_effects: Vec<ModifierEffect>,
-    pub play_effects: EffectSequence,
+    pub play_effects: Vec<Effect<CharacterTarget>>,
     pub triggers: Vec<TriggerDef>,
-    pub targets: Vec<CharacterTarget>,
 }
 
 impl CardDef {
@@ -108,8 +97,33 @@ impl CardDef {
         }
     }
 
-    pub(crate) fn target(&self, id: TargetId) -> Option<&CharacterTarget> {
-        self.targets.iter().find(|target| target.id == id)
+    /// Declared by the play effects' `Targeted` selectors, in effect order. Each one's id is its
+    /// place among them.
+    pub(crate) fn targets(&self) -> impl Iterator<Item = (TargetId, &CharacterTarget)> {
+        self.play_effects
+            .iter()
+            .filter_map(Effect::target)
+            .enumerate()
+            .map(|(idx, target)| (TargetId(idx), target))
+    }
+
+    /// The play effects, each target replaced by what `targeted` gives for its id.
+    pub(crate) fn bind_play_effects<U>(
+        &self,
+        mut targeted: impl FnMut(TargetId) -> U,
+    ) -> Vec<Effect<U>> {
+        let mut target_ids = self.targets().map(|(target_id, _)| target_id);
+        self.play_effects
+            .iter()
+            .map(|effect| {
+                effect.clone().map_targeted(|_| {
+                    let target_id = target_ids.next().expect(
+                        "every target the play effects declare should be listed by `targets`",
+                    );
+                    targeted(target_id)
+                })
+            })
+            .collect()
     }
 }
 
@@ -163,7 +177,7 @@ pub struct HeroCardDef {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TriggerDef {
     pub pattern: TriggerPattern,
-    pub effects: EffectSequence,
+    pub effects: Vec<Effect<NoTarget>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -187,10 +201,164 @@ pub enum PlayerSelector {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CharacterSelector {
+pub enum CharacterSelector<T> {
     All(CharacterFilter),
     Itself,
     OwnerHero,
     Random(CharacterFilter),
-    Targeted(TargetId),
+    Targeted(T),
+}
+
+impl<T> CharacterSelector<T> {
+    pub(crate) fn target(&self) -> Option<&T> {
+        match self {
+            CharacterSelector::All(_)
+            | CharacterSelector::Itself
+            | CharacterSelector::OwnerHero
+            | CharacterSelector::Random(_) => None,
+            CharacterSelector::Targeted(target) => Some(target),
+        }
+    }
+
+    pub(crate) fn map_targeted<U>(self, f: impl FnOnce(T) -> U) -> CharacterSelector<U> {
+        match self {
+            CharacterSelector::All(filter) => CharacterSelector::All(filter),
+            CharacterSelector::Itself => CharacterSelector::Itself,
+            CharacterSelector::OwnerHero => CharacterSelector::OwnerHero,
+            CharacterSelector::Random(filter) => CharacterSelector::Random(filter),
+            CharacterSelector::Targeted(target) => CharacterSelector::Targeted(f(target)),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+
+    use super::*;
+    use crate::target::AmountBound;
+
+    fn character_target(count: u8) -> CharacterTarget {
+        CharacterTarget {
+            filter: CharacterFilter::all(),
+            count: count.into(),
+            bound: AmountBound::Exactly,
+            different: true,
+        }
+    }
+
+    fn card(play_effects: Vec<Effect<CharacterTarget>>) -> CardDef {
+        CardDef {
+            play_effects,
+            ..Default::default()
+        }
+    }
+
+    fn draw<T>() -> Effect<T> {
+        Effect::Draw {
+            selector: PlayerSelector::Owner,
+            amount: 1.into(),
+        }
+    }
+
+    fn damage<T>(selector: CharacterSelector<T>) -> Effect<T> {
+        Effect::Damage {
+            selector,
+            amount: 1.into(),
+        }
+    }
+
+    fn untargeted_effects<T>() -> Vec<Effect<T>> {
+        vec![draw(), damage(CharacterSelector::Itself)]
+    }
+
+    fn two_targets_among_untargeted_effects<T>(first: T, second: T) -> Vec<Effect<T>> {
+        vec![
+            draw(),
+            damage(CharacterSelector::Targeted(first)),
+            damage(CharacterSelector::Itself),
+            damage(CharacterSelector::Targeted(second)),
+        ]
+    }
+
+    fn untargeted_selectors() -> [CharacterSelector<usize>; 4] {
+        [
+            CharacterSelector::All(CharacterFilter::all()),
+            CharacterSelector::Itself,
+            CharacterSelector::OwnerHero,
+            CharacterSelector::Random(CharacterFilter::all()),
+        ]
+    }
+
+    #[test]
+    fn each_targets_id_is_its_place_among_the_play_effects_targeted_selectors() {
+        let (first, second) = (character_target(1), character_target(2));
+        let def = card(two_targets_among_untargeted_effects(first, second));
+
+        assert_eq!(
+            def.targets().collect::<Vec<_>>(),
+            [(TargetId(0), &first), (TargetId(1), &second)],
+        );
+    }
+
+    #[test]
+    fn play_effects_with_no_targeted_selector_declare_no_target() {
+        let def = card(untargeted_effects());
+
+        assert_eq!(def.targets().next(), None);
+    }
+
+    #[test]
+    fn binding_replaces_each_target_with_what_is_given_for_its_id() {
+        let def = card(two_targets_among_untargeted_effects(
+            character_target(1),
+            character_target(2),
+        ));
+
+        assert_eq!(
+            def.bind_play_effects(|target_id| target_id),
+            two_targets_among_untargeted_effects(TargetId(0), TargetId(1)),
+        );
+    }
+
+    #[test]
+    fn binding_play_effects_that_declare_no_target_asks_for_nothing() {
+        let def = card(untargeted_effects());
+        let mut asked = Vec::new();
+
+        def.bind_play_effects(|target_id| asked.push(target_id));
+
+        assert_eq!(asked, Vec::<TargetId>::new());
+    }
+
+    #[test]
+    fn a_targeted_selector_gives_what_it_holds() {
+        assert_eq!(CharacterSelector::Targeted(3).target(), Some(&3));
+    }
+
+    #[test]
+    fn a_selector_that_targets_nothing_has_no_target() {
+        assert_eq!(
+            untargeted_selectors()
+                .each_ref()
+                .map(CharacterSelector::target),
+            [None; 4]
+        );
+    }
+
+    #[test]
+    fn mapping_a_targeted_selector_maps_what_it_holds() {
+        assert_eq!(
+            CharacterSelector::Targeted(3).map_targeted(|n| n * 2),
+            CharacterSelector::Targeted(6),
+        );
+    }
+
+    #[test]
+    fn mapping_keeps_a_selector_that_targets_nothing() {
+        assert_eq!(
+            untargeted_selectors().map(|selector| selector.map_targeted(|n| n * 2)),
+            untargeted_selectors(),
+        );
+    }
 }

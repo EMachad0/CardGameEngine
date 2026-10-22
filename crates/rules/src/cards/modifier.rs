@@ -101,7 +101,7 @@ mod tests {
     fn trigger(pattern: TriggerPattern) -> TriggerDef {
         TriggerDef {
             pattern,
-            effects: Vec::new().into(),
+            effects: Vec::new(),
         }
     }
 

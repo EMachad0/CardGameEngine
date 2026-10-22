@@ -20,18 +20,18 @@ pub(super) fn may_stop_targeting(cards: CardsRef, targeting: &Targeting) -> bool
 /// The objects the player may target next, for the first target they may not stop at. Each one
 /// leaves the targeting finishable.
 pub(super) fn next_candidates(cards: CardsRef, targeting: &Targeting) -> Vec<(TargetId, ObjectId)> {
-    let Some(target) = first_unsatisfied_target(cards, targeting) else {
+    let Some((target_id, target)) = first_unsatisfied_target(cards, targeting) else {
         return Vec::new();
     };
-    finishing_candidates(cards, target, &mut targeting.clone())
-        .map(|object_id| (target.id, object_id))
+    finishing_candidates(cards, target_id, target, &mut targeting.clone())
+        .map(|object_id| (target_id, object_id))
         .collect()
 }
 
 fn can_finish_targeting(cards: CardsRef, targeting: &mut Targeting) -> bool {
     match first_unsatisfied_target(cards, targeting) {
         None => true,
-        Some(target) => finishing_candidates(cards, target, targeting)
+        Some((target_id, target)) => finishing_candidates(cards, target_id, target, targeting)
             .next()
             .is_some(),
     }
@@ -39,12 +39,13 @@ fn can_finish_targeting(cards: CardsRef, targeting: &mut Targeting) -> bool {
 
 fn finishing_candidates<'a>(
     cards: CardsRef<'a>,
+    target_id: TargetId,
     target: &'a CharacterTarget,
     targeting: &'a mut Targeting,
 ) -> impl Iterator<Item = ObjectId> + 'a {
-    let candidates = untargeted_matches(cards, target, targeting);
+    let candidates = untargeted_matches(cards, target_id, target, targeting);
     candidates.into_iter().filter(move |&candidate| {
-        targeting.with_targeted(candidate, target.id, |targeting| {
+        targeting.with_targeted(candidate, target_id, |targeting| {
             can_finish_targeting(cards, targeting)
         })
     })
@@ -53,23 +54,27 @@ fn finishing_candidates<'a>(
 fn first_unsatisfied_target<'g>(
     cards: CardsRef<'g>,
     targeting: &Targeting,
-) -> Option<&'g CharacterTarget> {
+) -> Option<(TargetId, &'g CharacterTarget)> {
     let object_id = targeting.object_id();
-    cards.card_def(object_id).targets.iter().find(|target| {
-        let count = targeting.targeted_for(target.id).count() as u8;
-        !target
-            .bound
-            .is_satisfied(count, required_count(cards, object_id, target))
-    })
+    cards
+        .card_def(object_id)
+        .targets()
+        .find(|&(target_id, target)| {
+            let count = targeting.targeted_for(target_id).count() as u8;
+            !target
+                .bound
+                .is_satisfied(count, required_count(cards, object_id, target))
+        })
 }
 
 fn untargeted_matches(
     cards: CardsRef,
+    target_id: TargetId,
     target: &CharacterTarget,
     targeting: &Targeting,
 ) -> Vec<ObjectId> {
     let object_id = targeting.object_id();
-    let objects_for_target = targeting.targeted_for(target.id).collect::<Vec<_>>();
+    let objects_for_target = targeting.targeted_for(target_id).collect::<Vec<_>>();
     let count = objects_for_target.len() as u8;
     if target
         .bound

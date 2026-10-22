@@ -2,37 +2,22 @@ use crate::cards::definition::{
     CardDef, CardKindDef, HeroCardDef, MinionCardDef, SpellCardDef, TriggerDef,
 };
 use crate::cards::modifier::ModifierEffect;
-use crate::effect::{Effect, EffectSequence};
+use crate::effect::Effect;
+use crate::target::NoTarget;
 
-/// Whether a sequence is the card's play effects or a trigger's effects.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum SequenceOrigin {
-    Play,
-    Trigger,
-}
-
-/// One effect sequence on a card, and where it comes from.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct Sequence<'a> {
-    pub(super) origin: SequenceOrigin,
-    pub(super) effects: &'a [Effect],
-}
-
-/// Every effect sequence on a card, play effects first. Triggers granted through modifier effects,
-/// auras, `Buff` and `AddFriendlyAura` count too, at any depth.
-pub(super) fn effect_sequences(def: &CardDef) -> Vec<Sequence<'_>> {
+/// The effects of every trigger on a card, printed or granted through modifier effects, auras,
+/// `Buff` and `AddFriendlyAura`, at any depth. Those its play effects grant come first.
+pub(super) fn trigger_sequences(def: &CardDef) -> Vec<&[Effect<NoTarget>]> {
     let CardDef {
-        id: _,
         name: _,
         kind,
         mana_cost: _,
         modifier_effects,
         play_effects,
         triggers,
-        targets: _,
     } = def;
     let mut sequences = Vec::new();
-    collect_sequence(&mut sequences, SequenceOrigin::Play, play_effects);
+    collect_grants(&mut sequences, play_effects);
     for trigger in triggers {
         collect_trigger(&mut sequences, trigger);
     }
@@ -56,13 +41,7 @@ pub(super) fn effect_sequences(def: &CardDef) -> Vec<Sequence<'_>> {
     sequences
 }
 
-fn collect_sequence<'a>(
-    sequences: &mut Vec<Sequence<'a>>,
-    origin: SequenceOrigin,
-    sequence: &'a EffectSequence,
-) {
-    let EffectSequence(effects) = sequence;
-    sequences.push(Sequence { origin, effects });
+fn collect_grants<'a, T>(sequences: &mut Vec<&'a [Effect<NoTarget>]>, effects: &'a [Effect<T>]) {
     for effect in effects {
         match effect {
             Effect::Draw {
@@ -99,7 +78,10 @@ fn collect_sequence<'a>(
     }
 }
 
-fn collect_modifier<'a>(sequences: &mut Vec<Sequence<'a>>, modifier_effect: &'a ModifierEffect) {
+fn collect_modifier<'a>(
+    sequences: &mut Vec<&'a [Effect<NoTarget>]>,
+    modifier_effect: &'a ModifierEffect,
+) {
     match modifier_effect {
         ModifierEffect::BuffAtk { amount: _ }
         | ModifierEffect::BuffHealth { amount: _ }
@@ -108,12 +90,13 @@ fn collect_modifier<'a>(sequences: &mut Vec<Sequence<'a>>, modifier_effect: &'a 
     }
 }
 
-fn collect_trigger<'a>(sequences: &mut Vec<Sequence<'a>>, trigger: &'a TriggerDef) {
+fn collect_trigger<'a>(sequences: &mut Vec<&'a [Effect<NoTarget>]>, trigger: &'a TriggerDef) {
     let TriggerDef {
         pattern: _,
         effects,
     } = trigger;
-    collect_sequence(sequences, SequenceOrigin::Trigger, effects);
+    sequences.push(effects);
+    collect_grants(sequences, effects);
 }
 
 #[cfg(test)]
@@ -121,19 +104,17 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::cards::definition::{CharacterSelector, DefId, PlayerSelector};
+    use crate::cards::definition::{CharacterSelector, PlayerSelector};
     use crate::trigger::{TriggerPattern, TriggerSubject};
 
     fn spell() -> CardDef {
         CardDef {
-            id: DefId::new("test.spell.v0"),
             name: "Spell".to_string(),
             kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 1,
             modifier_effects: Vec::new(),
-            play_effects: EffectSequence::default(),
+            play_effects: Vec::new(),
             triggers: Vec::new(),
-            targets: Vec::new(),
         }
     }
 
@@ -152,46 +133,32 @@ mod tests {
         }
     }
 
-    fn draw() -> Effect {
+    fn draw<T>() -> Effect<T> {
         Effect::Draw {
             selector: PlayerSelector::Owner,
             amount: 1.into(),
         }
     }
 
-    fn trigger(effects: Vec<Effect>) -> TriggerDef {
+    fn trigger(effects: Vec<Effect<NoTarget>>) -> TriggerDef {
         TriggerDef {
             pattern: TriggerPattern::Died(TriggerSubject::Itself),
-            effects: EffectSequence(effects),
+            effects,
         }
     }
 
-    fn grant(effects: Vec<Effect>) -> ModifierEffect {
+    fn grant(effects: Vec<Effect<NoTarget>>) -> ModifierEffect {
         ModifierEffect::GrantTrigger(trigger(effects))
     }
 
-    fn played(effects: &[Effect]) -> Sequence<'_> {
-        Sequence {
-            origin: SequenceOrigin::Play,
-            effects,
-        }
-    }
-
-    fn triggered(effects: &[Effect]) -> Sequence<'_> {
-        Sequence {
-            origin: SequenceOrigin::Trigger,
-            effects,
-        }
-    }
-
     #[test]
-    fn play_effects_are_a_play_sequence() {
+    fn play_effects_are_not_a_trigger_sequence() {
         let def = CardDef {
-            play_effects: EffectSequence(vec![draw()]),
+            play_effects: vec![draw()],
             ..spell()
         };
 
-        assert_eq!(effect_sequences(&def), vec![played(&[draw()])]);
+        assert_eq!(trigger_sequences(&def), Vec::<&[Effect<NoTarget>]>::new());
     }
 
     #[test]
@@ -201,10 +168,7 @@ mod tests {
             ..spell()
         };
 
-        assert_eq!(
-            effect_sequences(&def),
-            vec![played(&[]), triggered(&[draw()])]
-        );
+        assert_eq!(trigger_sequences(&def), vec![&[draw()][..]]);
     }
 
     #[test]
@@ -214,30 +178,21 @@ mod tests {
             ..spell()
         };
 
-        assert_eq!(
-            effect_sequences(&def),
-            vec![played(&[]), triggered(&[draw()])]
-        );
+        assert_eq!(trigger_sequences(&def), vec![&[draw()][..]]);
     }
 
     #[test]
     fn a_trigger_granted_by_a_friendly_aura_is_a_trigger_sequence() {
         let def = minion(vec![grant(vec![draw()])], Vec::new());
 
-        assert_eq!(
-            effect_sequences(&def),
-            vec![played(&[]), triggered(&[draw()])]
-        );
+        assert_eq!(trigger_sequences(&def), vec![&[draw()][..]]);
     }
 
     #[test]
     fn a_trigger_granted_by_a_hostile_aura_is_a_trigger_sequence() {
         let def = minion(Vec::new(), vec![grant(vec![draw()])]);
 
-        assert_eq!(
-            effect_sequences(&def),
-            vec![played(&[]), triggered(&[draw()])]
-        );
+        assert_eq!(trigger_sequences(&def), vec![&[draw()][..]]);
     }
 
     #[test]
@@ -247,14 +202,11 @@ mod tests {
             effect: grant(vec![draw()]),
         };
         let def = CardDef {
-            play_effects: EffectSequence(vec![buff.clone()]),
+            play_effects: vec![buff],
             ..spell()
         };
 
-        assert_eq!(
-            effect_sequences(&def),
-            vec![played(&[buff]), triggered(&[draw()])]
-        );
+        assert_eq!(trigger_sequences(&def), vec![&[draw()][..]]);
     }
 
     #[test]
@@ -264,14 +216,11 @@ mod tests {
             effect: grant(vec![draw()]),
         };
         let def = CardDef {
-            play_effects: EffectSequence(vec![aura.clone()]),
+            play_effects: vec![aura],
             ..spell()
         };
 
-        assert_eq!(
-            effect_sequences(&def),
-            vec![played(&[aura]), triggered(&[draw()])]
-        );
+        assert_eq!(trigger_sequences(&def), vec![&[draw()][..]]);
     }
 
     #[test]
@@ -285,10 +234,7 @@ mod tests {
             ..spell()
         };
 
-        assert_eq!(
-            effect_sequences(&def),
-            vec![played(&[]), triggered(&[buff]), triggered(&[draw()])]
-        );
+        assert_eq!(trigger_sequences(&def), vec![&[buff][..], &[draw()][..]]);
     }
 
     #[test]
@@ -299,10 +245,10 @@ mod tests {
         };
         let def = CardDef {
             modifier_effects: vec![ModifierEffect::ReduceManaCost { amount: 1.into() }],
-            play_effects: EffectSequence(vec![buff.clone()]),
+            play_effects: vec![buff],
             ..spell()
         };
 
-        assert_eq!(effect_sequences(&def), vec![played(&[buff])]);
+        assert_eq!(trigger_sequences(&def), Vec::<&[Effect<NoTarget>]>::new());
     }
 }

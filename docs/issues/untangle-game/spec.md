@@ -96,6 +96,7 @@ rounds, and the PR isn't finished before the first.
   what the crate does: events and their order, checkpoints and where they fall among the events,
   RNG draws and their order, the order of trigger listeners and of candidates for a random pick,
   panics, validation results, or the public API. It quotes each hunk it flags.
+- A reviewer that can't run `git` gets the diff and `main`'s version of each changed file as files.
 - Fix every finding you agree with. Undo each behavior change the reviewer flags, or justify it in
   the PR body. Rerun the checks, and run another round. Stop when a round brings no finding
   you'd fix. In the PR body, list each declined finding with your reason.
@@ -137,7 +138,8 @@ A behavior change is allowed when it is well justified. Make none by accident.
 
 The course takes these on later. Keep each as it is, even where your ticket's code touches it.
 
-- The prelude exports `CardDef`, which nothing outside the crate uses.
+- The prelude exports `CardDef`, which nothing outside the crate uses. Ticket 12's rework may
+  change this.
 
 ## Known bugs to leave alone
 

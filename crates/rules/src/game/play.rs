@@ -70,21 +70,21 @@ impl Game {
         let cards = CardsRef::new(self);
         let mana_cost = cost(cards, cards.zones.still_in_hand(&card));
         self.get_player_mut(player_id).mana.pay(mana_cost);
-        if let Some(awaiting_targeting) = awaiting_targeting {
-            let target_ids = CardsRef::new(self)
-                .card_def(card.object_id())
-                .targets
-                .iter()
-                .map(|t| t.id)
-                .collect::<Vec<_>>();
-            self.player_input
-                .commit_targeting(awaiting_targeting, &target_ids);
-        }
+        let targeting = awaiting_targeting
+            .map(|awaiting_targeting| self.player_input.commit_targeting(awaiting_targeting));
         let object_id = self.zones.take_from_hand(card);
 
-        let play_effects = CardsRef::new(self).play_effects(object_id);
+        let play_effects = CardsRef::new(self)
+            .card_def(object_id)
+            .bind_play_effects(|target_id| {
+                targeting
+                    .as_ref()
+                    .expect("a card that declares targets should be played from its targeting")
+                    .targeted_for(target_id)
+                    .collect()
+            });
         if !play_effects.is_empty() {
-            self.effect_stack.push(object_id, play_effects.to_vec());
+            self.effect_stack.push(object_id, play_effects);
         }
 
         let report = Report::Played(Play {

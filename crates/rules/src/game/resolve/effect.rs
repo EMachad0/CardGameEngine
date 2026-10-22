@@ -14,7 +14,7 @@ impl Game {
         &mut self,
         owner: PlayerId,
         source: ObjectId,
-        effect: &Effect,
+        effect: &Effect<Vec<ObjectId>>,
         obs: &mut impl Observer,
     ) {
         match effect {
@@ -60,21 +60,14 @@ impl Game {
             Effect::Damage { selector, amount } => {
                 let cards = CardsRef::new(self);
                 let amount = effect_amount(cards, amount, owner);
-                let selection =
-                    select_characters(cards, &self.player_input, owner, source, selector);
+                let selection = select_characters(cards, owner, source, selector);
                 let targets = selection.resolve(&mut self.rng);
                 for target in targets.into_iter() {
                     self.damage(target, amount, source, obs);
                 }
             }
             Effect::Buff { selector, effect } => {
-                let selection = select_characters(
-                    CardsRef::new(self),
-                    &self.player_input,
-                    owner,
-                    source,
-                    selector,
-                );
+                let selection = select_characters(CardsRef::new(self), owner, source, selector);
                 let targets = selection.resolve(&mut self.rng);
                 for target in targets.into_iter() {
                     let modifier = Modifier {
@@ -85,13 +78,7 @@ impl Game {
                 }
             }
             Effect::AddFriendlyAura { selector, effect } => {
-                let selection = select_characters(
-                    CardsRef::new(self),
-                    &self.player_input,
-                    owner,
-                    source,
-                    selector,
-                );
+                let selection = select_characters(CardsRef::new(self), owner, source, selector);
                 let targets = selection.resolve(&mut self.rng);
                 for target in targets.into_iter() {
                     let modifier = Modifier {

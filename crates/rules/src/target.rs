@@ -29,9 +29,12 @@ impl AmountBound {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TargetId(pub usize);
 
+/// It has no values, so a `Targeted` selector that holds it can't be written.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NoTarget {}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CharacterTarget {
-    pub id: TargetId,
     pub filter: CharacterFilter,
     pub count: EffectAmount,
     pub bound: AmountBound,

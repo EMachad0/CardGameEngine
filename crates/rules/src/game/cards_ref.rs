@@ -1,11 +1,11 @@
 //! The cards of one game, borrowed together for the questions asked about them: what each object
 //! is, and which characters pass a filter.
 
+use crate::cards::binder::def_id::DefId;
 use crate::cards::binder::store::Binder;
-use crate::cards::definition::{CardDef, DefId};
+use crate::cards::definition::CardDef;
 use crate::cards::filter::CharacterFilter;
 use crate::cards::object::{ObjectBag, ObjectId};
-use crate::effect::Effect;
 use crate::game::state::Game;
 use crate::history::History;
 use crate::ids::PlayerId;
@@ -38,10 +38,6 @@ impl<'g> CardsRef<'g> {
 
     pub(super) fn card_def(&self, object_id: ObjectId) -> &'g CardDef {
         self.binder.get(self.def_id(object_id))
-    }
-
-    pub(super) fn play_effects(&self, object_id: ObjectId) -> &'g [Effect] {
-        self.card_def(object_id).play_effects.as_slice()
     }
 
     pub(super) fn scan_characters_with_filter(

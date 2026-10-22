@@ -1,8 +1,9 @@
 //! The crate's public API. Import each item by name, not with a glob.
 
 pub use crate::action::{Action, IllegalAction};
+pub use crate::cards::binder::def_id::DefId;
 pub use crate::cards::binder::sets::base::static_card_definition;
-pub use crate::cards::definition::{CardDef, DefId};
+pub use crate::cards::definition::CardDef;
 pub use crate::cards::object::ObjectId;
 pub use crate::effect::PickId;
 pub use crate::event::Event;
