@@ -283,9 +283,34 @@ up.
   didn't fit, and cut my draft to its contract sentence. Then caught that the section assumes a
   fact can travel fresh from a read to a write, which Rust can't enforce: "we need to be honest
   here and in the doc". Moved the rewrite to session 02h.
-- Edge: borrow mechanics inside a proof's design, what it borrows and that a borrow can't reach
-  into a write. In the #55 review he still asked why the check's proof can't borrow into the
-  write. The rest is recognition plus the rules he stated.
+- 02h opened on his objection that 02g taught a rule that doesn't hold: "I thought we were basing
+  the course on the literate". King writes about immutable Haskell values. 02g's "two ways to keep
+  it true" was my extension, on a Rust claim I never compiled against `legal_actions`' list. He
+  declined teach-skill edits: "I will take more care and bring more counterexamples".
+- His Python and Ruby point (02h): "parse" doesn't hold "when there are no types and we cant share
+  information guarantiying it is not stale, and we can code games just fine". On a frozen `Email`
+  against a `Payment` he got freshness right with the reason, "email is imutable, if the input
+  changed it is not the same email". He said "the step can't run without the check" held in plain
+  Ruby, which needs a type checker, and ruled out one definition for `Payment` because `pay`
+  should check again.
+- Called a second check through one owner function "clearly duplication". I conceded duplicate
+  work with one definition. Likes Meyer ("it explicitely states that the failure is not normal")
+  and "A dead program normally does a lot less damage than a crippled one", but his concern stood:
+  the entry point holds every step's precondition as informal knowledge with low locality.
+- Named both remedies unaided, taking knowledge away (every check before the first write, or
+  rollbacks) and making it formal (a shared borrow can't reach the write; the token). Missed the
+  `&mut` proof I had compiled a few messages before. Quiz right that only the first write may
+  refuse, after answering "when it is the sole writter". Rejected checks at the top of `play` as
+  "still a different module". Then proposed the owner-defined proof himself, a `ManaPayment<'m>`
+  with a private `&mut`, "similar to what OccupiedEntry is", and named its limits unprompted:
+  most languages lack it, and `&mut` may hold more than wanted.
+- Node 4 (02h), 4 of 4 on which steps rely on the check, `end_turn`'s turn "not part of the end
+  turn contract". First wanted tokens on permission steps so `apply` can't forget the check;
+  settled at the dispatch. Raised fallible steps such as an HTTP request, now in the doc, and
+  asked how `_unchecked` ties in, not knowing those are `unsafe`. Proposed the past tense for an
+  owned token's name.
+- Edge: borrow mechanics inside a proof's design showed once in 02h, the missed `&mut` proof,
+  then he designed the owner-defined entry. Probably resolved.
 
 ### Names
 
@@ -391,6 +416,10 @@ up.
   means a borrow, asked for examples removed, and found "a fact nothing writes" unclear until
   shown whose invariant it is. My "a parse, not a check followed by an `expect`" hid a panic,
   which he caught.
+- In 02h he asked for wider Rust research before trusting my reading, removed every example from
+  doc text (`InHand` "would not make sense outside this project"; std types stay), and caught
+  "dispatches" as a term the docs never used. He raises objections in quiz notes; answer them
+  before the next popup.
 
 ## Course plan
 
@@ -420,9 +449,11 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
    settled ones went into `file-structure.md`. #51 and the Mourner fix (#56) have merged. Judging
    PR #55's doc gaps (ticket 11) outside a session showed that "Parse, don't validate" assumes a
    fact can travel fresh from a read to a write, which Rust can't enforce. He moved the section's
-   rewrite to session 02h, and #55 waits for it, with ticket 12, blocked by 11, behind it. #51's
-   struct-of-borrows gaps and those of tickets 12 and 13 wait for session 02i, after 13's review.
-   Order: 02h, #55 reworked, 12, 13, 02i.
+   rewrite to session 02h. Done in 02h: the section rewritten with "Checks before writes" beside
+   it, #55's gaps ruled in the doc and posted on the PR, ticket 11 updated, all in PR #60. #55 is
+   reworked once #60 merges, with ticket 12, blocked by 11, behind it. #51's struct-of-borrows
+   gaps and those of tickets 12 and 13 wait for session 02i, after 13's review. Order: #60, #55
+   reworked, 12, 13, 02i.
    Unused material: `research/02b-pass-and-coordinator/scope.md` (Forge and XMage, the Process
    Manager). Session 02g, its own node: parse, don't validate (Alexis King,
    2019). A check's result carried forward as a type, not an assumption; who can build the proof,
@@ -684,38 +715,13 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   attack on the board. Callers that walk a zone get plain answers, an ID from outside or from
   storage gets one honest check, moves take a plain ID in one command, and stored references keep
   the plain `ObjectId`. "View" is a glossary term (what one player may see) and `game/view.rs`
-  builds them, so the proofs need another name, ticket 08's call.
-- Parse, don't validate, revisited, for session 02h. His call: rephrase the whole section, not
-  patch it. The section assumes a type can carry a fact fresh from the check to the step that
-  uses it. When the check only reads and the step writes the same data, Rust can't: a shared
-  borrow ends before the write, an exclusive borrow can't serve a check that lists many actions
-  (`legal_actions`, ADR 0002), and borrows don't reach one element. An owned value then reaches
-  the write only by convention, since no tool restricts a type to one function. So the write
-  looks the fact up again and fails on the spot on a miss, an `expect` inside the owner (#55's
-  asserts are the same). Parsing still makes three things formal there: no write runs without
-  the check, the check's answer travels so legality keeps one definition, and a miss can only be
-  a bug. It holds with no second check for facts about data nothing writes (an id, ticket 12's
-  validated definitions) and for a read and write under one exclusive borrow (`OccupiedEntry`).
-  Overclaiming today: the intro's "the later steps have nothing left to assume", "Keep each fact
-  true wherever its type can go" (its first option can't reach a write, its second is a
-  convention), and the Rust bullet on proofs that borrow. 02g's settled design, the proof kept
-  inside `apply` and used at the first write to its data, is the assumption that broke. #55's doc
-  gaps and his calls so far:
-  1. Owned tokens holding positions (`HandSlot`, `TargetingSlot`, `PickOption`). He objects:
-     `InHand::slot` strips the borrow, and the position can be wrong while the token lives.
-     `Payment` too: its cost and whether the mana covers it can go stale, and nothing rechecks
-     the cost. `NothingAwaited` carries no data. My proposal, not judged: tokens carry identity
-     only, and the owner's command looks the rest up at the write. A token relies on `ObjectBag`'s
-     invariant that an id always names one card, informal and stable.
-  2. Whether an owner's command is "code that can keep it" under "Don't hand a parsed type to
-     code that can keep it": the agent read it as code that keeps the value past the command,
-     which is right. Answered on the PR.
-  3. When a step relies on the check, his sentence for the rewrite: "A later step relies on the
-     check when, without it, the step could get input its contract rules out."
-  4. Settled: `testing.md` lets a unit test build other types to make its subject's inputs.
-  Teaching material from the review: why the check's proof can't borrow into the write, from five
-  facts (many readers or one writer, `InHand` is a shared borrow, the take is a write, one `&mut`
-  at a time against a list of actions, borrows per field and not per element).
+  builds them, so the proofs need another name, ticket 08's call, within the naming rule in the
+  Rust "Checks before writes" (02h).
+- #55's rework (ticket 11), once PR #60 merges. The comment on #55 lists six problems against
+  "Checks before writes": positions in tokens, `Payment`'s carried cost, `start_targeting`'s
+  permission assert, `Copy` on `NothingAwaited`, names, messages. It asks for a check against both
+  sections after the changes. The audit is `research/02h-parse-dont-validate-revisited/audit-55.md`.
+  `LegalAction`'s open variants stay, since only `apply.rs` can run one.
 - Bevy names changed since 0.17: buffered events are `Message`s, `Event` is for observers, 0.20 is
   current. Use these names in session 03.
 
@@ -739,7 +745,7 @@ graph TD
   ORD["Orders between steps: swap test, order rules (done)"]
   STK["The stack owner (done)"]
   C["Chained keepers, one value of a shared command, emit's parameters (done)"]
-  PDV["Parse, don't validate: proofs as types, and when they go stale (done)"]
+  PDV["Parse, don't validate; checks before writes (done, revised in 02h)"]
   CMD["Commands and whole-state readers: lend, yield, defer, narrow (done)"]
   DOD["Data-oriented design and ECS"]
   P["Ports, anti-corruption layers, contract tests"]
@@ -818,9 +824,9 @@ graph TD
 | 02e | untangle | Untangle `Game` as tickets | done (exercises dropped at his call, since applying settled rules is the agent's part; ten tickets in `docs/issues/untangle-game/` state problems, not shapes, and carry one ruling, matching stays with reporting; one ticket at a time, one to five review rounds; behavior changes allowed when justified, except rules changes and known bugs; no audit; PR #37) |
 | 02f | CMD | Commands and the whole-state readers, PR #51's open question | done (probe 3 of 3 on borrow mechanics; the problem is the readers inside every command, not the number of parameters; six families, checked by three researchers; runtime checks, lend and per-command state machines ruled out; matching per step with forced splits evaluated and accepted; ticket 13 states the problem only; review rounds unlimited) |
 | 02g | PDV | Parse, don't validate: `apply` and `legal_actions`, `ObjectId` by zone | done (probe edge was a proof's reach, he let `apply` skip the check; four nodes, each a rule in "Parse, don't validate", plus a Rust bullet on proofs that borrow; `apply` exercise reached "&mut or owned values" after one question; `ObjectId`: identity in stored IDs, per-zone proofs from the location owner, his first proof borrowed the ID; no audit, findings 33 to 35 and 12 ticketed as 08, 11 and 12, PR #38) |
-| 02h | PDV | Parse, don't validate, revisited: a fact a read learned and a write uses; PR #55's doc gaps | next |
+| 02h | PDV | Parse, don't validate, revisited: a fact a read learned and a write uses; PR #55's doc gaps | done (opened on his objection that 02g taught a rule that doesn't hold; research on Python, Ruby, TS, databases, Rust std and crates, engines and Meyer; facts about the parsed value split from "Checks before writes"; only the first write refuses, an owner-defined `&mut` proof keeps facts fresh, else the write re-asks and panics; he proposed the owner-defined entry; proof names and consumed tokens; #55 audited, comment posted, ticket 11 updated, PR #60) |
 | 02i | review | #51's open doc gaps and those of tickets 12 and 13 | once ticket 13 lands |
-| 03 | DOD | Data-oriented design, ECS organization, the rules core beside Bevy | after 02h |
+| 03 | DOD | Data-oriented design, ECS organization, the rules core beside Bevy | next |
 | 04 | R3, P, T | Ports, anti-corruption layers, contract tests, tests as feedback | |
 | 05 | F | Feature-first, shared code, naming | |
 | 06 | RS, E | Rust layer and enforcement | |
