@@ -14,7 +14,10 @@ pub(crate) struct Binder {
 
 impl Binder {
     pub(crate) fn built_in() -> Result<Self, CardDefError> {
-        let defs = validity::parse(&base::definitions())?;
+        let defs = validity::parse(&base::definitions())?
+            .into_iter()
+            .map(|def| (def.id(), def))
+            .collect();
         Ok(Self {
             defs: Arc::new(defs),
         })

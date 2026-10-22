@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use crate::cards::binder::sets::base::PLACEHOLDER;
 use crate::cards::binder::sets::base::static_card_definition::ALL_DEF_ID;
 use crate::cards::definition::{
@@ -34,6 +32,7 @@ pub(crate) enum CardDefError {
 /// it and resolves every pick it reveals.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ValidCardDef {
+    id: DefId,
     kind: CardKindDef<NoTarget>,
     mana_cost: u8,
     modifier_effects: Vec<ModifierEffect<NoTarget>>,
@@ -43,6 +42,10 @@ pub(crate) struct ValidCardDef {
 }
 
 impl ValidCardDef {
+    pub(super) fn id(&self) -> DefId {
+        self.id
+    }
+
     pub(crate) fn kind(&self) -> &CardKindDef<NoTarget> {
         &self.kind
     }
@@ -68,6 +71,18 @@ impl ValidCardDef {
     }
 }
 
+/// Valid card definitions with distinct ids, among them one for every def id in `ALL_DEF_ID`.
+pub(super) struct ValidCardDefs(Vec<ValidCardDef>);
+
+impl IntoIterator for ValidCardDefs {
+    type Item = ValidCardDef;
+    type IntoIter = std::vec::IntoIter<ValidCardDef>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
 /// A target that the card holding it declares.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct DeclaredTarget(TargetId);
@@ -78,10 +93,10 @@ impl DeclaredTarget {
     }
 }
 
-/// The definitions by id, or the first error found. Each check runs over every definition, in the
+/// The definitions, or the first error found. Each check runs over every definition, in the
 /// order given, before the next one starts, so the order of the checks decides which error a table
 /// with several gets.
-pub(super) fn parse(defs: &[CardDef]) -> Result<BTreeMap<DefId, ValidCardDef>, CardDefError> {
+pub(super) fn parse(defs: &[CardDef]) -> Result<ValidCardDefs, CardDefError> {
     validate_placeholder(defs)?;
     validate_duplicates(defs)?;
     validate_not_found(defs)?;
@@ -96,7 +111,7 @@ pub(super) fn parse(defs: &[CardDef]) -> Result<BTreeMap<DefId, ValidCardDef>, C
         .map(|(def, play_effects)| parse_card(def, play_effects))
         .collect::<Result<Vec<_>, _>>()?;
     validate_picks(defs)?;
-    Ok(defs.iter().map(|def| def.id).zip(valid).collect())
+    Ok(ValidCardDefs(valid))
 }
 
 fn validate_placeholder(defs: &[CardDef]) -> Result<(), CardDefError> {
@@ -180,6 +195,7 @@ fn parse_card(
     let modifier_effects = parse_modifiers(*id, modifier_effects)?;
     let kind = parse_kind(*id, kind)?;
     Ok(ValidCardDef {
+        id: *id,
         kind,
         mana_cost: *mana_cost,
         modifier_effects,
@@ -390,6 +406,14 @@ mod tests {
 
     fn validate(defs: &[CardDef]) -> Result<(), CardDefError> {
         parse(defs).map(drop)
+    }
+
+    fn parsed(defs: &[CardDef], def_id: DefId) -> ValidCardDef {
+        parse(defs)
+            .unwrap()
+            .into_iter()
+            .find(|def| def.id() == def_id)
+            .unwrap()
     }
 
     #[test]
@@ -612,10 +636,8 @@ mod tests {
             effect: ModifierEffect::BuffHealth { amount: 3.into() },
         });
 
-        let parsed = parse(&defs).unwrap();
-
         assert_eq!(
-            parsed[&PING].play_effects().last(),
+            parsed(&defs, PING).play_effects().last(),
             Some(&Effect::Buff {
                 selector: CharacterSelector::Targeted(DeclaredTarget(TargetId(0))),
                 effect: ModifierEffect::BuffHealth { amount: 3.into() },
@@ -631,10 +653,8 @@ mod tests {
         let ping = defs.iter_mut().find(|def| def.id == PING).unwrap();
         ping.triggers = vec![trigger_on(died), trigger_on(damaged)];
 
-        let parsed = parse(&defs).unwrap();
-
         assert_eq!(
-            parsed[&PING].triggers(),
+            parsed(&defs, PING).triggers(),
             [trigger_on(died), trigger_on(damaged)]
         );
     }
@@ -649,10 +669,8 @@ mod tests {
             ))),
         });
 
-        let parsed = parse(&defs).unwrap();
-
         assert_eq!(
-            parsed[&DRUMMER].play_effects().last(),
+            parsed(&defs, DRUMMER).play_effects().last(),
             Some(&Effect::Buff {
                 selector: CharacterSelector::Itself,
                 effect: ModifierEffect::GrantTrigger(trigger_on(TriggerPattern::Damaged(
@@ -671,10 +689,8 @@ mod tests {
                 TriggerPattern::Damaged(TriggerSubject::Itself),
             )));
 
-        let parsed = parse(&defs).unwrap();
-
         assert_eq!(
-            parsed[&PING].modifier_effects(),
+            parsed(&defs, PING).modifier_effects(),
             [ModifierEffect::GrantTrigger(trigger_on(
                 TriggerPattern::Damaged(TriggerSubject::Itself)
             ))]
@@ -691,10 +707,8 @@ mod tests {
             ))],
         );
 
-        let parsed = parse(&defs).unwrap();
-
         assert_eq!(
-            parsed[&RALLY_BANNER].kind().friendly_aura_effects(),
+            parsed(&defs, RALLY_BANNER).kind().friendly_aura_effects(),
             [ModifierEffect::GrantTrigger(trigger_on(
                 TriggerPattern::Damaged(TriggerSubject::Itself)
             ))]
