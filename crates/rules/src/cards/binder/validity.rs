@@ -30,8 +30,8 @@ pub(crate) enum CardDefError {
     PickNotResolved(DefId, PickId),
 }
 
-/// A valid card definition. Its targets have distinct ids, and each of its effect sequences
-/// reveals a pick before resolving it and resolves every pick it reveals.
+/// Its targets have distinct ids, and each of its effect sequences reveals a pick before resolving
+/// it and resolves every pick it reveals.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ValidCardDef {
     kind: CardKindDef<NoTarget>,

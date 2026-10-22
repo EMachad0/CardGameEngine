@@ -15,7 +15,7 @@ pub(super) struct EffectStack {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PendingEffect {
     source: ObjectId,
-    effects: PendingText,
+    text: PendingText,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -66,7 +66,7 @@ pub(super) enum NextEffect {
 impl ResolvingEffect {
     fn next_effect(&mut self) -> Option<NextEffect> {
         let source = self.pending.source;
-        let next = match &self.pending.effects {
+        let next = match &self.pending.text {
             PendingText::Played(effects) => NextEffect::Played {
                 source,
                 effect: effects.get(self.idx)?.clone(),
@@ -81,15 +81,15 @@ impl ResolvingEffect {
     }
 
     fn is_done(&self) -> bool {
-        self.pending.effects.len() <= self.idx
+        self.pending.text.len() <= self.idx
     }
 }
 
 impl EffectStack {
-    pub(super) fn push(&mut self, source: ObjectId, effects: impl Into<PendingText>) {
+    pub(super) fn push(&mut self, source: ObjectId, text: impl Into<PendingText>) {
         self.pending.push(PendingEffect {
             source,
-            effects: effects.into(),
+            text: text.into(),
         });
     }
 
@@ -141,7 +141,7 @@ mod tests {
         std::array::from_fn(|_| objects.insert(SPARK, PlayerId::new(0)))
     }
 
-    fn draw(amount: u8) -> Effect<DeclaredTarget, NoTarget> {
+    fn draw<T, G>(amount: u8) -> Effect<T, G> {
         Effect::Draw {
             selector: PlayerSelector::Owner,
             amount: EffectAmount::Static(amount),
@@ -183,17 +183,16 @@ mod tests {
     #[test]
     fn a_matched_triggers_effects_are_handed_out_as_trigger_text() {
         let [source] = sources();
-        let effect = Effect::Draw {
-            selector: PlayerSelector::Owner,
-            amount: EffectAmount::Static(1),
-        };
         let mut stack = EffectStack::default();
-        stack.push(source, EffectSequence(vec![effect.clone()]));
+        stack.push(source, EffectSequence(vec![draw(1)]));
         stack.start_next();
 
         assert_eq!(
             stack.next_effect(),
-            Some(NextEffect::Triggered { source, effect }),
+            Some(NextEffect::Triggered {
+                source,
+                effect: draw(1),
+            }),
         );
     }
 
