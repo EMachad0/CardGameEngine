@@ -105,7 +105,6 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::cards::filter::CharacterFilter;
 
     fn double(n: usize) -> Result<usize, ()> {
         Ok(n * 2)
@@ -128,17 +127,19 @@ mod tests {
     }
 
     #[test]
-    fn mapping_the_targeted_selector_keeps_any_other_selector() {
-        let buff = Effect::<usize>::Buff {
-            selector: CharacterSelector::All(CharacterFilter::all()),
-            effect: ModifierEffect::BuffAtk { amount: 1.into() },
+    fn mapping_the_targeted_selector_keeps_an_effect_with_no_character_selector() {
+        let resolve_pick = Effect::<usize>::ResolvePick {
+            pick_id: PickId(1),
+            picked_move: ZoneMove::AddToHand,
+            other_move: ZoneMove::Bury,
         };
 
         assert_eq!(
-            buff.try_map_targeted(double),
-            Ok(Effect::Buff {
-                selector: CharacterSelector::All(CharacterFilter::all()),
-                effect: ModifierEffect::BuffAtk { amount: 1.into() },
+            resolve_pick.try_map_targeted(double),
+            Ok(Effect::ResolvePick {
+                pick_id: PickId(1),
+                picked_move: ZoneMove::AddToHand,
+                other_move: ZoneMove::Bury,
             }),
         );
     }

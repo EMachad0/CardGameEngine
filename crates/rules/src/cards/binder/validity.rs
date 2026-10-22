@@ -13,8 +13,8 @@ pub(super) enum CardDefError {
     PickNotResolved(PickId),
 }
 
-/// The card, with each target its play effects name declared. Fails on the first target the card
-/// doesn't declare, then checks the card's picks.
+/// The card with its play effects' targets declared. Fails on an undeclared target before
+/// checking the picks.
 pub(super) fn parse(def: CardDef<TargetId>) -> Result<CardDef<DeclaredTarget>, CardDefError> {
     let CardDef {
         name,
