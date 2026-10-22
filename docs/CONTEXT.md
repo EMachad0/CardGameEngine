@@ -194,7 +194,7 @@ What the game waits on from one player before it goes on: targeting or picking.
 _Avoid_: question, prompt, request
 
 **Player input**:
-What the game awaits from each player, and what each player targeted and picked for a card.
+What the game awaits from each player, and what each player picked while a card resolved.
 _Avoid_: interaction, answers
 
 **Bury**:

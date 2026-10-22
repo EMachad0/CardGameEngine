@@ -8,29 +8,27 @@ Branch: `player-input`, new, from `main` after ticket 12 merges. New draft PR wi
 
 ## Why
 
-As of ticket 11 (PR #55), `game/player_input.rs` is one module around `PlayerInput`. Its data,
+As of ticket 12 (PR #62), `game/player_input.rs` is one module around `PlayerInput`. Its data,
 and the code that reads and writes each part:
 
 - **What the game awaits from each player.** `targetings` and `pickings`, each sorted by player,
   with "No player is in both". The `Awaiting` read, its shared-borrow proofs and owned tokens, and
   the commands `start_targeting`, `target`, `cancel`, `commit_targeting`, `start_picking` and `pick`.
-  `legal_actions`, `apply` and `play` read and write it.
+  `legal_actions`, `apply` and `play` read and write it. `commit_targeting` closes a targeting and
+  hands it to `play`, which binds what was targeted into the card's pending effect (ADR 0017).
 - **Where revealed cards wait.** A revealed card is in no zone. It sits in a picking's options
   until picked, then in `picks`, until `ResolvePick` in `game/resolve/effect.rs` moves it. `pick`
   closes a picking and stores its picks in one command.
 - **How a targeting is built.** `Targeting` holds a card and the `(object, target)` pairs targeted
-  so far, with `with_targeted` for the walk. `game/targeting_walk.rs` and `game/view.rs` read it,
-  and `PlayerInput::target` pushes onto its private field.
-- **What each played card targeted.** `targets`, which `commit_targeting` writes when the card is
-  played, and `targeted` reads for the `Targeted` selector in `game/selector.rs` while the card
-  resolves.
+  so far, with `with_targeted` for the walk. `game/targeting_walk.rs`, `game/view.rs` and `play`'s
+  binding read it, and `PlayerInput::target` pushes onto its private field.
 
 Plausible changes reach these apart:
 
 - A rule for building a targeting, such as "up to N targets" or a `Back` that undoes the last
   `Target`, changes `Targeting` and leaves what the game awaits alone.
-- Where resolution reads a played card's targeted objects from, and whether a card keeps them past
-  its resolution, change what is stored for a played card and leave targeting and picking alone.
+- Where a pick's answer is kept, by source today, changes `picks` and leaves how a targeting is
+  built alone.
 - Several players picking at once changes what the game awaits, and leaves how a targeting is built
   alone.
 
