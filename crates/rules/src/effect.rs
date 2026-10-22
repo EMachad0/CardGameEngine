@@ -115,6 +115,24 @@ mod tests {
 
     use super::*;
 
+    fn targeted<T>([damaged, buffed, aura]: [T; 3]) -> [Effect<T>; 3] {
+        let buff = ModifierEffect::BuffAtk { amount: 1.into() };
+        [
+            Effect::Damage {
+                selector: CharacterSelector::Targeted(damaged),
+                amount: 1.into(),
+            },
+            Effect::Buff {
+                selector: CharacterSelector::Targeted(buffed),
+                effect: buff.clone(),
+            },
+            Effect::AddFriendlyAura {
+                selector: CharacterSelector::Targeted(aura),
+                effect: buff,
+            },
+        ]
+    }
+
     fn resolve_pick<T>() -> Effect<T> {
         Effect::ResolvePick {
             pick_id: PickId(1),
@@ -125,25 +143,9 @@ mod tests {
 
     #[test]
     fn an_effect_gives_what_its_targeted_selector_holds() {
-        let buff = ModifierEffect::BuffAtk { amount: 1.into() };
-        let effects = [
-            Effect::Damage {
-                selector: CharacterSelector::Targeted(3),
-                amount: 1.into(),
-            },
-            Effect::Buff {
-                selector: CharacterSelector::Targeted(4),
-                effect: buff.clone(),
-            },
-            Effect::AddFriendlyAura {
-                selector: CharacterSelector::Targeted(5),
-                effect: buff,
-            },
-        ];
-
         assert_eq!(
-            effects.each_ref().map(Effect::targeted),
-            [Some(&3), Some(&4), Some(&5)]
+            targeted([3, 4, 5]).each_ref().map(Effect::targeted),
+            [Some(&3), Some(&4), Some(&5)],
         );
     }
 
@@ -154,38 +156,9 @@ mod tests {
 
     #[test]
     fn mapping_the_targeted_selector_maps_what_it_holds() {
-        let buff = ModifierEffect::BuffAtk { amount: 1.into() };
-        let effects = [
-            Effect::Damage {
-                selector: CharacterSelector::Targeted(3),
-                amount: 1.into(),
-            },
-            Effect::Buff {
-                selector: CharacterSelector::Targeted(4),
-                effect: buff.clone(),
-            },
-            Effect::AddFriendlyAura {
-                selector: CharacterSelector::Targeted(5),
-                effect: buff.clone(),
-            },
-        ];
-
         assert_eq!(
-            effects.map(|effect| effect.map_targeted(|n| n * 2)),
-            [
-                Effect::Damage {
-                    selector: CharacterSelector::Targeted(6),
-                    amount: 1.into(),
-                },
-                Effect::Buff {
-                    selector: CharacterSelector::Targeted(8),
-                    effect: buff.clone(),
-                },
-                Effect::AddFriendlyAura {
-                    selector: CharacterSelector::Targeted(10),
-                    effect: buff,
-                },
-            ],
+            targeted([3, 4, 5]).map(|effect| effect.map_targeted(|n| n * 2)),
+            targeted([6, 8, 10]),
         );
     }
 

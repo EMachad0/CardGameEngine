@@ -268,6 +268,15 @@ mod tests {
         }
     }
 
+    fn two_targeted_damages<T>(first: T, second: T) -> Vec<Effect<T>> {
+        vec![
+            draw(),
+            damage(CharacterSelector::Targeted(first)),
+            damage(CharacterSelector::Itself),
+            damage(CharacterSelector::Targeted(second)),
+        ]
+    }
+
     fn untargeted() -> [CharacterSelector<usize>; 4] {
         [
             CharacterSelector::All(CharacterFilter::all()),
@@ -280,12 +289,7 @@ mod tests {
     #[test]
     fn each_targets_id_is_its_place_among_the_play_effects_targeted_selectors() {
         let (first, second) = (target(1), target(2));
-        let def = card(vec![
-            draw(),
-            damage(CharacterSelector::Targeted(first)),
-            damage(CharacterSelector::Itself),
-            damage(CharacterSelector::Targeted(second)),
-        ]);
+        let def = card(two_targeted_damages(first, second));
 
         assert_eq!(
             def.targets().collect::<Vec<_>>(),
@@ -302,21 +306,11 @@ mod tests {
 
     #[test]
     fn binding_replaces_each_target_with_what_is_given_for_its_id() {
-        let def = card(vec![
-            draw(),
-            damage(CharacterSelector::Targeted(target(1))),
-            damage(CharacterSelector::Itself),
-            damage(CharacterSelector::Targeted(target(2))),
-        ]);
+        let def = card(two_targeted_damages(target(1), target(2)));
 
         assert_eq!(
             def.bind_play_effects(|target_id| target_id),
-            [
-                draw(),
-                damage(CharacterSelector::Targeted(TargetId(0))),
-                damage(CharacterSelector::Itself),
-                damage(CharacterSelector::Targeted(TargetId(1))),
-            ],
+            two_targeted_damages(TargetId(0), TargetId(1)),
         );
     }
 

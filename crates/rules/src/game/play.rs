@@ -60,8 +60,7 @@ impl From<Play> for Event {
 }
 
 impl Game {
-    /// If the card is played from the player's targeting, closes it before reporting the play. Its
-    /// play effects are pushed holding what was targeted.
+    /// If the card is played from the player's targeting, closes it before reporting the play.
     pub(super) fn play(&mut self, playable: WasPlayable, obs: &mut impl Observer) {
         let WasPlayable {
             card,

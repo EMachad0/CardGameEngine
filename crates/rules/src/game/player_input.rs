@@ -673,9 +673,14 @@ mod tests {
         let mut input = PlayerInput::default();
         start_targeting(&mut input, player, card);
         target_object(&mut input, player, target, TargetId(0));
-        let open = input.targeting(player).unwrap().clone();
 
-        assert_eq!(commit_targeting(&mut input, player), open);
+        let committed = commit_targeting(&mut input, player);
+
+        assert_eq!(committed.object_id(), card);
+        assert_eq!(
+            committed.targeted_for(TargetId(0)).collect::<Vec<_>>(),
+            [target]
+        );
     }
 
     #[test]
