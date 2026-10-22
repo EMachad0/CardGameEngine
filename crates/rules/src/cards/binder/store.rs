@@ -5,7 +5,7 @@ use crate::cards::binder::sets::base;
 use crate::cards::binder::validity::{self, CardDefError, ValidCardDef};
 use crate::cards::definition::DefId;
 
-/// Holds a definition for every def id.
+/// Holds a definition for every def id in `ALL_DEF_ID`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Binder {
     /// Arc so clone and eq are cheap
@@ -23,6 +23,6 @@ impl Binder {
     pub(crate) fn get(&self, def_id: DefId) -> &ValidCardDef {
         self.defs
             .get(&def_id)
-            .expect("a binder should be built with a definition for every def id")
+            .expect("a def id should name a card in the binder")
     }
 }
