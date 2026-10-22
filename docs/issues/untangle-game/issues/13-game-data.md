@@ -3,8 +3,8 @@
 Status: ready-for-agent
 Category: enhancement
 Type: task
-Blocked by: 12, and the fix for `docs/issues/dying-mourner-hears-older-death.md`
-Branch: `game-data`, new, from `main` once ticket 12 has merged and that issue's file is gone from
+Blocked by: 14, and the fix for `docs/issues/dying-mourner-hears-older-death.md`
+Branch: `game-data`, new, from `main` once ticket 14 has merged and that issue's file is gone from
 `main`. New draft PR with base `main`.
 
 ## Why
