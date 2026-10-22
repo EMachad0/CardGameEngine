@@ -112,17 +112,38 @@ mod tests {
 
     #[test]
     fn mapping_the_targeted_selector_maps_what_it_holds() {
-        let damage = Effect::Damage {
-            selector: CharacterSelector::Targeted(3),
-            amount: 1.into(),
-        };
+        let buff = ModifierEffect::BuffAtk { amount: 1.into() };
+        let effects = [
+            Effect::Damage {
+                selector: CharacterSelector::Targeted(3),
+                amount: 1.into(),
+            },
+            Effect::Buff {
+                selector: CharacterSelector::Targeted(4),
+                effect: buff.clone(),
+            },
+            Effect::AddFriendlyAura {
+                selector: CharacterSelector::Targeted(5),
+                effect: buff.clone(),
+            },
+        ];
 
         assert_eq!(
-            damage.try_map_targeted(double),
-            Ok(Effect::Damage {
-                selector: CharacterSelector::Targeted(6),
-                amount: 1.into(),
-            }),
+            effects.map(|effect| effect.try_map_targeted(double)),
+            [
+                Ok(Effect::Damage {
+                    selector: CharacterSelector::Targeted(6),
+                    amount: 1.into(),
+                }),
+                Ok(Effect::Buff {
+                    selector: CharacterSelector::Targeted(8),
+                    effect: buff.clone(),
+                }),
+                Ok(Effect::AddFriendlyAura {
+                    selector: CharacterSelector::Targeted(10),
+                    effect: buff,
+                }),
+            ],
         );
     }
 
