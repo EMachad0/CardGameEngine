@@ -1,7 +1,7 @@
 ---
 name: Explore
 description: Fast codebase exploration agent (read-only)
-tools: [read, bash, grep, find]
+tools: read, bash, grep, find
 thinking: low
 ---
 
