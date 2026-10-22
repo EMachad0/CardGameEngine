@@ -10,7 +10,7 @@ use crate::ids::PlayerId;
 use crate::target::TargetId;
 
 /// What the game awaits from one player, as read.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 pub(super) enum Awaiting<'a> {
     Nothing(AwaitsNothing<'a>),
     Picking(AwaitsPicking<'a>),
@@ -19,7 +19,7 @@ pub(super) enum Awaiting<'a> {
 
 /// That the game awaits nothing from a player. It borrows the player input, so nothing is awaited
 /// from them while this lives.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 pub(super) struct AwaitsNothing<'a> {
     player_id: PlayerId,
     input: PhantomData<&'a PlayerInput>,
@@ -27,7 +27,7 @@ pub(super) struct AwaitsNothing<'a> {
 
 /// That the game awaits a player's picking. It borrows the player input, so the picking stays open
 /// while this lives.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 pub(super) struct AwaitsPicking<'a> {
     player_id: PlayerId,
     picking: &'a Picking,
@@ -49,7 +49,7 @@ impl<'a> AwaitsPicking<'a> {
 
 /// That the game awaits a player's targeting. It borrows the player input, so the targeting stays
 /// open while this lives.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 pub(super) struct AwaitsTargeting<'a> {
     player_id: PlayerId,
     targeting: &'a Targeting,
@@ -92,6 +92,10 @@ impl From<AwaitsTargeting<'_>> for WasAwaitingTargeting {
 }
 
 impl WasAwaitingTargeting {
+    pub(super) fn player_id(&self) -> PlayerId {
+        self.player_id
+    }
+
     /// The card being targeted for.
     pub(super) fn object_id(&self) -> ObjectId {
         self.object_id
@@ -106,6 +110,7 @@ pub(super) struct WasAwaitingPicking {
 }
 
 impl WasAwaitingPicking {
+    /// The option.
     pub(super) fn object_id(&self) -> ObjectId {
         self.object_id
     }
@@ -864,7 +869,7 @@ mod tests {
     }
 
     #[test]
-    fn nothing_is_awaited_before_any_player_is_asked() {
+    fn nothing_is_awaited_before_anything_starts() {
         let input = PlayerInput::default();
 
         assert!(!input.any_awaiting());

@@ -21,7 +21,6 @@ impl Mana {
         cost <= self.current
     }
 
-    /// Panics if the cost is more than the current mana.
     pub(super) fn pay(&mut self, cost: u8) {
         self.current = self
             .current

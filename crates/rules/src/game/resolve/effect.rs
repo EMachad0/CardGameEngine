@@ -122,7 +122,7 @@ impl Game {
     ) {
         #[expect(
             clippy::disallowed_methods,
-            reason = "the one reveal, which posts the revealed cards as a picking"
+            reason = "the one reveal, which starts a picking"
         )]
         let options = self.zones.reveal(player_id, count);
         let report = Report::Revealed {

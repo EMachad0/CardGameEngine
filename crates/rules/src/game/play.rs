@@ -35,7 +35,8 @@ impl WasPlayable {
 
     pub(super) fn with_targeting(self, awaiting_targeting: WasAwaitingTargeting) -> Self {
         assert!(
-            awaiting_targeting.object_id() == self.card.object_id(),
+            awaiting_targeting.player_id() == self.card.player_id()
+                && awaiting_targeting.object_id() == self.card.object_id(),
             "a card should be paired with the targeting it was found through",
         );
         Self {
@@ -108,6 +109,28 @@ mod tests {
     use crate::game::player_input::{Awaiting, PlayerInput, WasAwaitingNothing};
     use crate::zones::Zones;
 
+    fn start_targeting(
+        input: &mut PlayerInput,
+        player: PlayerId,
+        card: ObjectId,
+    ) -> WasAwaitingTargeting {
+        let Awaiting::Nothing(awaits_nothing) = input.awaiting(player) else {
+            panic!("the game must await nothing from the player");
+        };
+        input.start_targeting(WasAwaitingNothing::from(awaits_nothing), card);
+        let Awaiting::Targeting(awaits_targeting) = input.awaiting(player) else {
+            panic!("the player must be targeting");
+        };
+        WasAwaitingTargeting::from(awaits_targeting)
+    }
+
+    fn playable(zones: &Zones, player: PlayerId, card: ObjectId) -> WasPlayable {
+        WasPlayable {
+            card: WasInHand::from(zones.find_in_hand(player, card).unwrap()),
+            awaiting_targeting: None,
+        }
+    }
+
     #[test]
     #[should_panic(expected = "a card should be paired with the targeting it was found through")]
     fn a_card_cannot_be_played_from_another_cards_targeting() {
@@ -117,18 +140,22 @@ mod tests {
         let mut zones = Zones::new([(hero, vec![card, other])]);
         zones.draw(player);
         let mut input = PlayerInput::default();
-        let Awaiting::Nothing(awaits_nothing) = input.awaiting(player) else {
-            panic!("the game must await nothing from the player");
-        };
-        input.start_targeting(WasAwaitingNothing::from(awaits_nothing), other);
-        let Awaiting::Targeting(awaits_targeting) = input.awaiting(player) else {
-            panic!("the player must be targeting");
-        };
-        let playable = WasPlayable {
-            card: WasInHand::from(zones.find_in_hand(player, card).unwrap()),
-            awaiting_targeting: None,
-        };
+        let targeting = start_targeting(&mut input, player, other);
 
-        playable.with_targeting(WasAwaitingTargeting::from(awaits_targeting));
+        playable(&zones, player, card).with_targeting(targeting);
+    }
+
+    #[test]
+    #[should_panic(expected = "a card should be paired with the targeting it was found through")]
+    fn a_card_cannot_be_played_from_another_players_targeting() {
+        let (player, other) = (PlayerId::new(0), PlayerId::new(1));
+        let mut bag = ObjectBag::default();
+        let [hero, other_hero, card] = std::array::from_fn(|_| bag.insert(SPARK, player));
+        let mut zones = Zones::new([(hero, vec![card]), (other_hero, Vec::new())]);
+        zones.draw(player);
+        let mut input = PlayerInput::default();
+        let targeting = start_targeting(&mut input, other, card);
+
+        playable(&zones, player, card).with_targeting(targeting);
     }
 }
