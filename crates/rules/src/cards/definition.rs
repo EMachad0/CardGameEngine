@@ -195,3 +195,50 @@ impl<T> CharacterSelector<T> {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+
+    use super::*;
+
+    fn double(n: usize) -> Result<usize, ()> {
+        Ok(n * 2)
+    }
+
+    #[test]
+    fn mapping_a_targeted_selector_maps_what_it_holds() {
+        assert_eq!(
+            CharacterSelector::Targeted(3).try_map_targeted(double),
+            Ok(CharacterSelector::Targeted(6)),
+        );
+    }
+
+    #[test]
+    fn mapping_keeps_a_selector_that_targets_nothing() {
+        let selectors = [
+            CharacterSelector::All(CharacterFilter::all()),
+            CharacterSelector::Itself,
+            CharacterSelector::OwnerHero,
+            CharacterSelector::Random(CharacterFilter::all()),
+        ];
+
+        assert_eq!(
+            selectors.map(|selector| selector.try_map_targeted(double)),
+            [
+                Ok(CharacterSelector::All(CharacterFilter::all())),
+                Ok(CharacterSelector::Itself),
+                Ok(CharacterSelector::OwnerHero),
+                Ok(CharacterSelector::Random(CharacterFilter::all())),
+            ],
+        );
+    }
+
+    #[test]
+    fn mapping_a_targeted_selector_fails_when_the_map_does() {
+        assert_eq!(
+            CharacterSelector::Targeted(3).try_map_targeted(|_| Err::<usize, _>("undeclared")),
+            Err("undeclared"),
+        );
+    }
+}

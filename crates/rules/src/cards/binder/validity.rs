@@ -146,11 +146,11 @@ mod tests {
 
     #[test]
     fn a_buff_in_play_effects_may_target_whom_it_grants_a_trigger_to() {
-        let deathrattle = built_in_card(HOARDER).triggers[0].clone();
+        let death_rattle = built_in_card(HOARDER).triggers[0].clone();
         let mut ping = built_in_card(PING);
         ping.play_effects.push(Effect::Buff {
             selector: CharacterSelector::Targeted(TargetId(0)),
-            effect: ModifierEffect::GrantTrigger(deathrattle),
+            effect: ModifierEffect::GrantTrigger(death_rattle),
         });
 
         assert_eq!(

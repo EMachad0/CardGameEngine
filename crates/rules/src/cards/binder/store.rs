@@ -31,19 +31,19 @@ impl Binder {
     }
 
     fn new(table: Vec<(DefId, CardDef<TargetId>)>) -> Result<Self, BinderError> {
-        let mut written = BTreeMap::new();
+        let mut unparsed = BTreeMap::new();
         for (def_id, def) in table {
-            if written.insert(def_id, def).is_some() {
+            if unparsed.insert(def_id, def).is_some() {
                 return Err(BinderError::Duplicate(def_id));
             }
         }
         if let Some(&def_id) = ALL_DEF_ID
             .iter()
-            .find(|def_id| !written.contains_key(def_id))
+            .find(|def_id| !unparsed.contains_key(def_id))
         {
             return Err(BinderError::NotFound(def_id));
         }
-        let defs = written
+        let defs = unparsed
             .into_iter()
             .map(|(def_id, def)| match validity::parse(def) {
                 Ok(def) => Ok((def_id, def)),
@@ -70,13 +70,13 @@ mod tests {
     use crate::cards::binder::sets::base::static_card_definition::{BOLT, PING, SPARK};
     use crate::target::Targets;
 
-    fn validate(table: Vec<(DefId, CardDef<TargetId>)>) -> Result<(), BinderError> {
-        Binder::new(table).map(drop)
+    fn validate(table: &[(DefId, CardDef<TargetId>)]) -> Result<(), BinderError> {
+        Binder::new(table.to_vec()).map(drop)
     }
 
     #[test]
     fn the_built_in_table_is_valid() {
-        assert_eq!(validate(base::definitions()), Ok(()));
+        assert_eq!(validate(&base::definitions()), Ok(()));
     }
 
     #[test]
@@ -84,7 +84,7 @@ mod tests {
         let mut defs = base::definitions();
         defs.retain(|&(def_id, _)| def_id != SPARK);
 
-        assert_eq!(validate(defs), Err(BinderError::NotFound(SPARK)));
+        assert_eq!(validate(&defs), Err(BinderError::NotFound(SPARK)));
     }
 
     #[test]
@@ -97,7 +97,7 @@ mod tests {
             .clone();
         defs.push(bolt);
 
-        assert_eq!(validate(defs), Err(BinderError::Duplicate(BOLT)));
+        assert_eq!(validate(&defs), Err(BinderError::Duplicate(BOLT)));
     }
 
     #[test]
@@ -107,7 +107,7 @@ mod tests {
         ping.targets = Targets::default();
 
         assert_eq!(
-            validate(defs),
+            validate(&defs),
             Err(BinderError::Invalid(
                 PING,
                 CardDefError::TargetNotFound(TargetId(0))
