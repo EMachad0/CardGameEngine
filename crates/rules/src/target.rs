@@ -29,8 +29,7 @@ impl AmountBound {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TargetId(pub usize);
 
-/// What a `Targeted` selector holds in a trigger's effects. It has no values, so a trigger can't
-/// declare a target.
+/// It has no values, so a `Targeted` selector that holds it can't be written.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NoTarget {}
 

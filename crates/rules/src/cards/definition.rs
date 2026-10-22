@@ -102,7 +102,7 @@ impl CardDef {
     pub(crate) fn targets(&self) -> impl Iterator<Item = (TargetId, &CharacterTarget)> {
         self.play_effects
             .iter()
-            .filter_map(Effect::targeted)
+            .filter_map(Effect::target)
             .enumerate()
             .map(|(idx, target)| (TargetId(idx), target))
     }
@@ -210,7 +210,7 @@ pub enum CharacterSelector<T> {
 }
 
 impl<T> CharacterSelector<T> {
-    pub(crate) fn targeted(&self) -> Option<&T> {
+    pub(crate) fn target(&self) -> Option<&T> {
         match self {
             CharacterSelector::All(_)
             | CharacterSelector::Itself
@@ -238,7 +238,7 @@ mod tests {
     use super::*;
     use crate::target::AmountBound;
 
-    fn target(count: u8) -> CharacterTarget {
+    fn character_target(count: u8) -> CharacterTarget {
         CharacterTarget {
             filter: CharacterFilter::all(),
             count: count.into(),
@@ -288,7 +288,7 @@ mod tests {
 
     #[test]
     fn each_targets_id_is_its_place_among_the_play_effects_targeted_selectors() {
-        let (first, second) = (target(1), target(2));
+        let (first, second) = (character_target(1), character_target(2));
         let def = card(two_targeted_damages(first, second));
 
         assert_eq!(
@@ -306,7 +306,10 @@ mod tests {
 
     #[test]
     fn binding_replaces_each_target_with_what_is_given_for_its_id() {
-        let def = card(two_targeted_damages(target(1), target(2)));
+        let def = card(two_targeted_damages(
+            character_target(1),
+            character_target(2),
+        ));
 
         assert_eq!(
             def.bind_play_effects(|target_id| target_id),
@@ -316,13 +319,13 @@ mod tests {
 
     #[test]
     fn a_targeted_selector_gives_what_it_holds() {
-        assert_eq!(CharacterSelector::Targeted(3).targeted(), Some(&3));
+        assert_eq!(CharacterSelector::Targeted(3).target(), Some(&3));
     }
 
     #[test]
-    fn a_selector_that_targets_nothing_gives_nothing_targeted() {
+    fn a_selector_that_targets_nothing_has_no_target() {
         assert_eq!(
-            untargeted().each_ref().map(CharacterSelector::targeted),
+            untargeted().each_ref().map(CharacterSelector::target),
             [None; 4]
         );
     }

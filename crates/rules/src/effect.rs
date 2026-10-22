@@ -59,7 +59,7 @@ pub enum Effect<T> {
 }
 
 impl<T> Effect<T> {
-    pub(crate) fn targeted(&self) -> Option<&T> {
+    pub(crate) fn target(&self) -> Option<&T> {
         match self {
             Effect::Draw { .. }
             | Effect::Reveal { .. }
@@ -67,7 +67,7 @@ impl<T> Effect<T> {
             | Effect::ResolvePick { .. } => None,
             Effect::Damage { selector, .. }
             | Effect::Buff { selector, .. }
-            | Effect::AddFriendlyAura { selector, .. } => selector.targeted(),
+            | Effect::AddFriendlyAura { selector, .. } => selector.target(),
         }
     }
 
@@ -144,14 +144,14 @@ mod tests {
     #[test]
     fn an_effect_gives_what_its_targeted_selector_holds() {
         assert_eq!(
-            targeted_effects([3, 4, 5]).each_ref().map(Effect::targeted),
+            targeted_effects([3, 4, 5]).each_ref().map(Effect::target),
             [Some(&3), Some(&4), Some(&5)],
         );
     }
 
     #[test]
-    fn an_effect_with_no_character_selector_gives_nothing_targeted() {
-        assert_eq!(resolve_pick::<usize>().targeted(), None);
+    fn an_effect_with_no_character_selector_has_no_target() {
+        assert_eq!(resolve_pick::<usize>().target(), None);
     }
 
     #[test]
