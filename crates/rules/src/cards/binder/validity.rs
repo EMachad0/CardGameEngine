@@ -63,7 +63,6 @@ impl ValidCardDef {
         &self.triggers
     }
 
-    /// In the order declared.
     pub(crate) fn targets(&self) -> &[CharacterTarget] {
         &self.targets
     }
@@ -138,7 +137,8 @@ fn validate_target_duplicates(defs: &[CardDef]) -> Result<(), CardDefError> {
     Ok(())
 }
 
-/// Rejects a play effect that names a target the card doesn't declare.
+/// The card's play effects, with the targets they name parsed. Rejects a target the card doesn't
+/// declare.
 fn parse_play_targets(
     def: &CardDef,
 ) -> Result<Vec<Effect<DeclaredTarget, TargetId>>, CardDefError> {
