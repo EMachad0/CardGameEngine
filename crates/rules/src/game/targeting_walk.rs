@@ -55,7 +55,7 @@ fn first_unsatisfied_target<'g>(
     targeting: &Targeting,
 ) -> Option<&'g CharacterTarget> {
     let object_id = targeting.object_id();
-    cards.card_def(object_id).targets.iter().find(|target| {
+    cards.card_def(object_id).targets().iter().find(|target| {
         let count = targeting.targeted_for(target.id).count() as u8;
         !target
             .bound

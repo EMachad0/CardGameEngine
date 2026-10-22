@@ -73,8 +73,8 @@ impl Game {
             let object_id = death.object_id;
             let player_id = self.objects.get(object_id).player_id;
             let card_def = CardsRef::new(self).card_def(object_id);
-            if card_def.leaves_zone_on_death() {
-                let to_graveyard = card_def.goes_to_graveyard();
+            if card_def.kind().leaves_zone_on_death() {
+                let to_graveyard = card_def.kind().goes_to_graveyard();
                 destroy(&mut self.zones, player_id, object_id, to_graveyard);
             }
         }

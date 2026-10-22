@@ -29,6 +29,11 @@ impl AmountBound {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TargetId(pub usize);
 
+/// What a `Targeted` selector holds in text that resolves with no targeting, such as a trigger's.
+/// It has no values, so such text names no target.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum NoTarget {}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CharacterTarget {
     pub id: TargetId,

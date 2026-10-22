@@ -1,8 +1,10 @@
 //! The effect stack and the resolving effect. The newest pending effect resolves first, and one
 //! resolves at a time: the next is taken off the stack only once the resolving one finishes.
 
+use crate::cards::binder::validity::DeclaredTarget;
 use crate::cards::object::ObjectId;
 use crate::effect::{Effect, EffectSequence};
+use crate::target::NoTarget;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(super) struct EffectStack {
@@ -13,7 +15,40 @@ pub(super) struct EffectStack {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PendingEffect {
     source: ObjectId,
-    effects: EffectSequence,
+    effects: Effects,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) enum Effects {
+    Played(Vec<Effect<DeclaredTarget, NoTarget>>),
+    Triggered(Vec<Effect<NoTarget>>),
+}
+
+impl Effects {
+    fn len(&self) -> usize {
+        match self {
+            Effects::Played(effects) => effects.len(),
+            Effects::Triggered(effects) => effects.len(),
+        }
+    }
+}
+
+impl From<Vec<Effect<DeclaredTarget, NoTarget>>> for Effects {
+    fn from(effects: Vec<Effect<DeclaredTarget, NoTarget>>) -> Self {
+        Effects::Played(effects)
+    }
+}
+
+impl From<Vec<Effect<NoTarget>>> for Effects {
+    fn from(effects: Vec<Effect<NoTarget>>) -> Self {
+        Effects::Triggered(effects)
+    }
+}
+
+impl From<EffectSequence<NoTarget>> for Effects {
+    fn from(EffectSequence(effects): EffectSequence<NoTarget>) -> Self {
+        Effects::Triggered(effects)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -23,28 +58,41 @@ struct ResolvingEffect {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(super) struct NextEffect {
-    pub(super) source: ObjectId,
-    pub(super) effect: Effect,
+pub(super) enum NextEffect {
+    Played {
+        source: ObjectId,
+        effect: Effect<DeclaredTarget, NoTarget>,
+    },
+    Triggered {
+        source: ObjectId,
+        effect: Effect<NoTarget>,
+    },
 }
 
 impl ResolvingEffect {
     fn next_effect(&mut self) -> Option<NextEffect> {
-        let effect = self.pending.effects.as_slice().get(self.idx)?.clone();
+        let source = self.pending.source;
+        let next = match &self.pending.effects {
+            Effects::Played(effects) => NextEffect::Played {
+                source,
+                effect: effects.get(self.idx)?.clone(),
+            },
+            Effects::Triggered(effects) => NextEffect::Triggered {
+                source,
+                effect: effects.get(self.idx)?.clone(),
+            },
+        };
         self.idx += 1;
-        Some(NextEffect {
-            source: self.pending.source,
-            effect,
-        })
+        Some(next)
     }
 
     fn is_done(&self) -> bool {
-        self.pending.effects.as_slice().len() <= self.idx
+        self.pending.effects.len() <= self.idx
     }
 }
 
 impl EffectStack {
-    pub(super) fn push(&mut self, source: ObjectId, effects: impl Into<EffectSequence>) {
+    pub(super) fn push(&mut self, source: ObjectId, effects: impl Into<Effects>) {
         self.pending.push(PendingEffect {
             source,
             effects: effects.into(),
@@ -99,15 +147,15 @@ mod tests {
         std::array::from_fn(|_| objects.insert(SPARK, PlayerId::new(0)))
     }
 
-    fn draw(amount: u8) -> Effect {
+    fn draw(amount: u8) -> Effect<NoTarget> {
         Effect::Draw {
             selector: PlayerSelector::Owner,
             amount: EffectAmount::Static(amount),
         }
     }
 
-    fn next(source: ObjectId, effect: Effect) -> Option<NextEffect> {
-        Some(NextEffect { source, effect })
+    fn next(source: ObjectId, effect: Effect<NoTarget>) -> Option<NextEffect> {
+        Some(NextEffect::Triggered { source, effect })
     }
 
     #[test]

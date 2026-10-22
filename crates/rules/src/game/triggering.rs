@@ -5,12 +5,13 @@ use crate::event::Event;
 use crate::game::cards_ref::CardsRef;
 use crate::game::modifiers::modifiers;
 use crate::ids::PlayerId;
+use crate::target::NoTarget;
 use crate::trigger::{Trigger, TriggerPattern, TriggerSubject};
 use crate::zones::Zones;
 
 pub(super) struct MatchedTrigger {
     pub(super) source: ObjectId,
-    pub(super) effects: EffectSequence,
+    pub(super) effects: EffectSequence<NoTarget>,
 }
 
 pub(super) fn matched_triggers(cards: CardsRef, event: &Event) -> Vec<MatchedTrigger> {
@@ -60,7 +61,7 @@ fn triggers(cards: CardsRef, object_id: ObjectId) -> Vec<Trigger> {
         });
     let printed = cards
         .card_def(object_id)
-        .triggers
+        .triggers()
         .iter()
         .map(|def| Trigger {
             granted_by: object_id,
@@ -93,7 +94,7 @@ fn fulfill_trigger_pattern(
             else {
                 return false;
             };
-            let kind = cards.card_def(*object_id).card_kind();
+            let kind = cards.card_def(*object_id).kind().card_kind();
             card_filter.passes(trigger_owner, *player_id, kind)
         }
         TriggerPattern::Damaged(subject) => {

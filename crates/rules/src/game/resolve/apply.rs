@@ -101,10 +101,12 @@ impl Game {
 
     fn continue_resolving_effect(&mut self, obs: &mut impl Observer) {
         while !self.player_input.any_awaiting()
-            && let Some(NextEffect { source, effect }) = self.effect_stack.next_effect()
+            && let Some(next) = self.effect_stack.next_effect()
         {
-            let owner = self.objects.get(source).player_id;
-            self.apply_effect(owner, source, &effect, obs);
+            match next {
+                NextEffect::Played { source, effect } => self.apply_effect(source, &effect, obs),
+                NextEffect::Triggered { source, effect } => self.apply_effect(source, &effect, obs),
+            }
             obs.checkpoint(Views::new(self));
         }
         self.effect_stack.finish_if_done();

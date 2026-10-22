@@ -4,19 +4,20 @@ use crate::effect::{Effect, PickId};
 use crate::game::amount::effect_amount;
 use crate::game::cards_ref::CardsRef;
 use crate::game::reporting::Report;
-use crate::game::selector::{select_characters, select_players};
+use crate::game::selector::{SelectorTarget, select_characters, select_players};
 use crate::game::state::Game;
 use crate::ids::PlayerId;
 use crate::observer::Observer;
+use crate::target::NoTarget;
 
 impl Game {
-    pub(super) fn apply_effect(
+    pub(super) fn apply_effect<T: SelectorTarget>(
         &mut self,
-        owner: PlayerId,
         source: ObjectId,
-        effect: &Effect,
+        effect: &Effect<T, NoTarget>,
         obs: &mut impl Observer,
     ) {
+        let owner = self.objects.get(source).player_id;
         match effect {
             Effect::Draw { selector, amount } => {
                 let amount = effect_amount(CardsRef::new(self), amount, owner);

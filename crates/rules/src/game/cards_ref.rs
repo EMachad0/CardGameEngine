@@ -2,13 +2,15 @@
 //! is, and which characters pass a filter.
 
 use crate::cards::binder::store::Binder;
-use crate::cards::definition::{CardDef, DefId};
+use crate::cards::binder::validity::{DeclaredTarget, ValidCardDef};
+use crate::cards::definition::DefId;
 use crate::cards::filter::CharacterFilter;
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::effect::Effect;
 use crate::game::state::Game;
 use crate::history::History;
 use crate::ids::PlayerId;
+use crate::target::NoTarget;
 use crate::turn::TurnOrder;
 use crate::zones::Zones;
 
@@ -36,12 +38,15 @@ impl<'g> CardsRef<'g> {
         self.objects.get(object_id).def_id
     }
 
-    pub(super) fn card_def(&self, object_id: ObjectId) -> &'g CardDef {
+    pub(super) fn card_def(&self, object_id: ObjectId) -> &'g ValidCardDef {
         self.binder.get(self.def_id(object_id))
     }
 
-    pub(super) fn play_effects(&self, object_id: ObjectId) -> &'g [Effect] {
-        self.card_def(object_id).play_effects.as_slice()
+    pub(super) fn play_effects(
+        &self,
+        object_id: ObjectId,
+    ) -> &'g [Effect<DeclaredTarget, NoTarget>] {
+        self.card_def(object_id).play_effects()
     }
 
     pub(super) fn scan_characters_with_filter(
@@ -62,6 +67,10 @@ impl<'g> CardsRef<'g> {
         object_id: ObjectId,
     ) -> bool {
         let owner = self.objects.get(object_id).player_id;
-        filter.passes(asking, owner, self.card_def(object_id).character_kind())
+        filter.passes(
+            asking,
+            owner,
+            self.card_def(object_id).kind().character_kind(),
+        )
     }
 }

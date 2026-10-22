@@ -28,8 +28,21 @@ pub struct CardDef {
 }
 
 impl CardDef {
+    pub(crate) fn target(&self, id: TargetId) -> Option<&CharacterTarget> {
+        self.targets.iter().find(|target| target.id == id)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CardKindDef<G = TargetId> {
+    Spell(SpellCardDef),
+    Minion(MinionCardDef<G>),
+    Hero(HeroCardDef),
+}
+
+impl<G> CardKindDef<G> {
     pub(crate) fn health(&self) -> Option<i32> {
-        match &self.kind {
+        match self {
             CardKindDef::Spell(_) => None,
             CardKindDef::Minion(minion) => Some(minion.health),
             CardKindDef::Hero(hero) => Some(hero.health),
@@ -37,7 +50,7 @@ impl CardDef {
     }
 
     pub(crate) fn attack(&self) -> Option<i32> {
-        match &self.kind {
+        match self {
             CardKindDef::Spell(_) => None,
             CardKindDef::Minion(minion) => Some(minion.attack),
             CardKindDef::Hero(_) => None,
@@ -45,7 +58,7 @@ impl CardDef {
     }
 
     pub(crate) fn card_kind(&self) -> CardKind {
-        match self.kind {
+        match self {
             CardKindDef::Spell(_) => CardKind::Spell,
             CardKindDef::Minion(_) => CardKind::Minion,
             CardKindDef::Hero(_) => CardKind::Hero,
@@ -53,7 +66,7 @@ impl CardDef {
     }
 
     pub(crate) fn character_kind(&self) -> Option<CharacterKind> {
-        match self.kind {
+        match self {
             CardKindDef::Spell(_) => None,
             CardKindDef::Minion(_) => Some(CharacterKind::Minion),
             CardKindDef::Hero(_) => Some(CharacterKind::Hero),
@@ -61,7 +74,7 @@ impl CardDef {
     }
 
     pub(crate) fn has_board_presence(&self) -> bool {
-        match self.kind {
+        match self {
             CardKindDef::Spell(_) => false,
             CardKindDef::Minion(_) => true,
             CardKindDef::Hero(_) => false,
@@ -69,7 +82,7 @@ impl CardDef {
     }
 
     pub(crate) fn receives_auras(&self) -> bool {
-        match self.kind {
+        match self {
             CardKindDef::Spell(_) => false,
             CardKindDef::Minion(_) => true,
             CardKindDef::Hero(_) => false,
@@ -77,7 +90,7 @@ impl CardDef {
     }
 
     pub(crate) fn leaves_zone_on_death(&self) -> bool {
-        match self.kind {
+        match self {
             CardKindDef::Spell(_) => true,
             CardKindDef::Minion(_) => true,
             CardKindDef::Hero(_) => false,
@@ -85,39 +98,28 @@ impl CardDef {
     }
 
     pub(crate) fn goes_to_graveyard(&self) -> bool {
-        match self.kind {
+        match self {
             CardKindDef::Spell(_) => true,
             CardKindDef::Minion(_) => true,
             CardKindDef::Hero(_) => false,
         }
     }
 
-    pub(crate) fn friendly_aura_effects(&self) -> &[ModifierEffect] {
-        match &self.kind {
+    pub(crate) fn friendly_aura_effects(&self) -> &[ModifierEffect<G>] {
+        match self {
             CardKindDef::Spell(_) => &[],
             CardKindDef::Minion(minion) => &minion.friendly_aura_effects,
             CardKindDef::Hero(_) => &[],
         }
     }
 
-    pub(crate) fn hostile_aura_effects(&self) -> &[ModifierEffect] {
-        match &self.kind {
+    pub(crate) fn hostile_aura_effects(&self) -> &[ModifierEffect<G>] {
+        match self {
             CardKindDef::Spell(_) => &[],
             CardKindDef::Minion(minion) => &minion.hostile_aura_effects,
             CardKindDef::Hero(_) => &[],
         }
     }
-
-    pub(crate) fn target(&self, id: TargetId) -> Option<&CharacterTarget> {
-        self.targets.iter().find(|target| target.id == id)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CardKindDef {
-    Spell(SpellCardDef),
-    Minion(MinionCardDef),
-    Hero(HeroCardDef),
 }
 
 #[derive(Debug, enumset::EnumSetType)]
@@ -134,14 +136,14 @@ pub enum CharacterKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MinionCardDef {
+pub struct MinionCardDef<G = TargetId> {
     pub attack: i32,
     pub health: i32,
-    pub friendly_aura_effects: Vec<ModifierEffect>,
-    pub hostile_aura_effects: Vec<ModifierEffect>,
+    pub friendly_aura_effects: Vec<ModifierEffect<G>>,
+    pub hostile_aura_effects: Vec<ModifierEffect<G>>,
 }
 
-impl MinionCardDef {
+impl<G> MinionCardDef<G> {
     pub fn new(attack: i32, health: i32) -> Self {
         Self {
             attack,
@@ -161,9 +163,9 @@ pub struct HeroCardDef {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TriggerDef {
+pub struct TriggerDef<G = TargetId> {
     pub pattern: TriggerPattern,
-    pub effects: EffectSequence,
+    pub effects: EffectSequence<G>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -187,10 +189,10 @@ pub enum PlayerSelector {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CharacterSelector {
+pub enum CharacterSelector<T = TargetId> {
     All(CharacterFilter),
     Itself,
     OwnerHero,
     Random(CharacterFilter),
-    Targeted(TargetId),
+    Targeted(T),
 }
