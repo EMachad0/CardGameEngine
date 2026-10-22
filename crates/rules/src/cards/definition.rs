@@ -3,7 +3,7 @@ use enumset::EnumSet;
 use crate::cards::filter::{CharacterFilter, Side};
 use crate::cards::modifier::ModifierEffect;
 use crate::effect::Effect;
-use crate::target::{CharacterTarget, NoTarget, TargetId};
+use crate::target::{NoTarget, TargetId, Targets};
 use crate::trigger::TriggerPattern;
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -24,7 +24,7 @@ pub struct CardDef {
     pub modifier_effects: Vec<ModifierEffect>,
     pub play_effects: Vec<Effect<TargetId>>,
     pub triggers: Vec<TriggerDef>,
-    pub targets: Vec<CharacterTarget>,
+    pub targets: Targets,
 }
 
 impl CardDef {
@@ -106,10 +106,6 @@ impl CardDef {
             CardKindDef::Minion(minion) => &minion.hostile_aura_effects,
             CardKindDef::Hero(_) => &[],
         }
-    }
-
-    pub(crate) fn target(&self, id: TargetId) -> Option<&CharacterTarget> {
-        self.targets.iter().find(|target| target.id == id)
     }
 }
 

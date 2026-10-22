@@ -107,6 +107,7 @@ mod tests {
 
     use super::*;
     use crate::cards::definition::{CharacterSelector, DefId, PlayerSelector};
+    use crate::target::Targets;
     use crate::trigger::{TriggerPattern, TriggerSubject};
 
     fn spell() -> CardDef {
@@ -118,7 +119,7 @@ mod tests {
             modifier_effects: Vec::new(),
             play_effects: Vec::new(),
             triggers: Vec::new(),
-            targets: Vec::new(),
+            targets: Targets::default(),
         }
     }
 

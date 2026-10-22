@@ -75,7 +75,7 @@ impl Game {
                 .card_def(card.object_id())
                 .targets
                 .iter()
-                .map(|t| t.id)
+                .map(|(target_id, _)| target_id)
                 .collect::<Vec<_>>();
             self.player_input
                 .commit_targeting(awaiting_targeting, &target_ids);

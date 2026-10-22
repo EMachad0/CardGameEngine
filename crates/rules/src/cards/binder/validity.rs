@@ -13,8 +13,6 @@ pub(crate) enum CardDefError {
     Duplicate(DefId),
     #[error("Placeholder card def present")]
     Placeholder,
-    #[error("Duplicate target {1:?} on {0:?}")]
-    DuplicateTarget(DefId, TargetId),
     #[error("Target {1:?} not found on {0:?}")]
     TargetNotFound(DefId, TargetId),
     #[error("Pick {1:?} resolved with no reveal before it on {0:?}")]
@@ -27,7 +25,6 @@ pub(super) fn validate(defs: &[CardDef]) -> Result<(), CardDefError> {
     validate_placeholder(defs)?;
     validate_duplicates(defs)?;
     validate_not_found(defs)?;
-    validate_target_duplicates(defs)?;
     validate_target_not_found(defs)?;
     validate_picks(defs)?;
     Ok(())
@@ -60,22 +57,11 @@ fn validate_not_found(defs: &[CardDef]) -> Result<(), CardDefError> {
     Ok(())
 }
 
-fn validate_target_duplicates(defs: &[CardDef]) -> Result<(), CardDefError> {
-    for def in defs {
-        for (index, target) in def.targets.iter().enumerate() {
-            if def.targets[..index].iter().any(|seen| seen.id == target.id) {
-                return Err(CardDefError::DuplicateTarget(def.id, target.id));
-            }
-        }
-    }
-    Ok(())
-}
-
 /// Rejects a play effect that names a target the card doesn't declare.
 fn validate_target_not_found(defs: &[CardDef]) -> Result<(), CardDefError> {
     for def in defs {
         for target_id in def.play_effects.iter().filter_map(targeted_id) {
-            if def.target(target_id).is_none() {
+            if def.targets.get(target_id).is_none() {
                 return Err(CardDefError::TargetNotFound(def.id, target_id));
             }
         }
@@ -150,6 +136,7 @@ mod tests {
     use crate::cards::binder::sets::base::static_card_definition::*;
     use crate::cards::definition::{CardKindDef, TriggerDef};
     use crate::cards::modifier::ModifierEffect;
+    use crate::target::Targets;
 
     #[test]
     fn the_built_in_table_is_valid() {
@@ -186,22 +173,10 @@ mod tests {
     }
 
     #[test]
-    fn two_targets_with_one_id_on_a_card_are_a_duplicate() {
-        let mut defs = base::definitions();
-        let ping = defs.iter_mut().find(|def| def.id == PING).unwrap();
-        ping.targets.push(ping.targets[0]);
-
-        assert_eq!(
-            validate(&defs),
-            Err(CardDefError::DuplicateTarget(PING, TargetId(0)))
-        );
-    }
-
-    #[test]
     fn an_effect_naming_an_undeclared_target_is_not_found() {
         let mut defs = base::definitions();
         let ping = defs.iter_mut().find(|def| def.id == PING).unwrap();
-        ping.targets.clear();
+        ping.targets = Targets::default();
 
         assert_eq!(
             validate(&defs),

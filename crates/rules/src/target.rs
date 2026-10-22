@@ -36,16 +36,54 @@ pub enum NoTarget {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CharacterTarget {
-    pub id: TargetId,
     pub filter: CharacterFilter,
     pub count: EffectAmount,
     pub bound: AmountBound,
     pub different: bool,
 }
 
+/// A card's targets, in the order declared. Each one's id is its place in the list.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct Targets(Vec<CharacterTarget>);
+
+impl Targets {
+    pub(crate) fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// In the order declared.
+    pub(crate) fn iter(&self) -> impl Iterator<Item = (TargetId, &CharacterTarget)> {
+        self.0
+            .iter()
+            .enumerate()
+            .map(|(idx, target)| (TargetId(idx), target))
+    }
+
+    pub(crate) fn get(&self, id: TargetId) -> Option<&CharacterTarget> {
+        self.0.get(id.0)
+    }
+}
+
+impl From<Vec<CharacterTarget>> for Targets {
+    fn from(targets: Vec<CharacterTarget>) -> Self {
+        Self(targets)
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
+
+    fn target(different: bool) -> CharacterTarget {
+        CharacterTarget {
+            filter: CharacterFilter::all(),
+            count: 1.into(),
+            bound: AmountBound::Exactly,
+            different,
+        }
+    }
 
     #[test]
     fn exactly_is_full_at_the_required_count() {
@@ -55,5 +93,31 @@ mod tests {
     #[test]
     fn exactly_is_not_full_below_the_required_count() {
         assert!(!AmountBound::Exactly.is_full(1, 2));
+    }
+
+    #[test]
+    fn each_targets_id_is_its_place_in_the_order_declared() {
+        let (first, second) = (target(true), target(false));
+        let targets = Targets::from(vec![first, second]);
+
+        assert_eq!(
+            targets.iter().collect::<Vec<_>>(),
+            [(TargetId(0), &first), (TargetId(1), &second)],
+        );
+    }
+
+    #[test]
+    fn a_target_is_found_by_its_id() {
+        let (first, second) = (target(true), target(false));
+        let targets = Targets::from(vec![first, second]);
+
+        assert_eq!(targets.get(TargetId(1)), Some(&second));
+    }
+
+    #[test]
+    fn an_id_past_the_last_target_finds_none() {
+        let targets = Targets::from(vec![target(true), target(false)]);
+
+        assert_eq!(targets.get(TargetId(2)), None);
     }
 }

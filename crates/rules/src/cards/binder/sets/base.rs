@@ -9,7 +9,7 @@ use crate::cards::filter::{CardFilter, CharacterFilter, Side};
 use crate::cards::modifier::ModifierEffect;
 use crate::effect::{Effect, EffectAmount, PickId, ZoneMove};
 use crate::history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter};
-use crate::target::{AmountBound, CharacterTarget, TargetId};
+use crate::target::{AmountBound, CharacterTarget, TargetId, Targets};
 use crate::trigger::{TriggerPattern, TriggerSubject};
 
 pub(in crate::cards::binder) const PLACEHOLDER: DefId = DefId::new("placeholder");
@@ -253,8 +253,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                 selector: CharacterSelector::Targeted(TargetId(0)),
                 amount: 2.into(),
             }],
-            targets: vec![CharacterTarget {
-                id: TargetId(0),
+            targets: Targets::from(vec![CharacterTarget {
                 filter: CharacterFilter {
                     kind: EnumSet::only(CharacterKind::Minion),
                     side: EnumSet::all(),
@@ -262,7 +261,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                 count: 1.into(),
                 bound: AmountBound::Exactly,
                 different: true,
-            }],
+            }]),
             ..Default::default()
         },
         CardDef {
@@ -280,9 +279,8 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                     amount: 1.into(),
                 },
             ],
-            targets: vec![
+            targets: Targets::from(vec![
                 CharacterTarget {
-                    id: TargetId(0),
                     filter: CharacterFilter {
                         kind: EnumSet::only(CharacterKind::Minion),
                         side: EnumSet::all(),
@@ -292,7 +290,6 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                     different: true,
                 },
                 CharacterTarget {
-                    id: TargetId(1),
                     filter: CharacterFilter {
                         kind: EnumSet::only(CharacterKind::Minion),
                         side: EnumSet::only(Side::Friendly),
@@ -301,7 +298,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                     bound: AmountBound::Exactly,
                     different: true,
                 },
-            ],
+            ]),
             ..Default::default()
         },
         CardDef {
@@ -313,8 +310,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                 selector: CharacterSelector::Targeted(TargetId(0)),
                 amount: 1.into(),
             }],
-            targets: vec![CharacterTarget {
-                id: TargetId(0),
+            targets: Targets::from(vec![CharacterTarget {
                 filter: CharacterFilter {
                     kind: EnumSet::only(CharacterKind::Minion),
                     side: EnumSet::all(),
@@ -322,7 +318,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                 count: 2.into(),
                 bound: AmountBound::Exactly,
                 different: true,
-            }],
+            }]),
             ..Default::default()
         },
         CardDef {
@@ -340,9 +336,8 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                     amount: 1.into(),
                 },
             ],
-            targets: vec![
+            targets: Targets::from(vec![
                 CharacterTarget {
-                    id: TargetId(0),
                     filter: CharacterFilter {
                         kind: EnumSet::only(CharacterKind::Minion),
                         side: EnumSet::all(),
@@ -352,7 +347,6 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                     different: true,
                 },
                 CharacterTarget {
-                    id: TargetId(1),
                     filter: CharacterFilter {
                         kind: EnumSet::only(CharacterKind::Hero),
                         side: EnumSet::all(),
@@ -361,7 +355,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<CardDef> {
                     bound: AmountBound::Exactly,
                     different: true,
                 },
-            ],
+            ]),
             ..Default::default()
         },
         CardDef {
