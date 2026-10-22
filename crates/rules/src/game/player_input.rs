@@ -1,6 +1,6 @@
-//! What the game awaits from each player, and what they targeted and picked. The game awaits at
-//! most one thing from a player: targeting while playing a card, or picking while a card
-//! resolves. A revealed card sits in a picking's options until picked, then in its picks.
+//! What the game awaits from each player, and what they picked. The game awaits at most one thing
+//! from a player: targeting while playing a card, or picking while a card resolves. A revealed
+//! card sits in a picking's options until picked, then in its picks.
 
 use std::marker::PhantomData;
 
@@ -177,13 +177,6 @@ impl Targeting {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct StoredTargets {
-    object_id: ObjectId,
-    target_id: TargetId,
-    targeted: Vec<ObjectId>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct Picks {
     source: ObjectId,
     pick_id: PickId,
@@ -208,8 +201,6 @@ pub(super) struct PlayerInput {
     targetings: Vec<(PlayerId, Targeting)>,
     /// Sorted by player.
     pickings: Vec<(PlayerId, Picking)>,
-    /// Sorted by card, then in the order stored.
-    targets: Vec<StoredTargets>,
     /// Sorted by source, then in the order picked.
     picks: Vec<Picks>,
 }
@@ -240,14 +231,6 @@ impl PlayerInput {
     pub(super) fn targeting(&self, player_id: PlayerId) -> Option<&Targeting> {
         self.awaiting_targeting(player_id)
             .map(AwaitsTargeting::targeting)
-    }
-
-    /// `None` unless the card was played after targeting and declares `target_id`.
-    pub(super) fn targeted(&self, object_id: ObjectId, target_id: TargetId) -> Option<&[ObjectId]> {
-        self.targets
-            .iter()
-            .find(|entry| entry.object_id == object_id && entry.target_id == target_id)
-            .map(|entry| entry.targeted.as_slice())
     }
 
     /// The first picks `source` stored for `pick_id`.
@@ -291,27 +274,15 @@ impl PlayerInput {
         self.targetings.remove(idx);
     }
 
-    /// Closes the targeting and stores its card's targeted objects for each target in
-    /// `target_ids`, replacing any it had. Panics unless the player is still targeting the card.
+    /// Closes the targeting and returns it. Panics unless the player is still targeting the card.
     pub(super) fn commit_targeting(
         &mut self,
         awaiting_targeting: WasAwaitingTargeting,
-        target_ids: &[TargetId],
-    ) {
+    ) -> Targeting {
         let (_, closed) = self
             .targetings
             .remove(self.targeting_idx(&awaiting_targeting));
-        let object_id = closed.object_id;
-        self.targets.retain(|entry| entry.object_id != object_id);
-        let idx = self
-            .targets
-            .partition_point(|entry| entry.object_id <= object_id);
-        let entries = target_ids.iter().map(|&target_id| StoredTargets {
-            object_id,
-            target_id,
-            targeted: closed.targeted_for(target_id).collect(),
-        });
-        self.targets.splice(idx..idx, entries);
+        closed
     }
 
     /// Starts the player's picking from `options`, replacing any targeting they have. With no
@@ -452,9 +423,9 @@ mod tests {
         input.target(awaiting_targeting, object, target_id);
     }
 
-    fn commit_targeting(input: &mut PlayerInput, player: PlayerId, target_ids: &[TargetId]) {
+    fn commit_targeting(input: &mut PlayerInput, player: PlayerId) -> Targeting {
         let awaiting_targeting = was_awaiting_targeting(input, player);
-        input.commit_targeting(awaiting_targeting, target_ids);
+        input.commit_targeting(awaiting_targeting)
     }
 
     fn cancel(input: &mut PlayerInput, player: PlayerId) {
@@ -696,21 +667,15 @@ mod tests {
     }
 
     #[test]
-    fn committed_targeting_stores_targeted_objects_for_every_declared_target() {
+    fn committed_targeting_hands_back_what_was_targeted() {
         let [card, target] = ids();
         let player = PlayerId::new(0);
         let mut input = PlayerInput::default();
         start_targeting(&mut input, player, card);
         target_object(&mut input, player, target, TargetId(0));
+        let open = input.targeting(player).unwrap().clone();
 
-        commit_targeting(&mut input, player, &[TargetId(0), TargetId(1)]);
-
-        assert_eq!(input.targeted(card, TargetId(0)), Some(&[target][..]));
-        assert_eq!(
-            input.targeted(card, TargetId(1)),
-            Some(&[][..]),
-            "a declared target with nothing targeted must still store an empty list",
-        );
+        assert_eq!(commit_targeting(&mut input, player), open);
     }
 
     #[test]
@@ -720,38 +685,9 @@ mod tests {
         let mut input = PlayerInput::default();
         start_targeting(&mut input, player, card);
 
-        commit_targeting(&mut input, player, &[TargetId(0)]);
+        commit_targeting(&mut input, player);
 
         assert!(is_awaiting_nothing(&input, player));
-    }
-
-    #[test]
-    fn committing_a_cards_targeting_again_replaces_what_it_targeted() {
-        let [card, first, second] = ids();
-        let player = PlayerId::new(0);
-        let mut input = PlayerInput::default();
-        start_targeting(&mut input, player, card);
-        target_object(&mut input, player, first, TargetId(0));
-        commit_targeting(&mut input, player, &[TargetId(0)]);
-        start_targeting(&mut input, player, card);
-        target_object(&mut input, player, second, TargetId(0));
-
-        commit_targeting(&mut input, player, &[TargetId(0)]);
-
-        assert_eq!(input.targeted(card, TargetId(0)), Some(&[second][..]));
-    }
-
-    #[test]
-    fn cancelled_targeting_stores_nothing_targeted() {
-        let [card, target] = ids();
-        let player = PlayerId::new(0);
-        let mut input = PlayerInput::default();
-        start_targeting(&mut input, player, card);
-        target_object(&mut input, player, target, TargetId(0));
-
-        cancel(&mut input, player);
-
-        assert_eq!(input.targeted(card, TargetId(0)), None);
     }
 
     #[test]

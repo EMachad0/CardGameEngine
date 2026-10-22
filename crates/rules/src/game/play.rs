@@ -60,7 +60,8 @@ impl From<Play> for Event {
 }
 
 impl Game {
-    /// If the card is played from the player's targeting, closes it before reporting the play.
+    /// If the card is played from the player's targeting, closes it before reporting the play. Its
+    /// play effects are pushed holding what was targeted.
     pub(super) fn play(&mut self, playable: WasPlayable, obs: &mut impl Observer) {
         let WasPlayable {
             card,
@@ -70,21 +71,27 @@ impl Game {
         let cards = CardsRef::new(self);
         let mana_cost = cost(cards, cards.zones.still_in_hand(&card));
         self.get_player_mut(player_id).mana.pay(mana_cost);
-        if let Some(awaiting_targeting) = awaiting_targeting {
-            let target_ids = CardsRef::new(self)
-                .card_def(card.object_id())
-                .targets
-                .iter()
-                .map(|(target_id, _)| target_id)
-                .collect::<Vec<_>>();
-            self.player_input
-                .commit_targeting(awaiting_targeting, &target_ids);
-        }
+        let targeting = awaiting_targeting
+            .map(|awaiting_targeting| self.player_input.commit_targeting(awaiting_targeting));
         let object_id = self.zones.take_from_hand(card);
 
         let play_effects = CardsRef::new(self).play_effects(object_id);
         if !play_effects.is_empty() {
-            self.effect_stack.push(object_id, play_effects.to_vec());
+            let play_effects = play_effects
+                .iter()
+                .map(|effect| {
+                    effect.clone().map_targeted(|target| {
+                        targeting
+                            .as_ref()
+                            .expect(
+                                "a card that declares targets should be played from its targeting",
+                            )
+                            .targeted_for(target.id())
+                            .collect::<Vec<_>>()
+                    })
+                })
+                .collect::<Vec<_>>();
+            self.effect_stack.push(object_id, play_effects);
         }
 
         let report = Report::Played(Play {

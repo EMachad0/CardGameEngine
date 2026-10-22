@@ -1,3 +1,5 @@
+use std::convert::Infallible;
+
 use crate::cards::binder::def_id::DefId;
 use crate::cards::definition::{CharacterSelector, PlayerSelector};
 use crate::cards::modifier::ModifierEffect;
@@ -59,6 +61,11 @@ pub enum Effect<T> {
 }
 
 impl<T> Effect<T> {
+    pub(crate) fn map_targeted<U>(self, f: impl FnOnce(T) -> U) -> Effect<U> {
+        let Ok(mapped) = self.try_map_targeted(|target| Ok::<_, Infallible>(f(target)));
+        mapped
+    }
+
     pub(crate) fn try_map_targeted<U, E>(
         self,
         f: impl FnOnce(T) -> Result<U, E>,
