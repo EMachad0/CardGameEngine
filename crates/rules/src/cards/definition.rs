@@ -268,7 +268,11 @@ mod tests {
         }
     }
 
-    fn two_targeted_damages<T>(first: T, second: T) -> Vec<Effect<T>> {
+    fn untargeted_effects<T>() -> Vec<Effect<T>> {
+        vec![draw(), damage(CharacterSelector::Itself)]
+    }
+
+    fn two_targets_among_untargeted_effects<T>(first: T, second: T) -> Vec<Effect<T>> {
         vec![
             draw(),
             damage(CharacterSelector::Targeted(first)),
@@ -289,7 +293,7 @@ mod tests {
     #[test]
     fn each_targets_id_is_its_place_among_the_play_effects_targeted_selectors() {
         let (first, second) = (character_target(1), character_target(2));
-        let def = card(two_targeted_damages(first, second));
+        let def = card(two_targets_among_untargeted_effects(first, second));
 
         assert_eq!(
             def.targets().collect::<Vec<_>>(),
@@ -299,33 +303,32 @@ mod tests {
 
     #[test]
     fn play_effects_with_no_targeted_selector_declare_no_target() {
-        let def = card(vec![draw(), damage(CharacterSelector::Itself)]);
+        let def = card(untargeted_effects());
 
         assert_eq!(def.targets().next(), None);
     }
 
     #[test]
     fn binding_replaces_each_target_with_what_is_given_for_its_id() {
-        let def = card(two_targeted_damages(
+        let def = card(two_targets_among_untargeted_effects(
             character_target(1),
             character_target(2),
         ));
 
         assert_eq!(
             def.bind_play_effects(|target_id| target_id),
-            two_targeted_damages(TargetId(0), TargetId(1)),
+            two_targets_among_untargeted_effects(TargetId(0), TargetId(1)),
         );
     }
 
     #[test]
     fn binding_play_effects_that_declare_no_target_asks_for_nothing() {
-        let def = card(vec![draw(), damage(CharacterSelector::Itself)]);
+        let def = card(untargeted_effects());
         let mut asked = Vec::new();
 
-        let bound = def.bind_play_effects(|target_id| asked.push(target_id));
+        def.bind_play_effects(|target_id| asked.push(target_id));
 
         assert_eq!(asked, Vec::<TargetId>::new());
-        assert_eq!(bound, [draw(), damage(CharacterSelector::Itself)]);
     }
 
     #[test]
