@@ -1,10 +1,33 @@
 # Card text is validated, then assumed
 
-Status: resolved
+Status: ready-for-agent
 Category: enhancement
 Type: task
 Blocked by: 11
-Branch: `card-text`, new, from `main` after ticket 11 merges. New draft PR with base `main`.
+Branch: `card-text`, with draft PR #62 against `main`.
+
+## Rework
+
+PR #62 is this ticket's first pass. Rework it on its branch, rebased on `main`, instead of opening
+a new PR. The learner's review:
+
+- He likes that card text is generic over what a `Targeted` selector holds.
+- The API got confusing:
+  - Seven card text types gained defaulted type parameters, and `Effect` has two, with different
+    meanings.
+  - `ValidCardDef` repeats `CardDef`'s fields, and the parse rebuilds every effect, modifier and
+    trigger to change one type.
+  - The kind questions moved to `CardKindDef`, so every reader reaches them through `.kind()`.
+- Several of the PR's choices were made only to keep `CardDef`'s public shape and every validation
+  result as they are on `main`. Neither restriction holds any more. See "Leave alone".
+
+Aim for the best code, not the smallest diff against `main`. Nothing outside "Leave alone" is off
+limits, the public API included. Settle the shape yourself, within the doc, and state each choice in
+the PR body as the spec asks. PR #62's Left out lists what the old restrictions kept it from doing,
+so revisit each item. Rewrite the PR body for the new design, and start its Review section over,
+with this review as its first entry.
+
+PR #55's behavior probe and PR #62's validation probe are in comments on those PRs.
 
 ## Why
 
@@ -35,16 +58,9 @@ later step will do has to know that step's rule."
 
 ## Leave alone
 
-- Which card texts are valid. Every validation result stays as it is.
 - What every card does.
-- The prelude's export of `CardDef`. See the spec's "Left for later sessions". A change to its
-  shape changes the public API, so justify it under "Behavior".
 
 ## Done when
 
 - Each fact a validator checks reaches the code that relies on it as a type, not as an `expect`.
 - The checks pass, and the PR justifies every behavior change.
-
-## Answer
-
-https://github.com/EMachad0/CardGameEngine/pull/62
