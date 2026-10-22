@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::cards::binder::store::DefId;
+use crate::cards::binder::def_id::DefId;
 use crate::cards::modifier::{Modifier, Modifiers};
 use crate::ids::PlayerId;
 

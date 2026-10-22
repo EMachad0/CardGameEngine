@@ -1,7 +1,7 @@
 use enumset::EnumSet;
 
+use crate::cards::binder::def_id::DefId;
 use crate::cards::binder::sets::base::static_card_definition::*;
-use crate::cards::binder::store::DefId;
 use crate::cards::definition::{
     CardDef, CardKind, CardKindDef, CharacterKind, CharacterSelector, HeroCardDef, MinionCardDef,
     PlayerSelector, SpellCardDef, TriggerDef,
@@ -30,7 +30,7 @@ impl Default for CardDef<TargetId> {
 macro_rules! def_ids {
     ($($name:ident = $id:literal),* $(,)?) => {
         pub mod static_card_definition {
-            use crate::cards::binder::store::DefId;
+            use crate::cards::binder::def_id::DefId;
 
             $(
                 pub const $name: DefId = DefId::new($id);

@@ -13,8 +13,8 @@ pub(super) enum CardDefError {
     PickNotResolved(PickId),
 }
 
-/// The card, with each target its play effects name declared. Rejects the first target it doesn't
-/// declare, then the card's picks.
+/// The card, with each target its play effects name declared. Fails on the first target the card
+/// doesn't declare, then checks the card's picks.
 pub(super) fn parse(def: CardDef<TargetId>) -> Result<CardDef<DeclaredTarget>, CardDefError> {
     let CardDef {
         name,
@@ -90,9 +90,9 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
+    use crate::cards::binder::def_id::DefId;
     use crate::cards::binder::sets::base;
     use crate::cards::binder::sets::base::static_card_definition::*;
-    use crate::cards::binder::store::DefId;
     use crate::cards::definition::{CardKindDef, CharacterSelector, TriggerDef};
     use crate::cards::modifier::ModifierEffect;
     use crate::target::Targets;
@@ -101,7 +101,7 @@ mod tests {
         parse(def).map(drop)
     }
 
-    fn built_in(def_id: DefId) -> CardDef<TargetId> {
+    fn built_in_card(def_id: DefId) -> CardDef<TargetId> {
         base::definitions()
             .into_iter()
             .find_map(|(id, def)| (id == def_id).then_some(def))
@@ -110,7 +110,7 @@ mod tests {
 
     #[test]
     fn each_play_effect_holds_the_target_declared_for_its_id() {
-        let shove = parse(built_in(SHOVE)).unwrap();
+        let shove = parse(built_in_card(SHOVE)).unwrap();
 
         let targeted = shove
             .play_effects
@@ -128,7 +128,7 @@ mod tests {
 
     #[test]
     fn an_effect_naming_an_undeclared_target_is_not_found() {
-        let mut ping = built_in(PING);
+        let mut ping = built_in_card(PING);
         ping.targets = Targets::default();
 
         assert_eq!(
@@ -146,8 +146,8 @@ mod tests {
 
     #[test]
     fn a_buff_in_play_effects_may_target_whom_it_grants_a_trigger_to() {
-        let deathrattle = built_in(HOARDER).triggers[0].clone();
-        let mut ping = built_in(PING);
+        let deathrattle = built_in_card(HOARDER).triggers[0].clone();
+        let mut ping = built_in_card(PING);
         ping.play_effects.push(Effect::Buff {
             selector: CharacterSelector::Targeted(TargetId(0)),
             effect: ModifierEffect::GrantTrigger(deathrattle),
@@ -161,14 +161,14 @@ mod tests {
     }
 
     fn hoarder_trigger_with_an_unresolved_pick() -> TriggerDef {
-        let mut trigger = built_in(HOARDER).triggers[0].clone();
+        let mut trigger = built_in_card(HOARDER).triggers[0].clone();
         trigger.effects.truncate(1);
         trigger
     }
 
     #[test]
     fn a_pick_resolved_with_no_reveal_is_not_found() {
-        let mut forage = built_in(FORAGE);
+        let mut forage = built_in_card(FORAGE);
         forage.play_effects.remove(0);
 
         assert_eq!(validate(forage), Err(CardDefError::PickNotFound(PickId(0))));
@@ -176,7 +176,7 @@ mod tests {
 
     #[test]
     fn a_pick_resolved_before_its_reveal_is_not_found() {
-        let mut forage = built_in(FORAGE);
+        let mut forage = built_in_card(FORAGE);
         forage.play_effects.swap(0, 1);
 
         assert_eq!(
@@ -188,7 +188,7 @@ mod tests {
 
     #[test]
     fn a_pick_revealed_and_never_resolved_is_rejected() {
-        let mut forage = built_in(FORAGE);
+        let mut forage = built_in_card(FORAGE);
         forage.play_effects.truncate(1);
 
         assert_eq!(
@@ -200,7 +200,7 @@ mod tests {
 
     #[test]
     fn a_triggers_pick_must_be_resolved_too() {
-        let mut hoarder = built_in(HOARDER);
+        let mut hoarder = built_in_card(HOARDER);
         hoarder.triggers[0].effects.truncate(1);
 
         assert_eq!(
@@ -211,7 +211,7 @@ mod tests {
 
     #[test]
     fn a_granted_triggers_pick_must_be_resolved_too() {
-        let mut banner = built_in(RALLY_BANNER);
+        let mut banner = built_in_card(RALLY_BANNER);
         replace_friendly_auras(
             &mut banner,
             vec![ModifierEffect::GrantTrigger(
@@ -227,7 +227,7 @@ mod tests {
 
     #[test]
     fn a_pick_in_a_trigger_granted_by_a_buff_must_be_resolved_too() {
-        let mut drummer = built_in(DRUMMER);
+        let mut drummer = built_in_card(DRUMMER);
         drummer.play_effects.push(Effect::Buff {
             selector: CharacterSelector::Itself,
             effect: ModifierEffect::GrantTrigger(hoarder_trigger_with_an_unresolved_pick()),

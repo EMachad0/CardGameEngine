@@ -1,6 +1,6 @@
 //! What one player can see. `view` is the one definition of it.
 
-use crate::cards::binder::store::DefId;
+use crate::cards::binder::def_id::DefId;
 use crate::cards::object::ObjectId;
 use crate::game::cards_ref::CardsRef;
 use crate::game::player::Player;

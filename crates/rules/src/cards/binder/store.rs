@@ -1,20 +1,12 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+use crate::cards::binder::def_id::DefId;
 use crate::cards::binder::sets::base;
 use crate::cards::binder::sets::base::static_card_definition::ALL_DEF_ID;
 use crate::cards::binder::validity::{self, CardDefError};
 use crate::cards::definition::CardDef;
 use crate::target::{DeclaredTarget, TargetId};
-
-#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
-pub struct DefId(&'static str);
-
-impl DefId {
-    pub(super) const fn new(id: &'static str) -> Self {
-        Self(id)
-    }
-}
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 enum BinderError {
@@ -78,13 +70,13 @@ mod tests {
     use crate::cards::binder::sets::base::static_card_definition::{BOLT, PING, SPARK};
     use crate::target::Targets;
 
-    fn built(table: Vec<(DefId, CardDef<TargetId>)>) -> Result<(), BinderError> {
+    fn validate(table: Vec<(DefId, CardDef<TargetId>)>) -> Result<(), BinderError> {
         Binder::new(table).map(drop)
     }
 
     #[test]
     fn the_built_in_table_is_valid() {
-        assert_eq!(built(base::definitions()), Ok(()));
+        assert_eq!(validate(base::definitions()), Ok(()));
     }
 
     #[test]
@@ -92,7 +84,7 @@ mod tests {
         let mut defs = base::definitions();
         defs.retain(|&(def_id, _)| def_id != SPARK);
 
-        assert_eq!(built(defs), Err(BinderError::NotFound(SPARK)));
+        assert_eq!(validate(defs), Err(BinderError::NotFound(SPARK)));
     }
 
     #[test]
@@ -105,7 +97,7 @@ mod tests {
             .clone();
         defs.push(bolt);
 
-        assert_eq!(built(defs), Err(BinderError::Duplicate(BOLT)));
+        assert_eq!(validate(defs), Err(BinderError::Duplicate(BOLT)));
     }
 
     #[test]
@@ -115,7 +107,7 @@ mod tests {
         ping.targets = Targets::default();
 
         assert_eq!(
-            built(defs),
+            validate(defs),
             Err(BinderError::Invalid(
                 PING,
                 CardDefError::TargetNotFound(TargetId(0))

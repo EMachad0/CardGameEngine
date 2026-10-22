@@ -1,7 +1,8 @@
 //! A new game, up to the start of its first turn.
 
+use crate::cards::binder::def_id::DefId;
 use crate::cards::binder::sets::base::static_card_definition::HERO;
-use crate::cards::binder::store::{Binder, DefId};
+use crate::cards::binder::store::Binder;
 use crate::cards::object::ObjectBag;
 use crate::game::player::Player;
 use crate::game::resolve::aftermath::standings::Standings;

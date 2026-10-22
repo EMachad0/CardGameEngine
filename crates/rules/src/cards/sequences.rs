@@ -155,7 +155,7 @@ mod tests {
     }
 
     #[test]
-    fn play_effects_are_no_trigger_sequence() {
+    fn play_effects_are_not_a_trigger_sequence() {
         let def = CardDef {
             play_effects: vec![draw()],
             ..spell()
