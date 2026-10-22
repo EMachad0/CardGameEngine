@@ -1,4 +1,5 @@
-use crate::cards::definition::{CharacterSelector, DefId, PlayerSelector};
+use crate::cards::binder::store::DefId;
+use crate::cards::definition::{CharacterSelector, PlayerSelector};
 use crate::cards::modifier::ModifierEffect;
 use crate::history::HistoryQuery;
 

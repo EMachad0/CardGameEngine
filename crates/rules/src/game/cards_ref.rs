@@ -1,8 +1,8 @@
 //! The cards of one game, borrowed together for the questions asked about them: what each object
 //! is, and which characters pass a filter.
 
-use crate::cards::binder::store::Binder;
-use crate::cards::definition::{CardDef, DefId};
+use crate::cards::binder::store::{Binder, DefId};
+use crate::cards::definition::CardDef;
 use crate::cards::filter::CharacterFilter;
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::effect::Effect;

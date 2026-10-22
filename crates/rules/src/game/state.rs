@@ -1,8 +1,7 @@
 //! `Game`, the whole state of one game, its constructors, and what callers ask it.
 
 use crate::action::Action;
-use crate::cards::binder::store::Binder;
-use crate::cards::definition::DefId;
+use crate::cards::binder::store::{Binder, DefId};
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::EffectStack;

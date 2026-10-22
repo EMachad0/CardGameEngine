@@ -9,7 +9,6 @@ use crate::target::NoTarget;
 /// `Buff` and `AddFriendlyAura`, at any depth. Those its play effects grant come first.
 pub(super) fn trigger_sequences(def: &CardDef) -> Vec<&[Effect<NoTarget>]> {
     let CardDef {
-        id: _,
         name: _,
         kind,
         mana_cost: _,
@@ -106,13 +105,12 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::cards::definition::{CharacterSelector, DefId, PlayerSelector};
+    use crate::cards::definition::{CharacterSelector, PlayerSelector};
     use crate::target::Targets;
     use crate::trigger::{TriggerPattern, TriggerSubject};
 
     fn spell() -> CardDef {
         CardDef {
-            id: DefId::new("test.spell.v0"),
             name: "Spell".to_string(),
             kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 1,

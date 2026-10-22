@@ -2,7 +2,8 @@
 
 pub use crate::action::{Action, IllegalAction};
 pub use crate::cards::binder::sets::base::static_card_definition;
-pub use crate::cards::definition::{CardDef, DefId};
+pub use crate::cards::binder::store::DefId;
+pub use crate::cards::definition::CardDef;
 pub use crate::cards::object::ObjectId;
 pub use crate::effect::PickId;
 pub use crate::event::Event;

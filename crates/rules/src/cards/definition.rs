@@ -6,18 +6,8 @@ use crate::effect::Effect;
 use crate::target::{NoTarget, TargetId, Targets};
 use crate::trigger::TriggerPattern;
 
-#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
-pub struct DefId(&'static str);
-
-impl DefId {
-    pub(super) const fn new(id: &'static str) -> Self {
-        Self(id)
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CardDef {
-    pub id: DefId,
     pub name: String,
     pub kind: CardKindDef,
     pub mana_cost: u8,
