@@ -1,6 +1,6 @@
 # Player input holds decisions that change apart
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 Blocked by: 12
@@ -54,3 +54,7 @@ needs."
 - Each part above that changes apart from the others is its own module, and data tied by an
   invariant shares one owner.
 - The checks pass, and the PR justifies every behavior change.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/66
