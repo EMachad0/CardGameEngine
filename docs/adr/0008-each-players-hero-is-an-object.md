@@ -4,7 +4,7 @@ status: accepted
 
 # Each player's hero is an object
 
-A player makes the decisions and owns the mana, the zones and any pending pick. The hero is the piece
+A player makes the decisions and owns the mana, the zones and any picking. The hero is the piece
 that represents the player and takes damage. Each player's hero is an object with a hero card
 definition, held in a hero zone that always holds exactly one object. Damage to a hero is marked on it
 and its health is computed on read, as for a minion. So a damage effect takes one path for every

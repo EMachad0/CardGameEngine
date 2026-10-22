@@ -122,7 +122,7 @@ impl Game {
     ) {
         #[expect(
             clippy::disallowed_methods,
-            reason = "the one reveal, which posts the revealed cards as a pending pick"
+            reason = "the one reveal, which posts the revealed cards as a picking"
         )]
         let options = self.zones.reveal(player_id, count);
         let report = Report::Revealed {
@@ -131,7 +131,7 @@ impl Game {
         };
         if self
             .player_input
-            .ask_pick(player_id, source, pick_id, options)
+            .start_picking(player_id, source, pick_id, options)
         {
             self.report(report, obs);
         }

@@ -1,6 +1,8 @@
 //! What the game awaits from each player, and what they targeted and picked. The game awaits at
-//! most one thing from a player: targeting while playing a card, or a pending pick while a card
-//! resolves. A revealed card sits in a pending pick's options until picked, then in its picks.
+//! most one thing from a player: targeting while playing a card, or picking while a card
+//! resolves. A revealed card sits in a picking's options until picked, then in its picks.
+
+use std::marker::PhantomData;
 
 use crate::cards::object::ObjectId;
 use crate::effect::PickId;
@@ -10,90 +12,107 @@ use crate::target::TargetId;
 /// What the game awaits from one player, as read.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Awaiting<'a> {
-    Pick(AwaitedPick<'a>),
-    Targets(AwaitedTargeting<'a>),
+    Nothing(AwaitsNothing<'a>),
+    Picking(AwaitsPicking<'a>),
+    Targeting(AwaitsTargeting<'a>),
 }
 
-/// A pending pick, with where it is kept. It borrows the player input, so the pick stays pending
+/// That the game awaits nothing from a player. It borrows the player input, so nothing is awaited
+/// from them while this lives.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct AwaitsNothing<'a> {
+    player_id: PlayerId,
+    input: PhantomData<&'a PlayerInput>,
+}
+
+/// That the game awaits a player's picking. It borrows the player input, so the picking stays open
 /// while this lives.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct AwaitedPick<'a> {
-    idx: usize,
-    pick: &'a PendingPick,
+pub(super) struct AwaitsPicking<'a> {
+    player_id: PlayerId,
+    picking: &'a Picking,
 }
 
-impl<'a> AwaitedPick<'a> {
+impl<'a> AwaitsPicking<'a> {
     /// In reveal order.
-    pub(super) fn options(self) -> impl Iterator<Item = PickOption> + 'a {
-        let pick_idx = self.idx;
-        self.pick
+    pub(super) fn options(self) -> impl Iterator<Item = WasAwaitingPicking> + 'a {
+        let player_id = self.player_id;
+        self.picking
             .options
             .iter()
-            .enumerate()
-            .map(move |(option_idx, &object_id)| PickOption {
-                pick_idx,
-                option_idx,
+            .map(move |&object_id| WasAwaitingPicking {
+                player_id,
                 object_id,
             })
     }
 }
 
-/// A targeting, with where it is kept. It borrows the player input, so the targeting stays open
-/// while this lives.
+/// That the game awaits a player's targeting. It borrows the player input, so the targeting stays
+/// open while this lives.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct AwaitedTargeting<'a> {
-    idx: usize,
+pub(super) struct AwaitsTargeting<'a> {
+    player_id: PlayerId,
     targeting: &'a Targeting,
 }
 
-impl<'a> AwaitedTargeting<'a> {
+impl<'a> AwaitsTargeting<'a> {
     pub(super) fn targeting(self) -> &'a Targeting {
         self.targeting
     }
+}
 
-    pub(super) fn slot(self) -> TargetingSlot {
-        TargetingSlot {
-            idx: self.idx,
-            object_id: self.targeting.object_id,
+/// That the game was awaiting nothing from a player. It holds no borrow, so the game may have
+/// started waiting on them since.
+pub(super) struct WasAwaitingNothing {
+    player_id: PlayerId,
+}
+
+impl From<AwaitsNothing<'_>> for WasAwaitingNothing {
+    fn from(awaits_nothing: AwaitsNothing<'_>) -> Self {
+        Self {
+            player_id: awaits_nothing.player_id,
         }
     }
 }
 
-/// A targeting, by where it is kept. It holds no borrow, so it stays true only until what the
-/// game awaits changes.
-pub(super) struct TargetingSlot {
-    idx: usize,
+/// That the game was awaiting a player's targeting of a card. It holds no borrow, so the targeting
+/// may have closed since.
+pub(super) struct WasAwaitingTargeting {
+    player_id: PlayerId,
     object_id: ObjectId,
 }
 
-impl TargetingSlot {
+impl From<AwaitsTargeting<'_>> for WasAwaitingTargeting {
+    fn from(awaits_targeting: AwaitsTargeting<'_>) -> Self {
+        Self {
+            player_id: awaits_targeting.player_id,
+            object_id: awaits_targeting.targeting.object_id,
+        }
+    }
+}
+
+impl WasAwaitingTargeting {
     /// The card being targeted for.
     pub(super) fn object_id(&self) -> ObjectId {
         self.object_id
     }
 }
 
-/// One option of a pending pick, by where it is kept. It holds no borrow, so it stays true only
-/// until what the game awaits changes.
-pub(super) struct PickOption {
-    pick_idx: usize,
-    option_idx: usize,
+/// That the game was awaiting a player's picking, and one of its options. It holds no borrow, so
+/// the picking may have closed since.
+pub(super) struct WasAwaitingPicking {
+    player_id: PlayerId,
     object_id: ObjectId,
 }
 
-impl PickOption {
+impl WasAwaitingPicking {
     pub(super) fn object_id(&self) -> ObjectId {
         self.object_id
     }
 }
 
-/// That the game awaited nothing from any player when asked. It holds no borrow, so it stays true
-/// only until a player is awaited.
-#[derive(Clone, Copy)]
-pub(super) struct NothingAwaited(());
-
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct PendingPick {
+struct Picking {
     source: ObjectId,
     pick_id: PickId,
     options: Vec<ObjectId>,
@@ -180,10 +199,10 @@ impl Picks {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(super) struct PlayerInput {
-    /// Sorted by player. No player is in both this and `pending_picks`.
+    /// Sorted by player. No player is in both this and `pickings`.
     targetings: Vec<(PlayerId, Targeting)>,
     /// Sorted by player.
-    pending_picks: Vec<(PlayerId, PendingPick)>,
+    pickings: Vec<(PlayerId, Picking)>,
     /// Sorted by card, then in the order stored.
     targets: Vec<StoredTargets>,
     /// Sorted by source, then in the order picked.
@@ -191,30 +210,31 @@ pub(super) struct PlayerInput {
 }
 
 impl PlayerInput {
-    pub(super) fn awaiting(&self, player_id: PlayerId) -> Option<Awaiting<'_>> {
-        self.awaited_targeting(player_id)
-            .map(Awaiting::Targets)
-            .or_else(|| self.awaited_pick(player_id).map(Awaiting::Pick))
+    pub(super) fn awaiting(&self, player_id: PlayerId) -> Awaiting<'_> {
+        self.awaiting_targeting(player_id)
+            .map(Awaiting::Targeting)
+            .or_else(|| self.awaiting_picking(player_id).map(Awaiting::Picking))
+            .unwrap_or(Awaiting::Nothing(AwaitsNothing {
+                player_id,
+                input: PhantomData,
+            }))
     }
 
     pub(super) fn any_awaiting(&self) -> bool {
-        !self.targetings.is_empty() || !self.pending_picks.is_empty()
+        !self.targetings.is_empty() || !self.pickings.is_empty()
     }
 
-    /// `None` while the game awaits anything from any player.
-    pub(super) fn nothing_awaited(&self) -> Option<NothingAwaited> {
-        (!self.any_awaiting()).then_some(NothingAwaited(()))
-    }
-
-    /// A pending pick's options. Empty while awaiting anything else, or nothing.
+    /// A picking's options. Empty while awaiting anything else, or nothing.
     pub(super) fn revealed(&self, player_id: PlayerId) -> &[ObjectId] {
-        self.awaited_pick(player_id)
-            .map_or(&[], |awaited| awaited.pick.options.as_slice())
+        self.awaiting_picking(player_id)
+            .map_or(&[], |awaits_picking| {
+                awaits_picking.picking.options.as_slice()
+            })
     }
 
     pub(super) fn targeting(&self, player_id: PlayerId) -> Option<&Targeting> {
-        self.awaited_targeting(player_id)
-            .map(AwaitedTargeting::targeting)
+        self.awaiting_targeting(player_id)
+            .map(AwaitsTargeting::targeting)
     }
 
     /// `None` unless the card was played after targeting and declares `target_id`.
@@ -232,39 +252,50 @@ impl PlayerInput {
             .find(|entry| entry.source == source && entry.pick_id == pick_id)
     }
 
-    /// With nothing targeted yet.
+    /// With nothing targeted yet. Panics if the game awaits anything from the player.
     pub(super) fn start_targeting(
         &mut self,
-        _: NothingAwaited,
-        player_id: PlayerId,
+        awaiting_nothing: WasAwaitingNothing,
         object_id: ObjectId,
     ) {
-        assert!(
-            !self.any_awaiting(),
-            "a targeting starts only while nothing is awaited",
-        );
-        self.targetings.push((player_id, Targeting::new(object_id)));
+        let player_id = awaiting_nothing.player_id;
+        let (Err(idx), Err(_)) = (
+            entry_idx(&self.targetings, player_id),
+            entry_idx(&self.pickings, player_id),
+        ) else {
+            panic!("the game should await nothing from the player until their targeting starts");
+        };
+        self.targetings
+            .insert(idx, (player_id, Targeting::new(object_id)));
     }
 
+    /// Panics unless the player is still targeting the card.
     pub(super) fn target(
         &mut self,
-        targeting: TargetingSlot,
+        awaiting_targeting: WasAwaitingTargeting,
         object_id: ObjectId,
         target_id: TargetId,
     ) {
-        let idx = self.targeting_idx(targeting);
+        let idx = self.targeting_idx(&awaiting_targeting);
         self.targetings[idx].1.targeted.push((object_id, target_id));
     }
 
-    pub(super) fn cancel(&mut self, targeting: TargetingSlot) {
-        let idx = self.targeting_idx(targeting);
+    /// Panics unless the player is still targeting the card.
+    pub(super) fn cancel(&mut self, awaiting_targeting: WasAwaitingTargeting) {
+        let idx = self.targeting_idx(&awaiting_targeting);
         self.targetings.remove(idx);
     }
 
     /// Closes the targeting and stores its card's targeted objects for each target in
-    /// `target_ids`, replacing any it had.
-    pub(super) fn commit_targeting(&mut self, targeting: TargetingSlot, target_ids: &[TargetId]) {
-        let (_, closed) = self.targetings.remove(self.targeting_idx(targeting));
+    /// `target_ids`, replacing any it had. Panics unless the player is still targeting the card.
+    pub(super) fn commit_targeting(
+        &mut self,
+        awaiting_targeting: WasAwaitingTargeting,
+        target_ids: &[TargetId],
+    ) {
+        let (_, closed) = self
+            .targetings
+            .remove(self.targeting_idx(&awaiting_targeting));
         let object_id = closed.object_id;
         self.targets.retain(|entry| entry.object_id != object_id);
         let idx = self
@@ -278,9 +309,9 @@ impl PlayerInput {
         self.targets.splice(idx..idx, entries);
     }
 
-    /// Asks the player to pick one of `options`, replacing any targeting they have. With no
-    /// options, asks nothing and returns `false`. Panics if they have a pending pick.
-    pub(super) fn ask_pick(
+    /// Starts the player's picking from `options`, replacing any targeting they have. With no
+    /// options, starts nothing and returns `false`. Panics if they are picking.
+    pub(super) fn start_picking(
         &mut self,
         player_id: PlayerId,
         source: ObjectId,
@@ -290,41 +321,45 @@ impl PlayerInput {
         if options.is_empty() {
             return false;
         }
-        let Err(idx) = entry_idx(&self.pending_picks, player_id) else {
-            panic!("a pending pick closes only when the player picks");
+        let Err(idx) = entry_idx(&self.pickings, player_id) else {
+            panic!("a player who is picking should pick before their next picking starts");
         };
         if let Ok(replaced) = entry_idx(&self.targetings, player_id) {
             self.targetings.remove(replaced);
         }
-        let pick = PendingPick {
+        let picking = Picking {
             source,
             pick_id,
             options,
         };
-        self.pending_picks.insert(idx, (player_id, pick));
+        self.pickings.insert(idx, (player_id, picking));
         true
     }
 
-    /// Closes the option's pending pick, stores the option as picked and the other options as
-    /// the others, and returns the player who picked and the picked object.
-    pub(super) fn pick(&mut self, option: PickOption) -> (PlayerId, ObjectId) {
-        let named = self
-            .pending_picks
-            .get(option.pick_idx)
-            .and_then(|(_, pick)| pick.options.get(option.option_idx));
-        assert!(
-            named == Some(&option.object_id),
-            "a pick option is used before what the game awaits changes",
-        );
+    /// Closes the option's picking, stores the option as picked and the other options as
+    /// the others, and returns the player who picked and the picked object. Panics unless the
+    /// option is still pending.
+    pub(super) fn pick(&mut self, awaiting_picking: WasAwaitingPicking) -> (PlayerId, ObjectId) {
+        let found = entry_idx(&self.pickings, awaiting_picking.player_id)
+            .ok()
+            .and_then(|picking_idx| {
+                let options = &self.pickings[picking_idx].1.options;
+                let option_idx = options
+                    .iter()
+                    .position(|&o| o == awaiting_picking.object_id)?;
+                Some((picking_idx, option_idx))
+            });
+        let (picking_idx, option_idx) =
+            found.expect("a card found among a picking's options should stay there until picked");
         let (
             player_id,
-            PendingPick {
+            Picking {
                 source,
                 pick_id,
                 mut options,
             },
-        ) = self.pending_picks.remove(option.pick_idx);
-        let picked = options.remove(option.option_idx);
+        ) = self.pickings.remove(picking_idx);
+        let picked = options.remove(option_idx);
         let idx = self.picks.partition_point(|entry| entry.source <= source);
         self.picks.insert(
             idx,
@@ -338,25 +373,26 @@ impl PlayerInput {
         (player_id, picked)
     }
 
-    fn awaited_targeting(&self, player_id: PlayerId) -> Option<AwaitedTargeting<'_>> {
+    fn awaiting_targeting(&self, player_id: PlayerId) -> Option<AwaitsTargeting<'_>> {
         let idx = entry_idx(&self.targetings, player_id).ok()?;
         let targeting = &self.targetings[idx].1;
-        Some(AwaitedTargeting { idx, targeting })
+        Some(AwaitsTargeting {
+            player_id,
+            targeting,
+        })
     }
 
-    fn awaited_pick(&self, player_id: PlayerId) -> Option<AwaitedPick<'_>> {
-        let idx = entry_idx(&self.pending_picks, player_id).ok()?;
-        let pick = &self.pending_picks[idx].1;
-        Some(AwaitedPick { idx, pick })
+    fn awaiting_picking(&self, player_id: PlayerId) -> Option<AwaitsPicking<'_>> {
+        let idx = entry_idx(&self.pickings, player_id).ok()?;
+        let picking = &self.pickings[idx].1;
+        Some(AwaitsPicking { player_id, picking })
     }
 
-    fn targeting_idx(&self, targeting: TargetingSlot) -> usize {
-        let named = self.targetings.get(targeting.idx);
-        assert!(
-            named.is_some_and(|(_, open)| open.object_id == targeting.object_id),
-            "a targeting slot is used before what the game awaits changes",
-        );
-        targeting.idx
+    fn targeting_idx(&self, awaiting_targeting: &WasAwaitingTargeting) -> usize {
+        entry_idx(&self.targetings, awaiting_targeting.player_id)
+            .ok()
+            .filter(|&idx| self.targetings[idx].1.object_id == awaiting_targeting.object_id)
+            .expect("a targeting found open should stay open until used")
     }
 }
 
@@ -378,16 +414,27 @@ mod tests {
         std::array::from_fn(|_| bag.insert(SPARK, PlayerId::new(0)))
     }
 
-    fn start_targeting(input: &mut PlayerInput, player: PlayerId, card: ObjectId) {
-        let nothing_awaited = input.nothing_awaited().unwrap();
-        input.start_targeting(nothing_awaited, player, card);
+    fn is_awaiting_nothing(input: &PlayerInput, player: PlayerId) -> bool {
+        matches!(input.awaiting(player), Awaiting::Nothing(_))
     }
 
-    fn targeting_slot(input: &PlayerInput, player: PlayerId) -> TargetingSlot {
-        let Some(Awaiting::Targets(awaited)) = input.awaiting(player) else {
+    fn was_awaiting_nothing(input: &PlayerInput, player: PlayerId) -> WasAwaitingNothing {
+        let Awaiting::Nothing(awaits_nothing) = input.awaiting(player) else {
+            panic!("the game must await nothing from the player");
+        };
+        WasAwaitingNothing::from(awaits_nothing)
+    }
+
+    fn start_targeting(input: &mut PlayerInput, player: PlayerId, card: ObjectId) {
+        let awaiting_nothing = was_awaiting_nothing(input, player);
+        input.start_targeting(awaiting_nothing, card);
+    }
+
+    fn was_awaiting_targeting(input: &PlayerInput, player: PlayerId) -> WasAwaitingTargeting {
+        let Awaiting::Targeting(awaits_targeting) = input.awaiting(player) else {
             panic!("the player must be targeting");
         };
-        awaited.slot()
+        WasAwaitingTargeting::from(awaits_targeting)
     }
 
     fn target_object(
@@ -396,44 +443,44 @@ mod tests {
         object: ObjectId,
         target_id: TargetId,
     ) {
-        let targeting = targeting_slot(input, player);
-        input.target(targeting, object, target_id);
+        let awaiting_targeting = was_awaiting_targeting(input, player);
+        input.target(awaiting_targeting, object, target_id);
     }
 
     fn commit_targeting(input: &mut PlayerInput, player: PlayerId, target_ids: &[TargetId]) {
-        let targeting = targeting_slot(input, player);
-        input.commit_targeting(targeting, target_ids);
+        let awaiting_targeting = was_awaiting_targeting(input, player);
+        input.commit_targeting(awaiting_targeting, target_ids);
     }
 
     fn cancel(input: &mut PlayerInput, player: PlayerId) {
-        let targeting = targeting_slot(input, player);
-        input.cancel(targeting);
+        let awaiting_targeting = was_awaiting_targeting(input, player);
+        input.cancel(awaiting_targeting);
     }
 
-    fn pick_options(input: &PlayerInput, player: PlayerId) -> Vec<PickOption> {
-        let Some(Awaiting::Pick(pick)) = input.awaiting(player) else {
-            panic!("the player must have a pending pick");
+    fn pick_options(input: &PlayerInput, player: PlayerId) -> Vec<WasAwaitingPicking> {
+        let Awaiting::Picking(awaits_picking) = input.awaiting(player) else {
+            panic!("the player must be picking");
         };
-        pick.options().collect()
+        awaits_picking.options().collect()
     }
 
     fn pick(input: &mut PlayerInput, player: PlayerId, object: ObjectId) -> (PlayerId, ObjectId) {
-        let option = pick_options(input, player)
+        let awaiting_picking = pick_options(input, player)
             .into_iter()
-            .find(|option| option.object_id() == object)
+            .find(|awaiting_picking| awaiting_picking.object_id() == object)
             .unwrap();
-        input.pick(option)
+        input.pick(awaiting_picking)
     }
 
     #[test]
-    fn a_reveal_with_no_cards_asks_no_pick() {
+    fn a_reveal_with_no_cards_starts_no_picking() {
         let [source] = ids();
         let player = PlayerId::new(0);
         let mut input = PlayerInput::default();
 
-        assert!(!input.ask_pick(player, source, PickId(0), Vec::new()));
+        assert!(!input.start_picking(player, source, PickId(0), Vec::new()));
 
-        assert_eq!(input.awaiting(player), None);
+        assert!(is_awaiting_nothing(&input, player));
         assert!(!input.any_awaiting());
     }
 
@@ -442,7 +489,7 @@ mod tests {
         let [source, a, b, c] = ids();
         let player = PlayerId::new(0);
         let mut input = PlayerInput::default();
-        input.ask_pick(player, source, PickId(0), vec![a, b, c]);
+        input.start_picking(player, source, PickId(0), vec![a, b, c]);
 
         pick(&mut input, player, b);
 
@@ -452,15 +499,15 @@ mod tests {
     }
 
     #[test]
-    fn a_pick_closes_the_pending_pick() {
+    fn a_pick_closes_the_picking() {
         let [source, a] = ids();
         let player = PlayerId::new(0);
         let mut input = PlayerInput::default();
-        input.ask_pick(player, source, PickId(0), vec![a]);
+        input.start_picking(player, source, PickId(0), vec![a]);
 
         pick(&mut input, player, a);
 
-        assert_eq!(input.awaiting(player), None);
+        assert!(is_awaiting_nothing(&input, player));
     }
 
     #[test]
@@ -468,59 +515,94 @@ mod tests {
         let [source, a, b] = ids();
         let player = PlayerId::new(1);
         let mut input = PlayerInput::default();
-        input.ask_pick(player, source, PickId(0), vec![a, b]);
+        input.start_picking(player, source, PickId(0), vec![a, b]);
 
         assert_eq!(pick(&mut input, player, b), (player, b));
     }
 
     #[test]
-    fn a_pending_picks_options_come_in_reveal_order() {
+    fn a_pickings_options_come_in_reveal_order() {
         let [source, a, b, c] = ids();
         let player = PlayerId::new(0);
         let mut input = PlayerInput::default();
 
-        input.ask_pick(player, source, PickId(0), vec![b, c, a]);
+        input.start_picking(player, source, PickId(0), vec![b, c, a]);
 
         let options = pick_options(&input, player);
         assert_eq!(
             options
                 .iter()
-                .map(PickOption::object_id)
+                .map(WasAwaitingPicking::object_id)
                 .collect::<Vec<_>>(),
             [b, c, a]
         );
     }
 
     #[test]
-    #[should_panic(expected = "a pending pick closes only when the player picks")]
-    fn a_pending_pick_cannot_be_replaced_by_another() {
+    #[should_panic(
+        expected = "a player who is picking should pick before their next picking starts"
+    )]
+    fn a_picking_cannot_be_replaced_by_another() {
         let [source, a, b] = ids();
         let player = PlayerId::new(0);
         let mut input = PlayerInput::default();
-        input.ask_pick(player, source, PickId(0), vec![a]);
+        input.start_picking(player, source, PickId(0), vec![a]);
 
-        input.ask_pick(player, source, PickId(1), vec![b]);
+        input.start_picking(player, source, PickId(1), vec![b]);
     }
 
     #[test]
-    #[should_panic(expected = "a targeting starts only while nothing is awaited")]
-    fn a_targeting_cannot_start_once_a_pick_is_pending() {
+    #[should_panic(
+        expected = "the game should await nothing from the player until their targeting starts"
+    )]
+    fn a_targeting_cannot_start_once_the_player_is_picking() {
         let [source, card, a] = ids();
         let player = PlayerId::new(0);
         let mut input = PlayerInput::default();
-        let nothing_awaited = input.nothing_awaited().unwrap();
-        input.ask_pick(player, source, PickId(0), vec![a]);
+        let awaiting_nothing = was_awaiting_nothing(&input, player);
+        input.start_picking(player, source, PickId(0), vec![a]);
 
-        input.start_targeting(nothing_awaited, player, card);
+        input.start_targeting(awaiting_nothing, card);
     }
 
     #[test]
-    #[should_panic(expected = "a pick option is used before what the game awaits changes")]
-    fn a_pick_option_cannot_be_used_once_its_pick_closes() {
+    #[should_panic(
+        expected = "the game should await nothing from the player until their targeting starts"
+    )]
+    fn a_targeting_cannot_start_while_the_player_is_targeting() {
+        let [first, second] = ids();
+        let player = PlayerId::new(0);
+        let mut input = PlayerInput::default();
+        let earlier = was_awaiting_nothing(&input, player);
+        start_targeting(&mut input, player, first);
+
+        input.start_targeting(earlier, second);
+    }
+
+    #[test]
+    fn each_player_keeps_their_own_targeting() {
+        let [first, second] = ids();
+        let mut input = PlayerInput::default();
+
+        start_targeting(&mut input, PlayerId::new(1), first);
+        start_targeting(&mut input, PlayerId::new(0), second);
+
+        assert_eq!(
+            [PlayerId::new(0), PlayerId::new(1)]
+                .map(|player| input.targeting(player).map(Targeting::object_id)),
+            [Some(second), Some(first)],
+        );
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "a card found among a picking's options should stay there until picked"
+    )]
+    fn a_card_cannot_be_picked_once_its_picking_closes() {
         let [source, a, b] = ids();
         let player = PlayerId::new(0);
         let mut input = PlayerInput::default();
-        input.ask_pick(player, source, PickId(0), vec![a, b]);
+        input.start_picking(player, source, PickId(0), vec![a, b]);
         let mut options = pick_options(&input, player).into_iter();
         let (first, second) = (options.next().unwrap(), options.next().unwrap());
         input.pick(first);
@@ -529,39 +611,81 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "a targeting slot is used before what the game awaits changes")]
-    fn a_targeting_slot_cannot_be_used_once_its_targeting_closes() {
+    fn a_card_is_picked_after_another_players_picking_closes() {
+        let [source, a, b] = ids();
+        let (player, other) = (PlayerId::new(0), PlayerId::new(1));
+        let mut input = PlayerInput::default();
+        input.start_picking(player, source, PickId(0), vec![a]);
+        input.start_picking(other, source, PickId(1), vec![b]);
+        let awaiting_picking = pick_options(&input, other).pop().unwrap();
+        pick(&mut input, player, a);
+
+        assert_eq!(input.pick(awaiting_picking), (other, b));
+    }
+
+    #[test]
+    #[should_panic(expected = "a targeting found open should stay open until used")]
+    fn a_targeting_cannot_be_used_once_it_closes() {
         let [card] = ids();
         let player = PlayerId::new(0);
         let mut input = PlayerInput::default();
         start_targeting(&mut input, player, card);
-        let first = targeting_slot(&input, player);
-        let second = targeting_slot(&input, player);
+        let first = was_awaiting_targeting(&input, player);
+        let second = was_awaiting_targeting(&input, player);
         input.cancel(first);
 
         input.cancel(second);
     }
 
     #[test]
-    fn a_pending_pick_replaces_the_players_targeting() {
+    #[should_panic(expected = "a targeting found open should stay open until used")]
+    fn a_targeting_of_one_card_cannot_be_used_for_another() {
+        let [first, second] = ids();
+        let player = PlayerId::new(0);
+        let mut input = PlayerInput::default();
+        start_targeting(&mut input, player, first);
+        let earlier = was_awaiting_targeting(&input, player);
+        cancel(&mut input, player);
+        start_targeting(&mut input, player, second);
+
+        input.cancel(earlier);
+    }
+
+    #[test]
+    fn a_targeting_is_used_after_another_players_targeting_closes() {
+        let [first, second] = ids();
+        let (player, other) = (PlayerId::new(0), PlayerId::new(1));
+        let mut input = PlayerInput::default();
+        start_targeting(&mut input, player, first);
+        start_targeting(&mut input, other, second);
+        let awaiting_targeting = was_awaiting_targeting(&input, other);
+        cancel(&mut input, player);
+
+        input.cancel(awaiting_targeting);
+
+        assert!(is_awaiting_nothing(&input, other));
+    }
+
+    #[test]
+    fn a_picking_replaces_the_players_targeting() {
         let [card, source, a] = ids();
         let player = PlayerId::new(0);
         let mut input = PlayerInput::default();
         start_targeting(&mut input, player, card);
 
-        input.ask_pick(player, source, PickId(0), vec![a]);
+        input.start_picking(player, source, PickId(0), vec![a]);
 
         assert_eq!(input.targeting(player), None);
         assert_eq!(input.revealed(player), [a]);
     }
 
     #[test]
-    fn a_pending_pick_shows_its_options_as_revealed() {
+    fn a_picking_shows_its_options_as_revealed() {
         let [source, a, b] = ids();
         let player = PlayerId::new(0);
         let mut input = PlayerInput::default();
 
-        input.ask_pick(player, source, PickId(0), vec![a, b]);
+        input.start_picking(player, source, PickId(0), vec![a, b]);
 
         assert_eq!(input.revealed(player), [a, b]);
     }
@@ -593,7 +717,7 @@ mod tests {
 
         commit_targeting(&mut input, player, &[TargetId(0)]);
 
-        assert_eq!(input.awaiting(player), None);
+        assert!(is_awaiting_nothing(&input, player));
     }
 
     #[test]
@@ -743,17 +867,17 @@ mod tests {
     fn nothing_is_awaited_before_any_player_is_asked() {
         let input = PlayerInput::default();
 
-        assert!(input.nothing_awaited().is_some());
+        assert!(!input.any_awaiting());
     }
 
     #[test]
-    fn a_pending_pick_for_any_player_is_something_awaited() {
+    fn a_picking_by_any_player_is_something_awaited() {
         let [source, a] = ids();
         let mut input = PlayerInput::default();
 
-        input.ask_pick(PlayerId::new(1), source, PickId(0), vec![a]);
+        input.start_picking(PlayerId::new(1), source, PickId(0), vec![a]);
 
-        assert!(input.nothing_awaited().is_none());
+        assert!(input.any_awaiting());
     }
 
     #[test]
@@ -764,6 +888,6 @@ mod tests {
         start_targeting(&mut input, PlayerId::new(1), card);
 
         assert!(input.any_awaiting());
-        assert_eq!(input.awaiting(PlayerId::new(0)), None);
+        assert!(is_awaiting_nothing(&input, PlayerId::new(0)));
     }
 }

@@ -52,17 +52,17 @@ impl Game {
     }
 
     pub fn legal_actions(&self, player_id: PlayerId) -> Vec<Action> {
-        self.parsed_legal_actions(player_id)
+        self.list_legal_actions(player_id)
             .iter()
-            .map(LegalAction::action)
+            .map(Action::from)
             .collect()
     }
 
     /// `None` unless `legal_actions(player_id)` lists `action`.
     pub(super) fn legal_action(&self, player_id: PlayerId, action: Action) -> Option<LegalAction> {
-        self.parsed_legal_actions(player_id)
+        self.list_legal_actions(player_id)
             .into_iter()
-            .find(|legal| legal.action() == action)
+            .find(|legal| Action::from(legal) == action)
     }
 
     pub fn view(&self, viewer: PlayerId) -> View {
@@ -132,7 +132,7 @@ impl Game {
         self.players.iter().map(|p| p.id).collect()
     }
 
-    fn parsed_legal_actions(&self, player_id: PlayerId) -> Vec<LegalAction> {
+    fn list_legal_actions(&self, player_id: PlayerId) -> Vec<LegalAction> {
         legal_actions::legal_actions(
             CardsRef::new(self),
             &self.standings,

@@ -8,12 +8,6 @@ pub(super) struct Mana {
     max: u8,
 }
 
-/// A cost the mana could pay when asked. It holds no borrow, so it stays true only until the
-/// mana changes.
-pub(super) struct Payment {
-    cost: u8,
-}
-
 impl Mana {
     pub(super) fn current(&self) -> u8 {
         self.current
@@ -23,16 +17,16 @@ impl Mana {
         self.max
     }
 
-    pub(super) fn payment(&self, cost: u8) -> Option<Payment> {
-        (cost <= self.current).then_some(Payment { cost })
+    pub(super) fn can_pay(&self, cost: u8) -> bool {
+        cost <= self.current
     }
 
-    pub(super) fn pay(&mut self, payment: Payment) {
-        assert!(
-            payment.cost <= self.current,
-            "a payment is spent before its mana drops below it",
-        );
-        self.current -= payment.cost;
+    /// Panics if the cost is more than the current mana.
+    pub(super) fn pay(&mut self, cost: u8) {
+        self.current = self
+            .current
+            .checked_sub(cost)
+            .expect("mana found to cover a cost should cover it until paid");
     }
 
     pub(super) fn refill(&mut self) {
@@ -51,7 +45,7 @@ mod tests {
     fn a_refill_fills_mana_to_a_max_one_higher() {
         let mut mana = Mana::default();
         mana.refill();
-        mana.pay(mana.payment(1).unwrap());
+        mana.pay(1);
         mana.refill();
 
         assert_eq!(
@@ -81,7 +75,7 @@ mod tests {
         for _ in 0..3 {
             mana.refill();
         }
-        mana.pay(mana.payment(2).unwrap());
+        mana.pay(2);
 
         assert_eq!(
             (mana.current(), mana.max()),
@@ -96,19 +90,16 @@ mod tests {
         mana.refill();
         mana.refill();
 
-        assert!(mana.payment(2).is_some(), "2 mana pays a cost of 2");
+        assert!(mana.can_pay(2), "2 mana pays a cost of 2");
     }
 
     #[test]
-    #[should_panic(expected = "a payment is spent before its mana drops below it")]
-    fn a_payment_cannot_be_spent_once_mana_drops_below_it() {
+    #[should_panic(expected = "mana found to cover a cost should cover it until paid")]
+    fn mana_cannot_pay_more_than_it_has() {
         let mut mana = Mana::default();
         mana.refill();
-        let first = mana.payment(1).unwrap();
-        let second = mana.payment(1).unwrap();
-        mana.pay(first);
 
-        mana.pay(second);
+        mana.pay(2);
     }
 
     #[test]
@@ -117,6 +108,6 @@ mod tests {
         mana.refill();
         mana.refill();
 
-        assert!(mana.payment(3).is_none(), "2 mana does not pay a cost of 3");
+        assert!(!mana.can_pay(3), "2 mana does not pay a cost of 3");
     }
 }

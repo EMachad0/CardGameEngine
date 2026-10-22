@@ -11,6 +11,8 @@ use crate::cards::object::ObjectId;
 use crate::ids::PlayerId;
 use crate::rng::Rng;
 
+const STAYS_IN_HAND: &str = "a card found in a hand should stay there until taken";
+
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct Deck(VecDeque<ObjectId>);
 
@@ -57,13 +59,9 @@ impl Hand {
         self.0.push(object_id);
     }
 
-    /// Removes the card at `idx`. The others keep their order.
-    fn take(&mut self, idx: usize, object_id: ObjectId) -> ObjectId {
-        assert!(
-            self.0.get(idx) == Some(&object_id),
-            "a hand slot is used before its hand changes",
-        );
-        self.0.remove(idx)
+    /// Removes one object_id. The others keep their order.
+    fn remove(&mut self, object_id: ObjectId) -> Option<ObjectId> {
+        self.position(object_id).map(|idx| self.0.remove(idx))
     }
 
     fn as_slice(&self) -> &[ObjectId] {
@@ -145,16 +143,14 @@ impl PlayerZones {
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct InHand<'a> {
     player_id: PlayerId,
-    idx: usize,
     object_id: ObjectId,
     zones: PhantomData<&'a Zones>,
 }
 
 impl InHand<'_> {
-    fn new(player_id: PlayerId, idx: usize, object_id: ObjectId) -> Self {
+    fn new(player_id: PlayerId, object_id: ObjectId) -> Self {
         Self {
             player_id,
-            idx,
             object_id,
             zones: PhantomData,
         }
@@ -163,26 +159,24 @@ impl InHand<'_> {
     pub(crate) fn object_id(self) -> ObjectId {
         self.object_id
     }
+}
 
-    /// Where the card is, kept past the borrow.
-    pub(crate) fn slot(self) -> HandSlot {
-        HandSlot {
-            player_id: self.player_id,
-            idx: self.idx,
-            object_id: self.object_id,
+/// A card found in a hand. It holds no borrow, so the card may have left the hand since.
+pub(crate) struct WasInHand {
+    player_id: PlayerId,
+    object_id: ObjectId,
+}
+
+impl From<InHand<'_>> for WasInHand {
+    fn from(card: InHand<'_>) -> Self {
+        Self {
+            player_id: card.player_id,
+            object_id: card.object_id,
         }
     }
 }
 
-/// A card found in a hand, by where it is there. It holds no borrow, so it stays true only until
-/// the hand changes.
-pub(crate) struct HandSlot {
-    player_id: PlayerId,
-    idx: usize,
-    object_id: ObjectId,
-}
-
-impl HandSlot {
+impl WasInHand {
     pub(crate) fn player_id(&self) -> PlayerId {
         self.player_id
     }
@@ -299,8 +293,7 @@ impl Zones {
     pub(crate) fn hand_cards(&self, player_id: PlayerId) -> impl Iterator<Item = InHand<'_>> {
         self.hand(player_id)
             .iter()
-            .enumerate()
-            .map(move |(idx, &object_id)| InHand::new(player_id, idx, object_id))
+            .map(move |&object_id| InHand::new(player_id, object_id))
     }
 
     /// Left to right.
@@ -327,8 +320,14 @@ impl Zones {
     ) -> Option<InHand<'_>> {
         self.player(player_id)
             .hand
-            .position(object_id)
-            .map(|idx| InHand::new(player_id, idx, object_id))
+            .contains(&object_id)
+            .then(|| InHand::new(player_id, object_id))
+    }
+
+    /// Finds the card again in the hand it was found in. Panics if it has left.
+    pub(crate) fn still_in_hand(&self, card: &WasInHand) -> InHand<'_> {
+        self.find_in_hand(card.player_id, card.object_id)
+            .expect(STAYS_IN_HAND)
     }
 
     pub(crate) fn find_on_board(
@@ -392,11 +391,12 @@ impl Zones {
         (0..count).map_while(|_| deck.pop_front()).collect()
     }
 
-    /// Takes the card out of its hand into no zone.
-    pub(crate) fn take_from_hand(&mut self, card: HandSlot) -> ObjectId {
+    /// Takes the card out of its hand into no zone. Panics if it has left.
+    pub(crate) fn take_from_hand(&mut self, card: WasInHand) -> ObjectId {
         self.player_mut(card.player_id)
             .hand
-            .take(card.idx, card.object_id)
+            .remove(card.object_id)
+            .expect(STAYS_IN_HAND)
     }
 
     /// Takes a card off the board into no zone. `None` if it isn't there.
@@ -485,7 +485,7 @@ mod tests {
 
     /// Takes `card` out of `player`'s hand, where it must be.
     fn take_from_hand(zones: &mut Zones, player: PlayerId, card: ObjectId) {
-        let found = zones.find_in_hand(player, card).unwrap().slot();
+        let found = WasInHand::from(zones.find_in_hand(player, card).unwrap());
         zones.take_from_hand(found);
     }
 
@@ -552,13 +552,23 @@ mod tests {
     }
 
     #[test]
-    fn taking_from_a_hand_keeps_the_rest_in_order() {
+    fn removing_from_a_hand_keeps_the_rest_in_order() {
         let [a, b, c, d] = ids();
         let mut hand = hand_of(&[a, b, c, d]);
 
-        assert_eq!(hand.take(1, b), b);
+        assert_eq!(hand.remove(b), Some(b));
 
         assert_eq!(hand.as_slice(), [a, c, d]);
+    }
+
+    #[test]
+    fn removing_a_card_not_in_the_hand_changes_nothing() {
+        let [a, b] = ids();
+        let mut hand = hand_of(&[a]);
+
+        assert_eq!(hand.remove(b), None);
+
+        assert_eq!(hand.as_slice(), [a]);
     }
 
     #[test]
@@ -613,7 +623,7 @@ mod tests {
         let (mut zones, [a, b, c]) = three_in_hand();
         let player = PlayerId::new(0);
 
-        let found = zones.find_in_hand(player, b).unwrap().slot();
+        let found = WasInHand::from(zones.find_in_hand(player, b).unwrap());
 
         assert_eq!(zones.take_from_hand(found), b);
         assert_eq!(zones.hand(player), [a, c]);
@@ -624,22 +634,54 @@ mod tests {
         let (mut zones, [a, b, c]) = three_in_hand();
         let player = PlayerId::new(0);
 
-        let walked = zones.hand_cards(player).nth(2).unwrap().slot();
+        let walked = WasInHand::from(zones.hand_cards(player).nth(2).unwrap());
 
         assert_eq!(zones.take_from_hand(walked), c);
         assert_eq!(zones.hand(player), [a, b]);
     }
 
     #[test]
-    #[should_panic(expected = "a hand slot is used before its hand changes")]
-    fn a_hand_slot_cannot_be_used_once_its_hand_changes() {
-        let (mut zones, [a, b, _]) = three_in_hand();
+    fn a_card_found_in_a_hand_is_taken_after_another_card_leaves_it() {
+        let (mut zones, [a, b, c]) = three_in_hand();
         let player = PlayerId::new(0);
-        let first = zones.find_in_hand(player, a).unwrap().slot();
-        let second = zones.find_in_hand(player, b).unwrap().slot();
+        let found = WasInHand::from(zones.find_in_hand(player, c).unwrap());
+        take_from_hand(&mut zones, player, a);
+
+        assert_eq!(zones.take_from_hand(found), c);
+        assert_eq!(zones.hand(player), [b]);
+    }
+
+    #[test]
+    #[should_panic(expected = "a card found in a hand should stay there until taken")]
+    fn a_card_cannot_be_taken_once_it_leaves_the_hand() {
+        let (mut zones, [_, b, _]) = three_in_hand();
+        let player = PlayerId::new(0);
+        let first = WasInHand::from(zones.find_in_hand(player, b).unwrap());
+        let second = WasInHand::from(zones.find_in_hand(player, b).unwrap());
         zones.take_from_hand(first);
 
         zones.take_from_hand(second);
+    }
+
+    #[test]
+    fn a_card_found_in_a_hand_is_found_there_again() {
+        let (mut zones, [a, b, _]) = three_in_hand();
+        let player = PlayerId::new(0);
+        let found = WasInHand::from(zones.find_in_hand(player, b).unwrap());
+        take_from_hand(&mut zones, player, a);
+
+        assert_eq!(zones.still_in_hand(&found).object_id(), b);
+    }
+
+    #[test]
+    #[should_panic(expected = "a card found in a hand should stay there until taken")]
+    fn a_card_that_left_its_hand_cannot_be_found_there_again() {
+        let (mut zones, [_, b, _]) = three_in_hand();
+        let player = PlayerId::new(0);
+        let found = WasInHand::from(zones.find_in_hand(player, b).unwrap());
+        take_from_hand(&mut zones, player, b);
+
+        zones.still_in_hand(&found);
     }
 
     #[test]

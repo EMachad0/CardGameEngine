@@ -3,40 +3,40 @@
 use crate::cards::object::ObjectId;
 use crate::event::Event;
 use crate::game::cards_ref::CardsRef;
-use crate::game::mana::Payment;
-use crate::game::player_input::TargetingSlot;
+use crate::game::mana::Mana;
+use crate::game::player_input::WasAwaitingTargeting;
 use crate::game::reporting::Report;
 use crate::game::state::Game;
+use crate::game::stats::cost;
 use crate::ids::PlayerId;
 use crate::observer::{Observer, Views};
-use crate::zones::HandSlot;
+use crate::zones::{InHand, WasInHand};
 
 pub(super) struct Play {
     player_id: PlayerId,
     object_id: ObjectId,
 }
 
-/// A card its player can play now: where it is in their hand, the payment of its cost, and their
-/// targeting of it if they play it from there.
-pub(super) struct Playable {
-    card: HandSlot,
-    payment: Payment,
-    targeting: Option<TargetingSlot>,
+/// A card its player could play when asked, and their targeting of it if they play it from there.
+/// It holds no borrow, so the card may have become unplayable since.
+pub(super) struct WasPlayable {
+    card: WasInHand,
+    targeting: Option<WasAwaitingTargeting>,
 }
 
-impl Playable {
-    pub(super) fn new(card: HandSlot, payment: Payment) -> Self {
-        Self {
-            card,
-            payment,
+impl WasPlayable {
+    /// `None` unless the mana pays the card's cost now.
+    pub(super) fn new(cards: CardsRef, mana: &Mana, card: InHand) -> Option<Self> {
+        mana.can_pay(cost(cards, card)).then(|| Self {
+            card: WasInHand::from(card),
             targeting: None,
-        }
+        })
     }
 
-    pub(super) fn with_targeting(self, targeting: TargetingSlot) -> Self {
+    pub(super) fn with_targeting(self, targeting: WasAwaitingTargeting) -> Self {
         assert!(
             targeting.object_id() == self.card.object_id(),
-            "a card is played from its own targeting",
+            "a card should be paired with its own targeting",
         );
         Self {
             targeting: Some(targeting),
@@ -59,14 +59,13 @@ impl From<Play> for Event {
 }
 
 impl Game {
-    /// Closes the player's targeting first, if they play the card from there.
-    pub(super) fn play(&mut self, playable: Playable, obs: &mut impl Observer) {
-        let Playable {
-            card,
-            payment,
-            targeting,
-        } = playable;
+    /// If the card is played from the player's targeting, closes it before reporting the play.
+    pub(super) fn play(&mut self, playable: WasPlayable, obs: &mut impl Observer) {
+        let WasPlayable { card, targeting } = playable;
         let player_id = card.player_id();
+        let cards = CardsRef::new(self);
+        let mana_cost = cost(cards, cards.zones.still_in_hand(&card));
+        self.get_player_mut(player_id).mana.pay(mana_cost);
         if let Some(targeting) = targeting {
             let target_ids = CardsRef::new(self)
                 .card_def(card.object_id())
@@ -76,7 +75,6 @@ impl Game {
                 .collect::<Vec<_>>();
             self.player_input.commit_targeting(targeting, &target_ids);
         }
-        self.get_player_mut(player_id).mana.pay(payment);
         let object_id = self.zones.take_from_hand(card);
 
         let play_effects = CardsRef::new(self).play_effects(object_id);
@@ -103,12 +101,11 @@ mod tests {
     use super::*;
     use crate::cards::binder::sets::base::static_card_definition::SPARK;
     use crate::cards::object::ObjectBag;
-    use crate::game::mana::Mana;
-    use crate::game::player_input::{Awaiting, PlayerInput};
+    use crate::game::player_input::{Awaiting, PlayerInput, WasAwaitingNothing};
     use crate::zones::Zones;
 
     #[test]
-    #[should_panic(expected = "a card is played from its own targeting")]
+    #[should_panic(expected = "a card should be paired with its own targeting")]
     fn a_card_cannot_be_played_from_another_cards_targeting() {
         let player = PlayerId::new(0);
         let mut bag = ObjectBag::default();
@@ -116,13 +113,18 @@ mod tests {
         let mut zones = Zones::new([(hero, vec![card, other])]);
         zones.draw(player);
         let mut input = PlayerInput::default();
-        input.start_targeting(input.nothing_awaited().unwrap(), player, other);
-        let Some(Awaiting::Targets(targeting)) = input.awaiting(player) else {
+        let Awaiting::Nothing(awaits_nothing) = input.awaiting(player) else {
+            panic!("the game must await nothing from the player");
+        };
+        input.start_targeting(WasAwaitingNothing::from(awaits_nothing), other);
+        let Awaiting::Targeting(awaits_targeting) = input.awaiting(player) else {
             panic!("the player must be targeting");
         };
-        let found = zones.find_in_hand(player, card).unwrap().slot();
-        let playable = Playable::new(found, Mana::default().payment(0).unwrap());
+        let playable = WasPlayable {
+            card: WasInHand::from(zones.find_in_hand(player, card).unwrap()),
+            targeting: None,
+        };
 
-        playable.with_targeting(targeting.slot());
+        playable.with_targeting(WasAwaitingTargeting::from(awaits_targeting));
     }
 }

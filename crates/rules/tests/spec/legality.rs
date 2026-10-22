@@ -43,7 +43,7 @@ fn only_affordable_cards_in_the_hand_can_be_played() {
 }
 
 #[test]
-fn a_pending_pick_rejects_everything_else() {
+fn a_picking_rejects_everything_else() {
     let deck0 = vec![FORAGE, SPARK, SPARK, SPARK, RECRUIT, CAPTAIN, BOLT];
     let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
     let [p0, _] = players(&game);
