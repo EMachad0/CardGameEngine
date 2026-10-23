@@ -9,8 +9,8 @@ of the game that `Game` lends it, such as the zones or the effect stack, and ret
 caused, in order. It holds no observer and no history. Once the step ends, `Game` reports each
 event: it matches the event against the triggers in play, records it in History, tells the observer
 and pushes the matches. Then the observer reads the views, so a checkpoint follows every step, and
-nothing else takes one. A step that finds nothing to do, such as a state check pass with no dead,
-writes nothing, reports nothing and takes no checkpoint.
+nothing else takes one. A state check pass that finds no dead, and a decision that doesn't end the
+game, are no step: they write nothing, report nothing and take no checkpoint.
 
 Matching therefore sees the state the step leaves, not the state at the moment of each event.
 Wherever a later write in a step would change what an earlier event matches, the step ends and
