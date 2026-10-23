@@ -2,8 +2,9 @@ use enumset::EnumSet;
 
 use crate::cards::filter::{CharacterFilter, Side};
 use crate::cards::modifier::ModifierEffect;
+use crate::choice::Choice;
 use crate::effect::Effect;
-use crate::target::{CharacterTarget, NoTarget, TargetId};
+use crate::target::{NoTarget, TargetId};
 use crate::trigger::TriggerPattern;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -12,7 +13,7 @@ pub struct CardDef {
     pub kind: CardKindDef,
     pub mana_cost: u8,
     pub modifier_effects: Vec<ModifierEffect>,
-    pub play_effects: Vec<Effect<CharacterTarget>>,
+    pub play_effects: Vec<Effect<Choice<CharacterFilter>>>,
     pub triggers: Vec<TriggerDef>,
 }
 
@@ -99,7 +100,7 @@ impl CardDef {
 
     /// Declared by the play effects' `Targeted` selectors, in effect order. Each one's id is its
     /// place among them.
-    pub(crate) fn targets(&self) -> impl Iterator<Item = (TargetId, &CharacterTarget)> {
+    pub(crate) fn targets(&self) -> impl Iterator<Item = (TargetId, &Choice<CharacterFilter>)> {
         self.play_effects
             .iter()
             .filter_map(Effect::target)
@@ -236,18 +237,18 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::target::AmountBound;
+    use crate::choice::AmountBound;
 
-    fn character_target(count: u8) -> CharacterTarget {
-        CharacterTarget {
-            filter: CharacterFilter::all(),
+    fn character_target(count: u8) -> Choice<CharacterFilter> {
+        Choice {
+            options: CharacterFilter::all(),
             count: count.into(),
             bound: AmountBound::Exactly,
             different: true,
         }
     }
 
-    fn card(play_effects: Vec<Effect<CharacterTarget>>) -> CardDef {
+    fn card(play_effects: Vec<Effect<Choice<CharacterFilter>>>) -> CardDef {
         CardDef {
             play_effects,
             ..Default::default()

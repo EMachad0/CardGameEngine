@@ -5,6 +5,7 @@
 
 mod action;
 mod cards;
+mod choice;
 mod effect;
 mod event;
 mod game;

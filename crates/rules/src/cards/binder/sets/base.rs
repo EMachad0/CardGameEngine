@@ -8,9 +8,9 @@ use crate::cards::definition::{
 };
 use crate::cards::filter::{CardFilter, CharacterFilter, Side};
 use crate::cards::modifier::ModifierEffect;
+use crate::choice::{AmountBound, Choice};
 use crate::effect::{Effect, EffectAmount, PickId, ZoneMove};
 use crate::history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter};
-use crate::target::{AmountBound, CharacterTarget};
 use crate::trigger::{TriggerPattern, TriggerSubject};
 
 impl Default for CardDef {
@@ -274,8 +274,8 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                 kind: CardKindDef::Spell(SpellCardDef),
                 mana_cost: 1,
                 play_effects: vec![Effect::Damage {
-                    selector: CharacterSelector::Targeted(CharacterTarget {
-                        filter: CharacterFilter {
+                    selector: CharacterSelector::Targeted(Choice {
+                        options: CharacterFilter {
                             kind: EnumSet::only(CharacterKind::Minion),
                             side: EnumSet::all(),
                         },
@@ -296,8 +296,8 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                 mana_cost: 1,
                 play_effects: vec![
                     Effect::Damage {
-                        selector: CharacterSelector::Targeted(CharacterTarget {
-                            filter: CharacterFilter {
+                        selector: CharacterSelector::Targeted(Choice {
+                            options: CharacterFilter {
                                 kind: EnumSet::only(CharacterKind::Minion),
                                 side: EnumSet::all(),
                             },
@@ -308,8 +308,8 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                         amount: 1.into(),
                     },
                     Effect::Damage {
-                        selector: CharacterSelector::Targeted(CharacterTarget {
-                            filter: CharacterFilter {
+                        selector: CharacterSelector::Targeted(Choice {
+                            options: CharacterFilter {
                                 kind: EnumSet::only(CharacterKind::Minion),
                                 side: EnumSet::only(Side::Friendly),
                             },
@@ -330,8 +330,8 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                 kind: CardKindDef::Spell(SpellCardDef),
                 mana_cost: 2,
                 play_effects: vec![Effect::Damage {
-                    selector: CharacterSelector::Targeted(CharacterTarget {
-                        filter: CharacterFilter {
+                    selector: CharacterSelector::Targeted(Choice {
+                        options: CharacterFilter {
                             kind: EnumSet::only(CharacterKind::Minion),
                             side: EnumSet::all(),
                         },
@@ -352,8 +352,8 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                 mana_cost: 2,
                 play_effects: vec![
                     Effect::Damage {
-                        selector: CharacterSelector::Targeted(CharacterTarget {
-                            filter: CharacterFilter {
+                        selector: CharacterSelector::Targeted(Choice {
+                            options: CharacterFilter {
                                 kind: EnumSet::only(CharacterKind::Minion),
                                 side: EnumSet::all(),
                             },
@@ -364,8 +364,8 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                         amount: 1.into(),
                     },
                     Effect::Damage {
-                        selector: CharacterSelector::Targeted(CharacterTarget {
-                            filter: CharacterFilter {
+                        selector: CharacterSelector::Targeted(Choice {
+                            options: CharacterFilter {
                                 kind: EnumSet::only(CharacterKind::Hero),
                                 side: EnumSet::all(),
                             },
