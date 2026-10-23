@@ -66,7 +66,7 @@ objects.
 _Avoid_: instance, entity
 
 **Card**:
-An object out of play: in a hand, a deck or a graveyard.
+An object out of play in its card form, resembling a physical card.
 
 **Minion**:
 A card that stays on its owner's board once played.
@@ -294,8 +294,8 @@ The part of a card that can be hidden from a player: its definition and cost.
   grant a trigger, so every buff is a modifier and not every modifier is a buff.
 - **Card definition** and **Object**: the definition is the printed card, shared by every copy. An
   object is one copy in one game.
-- **Card** and **Character**: one object is a card while it is in a hand, a deck or a graveyard,
-  and a character while it is in play. Object covers both.
+- **Card** and **Character**: one object is a card while it is out of play, and a character while
+  it is in play. Object covers both.
 - **Action** and **Event**: actions go into the game, events come out of it. A player sends an
   action, and the game reports events while it resolves.
 - **Target** and **Pick**: a player targets while playing a card, before it resolves, and picks
