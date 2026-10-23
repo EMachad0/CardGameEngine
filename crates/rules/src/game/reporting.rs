@@ -61,10 +61,10 @@ pub(super) enum Report {
 }
 
 impl Report {
-    pub(super) fn matched(self, cards: CardsRef) -> Matched {
+    pub(super) fn matched(self, cards: CardsRef) -> MatchedEvent {
         let event = self.into_event();
         let triggers = matched_triggers(cards, &event);
-        Matched { event, triggers }
+        MatchedEvent { event, triggers }
     }
 
     fn into_event(self) -> Event {
@@ -139,12 +139,12 @@ impl Report {
 }
 
 /// An event, and the triggers it matched.
-pub(super) struct Matched {
+pub(super) struct MatchedEvent {
     event: Event,
     triggers: Vec<MatchedTrigger>,
 }
 
-impl Matched {
+impl MatchedEvent {
     /// Records the event in history, tells the observer, and pushes the triggers it matched.
     pub(super) fn report(
         self,

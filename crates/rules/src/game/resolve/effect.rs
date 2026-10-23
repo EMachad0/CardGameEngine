@@ -30,7 +30,8 @@ enum Prepared {
     },
     ResolvePick {
         owner: PlayerId,
-        picks: Option<(Vec<ObjectId>, Vec<ObjectId>)>,
+        picked: Vec<ObjectId>,
+        others: Vec<ObjectId>,
         picked_move: ZoneMove,
         other_move: ZoneMove,
     },
@@ -55,7 +56,7 @@ enum Prepared {
 
 pub(in crate::game) fn prepare(
     cards: CardsRef,
-    players: &[PlayerId],
+    player_ids: &[PlayerId],
     player_input: &PlayerInput,
     next: NextEffect,
 ) -> PreparedEffect {
@@ -64,7 +65,7 @@ pub(in crate::game) fn prepare(
     PreparedEffect(match effect {
         Effect::Draw { selector, amount } => Prepared::Draw {
             amount: effect_amount(cards, &amount, owner),
-            players: select_players(players, owner, &selector),
+            players: select_players(player_ids, owner, &selector),
         },
         Effect::Reveal {
             pick_id,
@@ -72,7 +73,7 @@ pub(in crate::game) fn prepare(
             amount,
         } => Prepared::Reveal {
             amount: effect_amount(cards, &amount, owner),
-            players: select_players(players, owner, &selector),
+            players: select_players(player_ids, owner, &selector),
             source,
             pick_id,
         },
@@ -80,14 +81,20 @@ pub(in crate::game) fn prepare(
             pick_id,
             picked_move,
             other_move,
-        } => Prepared::ResolvePick {
-            owner,
-            picks: player_input
+        } => {
+            let (picked, others) = player_input
                 .picks(source, pick_id)
-                .map(|picks| (picks.picked().to_vec(), picks.others().to_vec())),
-            picked_move,
-            other_move,
-        },
+                .map_or_else(Default::default, |picks| {
+                    (picks.picked().to_vec(), picks.others().to_vec())
+                });
+            Prepared::ResolvePick {
+                owner,
+                picked,
+                others,
+                picked_move,
+                other_move,
+            }
+        }
         Effect::Damage { selector, amount } => Prepared::Damage {
             amount: effect_amount(cards, &amount, owner),
             characters: select_characters(cards, owner, source, &selector),
@@ -108,13 +115,13 @@ pub(in crate::game) fn prepare(
             },
         },
         Effect::Summon { selector, def_id } => Prepared::Summon {
-            players: select_players(players, owner, &selector),
+            players: select_players(player_ids, owner, &selector),
             def_id,
         },
     })
 }
 
-pub(in crate::game) fn apply(
+pub(in crate::game) fn resolve(
     prepared: PreparedEffect,
     rng: &mut Rng,
     zones: &mut Zones,
@@ -140,17 +147,16 @@ pub(in crate::game) fn apply(
         }
         Prepared::ResolvePick {
             owner,
-            picks,
+            picked,
+            others,
             picked_move,
             other_move,
         } => {
-            if let Some((picked, others)) = picks {
-                for id in picked {
-                    reports.push(zone_move(owner, id, picked_move, zones));
-                }
-                for id in others {
-                    reports.push(zone_move(owner, id, other_move, zones));
-                }
+            for id in picked {
+                reports.push(zone_move(owner, id, picked_move, zones));
+            }
+            for id in others {
+                reports.push(zone_move(owner, id, other_move, zones));
             }
         }
         Prepared::Damage {

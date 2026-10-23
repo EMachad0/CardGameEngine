@@ -1,6 +1,6 @@
 //! `Game`, the whole state of one game: how one starts, what callers ask it, and how an action
-//! runs. An action runs in steps. A step writes the owners it is lent and returns what it did,
-//! which is reported once the step ends, and a checkpoint follows each step.
+//! runs. An action runs in steps. A step writes only the parts of the game it is lent and returns
+//! what it did, which is reported once the step ends, and a checkpoint follows each step.
 
 use crate::action::{Action, IllegalAction};
 use crate::cards::binder::def_id::DefId;
@@ -76,7 +76,7 @@ enum Step {
     Pick(WasAwaitingPicking),
     Effect(NextEffect),
     DeathPass,
-    Decide,
+    DecideOutcome,
 }
 
 impl Game {
@@ -348,13 +348,13 @@ impl Game {
 
     fn check_state(&mut self, obs: &mut impl Observer) {
         while self.run(Step::DeathPass, obs) {}
-        self.run(Step::Decide, obs);
+        self.run(Step::DecideOutcome, obs);
     }
 
-    /// Takes the step, reports what it did, then lets the observer read the views. `false` if
-    /// the step found nothing to do, which reports nothing and takes no checkpoint.
+    /// Makes the step's writes, reports what it did, then lets the observer read the views. `false`
+    /// if the step found nothing to do, which reports nothing and takes no checkpoint.
     fn run(&mut self, step: Step, obs: &mut impl Observer) -> bool {
-        let Some(reports) = self.step(step) else {
+        let Some(reports) = self.write(step) else {
             return false;
         };
         for report in reports {
@@ -364,8 +364,8 @@ impl Game {
         true
     }
 
-    /// Lends the step what it reads and the owners it writes.
-    fn step(&mut self, step: Step) -> Option<Vec<Report>> {
+    /// Makes the step's writes, lending it what it reads and writes, and returns what it reported.
+    fn write(&mut self, step: Step) -> Option<Vec<Report>> {
         let reports = match step {
             Step::Draw { player_id, count } => {
                 zone_move::draw(player_id, count, &mut self.zones, &mut self.objects)
@@ -427,7 +427,7 @@ impl Game {
             Step::Effect(next) => {
                 let prepared =
                     effect::prepare(self.cards(), &self.players(), &self.player_input, next);
-                effect::apply(
+                effect::resolve(
                     prepared,
                     &mut self.rng,
                     &mut self.zones,
@@ -445,7 +445,7 @@ impl Game {
                     &mut self.standings,
                 )
             }
-            Step::Decide => vec![Report::GameEnded(self.standings.decide()?)],
+            Step::DecideOutcome => vec![Report::GameEnded(self.standings.decide()?)],
         };
         Some(reports)
     }

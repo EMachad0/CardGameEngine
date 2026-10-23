@@ -42,10 +42,10 @@ struct Removal {
 /// `None` if no character is dead.
 pub(in crate::game) fn find_deaths(
     cards: CardsRef,
-    players: &[PlayerId],
+    player_ids: &[PlayerId],
     standings: &Standings,
 ) -> Option<DeathPass> {
-    let dead_minions = find_dead(cards, players);
+    let dead_minions = find_dead(cards, player_ids);
     let dead_players = standings
         .playing()
         .filter(|&player_id| hero_health(cards, player_id) <= 0)
@@ -88,8 +88,8 @@ pub(in crate::game) fn find_deaths(
     })
 }
 
-/// Pushes the death rattles, removes the dead and eliminates the players whose heroes died, all
-/// before any death is reported.
+/// Pushes the death rattles, removes the dead and eliminates the players whose heroes died. Returns
+/// a report of each death, in death order.
 pub(in crate::game) fn kill(
     death_pass: DeathPass,
     zones: &mut Zones,
