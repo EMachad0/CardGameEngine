@@ -6,7 +6,6 @@ use crate::cards::binder::store::Binder;
 use crate::cards::definition::CardDef;
 use crate::cards::filter::CharacterFilter;
 use crate::cards::object::{ObjectBag, ObjectId};
-use crate::game::state::Game;
 use crate::history::History;
 use crate::ids::PlayerId;
 use crate::turn::TurnOrder;
@@ -22,13 +21,19 @@ pub(super) struct CardsRef<'g> {
 }
 
 impl<'g> CardsRef<'g> {
-    pub(super) fn new(game: &'g Game) -> Self {
+    pub(super) fn new(
+        binder: &'g Binder,
+        objects: &'g ObjectBag,
+        zones: &'g Zones,
+        history: &'g History,
+        turn_order: &'g TurnOrder,
+    ) -> Self {
         Self {
-            binder: &game.binder,
-            objects: &game.objects,
-            zones: &game.zones,
-            history: &game.history,
-            turn_order: &game.turn_order,
+            binder,
+            objects,
+            zones,
+            history,
+            turn_order,
         }
     }
 

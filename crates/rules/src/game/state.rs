@@ -67,7 +67,7 @@ impl Game {
 
     pub fn view(&self, viewer: PlayerId) -> View {
         view::view(
-            CardsRef::new(self),
+            self.cards(),
             &self.players,
             &self.player_input,
             &self.standings,
@@ -93,26 +93,26 @@ impl Game {
     }
 
     pub fn def_id(&self, object_id: ObjectId) -> DefId {
-        CardsRef::new(self).def_id(object_id)
+        self.cards().def_id(object_id)
     }
 
     /// `None` unless the card is in its owner's hand. Panics on an id the game never made.
     pub fn mana_cost(&self, object_id: ObjectId) -> Option<u8> {
-        stats::mana_cost(CardsRef::new(self), object_id)
+        stats::mana_cost(self.cards(), object_id)
     }
 
     /// `None` unless the card is on its owner's board. Panics on an id the game never made.
     pub fn attack(&self, object_id: ObjectId) -> Option<i32> {
-        stats::attack(CardsRef::new(self), object_id)
+        stats::attack(self.cards(), object_id)
     }
 
     /// `None` unless the object is a character in play. Panics on an id the game never made.
     pub fn health(&self, object_id: ObjectId) -> Option<i32> {
-        stats::health(CardsRef::new(self), object_id)
+        stats::health(self.cards(), object_id)
     }
 
     pub fn hero_health(&self, player_id: PlayerId) -> i32 {
-        stats::hero_health(CardsRef::new(self), player_id)
+        stats::hero_health(self.cards(), player_id)
     }
 
     pub fn mana(&self, player_id: PlayerId) -> u8 {
@@ -134,7 +134,7 @@ impl Game {
 
     fn list_legal_actions(&self, player_id: PlayerId) -> Vec<LegalAction> {
         legal_actions::legal_actions(
-            CardsRef::new(self),
+            self.cards(),
             &self.standings,
             &self.player_input,
             self.get_player(player_id),
@@ -147,5 +147,15 @@ impl Game {
 
     pub(super) fn get_player_mut(&mut self, player_id: PlayerId) -> &mut Player {
         self.players.get_mut(player_id)
+    }
+
+    pub(super) fn cards(&self) -> CardsRef<'_> {
+        CardsRef::new(
+            &self.binder,
+            &self.objects,
+            &self.zones,
+            &self.history,
+            &self.turn_order,
+        )
     }
 }

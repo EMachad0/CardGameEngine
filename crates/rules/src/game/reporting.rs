@@ -4,7 +4,6 @@
 
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::event::Event;
-use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::EffectStack;
 use crate::game::play::Play;
 use crate::game::resolve::aftermath::death::Death;
@@ -136,7 +135,7 @@ impl Report {
 impl Game {
     pub(super) fn report(&mut self, report: Report, obs: &mut impl Observer) {
         let event = report.into_event();
-        let matched = matched_triggers(CardsRef::new(self), &event);
+        let matched = matched_triggers(self.cards(), &event);
         report_event(
             &event,
             matched,

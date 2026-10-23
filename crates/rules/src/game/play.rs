@@ -67,14 +67,15 @@ impl Game {
             awaiting_targeting,
         } = playable;
         let player_id = card.player_id();
-        let cards = CardsRef::new(self);
+        let cards = self.cards();
         let mana_cost = cost(cards, cards.zones.still_in_hand(&card));
         self.get_player_mut(player_id).mana.pay(mana_cost);
         let targeting = awaiting_targeting
             .map(|awaiting_targeting| self.player_input.commit_targeting(awaiting_targeting));
         let object_id = self.zones.take_from_hand(card);
 
-        let play_effects = CardsRef::new(self)
+        let play_effects = self
+            .cards()
             .card_def(object_id)
             .bind_play_effects(|target_id| {
                 targeting
@@ -94,7 +95,7 @@ impl Game {
         self.report(report, obs);
 
         obs.checkpoint(Views::new(self));
-        if CardsRef::new(self).card_def(object_id).has_board_presence() {
+        if self.cards().card_def(object_id).has_board_presence() {
             self.summon(player_id, object_id, obs);
             obs.checkpoint(Views::new(self));
         }
