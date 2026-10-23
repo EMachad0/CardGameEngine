@@ -48,15 +48,17 @@ impl EffectStack {
         self.pending.push(PendingEffect { source, effects });
     }
 
-    /// Takes the newest pending effect off the stack to resolve it. Does nothing while another
-    /// one is resolving.
+    /// Takes the newest pending effect off the stack to resolve it. Panics while another one is
+    /// resolving.
     pub(super) fn start_next(&mut self) {
-        if self.resolving.is_none() {
-            self.resolving = self
-                .pending
-                .pop()
-                .map(|pending| ResolvingEffect { pending, idx: 0 });
-        }
+        assert!(
+            self.resolving.is_none(),
+            "the resolving effect should finish before the next one starts",
+        );
+        self.resolving = self
+            .pending
+            .pop()
+            .map(|pending| ResolvingEffect { pending, idx: 0 });
     }
 
     /// The resolving effect's next effect. Moves the resolving effect past it.
@@ -145,21 +147,15 @@ mod tests {
     }
 
     #[test]
-    fn starting_while_an_effect_resolves_leaves_the_newer_one_pending() {
+    #[should_panic(expected = "the resolving effect should finish before the next one starts")]
+    fn no_effect_starts_while_another_resolves() {
         let [older, newer] = sources();
         let mut stack = EffectStack::default();
-        stack.push(older, vec![draw(1), draw(2)]);
+        stack.push(older, vec![draw(1)]);
         stack.start_next();
-        stack.next_effect();
-        stack.push(newer, vec![draw(3)]);
+        stack.push(newer, vec![draw(2)]);
 
         stack.start_next();
-
-        assert_eq!(
-            stack.next_effect(),
-            next(older, draw(2)),
-            "one pending effect resolves at a time, so the newer one waits",
-        );
     }
 
     #[test]
@@ -178,7 +174,8 @@ mod tests {
     }
 
     #[test]
-    fn a_resolving_effect_with_no_effects_left_waits_to_finish() {
+    #[should_panic(expected = "the resolving effect should finish before the next one starts")]
+    fn no_effect_starts_before_a_resolving_one_with_no_effects_left_finishes() {
         let [older, newer] = sources();
         let mut stack = EffectStack::default();
         stack.push(older, vec![draw(1)]);
@@ -187,12 +184,6 @@ mod tests {
         stack.next_effect();
 
         stack.start_next();
-
-        assert_eq!(
-            stack.next_effect(),
-            None,
-            "the older pending effect starts only after the resolving one finishes",
-        );
     }
 
     #[test]
