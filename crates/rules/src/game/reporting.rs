@@ -145,7 +145,6 @@ pub(super) struct MatchedEvent {
 }
 
 impl MatchedEvent {
-    /// Records the event in history, tells the observer, and pushes the triggers it matched.
     pub(super) fn report(
         self,
         history: &mut History,
