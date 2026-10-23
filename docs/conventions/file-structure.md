@@ -249,6 +249,7 @@ files to open when they look for a decision or a place for new code.
   stored in.
 - Privacy flows down the module tree: a child reads its parent's private items, and a parent
   can't read a child's. So code in a parent is open to every child.
+- Give each item the narrowest visibility that compiles.
 - Keep a type's inherent `impl` blocks in the module that defines it, so its whole interface sits
   in one file. Code elsewhere that builds on the type takes it as a parameter.
 - Keep definitions in leaf modules, so that every module can hide its decision. A module with
