@@ -1,14 +1,14 @@
-//! Records each reported event in history, tells the observer, and pushes the triggers it matched.
-//! A variant that holds a value with private fields can be built only in the file that defines
-//! the value.
+//! Matches each reported event against the triggers in play, then records it in history, tells
+//! the observer, and pushes the triggers it matched. A variant that holds a value with private
+//! fields can be built only in the file that defines the value.
 
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::event::Event;
+use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::EffectStack;
 use crate::game::play::Play;
 use crate::game::resolve::aftermath::death::Death;
 use crate::game::resolve::aftermath::standings::Ending;
-use crate::game::state::Game;
 use crate::game::triggering::{MatchedTrigger, matched_triggers};
 use crate::history::History;
 use crate::ids::PlayerId;
@@ -61,6 +61,12 @@ pub(super) enum Report {
 }
 
 impl Report {
+    pub(super) fn matched(self, cards: CardsRef) -> Matched {
+        let event = self.into_event();
+        let triggers = matched_triggers(cards, &event);
+        Matched { event, triggers }
+    }
+
     fn into_event(self) -> Event {
         match self {
             Report::TurnStarted { player_id } => Event::TurnStarted { player_id },
@@ -132,38 +138,31 @@ impl Report {
     }
 }
 
-impl Game {
-    pub(super) fn report(&mut self, report: Report, obs: &mut impl Observer) {
-        let event = report.into_event();
-        let matched = matched_triggers(self.cards(), &event);
-        report_event(
-            &event,
-            matched,
-            &mut self.history,
-            self.turn_order.turn_count(),
-            &self.objects,
-            &mut self.effect_stack,
-            obs,
-        );
-    }
+/// An event, and the triggers it matched.
+pub(super) struct Matched {
+    event: Event,
+    triggers: Vec<MatchedTrigger>,
 }
 
-fn report_event(
-    event: &Event,
-    matched: Vec<MatchedTrigger>,
-    history: &mut History,
-    turn: u32,
-    objects: &ObjectBag,
-    effect_stack: &mut EffectStack,
-    obs: &mut impl Observer,
-) {
-    history.record(event, turn, objects);
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "the one report to the observer, reached through Game::report"
-    )]
-    obs.event(event);
-    for MatchedTrigger { source, effects } in matched {
-        effect_stack.push(source, effects);
+impl Matched {
+    /// Records the event in history, tells the observer, and pushes the triggers it matched.
+    pub(super) fn report(
+        self,
+        history: &mut History,
+        turn: u32,
+        objects: &ObjectBag,
+        effect_stack: &mut EffectStack,
+        obs: &mut impl Observer,
+    ) {
+        let Self { event, triggers } = self;
+        history.record(&event, turn, objects);
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the one report to the observer, reached through Game::report"
+        )]
+        obs.event(&event);
+        for MatchedTrigger { source, effects } in triggers {
+            effect_stack.push(source, effects);
+        }
     }
 }

@@ -9,12 +9,14 @@ use crate::game::effect_stack::EffectStack;
 use crate::game::legal_actions::LegalAction;
 use crate::game::player::{Player, Players};
 use crate::game::player_input::awaiting::PlayerInput;
+use crate::game::reporting::Report;
 use crate::game::resolve::aftermath::standings::Standings;
 use crate::game::resolve::apply::ApplyError;
 use crate::game::view::{self, View};
 use crate::game::{legal_actions, setup, stats};
 use crate::history::History;
 use crate::ids::PlayerId;
+use crate::observer::Observer;
 use crate::outcome::Outcome;
 use crate::rng::Rng;
 use crate::turn::TurnOrder;
@@ -147,6 +149,16 @@ impl Game {
 
     pub(super) fn get_player_mut(&mut self, player_id: PlayerId) -> &mut Player {
         self.players.get_mut(player_id)
+    }
+
+    pub(super) fn report(&mut self, report: Report, obs: &mut impl Observer) {
+        report.matched(self.cards()).report(
+            &mut self.history,
+            self.turn_order.turn_count(),
+            &self.objects,
+            &mut self.effect_stack,
+            obs,
+        );
     }
 
     pub(super) fn cards(&self) -> CardsRef<'_> {
