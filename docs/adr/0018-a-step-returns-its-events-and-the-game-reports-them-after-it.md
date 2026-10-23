@@ -9,7 +9,8 @@ of the game that `Game` lends it, such as the zones or the effect stack, and ret
 caused, in order. It holds no observer and no history. Once the step ends, `Game` reports each
 event: it matches the event against the triggers in play, records it in History, tells the observer
 and pushes the matches. Then the observer reads the views, so a checkpoint follows every step, and
-nothing else takes one.
+nothing else takes one. A step that finds nothing to do, such as a state check pass with no dead,
+writes nothing, reports nothing and takes no checkpoint.
 
 Matching therefore sees the state the step leaves, not the state at the moment of each event.
 Wherever a later write in a step would change what an earlier event matches, the step ends and
@@ -23,7 +24,7 @@ have left (ADR 0012).
   matches a draw, a turn change, a reveal, a zone move or a board entry, and damage changes nothing
   a match reads, so the steps that report several of these are safe. A pattern on a board entry
   would let the second minion one summon effect makes hear the first one's entry.
-- Only `Game` takes the observer. ADR 0006's decision stands, but not its consequence that every
+- No step takes the observer. ADR 0006's decision stands, but not its consequence that every
   function that can report takes the observer.
 
 ## Considered options
