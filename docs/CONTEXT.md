@@ -161,10 +161,18 @@ A card a player has started to play but hasn't played yet, with what they have t
 far.
 _Avoid_: draft
 
+**Choice**:
+One thing a card declares a player must name: which objects are the options, and how many to name.
+A target and a pick are both choices, told apart by when the player answers.
+
 **Target**:
-To name what an effect will act on while playing the card, before it resolves. As a noun, one
-thing a card declares the player must name. The objects named for it are targeted, not targets.
+To name what an effect will act on while playing the card, before it resolves. As a noun, a choice
+answered that way. The objects named for it are targeted, not targets.
 _Avoid_: choose
+
+**Pick**:
+To name what an effect will act on while the card resolves, once resolution reaches that effect. As
+a noun, a choice answered that way.
 
 **Resolve**:
 To carry out a card's text.
@@ -281,8 +289,8 @@ The part of a card that can be hidden from a player: its definition and cost.
   object is one copy in one game.
 - **Action** and **Event**: actions go into the game, events come out of it. A player sends an
   action, and the game reports events while it resolves.
-- **Target** and **Pick**: a player targets while playing a card, before it resolves, from what is
-  already in play. A player picks while a card resolves, from the cards it revealed.
+- **Target** and **Pick**: a player targets while playing a card, before it resolves, and picks
+  while it resolves. Where the options are, in play or elsewhere, doesn't tell them apart.
 - **Pending effect** and **Resolving effect**: a pending effect waits on the effect stack. The
   resolving effect has been taken off it and is being carried out, one effect at a time.
 - **Checkpoint** and **State check**: a checkpoint lets observers read views and changes nothing. A
