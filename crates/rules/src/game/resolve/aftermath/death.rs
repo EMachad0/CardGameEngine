@@ -39,13 +39,12 @@ struct Removal {
     to_graveyard: bool,
 }
 
-/// `None` if no character is dead.
 pub(in crate::game) fn find_deaths(
     cards: CardsRef,
     player_ids: &[PlayerId],
     standings: &Standings,
 ) -> Option<DeathPass> {
-    let dead_minions = find_dead(cards, player_ids);
+    let dead_minions = find_dead_minions(cards, player_ids);
     let dead_players = standings
         .playing()
         .filter(|&player_id| hero_health(cards, player_id) <= 0)
@@ -55,17 +54,17 @@ pub(in crate::game) fn find_deaths(
     }
     let dead_heroes = dead_players.iter().map(|&p| cards.zones.hero(p));
 
-    let mut death_pass = dead_minions
+    let mut dead = dead_minions
         .into_iter()
         .chain(dead_heroes)
         .collect::<Vec<_>>();
-    death_pass.sort_by_key(|&o| cards.zones.death_order(o));
+    dead.sort_by_key(|&o| cards.zones.death_order(o));
 
-    let death_rattles = death_pass
+    let death_rattles = dead
         .iter()
         .flat_map(|&object_id| death_rattles(cards, object_id))
         .collect();
-    let removals = death_pass
+    let removals = dead
         .iter()
         .filter_map(|&object_id| {
             let card_def = cards.card_def(object_id);
@@ -76,7 +75,7 @@ pub(in crate::game) fn find_deaths(
             })
         })
         .collect();
-    let deaths = death_pass
+    let deaths = dead
         .into_iter()
         .map(|object_id| Death { object_id })
         .collect();
@@ -88,8 +87,6 @@ pub(in crate::game) fn find_deaths(
     })
 }
 
-/// Pushes the death rattles, removes the dead and eliminates the players whose heroes died. Returns
-/// a report of each death, in death order.
 pub(in crate::game) fn kill(
     death_pass: DeathPass,
     zones: &mut Zones,
@@ -117,16 +114,16 @@ pub(in crate::game) fn kill(
     deaths.into_iter().map(Report::Died).collect()
 }
 
-fn find_dead(cards: CardsRef, players: &[PlayerId]) -> Vec<ObjectId> {
-    let mut death_pass = Vec::new();
-    for &player_id in players {
+fn find_dead_minions(cards: CardsRef, player_ids: &[PlayerId]) -> Vec<ObjectId> {
+    let mut dead_minions = Vec::new();
+    for &player_id in player_ids {
         for card in cards.zones.board_cards(player_id) {
             if character_health(cards, card.into()) <= 0 {
-                death_pass.push(card.object_id());
+                dead_minions.push(card.object_id());
             }
         }
     }
-    death_pass
+    dead_minions
 }
 
 fn destroy(zones: &mut Zones, player_id: PlayerId, object_id: ObjectId, to_graveyard: bool) {

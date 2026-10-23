@@ -33,7 +33,7 @@ pub(super) fn start_turn(
     let mut reports = vec![Report::TurnStarted {
         player_id: active_player_id,
     }];
-    players.get_mut(active_player_id).mana.refill();
+    players.mana_mut(active_player_id).refill();
     reports.extend(draw(active_player_id, 1, zones, objects));
     reports
 }

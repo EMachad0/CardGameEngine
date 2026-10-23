@@ -1,6 +1,7 @@
 //! `Game`, the whole state of one game: how one starts, what callers ask it, and how an action
 //! runs. An action runs in steps. A step writes only the parts of the game it is lent and returns
-//! what it did, which is reported once the step ends, and a checkpoint follows each step.
+//! what it did, which is reported once the step ends, and a checkpoint follows each step that found
+//! something to do.
 
 use crate::action::{Action, IllegalAction};
 use crate::cards::binder::def_id::DefId;
@@ -364,7 +365,8 @@ impl Game {
         true
     }
 
-    /// Makes the step's writes, lending it what it reads and writes, and returns what it reported.
+    /// Makes the step's writes, lending it what it reads and writes. Returns the events it caused,
+    /// in order.
     fn write(&mut self, step: Step) -> Option<Vec<Report>> {
         let reports = match step {
             Step::Draw { player_id, count } => {

@@ -158,7 +158,7 @@ impl MatchedEvent {
         history.record(&event, turn, objects);
         #[expect(
             clippy::disallowed_methods,
-            reason = "the one report to the observer, reached through Game::report"
+            reason = "the one report to the observer, with its history entry and matches"
         )]
         obs.event(&event);
         for MatchedTrigger { source, effects } in triggers {

@@ -29,8 +29,8 @@ impl Players {
         &self.players[player_id.idx()]
     }
 
-    pub(super) fn get_mut(&mut self, player_id: PlayerId) -> &mut Player {
-        &mut self.players[player_id.idx()]
+    pub(super) fn mana_mut(&mut self, player_id: PlayerId) -> &mut Mana {
+        &mut self.players[player_id.idx()].mana
     }
 
     /// By ID.
@@ -76,10 +76,10 @@ mod tests {
     }
 
     #[test]
-    fn a_write_through_one_player_leaves_the_others_alone() {
+    fn refilling_one_players_mana_leaves_the_others_alone() {
         let mut players = Players::new(2);
 
-        players.get_mut(PlayerId::new(1)).mana.refill();
+        players.mana_mut(PlayerId::new(1)).refill();
 
         assert_eq!(
             players

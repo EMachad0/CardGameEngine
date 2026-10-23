@@ -194,7 +194,6 @@ pub(in crate::game) fn resolve(
     reports
 }
 
-/// `None` if nothing was revealed, so no picking starts.
 fn reveal(
     player_id: PlayerId,
     source: ObjectId,

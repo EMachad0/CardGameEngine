@@ -106,7 +106,7 @@ pub(super) fn play(
         play_effects,
     } = prepared;
     let player_id = card.player_id();
-    players.get_mut(player_id).mana.pay(cost);
+    players.mana_mut(player_id).pay(cost);
     let targeting = awaiting_targeting
         .map(|awaiting_targeting| player_input.commit_targeting(awaiting_targeting));
     let object_id = zones.take_from_hand(card);
