@@ -131,9 +131,7 @@ fn destroy(zones: &mut Zones, player_id: PlayerId, object_id: ObjectId, to_grave
         clippy::disallowed_methods,
         reason = "the one removal from the board, made as the state check removes the dead"
     )]
-    zones
-        .leave_board(player_id, object_id)
-        .expect("object not in board");
+    zones.leave_board(player_id, object_id);
 
     if to_graveyard {
         entomb(zones, player_id, object_id);
