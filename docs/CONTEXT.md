@@ -61,8 +61,12 @@ A group of card definitions released together, such as the base set.
 _Avoid_: expansion, edition
 
 **Object**:
-One card in one game. Two copies of the same card are two objects.
+One copy of a card definition in one game, in any zone. Two copies of the same definition are two
+objects.
 _Avoid_: instance, entity
+
+**Card**:
+An object out of play: in a hand, a deck or a graveyard.
 
 **Minion**:
 A card that stays on its owner's board once played.
@@ -79,7 +83,7 @@ The mana a card in hand takes to play right now, which can differ from its print
 _Avoid_: price
 
 **Health**:
-What a hero or a card on the board has left before it dies.
+What a character has left before it dies.
 _Avoid_: life, hit points
 
 **Damage**:
@@ -89,18 +93,18 @@ Health that has been lost.
 The damage a hero takes for a draw from an empty deck.
 
 **Buff**:
-A raise to a card's attack or health that comes from another card.
+A raise to an object's attack or health that comes from another object.
 _Avoid_: enchantment
 
 **Aura**:
-A buff that a card on the board gives other cards for as long as it stays there.
+A buff that a minion on the board gives other objects for as long as it stays there.
 
 **Stat**:
-A card's cost, attack or health.
+An object's cost, attack or health.
 _Avoid_: attribute
 
 **Modifier**:
-A change to a card's stats or triggers, printed on it, granted to it, or given by an aura.
+A change to an object's stats or triggers, printed on it, granted to it, or given by an aura.
 
 ### Zones
 
@@ -116,11 +120,11 @@ _Avoid_: library, draw pile
 The cards a player holds and can play.
 
 **Board**:
-The cards a player has in play, in order from left to right.
+The minions a player has in play, in order from left to right.
 _Avoid_: battlefield, field, play area
 
 **In play**:
-Being a hero, or a card on a board.
+Being a hero, or a minion on a board.
 
 **Alive**:
 A minion on a board, or a hero whose player is still playing.
@@ -189,6 +193,9 @@ _Avoid_: targeteer
 Giving back health that has been lost.
 _Avoid_: heal
 
+**Modify**:
+Giving an object a modifier.
+
 **Reveal**:
 Taking cards from the top of a deck for a player to pick from.
 
@@ -213,14 +220,14 @@ Card text that reacts to an event. It matches when the event happens and resolve
 _Avoid_: listener, hook
 
 **Matched trigger**:
-A trigger an event has matched, with the card it belongs to.
+A trigger an event has matched, with the object it belongs to.
 
 **Death rattle**:
-A trigger on its own card's death.
+A trigger on its own object's death.
 _Avoid_: deathrattle, own death trigger
 
 **Pending effect**:
-Text waiting to resolve, with the card it came from: a played card's effects or a matched trigger.
+Text waiting to resolve, with the object it came from: a played card's effects or a matched trigger.
 _Avoid_: unit
 
 **Effect stack**:
@@ -233,7 +240,7 @@ is picking.
 _Avoid_: unit, current trigger
 
 **State check**:
-The pass that removes dead cards from the board and decides whether the game is over.
+The pass that removes dead minions from the board and decides whether the game is over.
 _Avoid_: death check, state-based actions
 
 **Death**:
@@ -287,6 +294,8 @@ The part of a card that can be hidden from a player: its definition and cost.
   grant a trigger, so every buff is a modifier and not every modifier is a buff.
 - **Card definition** and **Object**: the definition is the printed card, shared by every copy. An
   object is one copy in one game.
+- **Card** and **Character**: one object is a card while it is in a hand, a deck or a graveyard,
+  and a character while it is in play. Object covers both.
 - **Action** and **Event**: actions go into the game, events come out of it. A player sends an
   action, and the game reports events while it resolves.
 - **Target** and **Pick**: a player targets while playing a card, before it resolves, and picks
@@ -294,7 +303,7 @@ The part of a card that can be hidden from a player: its definition and cost.
 - **Pending effect** and **Resolving effect**: a pending effect waits on the effect stack. The
   resolving effect has been taken off it and is being carried out, one effect at a time.
 - **Checkpoint** and **State check**: a checkpoint lets observers read views and changes nothing. A
-  state check changes the game: it removes dead cards from the board and can end the game.
+  state check changes the game: it removes dead minions from the board and can end the game.
 - **Aftermath** and **State check**: the aftermath is what an action or an effect leaves to settle.
   The state check is the pass that settles it.
 - **Standings** and **Outcome**: the standings say who is still playing at any moment. The outcome
