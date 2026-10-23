@@ -1,8 +1,8 @@
 # One file holds every decision on `Game`'s data, and its commands are open to all of `game`
 
-Status: ready-for-agent
+Status: needs-triage
 Category: enhancement
-Blocked by: PR #68 (ticket 13 of the untangling)
+Blocked by: PR #68 (ticket 13 of the untangling), and architecture session 02i
 
 ## Why
 
@@ -65,6 +65,9 @@ given any function, existing or new, can tell from the name alone whether it bel
   every checkpoint.
 - PR #68's body records the gap under "Doc gaps" as "Keepers when only one file can run steps".
   PR #51 recorded a neighbour: whether a main type may sit in a subtree of its commands.
+- The doc doesn't say which gives way when the module that owns the data also has to run the steps:
+  restricting callers by nesting, restricting them by who can obtain the owner, or one decision per
+  module. Session 02i settles it, and its ruling goes here before an agent starts.
 
 ## Leave alone
 
