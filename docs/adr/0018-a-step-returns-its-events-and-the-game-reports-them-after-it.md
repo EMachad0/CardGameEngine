@@ -7,7 +7,7 @@ status: accepted
 An action runs in steps, and each effect of a resolving effect is one. A step writes only the parts
 of the game that `Game` lends it, such as the zones or the effect stack, and returns the events it
 caused, in order. It holds no observer and no history. Once the step ends, `Game` reports each
-event: it matches the event against the triggers in play, records it in History, tells the observer
+event: it matches the event against the triggers in play, records it in history, tells the observer
 and pushes the matches. Then the observer reads the views, so a checkpoint follows every step, and
 nothing else takes one. A state check pass that finds no dead, and a decision that doesn't end the
 game, are no step: they write nothing, report nothing and take no checkpoint.
