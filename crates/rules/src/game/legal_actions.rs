@@ -61,7 +61,7 @@ pub(super) fn legal_actions(
     player_input: &PlayerInput,
     player: &Player,
 ) -> Vec<LegalAction> {
-    let player_id = player.id;
+    let player_id = player.id();
     if standings.outcome().is_some() {
         return Vec::new();
     }

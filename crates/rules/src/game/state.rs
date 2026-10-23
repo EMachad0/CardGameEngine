@@ -7,7 +7,7 @@ use crate::cards::object::{ObjectBag, ObjectId};
 use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::EffectStack;
 use crate::game::legal_actions::LegalAction;
-use crate::game::player::Player;
+use crate::game::player::{Player, Players};
 use crate::game::player_input::awaiting::PlayerInput;
 use crate::game::resolve::aftermath::standings::Standings;
 use crate::game::resolve::apply::ApplyError;
@@ -24,7 +24,7 @@ use crate::zones::Zones;
 pub struct Game {
     pub(super) rng: Rng,
     pub(super) turn_order: TurnOrder,
-    pub(super) players: Vec<Player>,
+    pub(super) players: Players,
     pub(super) zones: Zones,
     pub(super) player_input: PlayerInput,
     pub(super) objects: ObjectBag,
@@ -129,7 +129,7 @@ impl Game {
     }
 
     pub fn players(&self) -> Vec<PlayerId> {
-        self.players.iter().map(|p| p.id).collect()
+        self.players.iter().map(Player::id).collect()
     }
 
     fn list_legal_actions(&self, player_id: PlayerId) -> Vec<LegalAction> {
@@ -142,10 +142,10 @@ impl Game {
     }
 
     fn get_player(&self, player_id: PlayerId) -> &Player {
-        &self.players[player_id.idx()]
+        self.players.get(player_id)
     }
 
     pub(super) fn get_player_mut(&mut self, player_id: PlayerId) -> &mut Player {
-        &mut self.players[player_id.idx()]
+        self.players.get_mut(player_id)
     }
 }

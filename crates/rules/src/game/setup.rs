@@ -4,11 +4,10 @@ use crate::cards::binder::def_id::DefId;
 use crate::cards::binder::sets::base::static_card_definition::HERO;
 use crate::cards::binder::store::Binder;
 use crate::cards::object::ObjectBag;
-use crate::game::player::Player;
+use crate::game::player::{Player, Players};
 use crate::game::resolve::aftermath::standings::Standings;
 use crate::game::state::Game;
 use crate::history::History;
-use crate::ids::PlayerId;
 use crate::rng::Rng;
 use crate::turn::TurnOrder;
 use crate::zones::Zones;
@@ -20,12 +19,8 @@ pub(super) fn setup(seed: u64, decks: [Vec<DefId>; 2], shuffle: bool) -> Game {
 
     let mut objects = ObjectBag::default();
 
-    let player_count = decks.len();
-    let player_ids = (0..player_count).map(PlayerId::new).collect::<Vec<_>>();
-    let players = player_ids
-        .iter()
-        .map(|&player_id| Player::new(player_id))
-        .collect::<Vec<_>>();
+    let players = Players::new(decks.len());
+    let player_ids = players.iter().map(Player::id).collect::<Vec<_>>();
     let heroes = player_ids
         .iter()
         .map(|&player_id| objects.insert(HERO, player_id))
