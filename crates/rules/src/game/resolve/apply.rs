@@ -6,7 +6,7 @@
 use crate::action::{Action, IllegalAction};
 use crate::game::effect_stack::NextEffect;
 use crate::game::legal_actions::LegalAction;
-use crate::game::player_input::WasAwaitingPicking;
+use crate::game::player_input::awaiting::WasAwaitingPicking;
 use crate::game::reporting::Report;
 use crate::game::state::Game;
 use crate::ids::PlayerId;

@@ -1,17 +1,18 @@
 //! What the game awaits from each player, and what they picked. The game awaits at most one thing
-//! from a player: targeting while playing a card, or picking while a card resolves. A revealed
-//! card sits in a picking's options until picked, then in its picks.
+//! from a player: targeting while playing a card, or picking while a card resolves.
 
 use std::marker::PhantomData;
 
 use crate::cards::object::ObjectId;
 use crate::effect::PickId;
+use crate::game::player_input::picks::{Picking, Picks, StoredPicks};
+use crate::game::player_input::targeting::Targeting;
 use crate::ids::PlayerId;
 use crate::target::TargetId;
 
 /// What the game awaits from one player, as read.
 #[derive(Debug, Clone, Copy)]
-pub(super) enum Awaiting<'a> {
+pub(in crate::game) enum Awaiting<'a> {
     Nothing(AwaitsNothing<'a>),
     Picking(AwaitsPicking<'a>),
     Targeting(AwaitsTargeting<'a>),
@@ -20,7 +21,7 @@ pub(super) enum Awaiting<'a> {
 /// That the game awaits nothing from a player. It borrows the player input, so nothing is awaited
 /// from them while this lives.
 #[derive(Debug, Clone, Copy)]
-pub(super) struct AwaitsNothing<'a> {
+pub(in crate::game) struct AwaitsNothing<'a> {
     player_id: PlayerId,
     input: PhantomData<&'a PlayerInput>,
 }
@@ -28,17 +29,17 @@ pub(super) struct AwaitsNothing<'a> {
 /// That the game awaits a player's picking. It borrows the player input, so the picking stays open
 /// while this lives.
 #[derive(Debug, Clone, Copy)]
-pub(super) struct AwaitsPicking<'a> {
+pub(in crate::game) struct AwaitsPicking<'a> {
     player_id: PlayerId,
     picking: &'a Picking,
 }
 
 impl<'a> AwaitsPicking<'a> {
     /// In reveal order.
-    pub(super) fn options(self) -> impl Iterator<Item = WasAwaitingPicking> + 'a {
+    pub(in crate::game) fn options(self) -> impl Iterator<Item = WasAwaitingPicking> + 'a {
         let player_id = self.player_id;
         self.picking
-            .options
+            .options()
             .iter()
             .map(move |&object_id| WasAwaitingPicking {
                 player_id,
@@ -50,20 +51,20 @@ impl<'a> AwaitsPicking<'a> {
 /// That the game awaits a player's targeting. It borrows the player input, so the targeting stays
 /// open while this lives.
 #[derive(Debug, Clone, Copy)]
-pub(super) struct AwaitsTargeting<'a> {
+pub(in crate::game) struct AwaitsTargeting<'a> {
     player_id: PlayerId,
     targeting: &'a Targeting,
 }
 
 impl<'a> AwaitsTargeting<'a> {
-    pub(super) fn targeting(self) -> &'a Targeting {
+    pub(in crate::game) fn targeting(self) -> &'a Targeting {
         self.targeting
     }
 }
 
 /// That the game was awaiting nothing from a player. It holds no borrow, so the game may have
 /// started waiting on them since.
-pub(super) struct WasAwaitingNothing {
+pub(in crate::game) struct WasAwaitingNothing {
     player_id: PlayerId,
 }
 
@@ -77,7 +78,7 @@ impl From<AwaitsNothing<'_>> for WasAwaitingNothing {
 
 /// That the game was awaiting a player's targeting of a card. It holds no borrow, so the targeting
 /// may have closed since.
-pub(super) struct WasAwaitingTargeting {
+pub(in crate::game) struct WasAwaitingTargeting {
     player_id: PlayerId,
     object_id: ObjectId,
 }
@@ -86,127 +87,47 @@ impl From<AwaitsTargeting<'_>> for WasAwaitingTargeting {
     fn from(awaits_targeting: AwaitsTargeting<'_>) -> Self {
         Self {
             player_id: awaits_targeting.player_id,
-            object_id: awaits_targeting.targeting.object_id,
+            object_id: awaits_targeting.targeting.object_id(),
         }
     }
 }
 
 impl WasAwaitingTargeting {
-    pub(super) fn player_id(&self) -> PlayerId {
+    pub(in crate::game) fn player_id(&self) -> PlayerId {
         self.player_id
     }
 
     /// The card being targeted for.
-    pub(super) fn object_id(&self) -> ObjectId {
+    pub(in crate::game) fn object_id(&self) -> ObjectId {
         self.object_id
     }
 }
 
 /// That the game was awaiting a player's picking, and one of its options. It holds no borrow, so
 /// the picking may have closed since.
-pub(super) struct WasAwaitingPicking {
+pub(in crate::game) struct WasAwaitingPicking {
     player_id: PlayerId,
     object_id: ObjectId,
 }
 
 impl WasAwaitingPicking {
     /// The option.
-    pub(super) fn object_id(&self) -> ObjectId {
+    pub(in crate::game) fn object_id(&self) -> ObjectId {
         self.object_id
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct Picking {
-    source: ObjectId,
-    pick_id: PickId,
-    options: Vec<ObjectId>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct Targeting {
-    object_id: ObjectId,
-    targeted: Vec<(ObjectId, TargetId)>,
-}
-
-impl Targeting {
-    /// With nothing targeted yet.
-    pub(super) fn new(object_id: ObjectId) -> Self {
-        Self {
-            object_id,
-            targeted: Vec::new(),
-        }
-    }
-
-    pub(super) fn object_id(&self) -> ObjectId {
-        self.object_id
-    }
-
-    /// In the order targeted.
-    pub(super) fn targeted_objects(&self) -> impl Iterator<Item = ObjectId> {
-        self.targeted.iter().map(|&(object_id, _)| object_id)
-    }
-
-    /// In the order targeted.
-    pub(super) fn targeted_for(&self, target_id: TargetId) -> impl Iterator<Item = ObjectId> {
-        self.targeted
-            .iter()
-            .filter(move |&&(_, id)| id == target_id)
-            .map(|&(object_id, _)| object_id)
-    }
-
-    /// Whether `object_id` is targeted for any target.
-    pub(super) fn is_targeted(&self, object_id: ObjectId) -> bool {
-        self.targeted_objects()
-            .any(|targeted| targeted == object_id)
-    }
-
-    /// Runs `f` on this targeting with `object_id` also targeted for `target_id`, then takes it
-    /// back out.
-    pub(super) fn with_targeted<R>(
-        &mut self,
-        object_id: ObjectId,
-        target_id: TargetId,
-        f: impl FnOnce(&mut Self) -> R,
-    ) -> R {
-        self.targeted.push((object_id, target_id));
-        let result = f(self);
-        self.targeted.pop();
-        result
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct Picks {
-    source: ObjectId,
-    pick_id: PickId,
-    picked: Vec<ObjectId>,
-    others: Vec<ObjectId>,
-}
-
-impl Picks {
-    pub(super) fn picked(&self) -> &[ObjectId] {
-        &self.picked
-    }
-
-    /// The options not picked, in reveal order.
-    pub(super) fn others(&self) -> &[ObjectId] {
-        &self.others
     }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub(super) struct PlayerInput {
+pub(in crate::game) struct PlayerInput {
     /// Sorted by player. No player is in both this and `pickings`.
     targetings: Vec<(PlayerId, Targeting)>,
     /// Sorted by player.
     pickings: Vec<(PlayerId, Picking)>,
-    /// Sorted by source, then in the order picked.
-    picks: Vec<Picks>,
+    stored_picks: StoredPicks,
 }
 
 impl PlayerInput {
-    pub(super) fn awaiting(&self, player_id: PlayerId) -> Awaiting<'_> {
+    pub(in crate::game) fn awaiting(&self, player_id: PlayerId) -> Awaiting<'_> {
         self.awaiting_targeting(player_id)
             .map(Awaiting::Targeting)
             .or_else(|| self.awaiting_picking(player_id).map(Awaiting::Picking))
@@ -216,32 +137,28 @@ impl PlayerInput {
             }))
     }
 
-    pub(super) fn any_awaiting(&self) -> bool {
+    pub(in crate::game) fn any_awaiting(&self) -> bool {
         !self.targetings.is_empty() || !self.pickings.is_empty()
     }
 
     /// A picking's options. Empty while awaiting anything else, or nothing.
-    pub(super) fn revealed(&self, player_id: PlayerId) -> &[ObjectId] {
+    pub(in crate::game) fn revealed(&self, player_id: PlayerId) -> &[ObjectId] {
         self.awaiting_picking(player_id)
-            .map_or(&[], |awaits_picking| {
-                awaits_picking.picking.options.as_slice()
-            })
+            .map_or(&[], |awaits_picking| awaits_picking.picking.options())
     }
 
-    pub(super) fn targeting(&self, player_id: PlayerId) -> Option<&Targeting> {
+    pub(in crate::game) fn targeting(&self, player_id: PlayerId) -> Option<&Targeting> {
         self.awaiting_targeting(player_id)
             .map(AwaitsTargeting::targeting)
     }
 
     /// The first picks `source` stored for `pick_id`.
-    pub(super) fn picks(&self, source: ObjectId, pick_id: PickId) -> Option<&Picks> {
-        self.picks
-            .iter()
-            .find(|entry| entry.source == source && entry.pick_id == pick_id)
+    pub(in crate::game) fn picks(&self, source: ObjectId, pick_id: PickId) -> Option<&Picks> {
+        self.stored_picks.find(source, pick_id)
     }
 
     /// With nothing targeted yet. Panics if the game awaits anything from the player.
-    pub(super) fn start_targeting(
+    pub(in crate::game) fn start_targeting(
         &mut self,
         awaiting_nothing: WasAwaitingNothing,
         object_id: ObjectId,
@@ -258,24 +175,24 @@ impl PlayerInput {
     }
 
     /// Panics unless the player is still targeting the card.
-    pub(super) fn target(
+    pub(in crate::game) fn target(
         &mut self,
         awaiting_targeting: WasAwaitingTargeting,
         object_id: ObjectId,
         target_id: TargetId,
     ) {
         let idx = self.targeting_idx(&awaiting_targeting);
-        self.targetings[idx].1.targeted.push((object_id, target_id));
+        self.targetings[idx].1.target(object_id, target_id);
     }
 
     /// Panics unless the player is still targeting the card.
-    pub(super) fn cancel(&mut self, awaiting_targeting: WasAwaitingTargeting) {
+    pub(in crate::game) fn cancel(&mut self, awaiting_targeting: WasAwaitingTargeting) {
         let idx = self.targeting_idx(&awaiting_targeting);
         self.targetings.remove(idx);
     }
 
     /// Closes the targeting and returns it. Panics unless the player is still targeting the card.
-    pub(super) fn commit_targeting(
+    pub(in crate::game) fn commit_targeting(
         &mut self,
         awaiting_targeting: WasAwaitingTargeting,
     ) -> Targeting {
@@ -287,7 +204,7 @@ impl PlayerInput {
 
     /// Starts the player's picking from `options`, replacing any targeting they have. With no
     /// options, starts nothing and returns `false`. Panics if they are picking.
-    pub(super) fn start_picking(
+    pub(in crate::game) fn start_picking(
         &mut self,
         player_id: PlayerId,
         source: ObjectId,
@@ -303,23 +220,21 @@ impl PlayerInput {
         if let Ok(replaced) = entry_idx(&self.targetings, player_id) {
             self.targetings.remove(replaced);
         }
-        let picking = Picking {
-            source,
-            pick_id,
-            options,
-        };
+        let picking = Picking::new(source, pick_id, options);
         self.pickings.insert(idx, (player_id, picking));
         true
     }
 
-    /// Closes the option's picking, stores the option as picked and the other options as
-    /// the others, and returns the player who picked and the picked object. Panics unless the
-    /// card is still among the picking's options.
-    pub(super) fn pick(&mut self, awaiting_picking: WasAwaitingPicking) -> (PlayerId, ObjectId) {
+    /// Closes the option's picking and stores its picks. Returns the player who picked and the
+    /// picked object. Panics unless the card is still among the picking's options.
+    pub(in crate::game) fn pick(
+        &mut self,
+        awaiting_picking: WasAwaitingPicking,
+    ) -> (PlayerId, ObjectId) {
         let found = entry_idx(&self.pickings, awaiting_picking.player_id)
             .ok()
             .and_then(|picking_idx| {
-                let options = &self.pickings[picking_idx].1.options;
+                let options = self.pickings[picking_idx].1.options();
                 let option_idx = options
                     .iter()
                     .position(|&o| o == awaiting_picking.object_id)?;
@@ -327,26 +242,9 @@ impl PlayerInput {
             });
         let (picking_idx, option_idx) =
             found.expect("a card found among a picking's options should stay there until picked");
-        let (
-            player_id,
-            Picking {
-                source,
-                pick_id,
-                mut options,
-            },
-        ) = self.pickings.remove(picking_idx);
-        let picked = options.remove(option_idx);
-        let idx = self.picks.partition_point(|entry| entry.source <= source);
-        self.picks.insert(
-            idx,
-            Picks {
-                source,
-                pick_id,
-                picked: vec![picked],
-                others: options,
-            },
-        );
-        (player_id, picked)
+        let (player_id, picking) = self.pickings.remove(picking_idx);
+        self.stored_picks.store(picking.pick(option_idx));
+        (player_id, awaiting_picking.object_id)
     }
 
     fn awaiting_targeting(&self, player_id: PlayerId) -> Option<AwaitsTargeting<'_>> {
@@ -367,7 +265,7 @@ impl PlayerInput {
     fn targeting_idx(&self, awaiting_targeting: &WasAwaitingTargeting) -> usize {
         entry_idx(&self.targetings, awaiting_targeting.player_id)
             .ok()
-            .filter(|&idx| self.targetings[idx].1.object_id == awaiting_targeting.object_id)
+            .filter(|&idx| self.targetings[idx].1.object_id() == awaiting_targeting.object_id)
             .expect("a targeting found open should stay open until used")
     }
 }
@@ -718,95 +616,6 @@ mod tests {
             input.targeting(player).map(Targeting::object_id),
             Some(card)
         );
-    }
-
-    #[test]
-    fn targeted_for_lists_one_targets_objects_in_the_order_targeted() {
-        let [card, first, other, second] = ids();
-        let player = PlayerId::new(0);
-        let mut input = PlayerInput::default();
-        start_targeting(&mut input, player, card);
-        target_object(&mut input, player, first, TargetId(0));
-        target_object(&mut input, player, other, TargetId(1));
-        target_object(&mut input, player, second, TargetId(0));
-
-        let targeting = input.targeting(player).unwrap();
-
-        assert_eq!(
-            targeting.targeted_for(TargetId(0)).collect::<Vec<_>>(),
-            [first, second]
-        );
-    }
-
-    #[test]
-    fn an_object_targeted_for_any_target_is_targeted() {
-        let [card, object] = ids();
-        let player = PlayerId::new(0);
-        let mut input = PlayerInput::default();
-        start_targeting(&mut input, player, card);
-
-        target_object(&mut input, player, object, TargetId(1));
-
-        assert!(input.targeting(player).unwrap().is_targeted(object));
-    }
-
-    #[test]
-    fn an_object_not_yet_targeted_is_not_targeted() {
-        let [card, object, other] = ids();
-        let player = PlayerId::new(0);
-        let mut input = PlayerInput::default();
-        start_targeting(&mut input, player, card);
-
-        target_object(&mut input, player, object, TargetId(0));
-
-        assert!(!input.targeting(player).unwrap().is_targeted(other));
-    }
-
-    #[test]
-    fn targeting_lists_its_targeted_objects_in_the_order_targeted() {
-        let [card, first, second] = ids();
-        let player = PlayerId::new(0);
-        let mut input = PlayerInput::default();
-        start_targeting(&mut input, player, card);
-        target_object(&mut input, player, first, TargetId(1));
-        target_object(&mut input, player, second, TargetId(0));
-
-        let targeting = input.targeting(player).unwrap();
-
-        assert_eq!(
-            targeting.targeted_objects().collect::<Vec<_>>(),
-            [first, second]
-        );
-    }
-
-    #[test]
-    fn with_targeted_runs_f_with_the_object_also_targeted() {
-        let [card, first, second] = ids();
-        let player = PlayerId::new(0);
-        let mut input = PlayerInput::default();
-        start_targeting(&mut input, player, card);
-        target_object(&mut input, player, first, TargetId(0));
-        let mut targeting = input.targeting(player).unwrap().clone();
-
-        let targeted = targeting.with_targeted(second, TargetId(0), |targeting| {
-            targeting.targeted_for(TargetId(0)).collect::<Vec<_>>()
-        });
-
-        assert_eq!(targeted, [first, second]);
-    }
-
-    #[test]
-    fn with_targeted_leaves_the_targeting_as_it_found_it() {
-        let [card, first, second] = ids();
-        let player = PlayerId::new(0);
-        let mut input = PlayerInput::default();
-        start_targeting(&mut input, player, card);
-        target_object(&mut input, player, first, TargetId(0));
-        let mut targeting = input.targeting(player).unwrap().clone();
-
-        targeting.with_targeted(second, TargetId(0), |_| {});
-
-        assert_eq!(&targeting, input.targeting(player).unwrap());
     }
 
     #[test]

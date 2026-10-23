@@ -4,7 +4,7 @@ use crate::cards::binder::def_id::DefId;
 use crate::cards::object::ObjectId;
 use crate::game::cards_ref::CardsRef;
 use crate::game::player::Player;
-use crate::game::player_input::PlayerInput;
+use crate::game::player_input::awaiting::PlayerInput;
 use crate::game::resolve::aftermath::standings::Standings;
 use crate::game::stats::{character_health, cost, hero_health, minion_attack};
 use crate::ids::PlayerId;

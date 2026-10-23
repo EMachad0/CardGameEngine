@@ -4,7 +4,7 @@
 use crate::cards::object::ObjectId;
 use crate::game::amount::effect_amount;
 use crate::game::cards_ref::CardsRef;
-use crate::game::player_input::Targeting;
+use crate::game::player_input::targeting::Targeting;
 use crate::target::{CharacterTarget, TargetId};
 
 /// Whether the card's targeting can be finished from nothing targeted.
