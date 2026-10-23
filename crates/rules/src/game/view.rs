@@ -3,7 +3,7 @@
 use crate::cards::binder::def_id::DefId;
 use crate::cards::object::ObjectId;
 use crate::game::cards_ref::CardsRef;
-use crate::game::player::Player;
+use crate::game::player::{Player, Players};
 use crate::game::player_input::awaiting::PlayerInput;
 use crate::game::resolve::aftermath::standings::Standings;
 use crate::game::stats::{character_health, cost, hero_health, minion_attack};
@@ -79,7 +79,7 @@ pub struct TargetingView {
 
 pub(super) fn view(
     cards: CardsRef,
-    players: &[Player],
+    players: &Players,
     player_input: &PlayerInput,
     standings: &Standings,
     viewer: PlayerId,
@@ -101,24 +101,25 @@ fn player_view(
     viewer: PlayerId,
     player: &Player,
 ) -> PlayerView {
+    let player_id = player.id();
     PlayerView {
-        player_id: player.id,
-        hero: hero_card(cards, viewer, player.id),
+        player_id,
+        hero: hero_card(cards, viewer, player_id),
         mana: player.mana.current(),
         max_mana: player.mana.max(),
         hand: cards
             .zones
-            .hand_cards(player.id)
-            .map(|card| hand_card(cards, viewer, player.id, card))
+            .hand_cards(player_id)
+            .map(|card| hand_card(cards, viewer, player_id, card))
             .collect(),
-        deck_size: cards.zones.deck_size(player.id),
+        deck_size: cards.zones.deck_size(player_id),
         board: cards
             .zones
-            .board_cards(player.id)
+            .board_cards(player_id)
             .map(|card| board_card(cards, viewer, card))
             .collect(),
-        revealed: revealed_view(cards, player_input, viewer, player.id),
-        targeting: targeting_view(player_input, player.id),
+        revealed: revealed_view(cards, player_input, viewer, player_id),
+        targeting: targeting_view(player_input, player_id),
     }
 }
 

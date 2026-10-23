@@ -47,7 +47,7 @@ impl Standings {
     }
 
     /// `Some` only from the call that ends the game.
-    pub(super) fn decide(&mut self) -> Option<Ending> {
+    pub(in crate::game) fn decide(&mut self) -> Option<Ending> {
         if self.outcome.is_some() {
             return None;
         }

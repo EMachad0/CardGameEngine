@@ -1,28 +1,39 @@
 //! What happens as a turn ends and the next one starts.
 
+use crate::cards::object::ObjectBag;
+use crate::game::player::Players;
 use crate::game::reporting::Report;
-use crate::game::state::Game;
-use crate::observer::Observer;
+use crate::game::zone_move::draw;
+use crate::turn::TurnOrder;
+use crate::zones::Zones;
 
-impl Game {
-    /// Ends the active player's turn and starts the next player's.
-    pub(super) fn end_turn(&mut self, obs: &mut impl Observer) {
-        let active_player_id = self.turn_order.get_active_player_id();
-        let report = Report::TurnEnded {
-            player_id: active_player_id,
-        };
-        self.report(report, obs);
-        self.turn_order.end_turn();
-        self.start_turn(obs);
-    }
+/// Ends the active player's turn and starts the next player's.
+pub(super) fn end_turn(
+    turn_order: &mut TurnOrder,
+    players: &mut Players,
+    zones: &mut Zones,
+    objects: &mut ObjectBag,
+) -> Vec<Report> {
+    let active_player_id = turn_order.get_active_player_id();
+    let mut reports = vec![Report::TurnEnded {
+        player_id: active_player_id,
+    }];
+    turn_order.end_turn();
+    reports.extend(start_turn(turn_order, players, zones, objects));
+    reports
+}
 
-    pub(super) fn start_turn(&mut self, obs: &mut impl Observer) {
-        let active_player_id = self.turn_order.get_active_player_id();
-        let report = Report::TurnStarted {
-            player_id: active_player_id,
-        };
-        self.report(report, obs);
-        self.get_player_mut(active_player_id).mana.refill();
-        self.draw(active_player_id, 1, obs);
-    }
+pub(super) fn start_turn(
+    turn_order: &TurnOrder,
+    players: &mut Players,
+    zones: &mut Zones,
+    objects: &mut ObjectBag,
+) -> Vec<Report> {
+    let active_player_id = turn_order.get_active_player_id();
+    let mut reports = vec![Report::TurnStarted {
+        player_id: active_player_id,
+    }];
+    players.mana_mut(active_player_id).refill();
+    reports.extend(draw(active_player_id, 1, zones, objects));
+    reports
 }

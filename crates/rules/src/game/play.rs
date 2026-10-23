@@ -1,16 +1,18 @@
 //! Playing a card from its owner's hand.
 
 use crate::cards::object::ObjectId;
+use crate::effect::Effect;
 use crate::event::Event;
 use crate::game::cards_ref::CardsRef;
+use crate::game::effect_stack::EffectStack;
 use crate::game::mana::Mana;
-use crate::game::player_input::awaiting::WasAwaitingTargeting;
+use crate::game::player::Players;
+use crate::game::player_input::awaiting::{PlayerInput, WasAwaitingTargeting};
 use crate::game::reporting::Report;
-use crate::game::state::Game;
 use crate::game::stats::cost;
 use crate::ids::PlayerId;
-use crate::observer::{Observer, Views};
-use crate::zones::{InHand, WasInHand};
+use crate::target::TargetId;
+use crate::zones::{InHand, WasInHand, Zones};
 
 pub(super) struct Play {
     player_id: PlayerId,
@@ -22,6 +24,15 @@ pub(super) struct Play {
 pub(super) struct WasPlayable {
     card: WasInHand,
     awaiting_targeting: Option<WasAwaitingTargeting>,
+}
+
+/// A card about to be played, read before anything is written: what it costs now, and its play
+/// effects with each target named by its id.
+pub(super) struct PreparedPlay {
+    card: WasInHand,
+    awaiting_targeting: Option<WasAwaitingTargeting>,
+    cost: u8,
+    play_effects: Vec<Effect<TargetId>>,
 }
 
 impl WasPlayable {
@@ -45,6 +56,10 @@ impl WasPlayable {
         }
     }
 
+    pub(super) fn player_id(&self) -> PlayerId {
+        self.card.player_id()
+    }
+
     pub(super) fn object_id(&self) -> ObjectId {
         self.card.object_id()
     }
@@ -59,46 +74,63 @@ impl From<Play> for Event {
     }
 }
 
-impl Game {
-    /// If the card is played from the player's targeting, closes it before reporting the play.
-    pub(super) fn play(&mut self, playable: WasPlayable, obs: &mut impl Observer) {
-        let WasPlayable {
-            card,
-            awaiting_targeting,
-        } = playable;
-        let player_id = card.player_id();
-        let cards = CardsRef::new(self);
-        let mana_cost = cost(cards, cards.zones.still_in_hand(&card));
-        self.get_player_mut(player_id).mana.pay(mana_cost);
-        let targeting = awaiting_targeting
-            .map(|awaiting_targeting| self.player_input.commit_targeting(awaiting_targeting));
-        let object_id = self.zones.take_from_hand(card);
+pub(super) fn prepare(cards: CardsRef, playable: WasPlayable) -> PreparedPlay {
+    let WasPlayable {
+        card,
+        awaiting_targeting,
+    } = playable;
+    let cost = cost(cards, cards.zones.still_in_hand(&card));
+    let play_effects = cards
+        .card_def(card.object_id())
+        .bind_play_effects(|target_id| target_id);
+    PreparedPlay {
+        card,
+        awaiting_targeting,
+        cost,
+        play_effects,
+    }
+}
 
-        let play_effects = CardsRef::new(self)
-            .card_def(object_id)
-            .bind_play_effects(|target_id| {
+/// If the card is played from the player's targeting, closes it.
+pub(super) fn play(
+    prepared: PreparedPlay,
+    players: &mut Players,
+    player_input: &mut PlayerInput,
+    zones: &mut Zones,
+    effect_stack: &mut EffectStack,
+) -> Report {
+    let PreparedPlay {
+        card,
+        awaiting_targeting,
+        cost,
+        play_effects,
+    } = prepared;
+    let player_id = card.player_id();
+    players.mana_mut(player_id).pay(cost);
+    let targeting = awaiting_targeting
+        .map(|awaiting_targeting| player_input.commit_targeting(awaiting_targeting));
+    let object_id = zones.take_from_hand(card);
+
+    let play_effects = play_effects
+        .into_iter()
+        .map(|effect| {
+            effect.map_targeted(|target_id| {
                 targeting
                     .as_ref()
                     .expect("a card that declares targets should be played from its targeting")
                     .targeted_for(target_id)
                     .collect()
-            });
-        if !play_effects.is_empty() {
-            self.effect_stack.push(object_id, play_effects);
-        }
-
-        let report = Report::Played(Play {
-            player_id,
-            object_id,
-        });
-        self.report(report, obs);
-
-        obs.checkpoint(Views::new(self));
-        if CardsRef::new(self).card_def(object_id).has_board_presence() {
-            self.summon(player_id, object_id, obs);
-            obs.checkpoint(Views::new(self));
-        }
+            })
+        })
+        .collect::<Vec<_>>();
+    if !play_effects.is_empty() {
+        effect_stack.push(object_id, play_effects);
     }
+
+    Report::Played(Play {
+        player_id,
+        object_id,
+    })
 }
 
 #[cfg(test)]
