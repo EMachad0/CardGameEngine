@@ -1,7 +1,6 @@
 //! `Game`, the whole state of one game: how one starts, what callers ask it, and how an action
 //! runs. An action runs in steps. A step writes only the parts of the game it is lent and returns
-//! what it did, which is reported once the step ends, and a checkpoint follows each step that found
-//! something to do.
+//! what it did, which is reported once the step ends, before a checkpoint.
 
 use crate::action::{Action, IllegalAction};
 use crate::cards::binder::def_id::DefId;
@@ -352,8 +351,8 @@ impl Game {
         self.run(Step::DecideOutcome, obs);
     }
 
-    /// Makes the step's writes, reports what it did, then lets the observer read the views. `false`
-    /// if the step found nothing to do, which reports nothing and takes no checkpoint.
+    /// Makes the step's writes, reports what it did, then lets the observer read the views.
+    /// `false`, with no report and no checkpoint, if `write` found no step to take.
     fn run(&mut self, step: Step, obs: &mut impl Observer) -> bool {
         let Some(reports) = self.write(step) else {
             return false;
@@ -366,7 +365,8 @@ impl Game {
     }
 
     /// Makes the step's writes, lending it what it reads and writes. Returns the events it caused,
-    /// in order.
+    /// in order. `None` for a death pass that finds no dead, or a decision that doesn't end the
+    /// game.
     fn write(&mut self, step: Step) -> Option<Vec<Report>> {
         let reports = match step {
             Step::Draw { player_id, count } => {
