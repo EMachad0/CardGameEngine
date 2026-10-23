@@ -3,8 +3,6 @@ use crate::effect::EffectAmount;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AmountBound {
     Exactly,
-    // AtMost,
-    // AtLeast,
 }
 
 impl AmountBound {

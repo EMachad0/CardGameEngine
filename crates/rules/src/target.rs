@@ -11,7 +11,7 @@ pub struct TargetId(pub usize);
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NoTarget {}
 
-/// What a `Targeted` selector holds in one form of effect text.
+/// A form of effect text.
 pub trait TargetForm {
     type CharacterTarget: Debug + Clone + PartialEq + Eq;
 }

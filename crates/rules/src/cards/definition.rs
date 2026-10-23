@@ -237,23 +237,19 @@ impl<S: TargetForm> CharacterSelector<S> {
 
 #[cfg(test)]
 mod tests {
+    use std::fmt::Debug;
+    use std::marker::PhantomData;
+
     use pretty_assertions::assert_eq;
 
     use super::*;
     use crate::choice::AmountBound;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    enum Numbers {}
+    struct Holds<T>(PhantomData<T>);
 
-    impl TargetForm for Numbers {
-        type CharacterTarget = usize;
-    }
-
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    enum TargetIds {}
-
-    impl TargetForm for TargetIds {
-        type CharacterTarget = TargetId;
+    impl<T: Debug + Clone + PartialEq + Eq> TargetForm for Holds<T> {
+        type CharacterTarget = T;
     }
 
     fn character_target(count: u8) -> Choice<CharacterFilter> {
@@ -302,7 +298,7 @@ mod tests {
         ]
     }
 
-    fn untargeted_selectors() -> [CharacterSelector<Numbers>; 4] {
+    fn untargeted_selectors() -> [CharacterSelector<Holds<usize>>; 4] {
         [
             CharacterSelector::All(CharacterFilter::all()),
             CharacterSelector::Itself,
@@ -337,7 +333,7 @@ mod tests {
         ));
 
         assert_eq!(
-            def.bind_play_effects::<TargetIds>(|target_id| target_id),
+            def.bind_play_effects::<Holds<TargetId>>(|target_id| target_id),
             two_targets_among_untargeted_effects(TargetId(0), TargetId(1)),
         );
     }
@@ -347,17 +343,17 @@ mod tests {
         let def = card(untargeted_effects());
         let mut asked = Vec::new();
 
-        def.bind_play_effects::<TargetIds>(|target_id| {
-            asked.push(target_id);
-            target_id
-        });
+        def.bind_play_effects::<Holds<()>>(|target_id| asked.push(target_id));
 
         assert_eq!(asked, Vec::<TargetId>::new());
     }
 
     #[test]
     fn a_targeted_selector_gives_what_it_holds() {
-        assert_eq!(CharacterSelector::<Numbers>::Targeted(3).target(), Some(&3));
+        assert_eq!(
+            CharacterSelector::<Holds<usize>>::Targeted(3).target(),
+            Some(&3)
+        );
     }
 
     #[test]
@@ -373,7 +369,7 @@ mod tests {
     #[test]
     fn mapping_a_targeted_selector_maps_what_it_holds() {
         assert_eq!(
-            CharacterSelector::<Numbers>::Targeted(3).map_targeted::<Numbers>(|n| n * 2),
+            CharacterSelector::<Holds<usize>>::Targeted(3).map_targeted::<Holds<_>>(|n| n * 2),
             CharacterSelector::Targeted(6),
         );
     }
@@ -381,7 +377,7 @@ mod tests {
     #[test]
     fn mapping_keeps_a_selector_that_targets_nothing() {
         assert_eq!(
-            untargeted_selectors().map(|selector| selector.map_targeted::<Numbers>(|n| n * 2)),
+            untargeted_selectors().map(|selector| selector.map_targeted::<Holds<_>>(|n| n * 2)),
             untargeted_selectors(),
         );
     }

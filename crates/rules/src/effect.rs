@@ -138,18 +138,21 @@ impl<S: TargetForm> Effect<S> {
 
 #[cfg(test)]
 mod tests {
+    use std::fmt::Debug;
+    use std::marker::PhantomData;
+
     use pretty_assertions::assert_eq;
 
     use super::*;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    enum Numbers {}
+    struct Holds<T>(PhantomData<T>);
 
-    impl TargetForm for Numbers {
-        type CharacterTarget = usize;
+    impl<T: Debug + Clone + PartialEq + Eq> TargetForm for Holds<T> {
+        type CharacterTarget = T;
     }
 
-    fn targeted_effects([damaged, buffed, aura]: [usize; 3]) -> [Effect<Numbers>; 3] {
+    fn targeted_effects([damaged, buffed, aura]: [usize; 3]) -> [Effect<Holds<usize>>; 3] {
         let buff = ModifierEffect::BuffAtk { amount: 1.into() };
         [
             Effect::Damage {
@@ -167,7 +170,7 @@ mod tests {
         ]
     }
 
-    fn resolve_pick() -> Effect<Numbers> {
+    fn resolve_pick() -> Effect<Holds<usize>> {
         Effect::ResolvePick {
             pick_id: PickId(1),
             picked_move: ZoneMove::AddToHand,
@@ -191,7 +194,7 @@ mod tests {
     #[test]
     fn mapping_the_targeted_selector_maps_what_it_holds() {
         assert_eq!(
-            targeted_effects([3, 4, 5]).map(|effect| effect.map_targeted::<Numbers>(|n| n * 2)),
+            targeted_effects([3, 4, 5]).map(|effect| effect.map_targeted::<Holds<_>>(|n| n * 2)),
             targeted_effects([6, 8, 10]),
         );
     }
@@ -199,7 +202,7 @@ mod tests {
     #[test]
     fn mapping_keeps_an_effect_with_no_character_selector() {
         assert_eq!(
-            resolve_pick().map_targeted::<Numbers>(|n| n * 2),
+            resolve_pick().map_targeted::<Holds<_>>(|n| n * 2),
             resolve_pick(),
         );
     }
