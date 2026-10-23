@@ -4,7 +4,7 @@ Status: needs-triage
 Category: enhancement
 
 The review of the untangling PRs adds rules to `docs/conventions/file-structure.md`. Code on main
-that breaks them is listed here, one section per rule. The untangling's tickets 11 to 13 covered
+that breaks them is listed here, one section per rule. The untangling's tickets 11 and 12 covered
 some of it, and those cases are left out.
 
 ## A command fails on input only a bug can send
