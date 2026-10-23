@@ -16,6 +16,7 @@ pub trait TargetForm {
     type CharacterTarget: Debug + Clone + PartialEq + Eq;
 }
 
+/// Play text as printed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Declared {}
 
@@ -23,6 +24,7 @@ impl TargetForm for Declared {
     type CharacterTarget = Choice<CharacterFilter>;
 }
 
+/// Trigger text as printed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Triggered {}
 
@@ -30,6 +32,7 @@ impl TargetForm for Triggered {
     type CharacterTarget = NoTarget;
 }
 
+/// Text with each target bound to the objects targeted for it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Bound {}
 
