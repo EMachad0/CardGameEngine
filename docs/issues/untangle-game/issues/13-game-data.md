@@ -1,6 +1,6 @@
 # Every command holds all of `Game`
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 Blocked by: 14, and the fix for `docs/issues/dying-mourner-hears-older-death.md`
@@ -93,3 +93,7 @@ signature, and keeps its callers from writing any part of the holder while it ru
   `docs/issues/untangle-game/`. A decision that clears the bar in `docs/adr/README.md` gets its
   ADR in this PR.
 - The checks pass, and the PR justifies every behavior change.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/68
