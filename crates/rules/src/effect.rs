@@ -194,16 +194,13 @@ mod tests {
     #[test]
     fn mapping_the_targeted_selector_maps_what_it_holds() {
         assert_eq!(
-            targeted_effects([3, 4, 5]).map(|effect| effect.map_targeted::<Holds<_>>(|n| n * 2)),
+            targeted_effects([3, 4, 5]).map(|effect| effect.map_targeted(|n| n * 2)),
             targeted_effects([6, 8, 10]),
         );
     }
 
     #[test]
     fn mapping_keeps_an_effect_with_no_character_selector() {
-        assert_eq!(
-            resolve_pick().map_targeted::<Holds<_>>(|n| n * 2),
-            resolve_pick(),
-        );
+        assert_eq!(resolve_pick().map_targeted(|n| n * 2), resolve_pick());
     }
 }

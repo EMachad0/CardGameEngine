@@ -24,7 +24,7 @@ impl TargetForm for Declared {
     type CharacterTarget = Choice<CharacterFilter>;
 }
 
-/// Trigger text as printed.
+/// Trigger text, printed or granted.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Triggered {}
 

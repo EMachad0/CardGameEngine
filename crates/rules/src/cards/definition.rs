@@ -377,7 +377,7 @@ mod tests {
     #[test]
     fn mapping_keeps_a_selector_that_targets_nothing() {
         assert_eq!(
-            untargeted_selectors().map(|selector| selector.map_targeted::<Holds<_>>(|n| n * 2)),
+            untargeted_selectors().map(|selector| selector.map_targeted(|n| n * 2)),
             untargeted_selectors(),
         );
     }
