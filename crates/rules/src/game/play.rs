@@ -11,7 +11,7 @@ use crate::game::player_input::awaiting::{PlayerInput, WasAwaitingTargeting};
 use crate::game::reporting::Report;
 use crate::game::stats::cost;
 use crate::ids::PlayerId;
-use crate::target::TargetId;
+use crate::target::{Bound, TargetForm, TargetId};
 use crate::zones::{InHand, WasInHand, Zones};
 
 pub(super) struct Play {
@@ -32,7 +32,14 @@ pub(super) struct PreparedPlay {
     card: WasInHand,
     awaiting_targeting: Option<WasAwaitingTargeting>,
     cost: u8,
-    play_effects: Vec<Effect<TargetId>>,
+    play_effects: Vec<Effect<Numbered>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Numbered {}
+
+impl TargetForm for Numbered {
+    type CharacterTarget = TargetId;
 }
 
 impl WasPlayable {
@@ -82,7 +89,7 @@ pub(super) fn prepare(cards: CardsRef, playable: WasPlayable) -> PreparedPlay {
     let cost = cost(cards, cards.zones.still_in_hand(&card));
     let play_effects = cards
         .card_def(card.object_id())
-        .bind_play_effects(|target_id| target_id);
+        .bind_play_effects::<Numbered>(|target_id| target_id);
     PreparedPlay {
         card,
         awaiting_targeting,
@@ -114,7 +121,7 @@ pub(super) fn play(
     let play_effects = play_effects
         .into_iter()
         .map(|effect| {
-            effect.map_targeted(|target_id| {
+            effect.map_targeted::<Bound>(|target_id| {
                 targeting
                     .as_ref()
                     .expect("a card that declares targets should be played from its targeting")

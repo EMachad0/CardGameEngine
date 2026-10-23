@@ -7,6 +7,7 @@ use crate::cards::object::ObjectId;
 use crate::game::cards_ref::CardsRef;
 use crate::ids::PlayerId;
 use crate::rng::Rng;
+use crate::target::Bound;
 
 pub(super) struct Selection<T>(Values<T>);
 
@@ -47,7 +48,7 @@ pub(super) fn select_characters(
     cards: CardsRef,
     owner: PlayerId,
     source: ObjectId,
-    selector: &CharacterSelector<Vec<ObjectId>>,
+    selector: &CharacterSelector<Bound>,
 ) -> Selection<ObjectId> {
     Selection(match selector {
         CharacterSelector::All(filter) => {

@@ -3,6 +3,7 @@
 
 use crate::cards::object::ObjectId;
 use crate::effect::Effect;
+use crate::target::Bound;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub(super) struct EffectStack {
@@ -13,7 +14,7 @@ pub(super) struct EffectStack {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PendingEffect {
     source: ObjectId,
-    effects: Vec<Effect<Vec<ObjectId>>>,
+    effects: Vec<Effect<Bound>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,7 +26,7 @@ struct ResolvingEffect {
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct NextEffect {
     pub(super) source: ObjectId,
-    pub(super) effect: Effect<Vec<ObjectId>>,
+    pub(super) effect: Effect<Bound>,
 }
 
 impl ResolvingEffect {
@@ -44,7 +45,7 @@ impl ResolvingEffect {
 }
 
 impl EffectStack {
-    pub(super) fn push(&mut self, source: ObjectId, effects: Vec<Effect<Vec<ObjectId>>>) {
+    pub(super) fn push(&mut self, source: ObjectId, effects: Vec<Effect<Bound>>) {
         self.pending.push(PendingEffect { source, effects });
     }
 
@@ -98,14 +99,14 @@ mod tests {
         std::array::from_fn(|_| objects.insert(SPARK, PlayerId::new(0)))
     }
 
-    fn draw(amount: u8) -> Effect<Vec<ObjectId>> {
+    fn draw(amount: u8) -> Effect<Bound> {
         Effect::Draw {
             selector: PlayerSelector::Owner,
             amount: EffectAmount::Static(amount),
         }
     }
 
-    fn next(source: ObjectId, effect: Effect<Vec<ObjectId>>) -> Option<NextEffect> {
+    fn next(source: ObjectId, effect: Effect<Bound>) -> Option<NextEffect> {
         Some(NextEffect { source, effect })
     }
 

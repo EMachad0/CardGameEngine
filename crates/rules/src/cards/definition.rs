@@ -4,7 +4,7 @@ use crate::cards::filter::{CharacterFilter, Side};
 use crate::cards::modifier::ModifierEffect;
 use crate::choice::Choice;
 use crate::effect::Effect;
-use crate::target::{NoTarget, TargetId};
+use crate::target::{Declared, TargetForm, TargetId, Triggered};
 use crate::trigger::TriggerPattern;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -13,7 +13,7 @@ pub struct CardDef {
     pub kind: CardKindDef,
     pub mana_cost: u8,
     pub modifier_effects: Vec<ModifierEffect>,
-    pub play_effects: Vec<Effect<Choice<CharacterFilter>>>,
+    pub play_effects: Vec<Effect<Declared>>,
     pub triggers: Vec<TriggerDef>,
 }
 
@@ -109,10 +109,10 @@ impl CardDef {
     }
 
     /// The play effects, each target replaced by what `targeted` gives for its id.
-    pub(crate) fn bind_play_effects<U>(
+    pub(crate) fn bind_play_effects<R: TargetForm>(
         &self,
-        mut targeted: impl FnMut(TargetId) -> U,
-    ) -> Vec<Effect<U>> {
+        mut targeted: impl FnMut(TargetId) -> R::CharacterTarget,
+    ) -> Vec<Effect<R>> {
         let mut target_ids = self.targets().map(|(target_id, _)| target_id);
         self.play_effects
             .iter()
@@ -178,7 +178,7 @@ pub struct HeroCardDef {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TriggerDef {
     pub pattern: TriggerPattern,
-    pub effects: Vec<Effect<NoTarget>>,
+    pub effects: Vec<Effect<Triggered>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -202,16 +202,16 @@ pub enum PlayerSelector {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CharacterSelector<T> {
+pub enum CharacterSelector<S: TargetForm> {
     All(CharacterFilter),
     Itself,
     OwnerHero,
     Random(CharacterFilter),
-    Targeted(T),
+    Targeted(S::CharacterTarget),
 }
 
-impl<T> CharacterSelector<T> {
-    pub(crate) fn target(&self) -> Option<&T> {
+impl<S: TargetForm> CharacterSelector<S> {
+    pub(crate) fn target(&self) -> Option<&S::CharacterTarget> {
         match self {
             CharacterSelector::All(_)
             | CharacterSelector::Itself
@@ -221,7 +221,10 @@ impl<T> CharacterSelector<T> {
         }
     }
 
-    pub(crate) fn map_targeted<U>(self, f: impl FnOnce(T) -> U) -> CharacterSelector<U> {
+    pub(crate) fn map_targeted<R: TargetForm>(
+        self,
+        f: impl FnOnce(S::CharacterTarget) -> R::CharacterTarget,
+    ) -> CharacterSelector<R> {
         match self {
             CharacterSelector::All(filter) => CharacterSelector::All(filter),
             CharacterSelector::Itself => CharacterSelector::Itself,
@@ -239,6 +242,20 @@ mod tests {
     use super::*;
     use crate::choice::AmountBound;
 
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    enum Numbers {}
+
+    impl TargetForm for Numbers {
+        type CharacterTarget = usize;
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    enum TargetIds {}
+
+    impl TargetForm for TargetIds {
+        type CharacterTarget = TargetId;
+    }
+
     fn character_target(count: u8) -> Choice<CharacterFilter> {
         Choice {
             options: CharacterFilter::all(),
@@ -248,32 +265,35 @@ mod tests {
         }
     }
 
-    fn card(play_effects: Vec<Effect<Choice<CharacterFilter>>>) -> CardDef {
+    fn card(play_effects: Vec<Effect<Declared>>) -> CardDef {
         CardDef {
             play_effects,
             ..Default::default()
         }
     }
 
-    fn draw<T>() -> Effect<T> {
+    fn draw<S: TargetForm>() -> Effect<S> {
         Effect::Draw {
             selector: PlayerSelector::Owner,
             amount: 1.into(),
         }
     }
 
-    fn damage<T>(selector: CharacterSelector<T>) -> Effect<T> {
+    fn damage<S: TargetForm>(selector: CharacterSelector<S>) -> Effect<S> {
         Effect::Damage {
             selector,
             amount: 1.into(),
         }
     }
 
-    fn untargeted_effects<T>() -> Vec<Effect<T>> {
+    fn untargeted_effects<S: TargetForm>() -> Vec<Effect<S>> {
         vec![draw(), damage(CharacterSelector::Itself)]
     }
 
-    fn two_targets_among_untargeted_effects<T>(first: T, second: T) -> Vec<Effect<T>> {
+    fn two_targets_among_untargeted_effects<S: TargetForm>(
+        first: S::CharacterTarget,
+        second: S::CharacterTarget,
+    ) -> Vec<Effect<S>> {
         vec![
             draw(),
             damage(CharacterSelector::Targeted(first)),
@@ -282,7 +302,7 @@ mod tests {
         ]
     }
 
-    fn untargeted_selectors() -> [CharacterSelector<usize>; 4] {
+    fn untargeted_selectors() -> [CharacterSelector<Numbers>; 4] {
         [
             CharacterSelector::All(CharacterFilter::all()),
             CharacterSelector::Itself,
@@ -317,7 +337,7 @@ mod tests {
         ));
 
         assert_eq!(
-            def.bind_play_effects(|target_id| target_id),
+            def.bind_play_effects::<TargetIds>(|target_id| target_id),
             two_targets_among_untargeted_effects(TargetId(0), TargetId(1)),
         );
     }
@@ -327,14 +347,17 @@ mod tests {
         let def = card(untargeted_effects());
         let mut asked = Vec::new();
 
-        def.bind_play_effects(|target_id| asked.push(target_id));
+        def.bind_play_effects::<TargetIds>(|target_id| {
+            asked.push(target_id);
+            target_id
+        });
 
         assert_eq!(asked, Vec::<TargetId>::new());
     }
 
     #[test]
     fn a_targeted_selector_gives_what_it_holds() {
-        assert_eq!(CharacterSelector::Targeted(3).target(), Some(&3));
+        assert_eq!(CharacterSelector::<Numbers>::Targeted(3).target(), Some(&3));
     }
 
     #[test]
@@ -350,7 +373,7 @@ mod tests {
     #[test]
     fn mapping_a_targeted_selector_maps_what_it_holds() {
         assert_eq!(
-            CharacterSelector::Targeted(3).map_targeted(|n| n * 2),
+            CharacterSelector::<Numbers>::Targeted(3).map_targeted::<Numbers>(|n| n * 2),
             CharacterSelector::Targeted(6),
         );
     }
@@ -358,7 +381,7 @@ mod tests {
     #[test]
     fn mapping_keeps_a_selector_that_targets_nothing() {
         assert_eq!(
-            untargeted_selectors().map(|selector| selector.map_targeted(|n| n * 2)),
+            untargeted_selectors().map(|selector| selector.map_targeted::<Numbers>(|n| n * 2)),
             untargeted_selectors(),
         );
     }
