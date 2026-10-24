@@ -72,12 +72,13 @@ the code matches your intent. The work is not done until they are green.
 
 ## Git rules
 
-- Never commit your own code before I have reviewed it. Present the work for review first. The
-  per-node commit from the course's `COURSE.md` follows this rule too: my review is the gate.
-- Run the checks and confirm they pass before a commit that touches anything they read: Rust
-  sources, a `Cargo.toml`, `Cargo.lock`, `clippy.toml`, `rust-toolchain.toml` or
-  `.just/check.just`. Other commits skip them, and the skip needs no mention.
-- Exception: an ADR that clears the bar is committed without review. `docs/adr/README.md` says how.
+- Never commit your own code before I have reviewed it, unless I, or a skill or doc you're
+  following, tell you to commit or to open a pull request. Otherwise present the work for review
+  first. The rule exists only so I can review the diff locally. The per-node commit from the
+  course's `COURSE.md` follows it too.
+- Beyond that, how and when to commit is your call. GitHub squashes a pull request's commits, so
+  don't ask me about messages or how to split them. A commit may hold red tests, clippy errors or
+  warnings.
 
 ## Plan before implementing
 
@@ -96,12 +97,19 @@ green, refactor. No permission checkpoints inside it.
 ## Agent skills
 
 Most skills are installed outside this repo and read their per-repo configuration from
-`docs/agents/`. One ships here instead.
+`docs/agents/`. Two ship here instead.
 
 ### Teach
 
 Runs the course sessions. It lives in `.agents/skills/teach/`. The tools and subagents it calls are
 the pi extensions and agents under `.pi/`.
+
+### Review loop
+
+Reviews a branch in parallel lanes, fixes the findings its verifiers confirm, commits each round,
+then pushes and opens a pull request. AFK work always ends with it, in place of the `/code-review`
+step that `implement` names. It lives in `.agents/skills/review-loop/`, and its subagents are the
+agents under `.pi/`.
 
 ### Issue tracker
 

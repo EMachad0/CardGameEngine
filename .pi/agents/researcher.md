@@ -5,8 +5,7 @@ tools: web_search, fetch_content, source_check, get_search_content
 extensions: npm:pi-web-access
 model: anthropic/claude-opus-5-5
 thinking: medium
-system-prompt: append
-auto-exit: true
+systemPromptMode: append
 ---
 
 You are a research specialist. Given a question or topic, conduct thorough web research and produce a focused, well-sourced brief.
