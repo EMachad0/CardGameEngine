@@ -1,3 +1,4 @@
+mod action_steps;
 mod amount;
 mod cards_ref;
 mod effect_stack;
@@ -10,6 +11,7 @@ mod player_input;
 mod reporting;
 mod resolve;
 mod selector;
+mod setup;
 pub(crate) mod state;
 mod stats;
 mod targeting_walk;

@@ -272,6 +272,9 @@ _Avoid_: emit
 **Checkpoint**:
 A moment during an action when each player's view can be read.
 
+**Step**:
+The changes the game makes between two checkpoints, and the events they cause.
+
 **View**:
 Everything one player may see of the game at one moment.
 _Avoid_: snapshot
