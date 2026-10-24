@@ -1,7 +1,7 @@
 //! `Game`, the whole state of one game: what callers ask it, and what each step is lent. A step
 //! writes only the parts of the game it is lent and returns what it did, which is reported once the
 //! step ends, before a checkpoint. Code outside this file takes a step only through a type this file
-//! lends it.
+//! defines.
 
 use crate::action::{Action, IllegalAction};
 use crate::cards::binder::def_id::DefId;
