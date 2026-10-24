@@ -233,6 +233,10 @@ impl Game {
                 &mut self.zones,
                 &mut self.objects,
             ),
+            #[expect(
+                clippy::disallowed_methods,
+                reason = "the one end of a turn, as the EndTurn action's step"
+            )]
             Step::Action(ActionStep::EndTurn) => turn_change::end_turn(
                 &mut self.turn_order,
                 &mut self.players,
@@ -302,6 +306,10 @@ impl Game {
                     &mut self.standings,
                 )
             }
+            #[expect(
+                clippy::disallowed_methods,
+                reason = "the one decision of the outcome, as the state check's step"
+            )]
             Step::DecideOutcome => vec![Report::GameEnded(self.standings.decide()?)],
         };
         Some(reports)
