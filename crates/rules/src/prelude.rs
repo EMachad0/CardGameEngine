@@ -11,7 +11,7 @@ pub use crate::cards::filter::{CardFilter, CharacterFilter, Side};
 pub use crate::cards::modifier::ModifierEffect;
 pub use crate::cards::object::ObjectId;
 pub use crate::choice::{AmountBound, Choice};
-pub use crate::effect::{Effect, EffectAmount, PickId, ZoneMove};
+pub use crate::effect::{CharacterVerb, Effect, EffectAmount, PickId, PlayerVerb, ZoneMove};
 pub use crate::event::Event;
 pub use crate::game::state::{ApplyError, Game};
 pub use crate::game::view::{

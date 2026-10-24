@@ -1,7 +1,7 @@
 use crate::cards::binder::def_id::DefId;
 use crate::cards::modifier::Modifier;
 use crate::cards::object::{ObjectBag, ObjectId};
-use crate::effect::{Effect, PickId, ZoneMove};
+use crate::effect::{CharacterVerb, Effect, PickId, PlayerVerb, ZoneMove};
 use crate::game::amount::effect_amount;
 use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::NextEffect;
@@ -13,14 +13,18 @@ use crate::ids::PlayerId;
 use crate::rng::Rng;
 use crate::zones::Zones;
 
-/// An effect read before anything is written: its amount counted, what it acts on listed, and the
+/// An effect read before anything is written: its amounts counted, what it acts on listed, and the
 /// picks it moves found. Nothing has drawn from the stream yet.
 pub(in crate::game) struct PreparedEffect(Prepared);
 
 enum Prepared {
-    Draw {
+    Players {
         players: Selection<PlayerId>,
-        amount: u8,
+        verbs: Vec<PreparedPlayerVerb>,
+    },
+    Characters {
+        characters: Selection<ObjectId>,
+        verbs: Vec<PreparedCharacterVerb>,
     },
     Reveal {
         players: Selection<PlayerId>,
@@ -35,23 +39,17 @@ enum Prepared {
         picked_move: ZoneMove,
         other_move: ZoneMove,
     },
-    Damage {
-        characters: Selection<ObjectId>,
-        amount: u8,
-        source: ObjectId,
-    },
-    Buff {
-        characters: Selection<ObjectId>,
-        modifier: Modifier,
-    },
-    AddFriendlyAura {
-        characters: Selection<ObjectId>,
-        modifier: Modifier,
-    },
-    Summon {
-        players: Selection<PlayerId>,
-        def_id: DefId,
-    },
+}
+
+enum PreparedPlayerVerb {
+    Draw(u8),
+    Summon(DefId),
+}
+
+enum PreparedCharacterVerb {
+    Damage { amount: u8, source: ObjectId },
+    Modify(Modifier),
+    AddFriendlyAura(Modifier),
 }
 
 pub(in crate::game) fn prepare(
@@ -63,9 +61,41 @@ pub(in crate::game) fn prepare(
     let NextEffect { source, effect } = next;
     let owner = cards.objects.get(source).player_id;
     PreparedEffect(match effect {
-        Effect::Draw { selector, amount } => Prepared::Draw {
-            amount: effect_amount(cards, &amount, owner),
+        Effect::Players { selector, verbs } => Prepared::Players {
             players: select_players(player_ids, owner, &selector),
+            verbs: verbs
+                .into_iter()
+                .map(|verb| match verb {
+                    PlayerVerb::Draw(amount) => {
+                        PreparedPlayerVerb::Draw(effect_amount(cards, &amount, owner))
+                    }
+                    PlayerVerb::Summon(def_id) => PreparedPlayerVerb::Summon(def_id),
+                })
+                .collect(),
+        },
+        Effect::Characters { selector, verbs } => Prepared::Characters {
+            characters: select_characters(cards, owner, source, &selector),
+            verbs: verbs
+                .into_iter()
+                .map(|verb| match verb {
+                    CharacterVerb::Damage(amount) => PreparedCharacterVerb::Damage {
+                        amount: effect_amount(cards, &amount, owner),
+                        source,
+                    },
+                    CharacterVerb::Modify(modifier_effect) => {
+                        PreparedCharacterVerb::Modify(Modifier {
+                            granted_by: source,
+                            effect: modifier_effect,
+                        })
+                    }
+                    CharacterVerb::AddFriendlyAura(modifier_effect) => {
+                        PreparedCharacterVerb::AddFriendlyAura(Modifier {
+                            granted_by: source,
+                            effect: modifier_effect,
+                        })
+                    }
+                })
+                .collect(),
         },
         Effect::Reveal {
             pick_id,
@@ -95,29 +125,6 @@ pub(in crate::game) fn prepare(
                 other_move,
             }
         }
-        Effect::Damage { selector, amount } => Prepared::Damage {
-            amount: effect_amount(cards, &amount, owner),
-            characters: select_characters(cards, owner, source, &selector),
-            source,
-        },
-        Effect::Buff { selector, effect } => Prepared::Buff {
-            characters: select_characters(cards, owner, source, &selector),
-            modifier: Modifier {
-                granted_by: source,
-                effect,
-            },
-        },
-        Effect::AddFriendlyAura { selector, effect } => Prepared::AddFriendlyAura {
-            characters: select_characters(cards, owner, source, &selector),
-            modifier: Modifier {
-                granted_by: source,
-                effect,
-            },
-        },
-        Effect::Summon { selector, def_id } => Prepared::Summon {
-            players: select_players(player_ids, owner, &selector),
-            def_id,
-        },
     })
 }
 
@@ -130,9 +137,34 @@ pub(in crate::game) fn resolve(
 ) -> Vec<Report> {
     let mut reports = Vec::new();
     match prepared.0 {
-        Prepared::Draw { players, amount } => {
-            for target in players.resolve(rng) {
-                reports.extend(draw(target, amount, zones, objects));
+        Prepared::Players { players, verbs } => {
+            let verb = only_verb(&verbs);
+            for player_id in players.resolve(rng) {
+                match verb {
+                    PreparedPlayerVerb::Draw(amount) => {
+                        reports.extend(draw(player_id, *amount, zones, objects));
+                    }
+                    PreparedPlayerVerb::Summon(def_id) => {
+                        let object_id = objects.insert(*def_id, player_id);
+                        reports.push(summon(player_id, object_id, zones));
+                    }
+                }
+            }
+        }
+        Prepared::Characters { characters, verbs } => {
+            let verb = only_verb(&verbs);
+            for character in characters.resolve(rng) {
+                match verb {
+                    PreparedCharacterVerb::Damage { amount, source } => {
+                        reports.push(damage(character, *amount, *source, objects));
+                    }
+                    PreparedCharacterVerb::Modify(modifier) => {
+                        objects.grant(character, modifier.clone());
+                    }
+                    PreparedCharacterVerb::AddFriendlyAura(modifier) => {
+                        objects.grant_friendly_aura(character, modifier.clone());
+                    }
+                }
             }
         }
         Prepared::Reveal {
@@ -159,39 +191,15 @@ pub(in crate::game) fn resolve(
                 reports.push(zone_move(owner, id, other_move, zones));
             }
         }
-        Prepared::Damage {
-            characters,
-            amount,
-            source,
-        } => {
-            for target in characters.resolve(rng) {
-                reports.push(damage(target, amount, source, objects));
-            }
-        }
-        Prepared::Buff {
-            characters,
-            modifier,
-        } => {
-            for target in characters.resolve(rng) {
-                objects.grant(target, modifier.clone());
-            }
-        }
-        Prepared::AddFriendlyAura {
-            characters,
-            modifier,
-        } => {
-            for target in characters.resolve(rng) {
-                objects.grant_friendly_aura(target, modifier.clone());
-            }
-        }
-        Prepared::Summon { players, def_id } => {
-            for player_id in players.resolve(rng) {
-                let object_id = objects.insert(def_id, player_id);
-                reports.push(summon(player_id, object_id, zones));
-            }
-        }
     }
     reports
+}
+
+fn only_verb<V>(verbs: &[V]) -> &V {
+    let [verb] = verbs else {
+        panic!("card data should give every effect exactly one verb");
+    };
+    verb
 }
 
 fn reveal(

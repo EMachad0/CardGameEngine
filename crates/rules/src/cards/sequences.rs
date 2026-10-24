@@ -2,11 +2,11 @@ use crate::cards::definition::{
     CardDef, CardKindDef, HeroCardDef, MinionCardDef, SpellCardDef, TriggerDef,
 };
 use crate::cards::modifier::ModifierEffect;
-use crate::effect::Effect;
+use crate::effect::{CharacterVerb, Effect, PlayerVerb};
 use crate::target::{TargetForm, Triggered};
 
 /// The effects of every trigger on a card, printed or granted through modifier effects, auras,
-/// `Buff` and `AddFriendlyAura`, at any depth. Those its play effects grant come first.
+/// `Modify` and `AddFriendlyAura`, at any depth. Those its play effects grant come first.
 pub(super) fn trigger_sequences(def: &CardDef) -> Vec<&[Effect<Triggered>]> {
     let CardDef {
         name: _,
@@ -47,36 +47,34 @@ fn collect_grants<'a, S: TargetForm>(
 ) {
     for effect in effects {
         match effect {
-            Effect::Draw {
-                selector: _,
-                amount: _,
+            Effect::Players { selector: _, verbs } => {
+                for verb in verbs {
+                    match verb {
+                        PlayerVerb::Draw(_) | PlayerVerb::Summon(_) => {}
+                    }
+                }
             }
-            | Effect::Reveal {
+            Effect::Characters { selector: _, verbs } => {
+                for verb in verbs {
+                    match verb {
+                        CharacterVerb::Damage(_) => {}
+                        CharacterVerb::Modify(modifier_effect)
+                        | CharacterVerb::AddFriendlyAura(modifier_effect) => {
+                            collect_modifier(sequences, modifier_effect)
+                        }
+                    }
+                }
+            }
+            Effect::Reveal {
                 pick_id: _,
                 selector: _,
                 amount: _,
-            }
-            | Effect::Damage {
-                selector: _,
-                amount: _,
-            }
-            | Effect::Summon {
-                selector: _,
-                def_id: _,
             }
             | Effect::ResolvePick {
                 pick_id: _,
                 picked_move: _,
                 other_move: _,
             } => {}
-            Effect::Buff {
-                selector: _,
-                effect,
-            }
-            | Effect::AddFriendlyAura {
-                selector: _,
-                effect,
-            } => collect_modifier(sequences, effect),
         }
     }
 }
@@ -107,6 +105,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
+    use crate::cards::binder::sets::base::static_card_definition::SQUIRE;
     use crate::cards::definition::{CharacterSelector, PlayerSelector};
     use crate::trigger::{TriggerPattern, TriggerSubject};
 
@@ -137,9 +136,9 @@ mod tests {
     }
 
     fn draw<S: TargetForm>() -> Effect<S> {
-        Effect::Draw {
+        Effect::Players {
             selector: PlayerSelector::Owner,
-            amount: 1.into(),
+            verbs: vec![PlayerVerb::Draw(1.into())],
         }
     }
 
@@ -199,13 +198,13 @@ mod tests {
     }
 
     #[test]
-    fn a_trigger_granted_by_a_buff_is_a_trigger_sequence() {
-        let buff = Effect::Buff {
+    fn a_trigger_granted_by_modify_is_a_trigger_sequence() {
+        let modify = Effect::Characters {
             selector: CharacterSelector::Itself,
-            effect: grant(vec![draw()]),
+            verbs: vec![CharacterVerb::Modify(grant(vec![draw()]))],
         };
         let def = CardDef {
-            play_effects: vec![buff],
+            play_effects: vec![modify],
             ..spell()
         };
 
@@ -214,9 +213,9 @@ mod tests {
 
     #[test]
     fn a_trigger_granted_by_an_added_aura_is_a_trigger_sequence() {
-        let aura = Effect::AddFriendlyAura {
+        let aura = Effect::Characters {
             selector: CharacterSelector::Itself,
-            effect: grant(vec![draw()]),
+            verbs: vec![CharacterVerb::AddFriendlyAura(grant(vec![draw()]))],
         };
         let def = CardDef {
             play_effects: vec![aura],
@@ -228,23 +227,50 @@ mod tests {
 
     #[test]
     fn a_trigger_granted_inside_a_granted_trigger_is_a_trigger_sequence() {
-        let buff = Effect::Buff {
+        let modify = Effect::Characters {
             selector: CharacterSelector::Itself,
-            effect: grant(vec![draw()]),
+            verbs: vec![CharacterVerb::Modify(grant(vec![draw()]))],
         };
         let def = CardDef {
-            modifier_effects: vec![grant(vec![buff.clone()])],
+            modifier_effects: vec![grant(vec![modify.clone()])],
             ..spell()
         };
 
-        assert_eq!(trigger_sequences(&def), vec![&[buff][..], &[draw()][..]]);
+        assert_eq!(trigger_sequences(&def), vec![&[modify][..], &[draw()][..]]);
+    }
+
+    #[test]
+    fn each_verb_of_an_effect_can_grant_a_trigger_sequence() {
+        let summon = Effect::Players {
+            selector: PlayerSelector::Owner,
+            verbs: vec![PlayerVerb::Summon(SQUIRE)],
+        };
+        let def = CardDef {
+            play_effects: vec![Effect::Characters {
+                selector: CharacterSelector::Itself,
+                verbs: vec![
+                    CharacterVerb::Damage(1.into()),
+                    CharacterVerb::Modify(grant(vec![draw()])),
+                    CharacterVerb::AddFriendlyAura(grant(vec![summon.clone()])),
+                ],
+            }],
+            ..spell()
+        };
+
+        assert_eq!(
+            trigger_sequences(&def),
+            vec![&[draw()][..], &[summon][..]],
+            "the second and third verbs each grant one",
+        );
     }
 
     #[test]
     fn a_modifier_effect_that_grants_no_trigger_holds_no_sequence() {
-        let buff = Effect::Buff {
+        let buff = Effect::Characters {
             selector: CharacterSelector::Itself,
-            effect: ModifierEffect::BuffHealth { amount: 1.into() },
+            verbs: vec![CharacterVerb::Modify(ModifierEffect::BuffHealth {
+                amount: 1.into(),
+            })],
         };
         let def = CardDef {
             modifier_effects: vec![ModifierEffect::ReduceManaCost { amount: 1.into() }],

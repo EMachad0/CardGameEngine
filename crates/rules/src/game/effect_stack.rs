@@ -91,7 +91,7 @@ mod tests {
     use crate::cards::binder::sets::base::static_card_definition::SPARK;
     use crate::cards::definition::PlayerSelector;
     use crate::cards::object::ObjectBag;
-    use crate::effect::EffectAmount;
+    use crate::effect::{EffectAmount, PlayerVerb};
     use crate::ids::PlayerId;
 
     fn sources<const N: usize>() -> [ObjectId; N] {
@@ -100,9 +100,9 @@ mod tests {
     }
 
     fn draw(amount: u8) -> Effect<Bound> {
-        Effect::Draw {
+        Effect::Players {
             selector: PlayerSelector::Owner,
-            amount: EffectAmount::Static(amount),
+            verbs: vec![PlayerVerb::Draw(EffectAmount::Static(amount))],
         }
     }
 

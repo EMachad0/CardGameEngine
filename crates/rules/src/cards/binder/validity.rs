@@ -35,11 +35,7 @@ fn validate_pick_order<S: TargetForm>(effects: &[Effect<S>]) -> Result<(), CardD
                     .ok_or(CardDefError::PickNotFound(*pick_id))?;
                 unresolved.remove(at);
             }
-            Effect::Draw { .. }
-            | Effect::Damage { .. }
-            | Effect::Buff { .. }
-            | Effect::AddFriendlyAura { .. }
-            | Effect::Summon { .. } => {}
+            Effect::Players { .. } | Effect::Characters { .. } => {}
         }
     }
     match unresolved.first() {
@@ -58,6 +54,7 @@ mod tests {
     use crate::cards::binder::sets::base::static_card_definition::*;
     use crate::cards::definition::{CardKindDef, CharacterSelector, TriggerDef};
     use crate::cards::modifier::ModifierEffect;
+    use crate::effect::CharacterVerb;
 
     fn built_in_card(def_id: DefId) -> CardDef {
         base::definitions()
@@ -142,11 +139,13 @@ mod tests {
     }
 
     #[test]
-    fn a_pick_in_a_trigger_granted_by_a_buff_must_be_resolved_too() {
+    fn a_pick_in_a_trigger_granted_by_modify_must_be_resolved_too() {
         let mut drummer = built_in_card(DRUMMER);
-        drummer.play_effects.push(Effect::Buff {
+        drummer.play_effects.push(Effect::Characters {
             selector: CharacterSelector::Itself,
-            effect: ModifierEffect::GrantTrigger(hoarder_trigger_with_an_unresolved_pick()),
+            verbs: vec![CharacterVerb::Modify(ModifierEffect::GrantTrigger(
+                hoarder_trigger_with_an_unresolved_pick(),
+            ))],
         });
 
         assert_eq!(
