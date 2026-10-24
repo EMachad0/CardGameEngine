@@ -13,19 +13,6 @@ use crate::effect::{Effect, EffectAmount, PickId, ZoneMove};
 use crate::history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter};
 use crate::trigger::{TriggerPattern, TriggerSubject};
 
-impl Default for CardDef {
-    fn default() -> Self {
-        Self {
-            name: Default::default(),
-            kind: CardKindDef::Minion(MinionCardDef::new(1, 1)),
-            mana_cost: Default::default(),
-            modifier_effects: Default::default(),
-            play_effects: Default::default(),
-            triggers: Default::default(),
-        }
-    }
-}
-
 macro_rules! def_ids {
     ($($name:ident = $id:literal),* $(,)?) => {
         pub mod static_card_definition {

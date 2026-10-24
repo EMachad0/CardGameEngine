@@ -454,6 +454,16 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
    reworked once #60 merges, with ticket 12, blocked by 11, behind it. #51's struct-of-borrows
    gaps and those of tickets 12 and 13 wait for session 02i, after 13's review. Order: #60, #55
    reworked, 12, 13, 02i.
+   PR #70's doc gaps (picks-as-choices ticket 01) were judged outside a session. He asked for
+   research first (`research/trait-impl-placement/`), then ruled that a trait `impl` goes with its
+   type, with the item the type's module can't name, or with the trait for another crate's type.
+   `impl Default for CardDef` moved from the card set to `definition.rs`. `testing.md` leaves the
+   place of `use super::*;` to rustfmt, which settles that gap of ticket 12's too. PR #70 fixes
+   the prelude sentence `unreachable_pub` doesn't back, at his call: `unnameable_types` is on,
+   and `CardDef` stays public for the shell's own definitions, so the prelude lists the card text
+   it reaches. On docstrings where siblings differ, he ruled that "only what reading the code
+   cannot tell you" decides and the file's pattern only points the way. AGENTS.md says so, which
+   settles that gap of ticket 12's too.
    Unused material: `research/02b-pass-and-coordinator/scope.md` (Forge and XMage, the Process
    Manager). Session 02g, its own node: parse, don't validate (Alexis King,
    2019). A check's result carried forward as a type, not an assumption; who can build the proof,
@@ -530,6 +540,8 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   21. `ResolvingEffect`'s cursor is `pub`; its caller clones, then advances (roadmap 06b). The
       stack owner's `next_effect` reads and advances in one command (02c).
   22. `CardDef`, the loader and its errors are re-exported, unused outside the crate (low).
+      Settled in PR #70: `CardDef` stays public for the shell's own definitions, and the prelude
+      lists the card text it reaches. The loader and its errors are no longer re-exported.
   23. Placeholder rule split between `definition` and `loader`, which import each other (low).
   24. `enqueue_triggers` and `apply_action` can be private: each has one caller, in its own file.
   25. The pass: "if the pass runs, no resolving effect is part-way through". It also runs after an
@@ -667,7 +679,7 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   session 02f.
 - `Binder::get` kept handing out `&CardDef` in #15, my call when he left the tickets to me: every
   interpreter reads card text as data (ADR 0004), and accessors would mirror the fields. Revisit
-  if he disagrees, at the latest in session 04 with finding 22.
+  if he disagrees, at the latest in session 04.
 - Exhaustive destructuring (a struct pattern with no `..`) for functions that must visit every
   field: #14's walk in `cards/sequences.rs` uses it, per his 01a verdict. Adding it to the Rust
   list is still his decision. The enforcing clippy lint is nightly only. See

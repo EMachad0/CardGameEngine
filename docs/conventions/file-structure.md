@@ -250,8 +250,11 @@ files to open when they look for a decision or a place for new code.
 - Privacy flows down the module tree: a child reads its parent's private items, and a parent
   can't read a child's. So code in a parent is open to every child.
 - Give each item the narrowest visibility that compiles.
-- Keep a type's inherent `impl` blocks in the module that defines it, so its whole interface sits
-  in one file. Code elsewhere that builds on the type takes it as a parameter.
+- Keep a type's inherent and trait `impl` blocks in the module that defines it, so its whole
+  interface sits in one file. An `impl` has no visibility of its own, so moving it elsewhere hides
+  nothing. A trait `impl` that names an item the type's module can't name goes in the module that
+  defines that item, and one for another crate's type goes with the trait. Code elsewhere that
+  builds on the type takes it as a parameter.
 - Keep definitions in leaf modules, so that every module can hide its decision. A module with
   children is a directory whose `mod.rs` holds only `mod` declarations. A leaf's private items are
   hidden from its siblings and its parent, and siblings share only what they mark `pub(super)`.
