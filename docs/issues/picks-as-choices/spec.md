@@ -29,7 +29,7 @@ When the effort finishes:
 ## Before any code
 
 Read in full: `AGENTS.md`, `docs/conventions/file-structure.md`, `docs/conventions/testing.md`,
-`docs/CONTEXT.md`, ADRs 0015, 0017, 0018, 0019 and 0020, this spec and your ticket.
+`docs/CONTEXT.md`, ADRs 0015, 0017, 0018, 0019, 0020 and 0021, this spec and your ticket.
 
 ## Roles
 

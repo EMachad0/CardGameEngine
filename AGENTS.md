@@ -48,7 +48,8 @@ When a comment is warranted:
 - Only what reading the code cannot tell you. A comment restating the next line is noise. This
   decides whether an item gets a docstring, whatever its siblings carry.
 - Do not couple a comment to code that is not directly below it. No comment that describes a
-  caller, a sibling module, or a future edit.
+  caller, a sibling module, or a future edit. This holds even for what reading the code cannot
+  tell you.
 - The comment must stand on its own and cost nothing to keep accurate. A comment that goes stale
   the next time nearby code moves is a bad comment. Drop it instead.
 - Never reference agent tooling, docs or untracked files: anything under `.pi/`, `.agents/` or

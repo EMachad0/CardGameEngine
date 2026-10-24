@@ -463,7 +463,9 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
    and `CardDef` stays public for the shell's own definitions, so the prelude lists the card text
    it reaches. On docstrings where siblings differ, he ruled that "only what reading the code
    cannot tell you" decides and the file's pattern only points the way. AGENTS.md says so, which
-   settles that gap of ticket 12's too.
+   settles that gap of ticket 12's too. PR #74's doc gaps (ticket 02): he ruled that the coupling
+   rule holds even for what the code can't tell you, so `Effect` has no docstring and `verbs_on`'s
+   says how its verbs share one selection. AGENTS.md says so.
    Unused material: `research/02b-pass-and-coordinator/scope.md` (Forge and XMage, the Process
    Manager). Session 02g, its own node: parse, don't validate (Alexis King,
    2019). A check's result carried forward as a type, not an assumption; who can build the proof,
