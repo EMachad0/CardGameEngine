@@ -127,6 +127,19 @@ impl CardDef {
     }
 }
 
+impl Default for CardDef {
+    fn default() -> Self {
+        Self {
+            name: Default::default(),
+            kind: CardKindDef::Minion(MinionCardDef::new(1, 1)),
+            mana_cost: Default::default(),
+            modifier_effects: Default::default(),
+            play_effects: Default::default(),
+            triggers: Default::default(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CardKindDef {
     Spell(SpellCardDef),
