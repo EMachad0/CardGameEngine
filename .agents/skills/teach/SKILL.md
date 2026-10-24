@@ -85,11 +85,11 @@ If, reading the finished set cold, you can still tell which is right without kno
 
 You can't teach into his zone of proximal development without knowing where its edges are, and you can't aim the teaching without knowing what he's actually reaching for. Two separate unknowns, two separate tools — keep the boundary clean:
 
-**1a. His current level: use `quiz`.** You're looking for the *edge* of his understanding, the frontier where what he reliably knows turns into what he doesn't, on every strand the lesson depends on. You can't teach into it until you've found it. Map every strand the explanation will lean on, and skip the ones it won't.
+**1a. His current level: use `quiz`.** You're looking for the *edge* of his understanding, where what he knows turns into what he doesn't. Find it on each strand the lesson depends on, and skip the rest. You can't teach into an edge you haven't found.
 
 **Start from the knowledge map.** The course's `COURSE.md` records what he holds and misses, with evidence. Probe only what it doesn't already settle. A strand with a recorded floor needs only questions above it, and a strand with both sides recorded needs none.
 
-**Bracket the edge.** For each strand you need a floor, something he gets right, and a ceiling, something he gets wrong or doesn't know. The edge sits between them, and one side alone tells you almost nothing. A right answer means jump to a harder concept, and jump sharply. A miss bounds the edge from above. Narrow back in only when where exactly it sits changes the plan.
+**Bracket the edge.** For each strand you need a floor and a ceiling. The floor is a question he gets right, the ceiling one he gets wrong or doesn't know. The edge sits between them, and one side alone tells you almost nothing. After a right answer, jump to a much harder concept. After a miss, narrow back in only if the edge's exact place changes the plan.
 
 **Harder means a deeper concept, never more steps.** A probe question tests one idea, and he can answer it from that idea in about a minute. Escalate by moving to a subtler distinction or a concept further from the floor, never by adding state to track or conditions to hold in mind. A many-step question measures patience and working memory, and a miss on it can't tell a slip from a gap. So a probe question never:
 
@@ -99,9 +99,9 @@ You can't teach into his zone of proximal development without knowing where its 
 
 Traces belong in Phase 3.
 
-**Say why you ask.** Each probe's `intro` names the strand it checks and what the answer changes in the plan. He should never have to guess why a question is in front of him.
+**Say why you ask.** Each probe's `intro` names the strand it checks and what the answer changes in the plan. He should never have to guess why you asked.
 
-**Read his note before probing around a miss.** A miss may be a slip, a narrow gap or a misconception, and his note usually says which. Ask a follow-up only when the note doesn't settle it and the answer changes the plan. A misconception is worth the follow-up, since a confidently held wrong model has to be dislodged, not topped up.
+**Read his note before probing around a miss.** A miss may be a slip, a narrow gap or a misconception, and his note usually says which. Ask a follow-up only when the note doesn't settle it and the answer changes the plan. A misconception is worth the follow-up, since a wrong model he trusts has to be replaced before anything builds on it.
 
 The retrieval quiz a course opens with follows the same question rules.
 
@@ -147,7 +147,7 @@ Repeat this full loop per node — don't front-load all the foundations once at 
 
 If you catch yourself asserting a fact he'd have to take on faith — foundational or not — stop: either motivate it and confirm it lands, or ground it in something already established. Unmotivated, unconfirmed facts don't lock in — that's the whole point.
 
-**Traces.** A trace walks a concrete case through code step by step, often a failing one. It's a teaching tool. Use it to motivate a node or to land a miss, and say what it's for before he starts, in the `intro` when the trace is a `quiz`.
+**Traces.** A trace walks a concrete case through code step by step, often a failing one. It's a teaching tool, for motivating a node or fixing a miss. Say what it's for before he starts. When the trace is a `quiz`, that goes in the `intro`.
 
 ## Working with him
 
