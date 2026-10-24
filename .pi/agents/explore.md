@@ -1,5 +1,5 @@
 ---
-name: Explore
+name: explore
 description: Fast codebase exploration agent (read-only)
 tools: read, bash, grep, find
 thinking: low

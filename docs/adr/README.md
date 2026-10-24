@@ -13,6 +13,5 @@ status to `superseded by ADR-NNNN`. Never rewrite an old record to match the pre
 ## Writing and committing
 
 When a decision clears the bar, the agent writes the record and commits it on its own, without
-asking first or waiting for review. This overrides the git rules in `AGENTS.md` for that commit.
-It stages the new record and, when the record supersedes one, the old record's status change.
-Nothing else.
+asking first or waiting for review. It stages the new record and, when the record supersedes one,
+the old record's status change. Nothing else.

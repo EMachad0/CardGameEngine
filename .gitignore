@@ -23,6 +23,9 @@ Thumbs.db
 # mise
 .mise/config.local.toml
 
+# pi-subagents run state
+.pi/subagents/
+
 # scratch
 *.ignore.*
 *.ignore/

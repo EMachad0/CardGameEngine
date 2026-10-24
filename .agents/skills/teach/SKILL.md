@@ -160,7 +160,7 @@ If you catch yourself asserting a fact he'd have to take on faith — foundation
 
 Everything you read stays in the context for the rest of the session, and the longer the context, the worse you recall what's in it. Read what the next step needs, when it needs it. Still read in full the docs `AGENTS.md` requires.
 
-- Learn the code through an `Explore` subagent. Give it the session's topic and what you need to know, and ask for a brief with paths and line numbers. Read code yourself only when a node or an exercise works on it, and only the part it needs.
+- Learn the code through an `explore` subagent. Give it the session's topic and what you need to know, and ask for a brief with paths and line numbers. Read code yourself only when a node or an exercise works on it, and only the part it needs.
 - Search the course's `verified-facts.md` and `docs/CONTEXT.md` for the fact or term at hand instead of reading them whole.
 - Open research reports and past session logs only for a question `COURSE.md` doesn't answer, and read only the matching part.
 
@@ -179,7 +179,7 @@ Before asking the `researcher` to check a fact, search the course's `verified-fa
 
 A session ends when you and he agree it's finished. Then run the four steps below in order, with no review stop between them.
 
-This close-out overrides the git rules in `AGENTS.md` for this one commit. Don't wait for his review. His agreement to end the session is the approval.
+This close-out commits without waiting for his review. His agreement to end the session is the approval.
 
 md-log appends a reply's text to the session log when the reply ends, before the reply's tool calls run. Text written after the commit would show up as a session diff. So the close-out writes all its text in its first reply, and every reply after that is tool calls only.
 

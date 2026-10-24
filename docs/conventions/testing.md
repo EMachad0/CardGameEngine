@@ -55,7 +55,7 @@ behavior, ask the learner which one is right.
 
 In an exercise, tests come before the implementation, so some fail on purpose. A red test compiles
 and fails on a behavior the code doesn't have yet. Don't delete, weaken or `#[ignore]` a red test
-without the learner's OK. A commit that leaves red tests lists them in its message.
+without the learner's OK.
 
 No `#[test]` with an empty body, and no commented-out tests. Delete a test that can't be written
 against the current code. Don't disable it.
