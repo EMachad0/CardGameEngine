@@ -26,8 +26,8 @@ pub(super) struct WasPlayable {
     awaiting_targeting: Option<WasAwaitingTargeting>,
 }
 
-/// A card about to be played, read before anything is written: what it costs now, and its play
-/// effects with each target bound to the objects targeted for it.
+/// A card about to be played, with its cost and its bound play effects, both read before the
+/// first write.
 pub(super) struct PreparedPlay {
     card: WasInHand,
     awaiting_targeting: Option<WasAwaitingTargeting>,
