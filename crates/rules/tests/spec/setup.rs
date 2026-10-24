@@ -30,7 +30,7 @@ fn setup_draws_three_cards_each_from_the_top() {
     assert_eq!(
         hand_defs(&game, p0),
         [SPARK, BOLT, RECRUIT, CAPTAIN],
-        "three drawn in setup, then player 0's first turn draws the fourth"
+        "three drawn, then player 0's first turn draws the fourth"
     );
     assert_eq!(deck_defs(&game, p0), [BLAST]);
 }
@@ -117,11 +117,7 @@ fn each_copy_in_hand_is_its_own_play_action() {
     turn_with_mana(&mut game, p0, 2);
 
     let mut expected: Vec<Action> = game.hand(p0).iter().map(|&o| play(o)).collect();
-    assert_eq!(
-        expected.len(),
-        5,
-        "three drawn in setup plus two turn draws"
-    );
+    assert_eq!(expected.len(), 5, "three drawn plus two turn draws");
     expected.push(Action::EndTurn);
     assert_actions(&game, p0, &expected);
 }
