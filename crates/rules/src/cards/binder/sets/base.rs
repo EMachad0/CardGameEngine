@@ -61,6 +61,7 @@ def_ids!(
     FRENZY = "base.frenzy.v0",
     GOAD = "base.goad.v0",
     AFTERSHOCK = "base.aftershock.v0",
+    DUD = "base.dud.v0",
 );
 
 pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
@@ -621,6 +622,19 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                         CharacterVerb::Damage(2.into()),
                         CharacterVerb::Damage(1.into()),
                     ],
+                }],
+                ..Default::default()
+            },
+        ),
+        (
+            DUD,
+            CardDef {
+                name: "Dud".to_string(),
+                kind: CardKindDef::Spell(SpellCardDef),
+                mana_cost: 1,
+                play_effects: vec![Effect::Characters {
+                    selector: CharacterSelector::Random(CharacterFilter::all()),
+                    verbs: Vec::new(),
                 }],
                 ..Default::default()
             },

@@ -194,12 +194,16 @@ pub(in crate::game) fn resolve(
 }
 
 /// Pairs each verb, in order, with every value of the selection. The selection is read once, so a
-/// random one gives every verb the same value.
+/// random one gives every verb the same value. With no verbs it isn't read, and takes nothing from
+/// the stream.
 fn verbs_on<'v, T: Copy, V>(
     selection: Selection<T>,
     verbs: &'v [V],
     rng: &mut Rng,
 ) -> Vec<(&'v V, T)> {
+    if verbs.is_empty() {
+        return Vec::new();
+    }
     let selected = selection.resolve(rng);
     verbs
         .iter()

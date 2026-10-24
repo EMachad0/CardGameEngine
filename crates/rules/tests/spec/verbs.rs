@@ -3,7 +3,9 @@
 use std::collections::BTreeSet;
 
 use pretty_assertions::assert_eq;
-use rules::prelude::static_card_definition::{AFTERSHOCK, FRENZY, GOAD, MOURNER, RECRUIT};
+use rules::prelude::static_card_definition::{
+    AFTERSHOCK, DUD, FRENZY, GOAD, MOURNER, RECRUIT, WILD_BOLT,
+};
 use rules::prelude::{Event, Game, ObjectId};
 
 use crate::support::*;
@@ -135,4 +137,41 @@ fn an_effect_with_several_verbs_takes_one_checkpoint() {
         [4],
         "both verbs' hits land before the effect's one checkpoint",
     );
+}
+
+/// P0 can cast the Dud and the Wild Bolt in hand, in a game seeded with `seed`.
+fn dud_and_wild_bolt(seed: u64) -> Game {
+    let deck0 = deck_with_top(&[DUD, WILD_BOLT]);
+    let mut game = Game::with_deck_order(seed, [deck0, deck_with_top(&[])]);
+    let [p0, _] = players(&game);
+    turn_with_mana(&mut game, p0, 2);
+    game
+}
+
+#[test]
+fn an_effect_with_no_verbs_changes_nothing() {
+    for seed in 0..50 {
+        let mut game = dud_and_wild_bolt(seed);
+        let mut without_dud = game.clone();
+        let [p0, _] = players(&game);
+        let (dud, wild_bolt) = (in_hand(&game, p0, DUD), in_hand(&game, p0, WILD_BOLT));
+
+        let dud_events = observe(&mut game, p0, play(dud)).events();
+        let after_dud = observe(&mut game, p0, play(wild_bolt)).events();
+        let alone = observe(&mut without_dud, p0, play(wild_bolt)).events();
+
+        assert_eq!(
+            dud_events,
+            [Event::Played {
+                player_id: p0,
+                object_id: dud
+            }],
+            "seed {seed}: Dud reports only its play",
+        );
+        assert_eq!(
+            after_dud, alone,
+            "seed {seed}: Dud's random selection takes no number from the stream, \
+             so Wild Bolt hits the same hero either way",
+        );
+    }
 }
