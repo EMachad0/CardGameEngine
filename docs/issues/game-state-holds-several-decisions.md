@@ -2,7 +2,6 @@
 
 Status: needs-triage
 Category: enhancement
-Blocked by: PR #68 (ticket 13 of the untangling), and architecture session 02i
 
 ## Why
 
@@ -56,18 +55,21 @@ given any function, existing or new, can tell from the name alone whether it bel
 
 ## Facts to work with
 
-- Privacy flows down the module tree, so whatever a module sees, every module nested under it
-  sees too. Lending `&mut` to one of `Game`'s owners takes code that sees `Game`'s fields. So the
-  code that lends the owners and the commands nested under it can't be told apart by privacy.
+- Code outside `state.rs` reaches `Game`'s owners only through what `state.rs` lends it. The doc's
+  "Rules no owner guards" says a write takes both reach to the data and a command that writes it.
+  Its Rust "Restricting callers" says a `&mut` lends every command the borrower can see, and a
+  narrower type lends fewer.
 - What ticket 13 made true, and PR #68 states with its trade-offs: `Game`'s fields are open only
   to `state.rs`; each command takes `&mut` only to the owners it writes; no command takes the
   observer or history; `Game` has one inherent `impl` block; and one function, `Game::run`, takes
   every checkpoint.
 - PR #68's body records the gap under "Doc gaps" as "Keepers when only one file can run steps".
   PR #51 recorded a neighbour: whether a main type may sit in a subtree of its commands.
-- The doc doesn't say which gives way when the module that owns the data also has to run the steps:
-  restricting callers by nesting, restricting them by who can obtain the owner, or one decision per
-  module. Session 02i settles it, and its ruling goes here before an agent starts.
+- A keeper outside `state.rs` that is lent `Game` reaches every step `Game` offers it. Restricting
+  which keeper runs which step then takes a narrower type per keeper or a token per guarded step.
+  The learner left open how a keeper outside `state.rs` is restricted. Every piece of `state.rs`
+  leaves it, unless its decision is stable and easy, which "Build modules around decisions" lets
+  stay where it is.
 
 ## Leave alone
 
@@ -77,11 +79,16 @@ given any function, existing or new, can tell from the name alone whether it bel
 
 ## Done when
 
-- Each module that holds `Game`'s data or runs its steps holds one decision.
-- Each keeper of an order between steps is the only code that can run the steps it guards, and
-  each command with one rightful caller is reachable only from it. Where the doc's tools can't do
-  that, the PR says why.
+- Each module that holds `Game`'s data or runs its steps holds one decision, plus any stable, easy
+  ones the PR argues for.
+- Each keeper of an order between steps that leaves `state.rs` is the only code that can run the
+  steps it guards, and each command with one rightful caller is reachable only from it. Where the
+  doc's tools can't do that, the PR says why.
 - What ticket 13 made formal stays formal, or the PR justifies each place it no longer is.
+- The PR body lists, for each piece of `state.rs`, the changes you expect to it, and whether it
+  left or stayed. For each piece that stayed, it argues why its decision is stable and easy. For
+  each piece that left, it says what the move gains and costs: the decisions it sorts out and the
+  rules it makes formal, against the types, tokens or visibility it takes.
 - The function that takes a step, reports it and checkpoints has a name that says what it does.
 - The same events come out in the same order, each matching the same triggers, with the
   checkpoints and RNG draws at the same points among them.

@@ -89,10 +89,10 @@ interface that holds still when the decision moves.
   rules.
 - Passing data between modules is fine when its layout is a decision you expect to stay put. The
   module that builds the data keeps the decision that moves.
-- Make a decision its own module when its knowledge sits in more than one place, today or in
-  planned work, and an interface of questions and commands can replace that knowledge while asking
-  callers to know less than the data would. If only one place knows it, or the interface would
-  mirror the fields, leave it where it is.
+- Make a decision its own module when two things hold. Its knowledge sits in more than one place,
+  today or in planned work, or it is likely to change and shares a module with decisions that
+  change independently of it. And an interface of questions and commands can replace that
+  knowledge while asking callers to know less than the data would.
 
 ### Orders between steps
 
@@ -158,6 +158,11 @@ decides when its pass runs. The keeper must be the only code that can make the w
 about. Any other code that can make them holds "go through the keeper" as informal knowledge, so a
 keeper is weaker than an owner. For a rule a pass restores, the write to restrict is running the
 pass. Give a rule an owner whenever its data can share one.
+
+Code can make a write only if it reaches the data and can call a command that writes it.
+Restricting either restricts who can make the write. Code reaches the data it can see and the data
+it is handed. Handing over the data hands over every command on it. To hand over fewer, hand over a
+type that holds the data privately and offers only those commands.
 
 - Read the rule as implications, if A then B. A write that makes A true without B breaks it, so
   restrict A and leave B open. A rule that also runs the other way restricts both.
@@ -327,12 +332,19 @@ command picks its tool by where the command lives. No tool restricts an item to 
 to a module. Inside that module, which code may call or build it is informal knowledge, acceptable
 where its locality is high.
 
+- Visibility on a field restricts reach. Visibility on a command restricts the command. A `&mut`
+  lends every command on the owner that the borrower can see. To lend fewer, lend a type that
+  holds the `&mut` in a private field and has methods only for the writes it allows. The proofs in
+  "Checks before writes" are such types.
+- When an owner sits in a private field, only the field's module, its descendants and the code the
+  owner is lent to can write it. A command that takes the owner is restricted to them, whatever
+  its visibility.
 - A command whose only rightful caller shares its file is private.
 - Enforce the rule through nesting when the command has one rightful caller and no reason to live
-  anywhere else. Its module and the keeper's share a parent that holds only the keeper and the
-  commands it guards, and the command is `pub(super)`. When a guarded command keeps a rule of its
-  own, its module is the parent of the commands it guards, so a chain of keepers nests one level
-  per link.
+  anywhere else. Its module and the keeper's share a parent, and the command is `pub(super)`.
+  Besides the keeper and the commands it guards, the parent holds only code that reaches none of
+  the data they write. When a guarded command keeps a rule of its own, its module is the parent of
+  the commands it guards, so a chain of keepers nests one level per link.
 - A token earns its place when the command has to live outside the keeper's subtree. The command
   takes a value with a private field, which only the keeper's subtree can build.
 - A Clippy ban fits when neither the tree nor a signature should carry the rule. An `#[expect]`
