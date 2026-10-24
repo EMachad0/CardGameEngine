@@ -1,4 +1,4 @@
-//! An effect's verbs, each run in list order on the one selection its selector reads.
+//! How an effect's verbs act on what its selector selects.
 
 use std::collections::BTreeSet;
 
@@ -10,7 +10,7 @@ use rules::prelude::{Event, Game, ObjectId};
 
 use crate::support::*;
 
-/// Each hit in `events`, as its target and amount.
+/// Each hit in `events`, as the character damaged and the amount.
 fn hits(events: &[Event]) -> Vec<(ObjectId, u8)> {
     events
         .iter()
