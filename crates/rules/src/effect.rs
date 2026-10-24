@@ -2,6 +2,7 @@ use crate::cards::binder::def_id::DefId;
 use crate::cards::definition::{CharacterSelector, PlayerSelector};
 use crate::cards::modifier::ModifierEffect;
 use crate::history::HistoryQuery;
+use crate::target::TargetForm;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EffectAmount {
@@ -25,7 +26,7 @@ pub enum ZoneMove {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Effect<T> {
+pub enum Effect<S: TargetForm> {
     Draw {
         selector: PlayerSelector,
         amount: EffectAmount,
@@ -36,15 +37,15 @@ pub enum Effect<T> {
         amount: EffectAmount,
     },
     Damage {
-        selector: CharacterSelector<T>,
+        selector: CharacterSelector<S>,
         amount: EffectAmount,
     },
     Buff {
-        selector: CharacterSelector<T>,
+        selector: CharacterSelector<S>,
         effect: ModifierEffect,
     },
     AddFriendlyAura {
-        selector: CharacterSelector<T>,
+        selector: CharacterSelector<S>,
         effect: ModifierEffect,
     },
     Summon {
@@ -58,8 +59,8 @@ pub enum Effect<T> {
     },
 }
 
-impl<T> Effect<T> {
-    pub(crate) fn target(&self) -> Option<&T> {
+impl<S: TargetForm> Effect<S> {
+    pub(crate) fn target(&self) -> Option<&S::CharacterTarget> {
         match self {
             Effect::Draw {
                 selector: _,
@@ -94,7 +95,10 @@ impl<T> Effect<T> {
         }
     }
 
-    pub(crate) fn map_targeted<U>(self, f: impl FnOnce(T) -> U) -> Effect<U> {
+    pub(crate) fn map_targeted<R: TargetForm>(
+        self,
+        f: impl FnOnce(S::CharacterTarget) -> R::CharacterTarget,
+    ) -> Effect<R> {
         match self {
             Effect::Draw { selector, amount } => Effect::Draw { selector, amount },
             Effect::Reveal {
@@ -134,11 +138,21 @@ impl<T> Effect<T> {
 
 #[cfg(test)]
 mod tests {
+    use std::fmt::Debug;
+    use std::marker::PhantomData;
+
     use pretty_assertions::assert_eq;
 
     use super::*;
 
-    fn targeted_effects<T>([damaged, buffed, aura]: [T; 3]) -> [Effect<T>; 3] {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    struct Holds<T>(PhantomData<T>);
+
+    impl<T: Debug + Clone + PartialEq + Eq> TargetForm for Holds<T> {
+        type CharacterTarget = T;
+    }
+
+    fn targeted_effects([damaged, buffed, aura]: [usize; 3]) -> [Effect<Holds<usize>>; 3] {
         let buff = ModifierEffect::BuffAtk { amount: 1.into() };
         [
             Effect::Damage {
@@ -156,7 +170,7 @@ mod tests {
         ]
     }
 
-    fn resolve_pick<T>() -> Effect<T> {
+    fn resolve_pick() -> Effect<Holds<usize>> {
         Effect::ResolvePick {
             pick_id: PickId(1),
             picked_move: ZoneMove::AddToHand,
@@ -174,7 +188,7 @@ mod tests {
 
     #[test]
     fn an_effect_with_no_character_selector_has_no_target() {
-        assert_eq!(resolve_pick::<usize>().target(), None);
+        assert_eq!(resolve_pick().target(), None);
     }
 
     #[test]
@@ -187,9 +201,6 @@ mod tests {
 
     #[test]
     fn mapping_keeps_an_effect_with_no_character_selector() {
-        assert_eq!(
-            resolve_pick::<usize>().map_targeted(|n| n * 2),
-            resolve_pick(),
-        );
+        assert_eq!(resolve_pick().map_targeted(|n| n * 2), resolve_pick());
     }
 }

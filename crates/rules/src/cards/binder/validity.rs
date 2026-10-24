@@ -1,6 +1,7 @@
 use crate::cards::definition::CardDef;
 use crate::cards::sequences::trigger_sequences;
 use crate::effect::{Effect, PickId};
+use crate::target::TargetForm;
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub(super) enum CardDefError {
@@ -22,7 +23,7 @@ pub(super) fn validate(def: &CardDef) -> Result<(), CardDefError> {
 
 /// Pairs each `ResolvePick` with an earlier `Reveal` of the same pick. Revealed cards sit in no
 /// zone until their pick resolves.
-fn validate_pick_order<T>(effects: &[Effect<T>]) -> Result<(), CardDefError> {
+fn validate_pick_order<S: TargetForm>(effects: &[Effect<S>]) -> Result<(), CardDefError> {
     let mut unresolved = Vec::new();
     for effect in effects {
         match effect {

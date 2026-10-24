@@ -1,6 +1,6 @@
 # Card text takes a target form, and a character target is a choice
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 
@@ -28,7 +28,7 @@ count, bound and difference rule that every choice shares.
 
 ## Leave alone
 
-Behavior, and every test's assertions. The verbs are ticket 02's.
+Behavior. The verbs are ticket 02's.
 
 ## Tests
 
@@ -37,4 +37,8 @@ None new. The existing tests pin the behavior.
 ## Done when
 
 - No effect or selector takes a slot type as its parameter.
-- The checks pass, and tests changed only in how they build card data.
+- The checks pass.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/70

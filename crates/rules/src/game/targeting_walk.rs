@@ -1,11 +1,13 @@
 //! Whether a card's targeting can be finished, which objects the player may target next, and
 //! whether they may stop.
 
+use crate::cards::filter::CharacterFilter;
 use crate::cards::object::ObjectId;
+use crate::choice::Choice;
 use crate::game::amount::effect_amount;
 use crate::game::cards_ref::CardsRef;
 use crate::game::player_input::targeting::Targeting;
-use crate::target::{CharacterTarget, TargetId};
+use crate::target::TargetId;
 
 /// Whether the card's targeting can be finished from nothing targeted.
 pub(super) fn can_start_targeting(cards: CardsRef, object_id: ObjectId) -> bool {
@@ -40,7 +42,7 @@ fn can_finish_targeting(cards: CardsRef, targeting: &mut Targeting) -> bool {
 fn finishing_candidates<'a>(
     cards: CardsRef<'a>,
     target_id: TargetId,
-    target: &'a CharacterTarget,
+    target: &'a Choice<CharacterFilter>,
     targeting: &'a mut Targeting,
 ) -> impl Iterator<Item = ObjectId> + 'a {
     let candidates = untargeted_matches(cards, target_id, target, targeting);
@@ -54,7 +56,7 @@ fn finishing_candidates<'a>(
 fn first_unsatisfied_target<'g>(
     cards: CardsRef<'g>,
     targeting: &Targeting,
-) -> Option<(TargetId, &'g CharacterTarget)> {
+) -> Option<(TargetId, &'g Choice<CharacterFilter>)> {
     let object_id = targeting.object_id();
     cards
         .card_def(object_id)
@@ -70,7 +72,7 @@ fn first_unsatisfied_target<'g>(
 fn untargeted_matches(
     cards: CardsRef,
     target_id: TargetId,
-    target: &CharacterTarget,
+    target: &Choice<CharacterFilter>,
     targeting: &Targeting,
 ) -> Vec<ObjectId> {
     let object_id = targeting.object_id();
@@ -85,14 +87,14 @@ fn untargeted_matches(
 
     let owner = cards.objects.get(object_id).player_id;
     cards
-        .scan_characters_with_filter(owner, &target.filter)
+        .scan_characters_with_filter(owner, &target.options)
         .into_iter()
         .filter(|&candidate| !target.different || !targeting.is_targeted(candidate))
         .filter(|candidate| !objects_for_target.contains(candidate))
         .collect()
 }
 
-fn required_count(cards: CardsRef, object_id: ObjectId, target: &CharacterTarget) -> u8 {
+fn required_count(cards: CardsRef, object_id: ObjectId, target: &Choice<CharacterFilter>) -> u8 {
     let owner = cards.objects.get(object_id).player_id;
     effect_amount(cards, &target.count, owner)
 }

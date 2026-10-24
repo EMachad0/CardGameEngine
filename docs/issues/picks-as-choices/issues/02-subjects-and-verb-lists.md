@@ -42,4 +42,4 @@ draws.
 ## Done when
 
 - No effect variant carries a selector of its own, except `Reveal` and `ResolvePick`.
-- The checks pass, and existing tests changed only in how they build card data.
+- The checks pass.

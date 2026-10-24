@@ -3,11 +3,11 @@ use crate::cards::definition::{
 };
 use crate::cards::modifier::ModifierEffect;
 use crate::effect::Effect;
-use crate::target::NoTarget;
+use crate::target::{TargetForm, Triggered};
 
 /// The effects of every trigger on a card, printed or granted through modifier effects, auras,
 /// `Buff` and `AddFriendlyAura`, at any depth. Those its play effects grant come first.
-pub(super) fn trigger_sequences(def: &CardDef) -> Vec<&[Effect<NoTarget>]> {
+pub(super) fn trigger_sequences(def: &CardDef) -> Vec<&[Effect<Triggered>]> {
     let CardDef {
         name: _,
         kind,
@@ -41,7 +41,10 @@ pub(super) fn trigger_sequences(def: &CardDef) -> Vec<&[Effect<NoTarget>]> {
     sequences
 }
 
-fn collect_grants<'a, T>(sequences: &mut Vec<&'a [Effect<NoTarget>]>, effects: &'a [Effect<T>]) {
+fn collect_grants<'a, S: TargetForm>(
+    sequences: &mut Vec<&'a [Effect<Triggered>]>,
+    effects: &'a [Effect<S>],
+) {
     for effect in effects {
         match effect {
             Effect::Draw {
@@ -79,7 +82,7 @@ fn collect_grants<'a, T>(sequences: &mut Vec<&'a [Effect<NoTarget>]>, effects: &
 }
 
 fn collect_modifier<'a>(
-    sequences: &mut Vec<&'a [Effect<NoTarget>]>,
+    sequences: &mut Vec<&'a [Effect<Triggered>]>,
     modifier_effect: &'a ModifierEffect,
 ) {
     match modifier_effect {
@@ -90,7 +93,7 @@ fn collect_modifier<'a>(
     }
 }
 
-fn collect_trigger<'a>(sequences: &mut Vec<&'a [Effect<NoTarget>]>, trigger: &'a TriggerDef) {
+fn collect_trigger<'a>(sequences: &mut Vec<&'a [Effect<Triggered>]>, trigger: &'a TriggerDef) {
     let TriggerDef {
         pattern: _,
         effects,
@@ -133,21 +136,21 @@ mod tests {
         }
     }
 
-    fn draw<T>() -> Effect<T> {
+    fn draw<S: TargetForm>() -> Effect<S> {
         Effect::Draw {
             selector: PlayerSelector::Owner,
             amount: 1.into(),
         }
     }
 
-    fn trigger(effects: Vec<Effect<NoTarget>>) -> TriggerDef {
+    fn trigger(effects: Vec<Effect<Triggered>>) -> TriggerDef {
         TriggerDef {
             pattern: TriggerPattern::Died(TriggerSubject::Itself),
             effects,
         }
     }
 
-    fn grant(effects: Vec<Effect<NoTarget>>) -> ModifierEffect {
+    fn grant(effects: Vec<Effect<Triggered>>) -> ModifierEffect {
         ModifierEffect::GrantTrigger(trigger(effects))
     }
 
@@ -158,7 +161,7 @@ mod tests {
             ..spell()
         };
 
-        assert_eq!(trigger_sequences(&def), Vec::<&[Effect<NoTarget>]>::new());
+        assert_eq!(trigger_sequences(&def), Vec::<&[Effect<Triggered>]>::new());
     }
 
     #[test]
@@ -249,6 +252,6 @@ mod tests {
             ..spell()
         };
 
-        assert_eq!(trigger_sequences(&def), Vec::<&[Effect<NoTarget>]>::new());
+        assert_eq!(trigger_sequences(&def), Vec::<&[Effect<Triggered>]>::new());
     }
 }

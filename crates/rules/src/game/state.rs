@@ -385,7 +385,7 @@ impl Game {
                 &mut self.objects,
             ),
             Step::Play(playable) => {
-                let prepared = play::prepare(self.cards(), playable);
+                let prepared = play::prepare(self.cards(), &self.player_input, playable);
                 vec![play::play(
                     prepared,
                     &mut self.players,

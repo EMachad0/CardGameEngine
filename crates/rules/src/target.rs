@@ -1,30 +1,8 @@
+use std::fmt::Debug;
+
 use crate::cards::filter::CharacterFilter;
-use crate::effect::EffectAmount;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AmountBound {
-    Exactly,
-    // AtMost,
-    // AtLeast,
-}
-
-impl AmountBound {
-    pub(crate) fn is_satisfied<T: PartialOrd>(&self, count: T, required: T) -> bool {
-        match self {
-            Self::Exactly => count == required,
-        }
-    }
-
-    pub(crate) fn is_full<T: PartialOrd>(&self, count: T, required: T) -> bool {
-        self.upper_bound(required).is_some_and(|max| count >= max)
-    }
-
-    fn upper_bound<T>(&self, required: T) -> Option<T> {
-        match self {
-            Self::Exactly => Some(required),
-        }
-    }
-}
+use crate::cards::object::ObjectId;
+use crate::choice::Choice;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TargetId(pub usize);
@@ -33,25 +11,28 @@ pub struct TargetId(pub usize);
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NoTarget {}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct CharacterTarget {
-    pub filter: CharacterFilter,
-    pub count: EffectAmount,
-    pub bound: AmountBound,
-    pub different: bool,
+/// The state an effect's targets are in.
+pub trait TargetForm {
+    type CharacterTarget: Debug + Clone + PartialEq + Eq;
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Declared {}
 
-    #[test]
-    fn exactly_is_full_at_the_required_count() {
-        assert!(AmountBound::Exactly.is_full(2, 2));
-    }
+impl TargetForm for Declared {
+    type CharacterTarget = Choice<CharacterFilter>;
+}
 
-    #[test]
-    fn exactly_is_not_full_below_the_required_count() {
-        assert!(!AmountBound::Exactly.is_full(1, 2));
-    }
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Triggered {}
+
+impl TargetForm for Triggered {
+    type CharacterTarget = NoTarget;
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Bound {}
+
+impl TargetForm for Bound {
+    type CharacterTarget = Vec<ObjectId>;
 }

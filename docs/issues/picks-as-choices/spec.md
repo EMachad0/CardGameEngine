@@ -33,8 +33,7 @@ Read in full: `AGENTS.md`, `docs/conventions/file-structure.md`, `docs/conventio
 
 ## Roles
 
-- Tickets 01 and 02 are refactors. Every existing test passes with its assertions unchanged, and a
-  behavior change needs a justification in the PR.
+- Tickets 01 and 02 are refactors. A behavior change needs a justification in the PR.
 - In tickets 03 to 05 the learner writes the design-bearing code: types, traits, key function
   signatures and bodies. The agent working with him writes scaffolding and tests against his API
   when he asks, reviews his code against `docs/conventions/file-structure.md`, and refactors on
