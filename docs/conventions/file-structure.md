@@ -276,8 +276,8 @@ From any place in the code, only one path to a definition is allowed.
 - Don't re-export inside the crate. A re-export hides which module owns an item, and that is part
   of the module's interface, not a decision.
 - The public API is one leaf, `prelude.rs`, holding the crate's whole `pub use` list. `lib.rs`
-  holds only `mod` declarations. With `unreachable_pub` on, a `pub` item the prelude doesn't list
-  fails the checks.
+  holds only `mod` declarations. With `unreachable_pub` and `unnameable_types` on, a `pub` item
+  the prelude doesn't list fails the checks.
 - Nothing inside the crate imports through the prelude. Other crates import from it by name,
   never with a glob, since a glob next to another crate's prelude makes shared names ambiguous.
   rust-analyzer ranks paths through a module named `prelude` last, so its auto-import suggests the
