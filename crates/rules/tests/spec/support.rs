@@ -120,7 +120,7 @@ pub(crate) struct Table {
 }
 
 /// P0 holds `hand` and has `friendly` Recruits on the board, and P1 has `enemy` Recruits.
-/// `friendly` and `hand` together are at most 3 cards, so they fit in P0's opening hand.
+/// `friendly` and `hand` together are at most 3 cards, so P0 draws them in setup.
 /// `enemy` is at most 3.
 pub(crate) fn table(hand: &[DefId], friendly: usize, enemy: usize) -> Table {
     let mut top0 = vec![RECRUIT; friendly];
