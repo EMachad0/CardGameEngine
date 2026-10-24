@@ -82,7 +82,7 @@ pub(super) enum ActionStep {
 }
 
 impl Game {
-    /// Seeds the `Rng`, shuffles both decks, deals 3 cards each and starts player 0's turn.
+    /// Seeds the `Rng`, shuffles both decks, draws 3 cards each and starts player 0's turn.
     pub fn new(seed: u64, decks: [Vec<DefId>; 2]) -> Self {
         setup::set_up(seed, decks, true)
     }

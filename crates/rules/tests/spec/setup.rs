@@ -1,4 +1,4 @@
-//! Setup: the shuffle, the opening deal and the first turn.
+//! Setup: the shuffle, the first draws and the first turn.
 
 use pretty_assertions::{assert_eq, assert_ne};
 use rules::prelude::static_card_definition::{
@@ -14,15 +14,15 @@ fn sample_deck() -> Vec<DefId> {
     ]
 }
 
-fn opening() -> Game {
+fn after_setup() -> Game {
     let deck0 = vec![SPARK, BOLT, RECRUIT, CAPTAIN, BLAST];
     let deck1 = vec![SPARK, SPARK, SPARK, BOLT, BOLT];
     Game::with_deck_order(0, [deck0, deck1])
 }
 
 #[test]
-fn setup_deals_three_cards_each_from_the_top() {
-    let game = opening();
+fn setup_draws_three_cards_each_from_the_top() {
+    let game = after_setup();
     let [p0, p1] = players(&game);
 
     assert_eq!(hand_defs(&game, p1), [SPARK, SPARK, SPARK]);
@@ -30,14 +30,14 @@ fn setup_deals_three_cards_each_from_the_top() {
     assert_eq!(
         hand_defs(&game, p0),
         [SPARK, BOLT, RECRUIT, CAPTAIN],
-        "three dealt, then player 0's first turn draws the fourth"
+        "three drawn in setup, then player 0's first turn draws the fourth"
     );
     assert_eq!(deck_defs(&game, p0), [BLAST]);
 }
 
 #[test]
 fn setup_starts_player_0s_turn() {
-    let game = opening();
+    let game = after_setup();
     let [p0, p1] = players(&game);
 
     assert_eq!(game.outcome(), None);
@@ -50,7 +50,7 @@ fn setup_starts_player_0s_turn() {
 
 #[test]
 fn each_player_starts_with_a_hero() {
-    let game = opening();
+    let game = after_setup();
 
     for p in players(&game) {
         assert_eq!(game.def_id(game.hero_id(p)), HERO, "{p:?}");
@@ -59,7 +59,7 @@ fn each_player_starts_with_a_hero() {
 
 #[test]
 fn each_hero_is_an_object_apart_from_every_card() {
-    let game = opening();
+    let game = after_setup();
     let [p0, p1] = players(&game);
 
     let cards: Vec<ObjectId> = [p0, p1]
@@ -77,7 +77,7 @@ fn each_hero_is_an_object_apart_from_every_card() {
 
 #[test]
 fn heroes_start_at_ten_health() {
-    let game = opening();
+    let game = after_setup();
     let [p0, p1] = players(&game);
 
     assert_eq!(game.hero_health(p0), 10);
@@ -86,7 +86,7 @@ fn heroes_start_at_ten_health() {
 
 #[test]
 fn a_new_game_has_empty_boards_and_nothing_revealed() {
-    let game = opening();
+    let game = after_setup();
 
     for p in players(&game) {
         assert!(game.player_board(p).is_empty(), "{p:?}'s board");
@@ -117,7 +117,11 @@ fn each_copy_in_hand_is_its_own_play_action() {
     turn_with_mana(&mut game, p0, 2);
 
     let mut expected: Vec<Action> = game.hand(p0).iter().map(|&o| play(o)).collect();
-    assert_eq!(expected.len(), 5, "three dealt plus two turn draws");
+    assert_eq!(
+        expected.len(),
+        5,
+        "three drawn in setup plus two turn draws"
+    );
     expected.push(Action::EndTurn);
     assert_actions(&game, p0, &expected);
 }
