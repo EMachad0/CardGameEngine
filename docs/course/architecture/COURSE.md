@@ -21,7 +21,7 @@ up.
   `/md-log docs/course/architecture/sessions/NN-topic.md` (the file must exist first), then
   "continue the architecture course".
 - Only the first session of a topic (02, 03, not 02a) opens with a short retrieval quiz. It may ask
-  about any earlier session's nodes, such as 01 to 01e and 02 to 02i for 03. Skip it when he did
+  about any earlier session's nodes, such as 01 to 01e and 02 to 02j for 03. Skip it when he did
   the previous session just before.
 - Roles. He learns the concepts and makes every decision about the rules. The agent drafts the docs
   and the lint rules, and writes the refactor tickets. He reviews all of it before it's merged. His
@@ -244,6 +244,21 @@ up.
   holding it would hold two decisions. Against `impl` blocks scattered over sibling files at first
   sight, and ordered the work so reporting leaves the steps before commands become free
   functions.
+- Reach (02i): probe 4 of 4 on reach through a private field, a lent `&mut`, nesting that
+  restricts a helper but not the owner's command, and a step lent `&mut Zones`. Read a rule about
+  the game's board as one about every `Zones` value, then corrected it himself. Derived open-ended
+  the paths to the game's zones (a visible field, a parameter, replacing the field) but not the
+  second half, a command, until shown. Quiz right on reach crossed with a token, with a note that
+  mixed Miller's permission and authority. To keep `effect::resolve` from removing a character he
+  named the token and proposed `pub(in death)` on `leave_board`, which `pub(in path)` can't take
+  and which restricts the command, not reach. Didn't know the facet.
+- Where keepers go when one holder lends (02i): found that a child of `Game`'s module breaks leaf
+  definitions, that `write` touches the owners while finding deaths only reads, and proposed a
+  narrower type for the state check unaided. Then asked what moving four lines gains ("that is two
+  line") and wanted it judged in practice by an AFK PR. Rejected "all or any changes" as the
+  measure, the vacuity he raised after 02f. Caught that my keeper paragraph left `state.rs`
+  holding independent keepers against "a module hides one decision"; the doc's "Leave stable, easy
+  decisions where they are" settled it. Prefers a rule stated positively over its negation.
 
 ### Checks and proofs
 
@@ -420,6 +435,10 @@ up.
   doc text (`InHand` "would not make sense outside this project"; std types stay), and caught
   "dispatches" as a term the docs never used. He raises objections in quiz notes; answer them
   before the next popup.
+- In 02i he rejected two open questions as too vague and one as "worthless complex to reason",
+  and asked for a concrete case with an example rule. He asked who Miller was. He caught this
+  project's "steps" in General doc text and a quantifier ("most") he never agreed to, and asked
+  that a new rule be judged against the whole doc, not added alone.
 
 ## Course plan
 
@@ -432,7 +451,7 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
    module, then in 01c names that exclude, nesting, and the #13 and #15 verdicts (done).
    Session 01d: the audit rerun in two rounds, the second with the roadmap (done). Session 01e:
    the refactor as AFK tickets, plus the Rust rules for module layout and paths (done).
-2. Sessions 02 to 02i: ownership. 02 settled invariant to owner, the invariant draws the boundary
+2. Sessions 02 to 02j: ownership. 02 settled invariant to owner, the invariant draws the boundary
    (aggregates), and reading isn't owning (done). 02a: node 3's exercise, redrawing `emit`, and
    West's argument (done). 02b: keepers, a rule no owner guards kept by the only code that can
    make its writes, and the Rust tools for restricting callers (done). 02c: orders between steps
@@ -466,6 +485,10 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
    settles that gap of ticket 12's too. PR #74's doc gaps (ticket 02): he ruled that the coupling
    rule holds even for what the code can't tell you, so `Effect` has no docstring and `verbs_on`'s
    says how its verbs share one selection. AGENTS.md says so.
+   Done in 02i, PR #78: a write takes reach to the data and a command, a lend hands over every
+   command and a narrower type fewer, and a decision likely to change leaves a module it shares
+   with independent ones, while stable, easy ones stay. The `state.rs` issue is unblocked. Two
+   gaps of #51, one of #62 and two of #68 closed with no doc change. Session 02j: the rest.
    Unused material: `research/02b-pass-and-coordinator/scope.md` (Forge and XMage, the Process
    Manager). Session 02g, its own node: parse, don't validate (Alexis King,
    2019). A check's result carried forward as a type, not an assumption; who can build the proof,
@@ -632,10 +655,20 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   Restricting one owner command to its caller, such as `Mana::refill` to the turn start, is out of
   13, since `&mut Mana` reaches `refill` (probe 3). A later ticket if he wants it. Of PR #51's doc
   gaps, the doc review after 02f settled two: inherent `impl` blocks stay in the defining module,
-  and the code that runs steps keeps their order rules as keeper. Still open: a struct of borrows
-  mirroring its owner, a main type under a subtree of its commands, and a second builder for the
-  selectors. Ticket 13 may answer the first two. Clippy's `multiple_inherent_impl` could enforce
-  the `impl` rule, his call.
+  and the code that runs steps keeps their order rules as keeper. 02i closed the mirror struct
+  (ticket 13 lends each step only what it writes) and the main type above its commands (leaf
+  definitions rule it out). The second builder for the selectors waits for 02j. Clippy's
+  `multiple_inherent_impl` could enforce the `impl` rule, his call.
+- The `state.rs` issue (`docs/issues/game-state-holds-several-decisions.md`), unblocked by #78.
+  Every piece leaves `state.rs` unless the PR argues its decision is stable and easy. He judges
+  the PR in practice, his concern being that a four-line keeper doesn't pay for its facet or
+  token. Compare it with `research/02i-untangling-doc-gaps/alternatives.md`: XMage keeps the
+  loop in its holder, Ousterhout on shallow modules, and facets defined in the holder put each
+  keeper's step list back there, which tokens avoid.
+- Doc gaps for session 02j: #66's main type that is also one of its directory's decisions, and its
+  two ties that share data (one owner, or one per tie nested); #68's batching that a plausible
+  change breaks, "which owners each command writes" per function or per arm, and a step that reads
+  the state it writes; #51's call order forced by data against a second builder.
 - The stack owner (02c), for 02e and #17's redo in 02f. Private `effect_stack` and
   `resolving_effect`. `next_effect() -> Next { Effect(ObjectId, Effect), Finished, Empty }` reads
   and advances in one command. It returns `Finished` at every boundary between resolving effects,
@@ -709,8 +742,10 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   level of concepts, with no signatures or code, and probe only what the knowledge map doesn't
   already show (02c); probe concepts, never facts about the code, and define shorthand such as
   "ladder" or drop it (02d); don't turn applying settled rules to existing code into an exercise
-  (02e); when referring to his design, quote the words meant, never "the other version" (02g); show a design's shape before a quiz assumes it (02f). Propose
-  the edits to him for review.
+  (02e); when referring to his design, quote the words meant, never "the other version" (02g); show a design's shape before a quiz assumes it (02f);
+  give an open question one concrete case and the rule it concerns, say who an author is before
+  quoting him, keep this project's terms out of General doc text, and check a new rule against
+  the whole doc before proposing it (02i). Propose the edits to him for review.
 - `fulfill_character_filter` is half narrow already: the side check is a free function in
   `cards/filter.rs`, while the kind check goes from object to definition to `binder`. Material for
   sessions 02e and 04.
@@ -761,6 +796,7 @@ graph TD
   C["Chained keepers, one value of a shared command, emit's parameters (done)"]
   PDV["Parse, don't validate; checks before writes (done, revised in 02h)"]
   CMD["Commands and whole-state readers: lend, yield, defer, narrow (done)"]
+  RCH["Reach and the command; where keepers go (done)"]
   DOD["Data-oriented design and ECS"]
   P["Ports, anti-corruption layers, contract tests"]
   T["Tests as design feedback"]
@@ -797,6 +833,10 @@ graph TD
   PDV-->DOD
   PDV-->P
   PDV-->DOCS
+  K-->RCH
+  R2-->RCH
+  CMD-->RCH
+  RCH-->DOCS
   W-->DOD
   C-->DOD
   R1-->DOD
@@ -839,8 +879,9 @@ graph TD
 | 02f | CMD | Commands and the whole-state readers, PR #51's open question | done (probe 3 of 3 on borrow mechanics; the problem is the readers inside every command, not the number of parameters; six families, checked by three researchers; runtime checks, lend and per-command state machines ruled out; matching per step with forced splits evaluated and accepted; ticket 13 states the problem only; review rounds unlimited) |
 | 02g | PDV | Parse, don't validate: `apply` and `legal_actions`, `ObjectId` by zone | done (probe edge was a proof's reach, he let `apply` skip the check; four nodes, each a rule in "Parse, don't validate", plus a Rust bullet on proofs that borrow; `apply` exercise reached "&mut or owned values" after one question; `ObjectId`: identity in stored IDs, per-zone proofs from the location owner, his first proof borrowed the ID; no audit, findings 33 to 35 and 12 ticketed as 08, 11 and 12, PR #38) |
 | 02h | PDV | Parse, don't validate, revisited: a fact a read learned and a write uses; PR #55's doc gaps | done (opened on his objection that 02g taught a rule that doesn't hold; research on Python, Ruby, TS, databases, Rust std and crates, engines and Meyer; facts about the parsed value split from "Checks before writes"; only the first write refuses, an owner-defined `&mut` proof keeps facts fresh, else the write re-asks and panics; he proposed the owner-defined entry; proof names and consumed tokens; #55 audited, comment posted, ticket 11 updated, PR #60) |
-| 02i | review | #51's open doc gaps and those of tickets 12 and 13 | once ticket 13 lands |
-| 03 | DOD | Data-oriented design, ECS organization, the rules core beside Bevy | next |
+| 02i | RCH | #51's open doc gaps and those of tickets 12 and 13 | done (probe 4 of 4; a write takes reach and a command, from Miller's permission and authority; a lend hands over every command, a facet fewer; his concern about moving a four-line keeper went to an AFK PR; my keeper paragraph withdrawn for "leave stable, easy decisions"; group 3 ruled with no doc change; research on alternatives; PR #78) |
+| 02j | review | #66's two gaps, #68's batching, formal per arm and read-then-write steps, #51's second builder | next |
+| 03 | DOD | Data-oriented design, ECS organization, the rules core beside Bevy | |
 | 04 | R3, P, T | Ports, anti-corruption layers, contract tests, tests as feedback | |
 | 05 | F | Feature-first, shared code, naming | |
 | 06 | RS, E | Rust layer and enforcement | |
