@@ -152,6 +152,14 @@ impl PlayerInput {
             .map(AwaitsTargeting::targeting)
     }
 
+    /// Finds the targeting again. Panics unless the player is still targeting the card.
+    pub(in crate::game) fn still_targeting(
+        &self,
+        awaiting_targeting: &WasAwaitingTargeting,
+    ) -> &Targeting {
+        &self.targetings[self.targeting_idx(awaiting_targeting)].1
+    }
+
     /// The first picks `source` stored for `pick_id`.
     pub(in crate::game) fn picks(&self, source: ObjectId, pick_id: PickId) -> Option<&Picks> {
         self.stored_picks.find(source, pick_id)
@@ -191,15 +199,10 @@ impl PlayerInput {
         self.targetings.remove(idx);
     }
 
-    /// Closes the targeting and returns it. Panics unless the player is still targeting the card.
-    pub(in crate::game) fn commit_targeting(
-        &mut self,
-        awaiting_targeting: WasAwaitingTargeting,
-    ) -> Targeting {
-        let (_, closed) = self
-            .targetings
-            .remove(self.targeting_idx(&awaiting_targeting));
-        closed
+    /// Closes the targeting. Panics unless the player is still targeting the card.
+    pub(in crate::game) fn commit_targeting(&mut self, awaiting_targeting: WasAwaitingTargeting) {
+        let idx = self.targeting_idx(&awaiting_targeting);
+        self.targetings.remove(idx);
     }
 
     /// Starts the player's picking from `options`, replacing any targeting they have. With no
@@ -321,9 +324,9 @@ mod tests {
         input.target(awaiting_targeting, object, target_id);
     }
 
-    fn commit_targeting(input: &mut PlayerInput, player: PlayerId) -> Targeting {
+    fn commit_targeting(input: &mut PlayerInput, player: PlayerId) {
         let awaiting_targeting = was_awaiting_targeting(input, player);
-        input.commit_targeting(awaiting_targeting)
+        input.commit_targeting(awaiting_targeting);
     }
 
     fn cancel(input: &mut PlayerInput, player: PlayerId) {
@@ -565,20 +568,34 @@ mod tests {
     }
 
     #[test]
-    fn committed_targeting_hands_back_what_was_targeted() {
+    fn a_targeting_found_again_holds_what_was_targeted() {
         let [card, target] = ids();
         let player = PlayerId::new(0);
         let mut input = PlayerInput::default();
         start_targeting(&mut input, player, card);
         target_object(&mut input, player, target, TargetId(0));
+        let awaiting_targeting = was_awaiting_targeting(&input, player);
 
-        let committed = commit_targeting(&mut input, player);
+        let found = input.still_targeting(&awaiting_targeting);
 
-        assert_eq!(committed.object_id(), card);
+        assert_eq!(found.object_id(), card);
         assert_eq!(
-            committed.targeted_for(TargetId(0)).collect::<Vec<_>>(),
+            found.targeted_for(TargetId(0)).collect::<Vec<_>>(),
             [target]
         );
+    }
+
+    #[test]
+    #[should_panic(expected = "a targeting found open should stay open until used")]
+    fn a_targeting_cannot_be_found_again_once_it_closes() {
+        let [card] = ids();
+        let player = PlayerId::new(0);
+        let mut input = PlayerInput::default();
+        start_targeting(&mut input, player, card);
+        let awaiting_targeting = was_awaiting_targeting(&input, player);
+        cancel(&mut input, player);
+
+        input.still_targeting(&awaiting_targeting);
     }
 
     #[test]

@@ -11,7 +11,7 @@ use crate::game::player_input::awaiting::{PlayerInput, WasAwaitingTargeting};
 use crate::game::reporting::Report;
 use crate::game::stats::cost;
 use crate::ids::PlayerId;
-use crate::target::{TargetForm, TargetId};
+use crate::target::Bound;
 use crate::zones::{InHand, WasInHand, Zones};
 
 pub(super) struct Play {
@@ -27,19 +27,12 @@ pub(super) struct WasPlayable {
 }
 
 /// A card about to be played, read before anything is written: what it costs now, and its play
-/// effects with each target named by its id.
+/// effects with each target bound to the objects targeted for it.
 pub(super) struct PreparedPlay {
     card: WasInHand,
     awaiting_targeting: Option<WasAwaitingTargeting>,
     cost: u8,
-    play_effects: Vec<Effect<Numbered>>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Numbered {}
-
-impl TargetForm for Numbered {
-    type CharacterTarget = TargetId;
+    play_effects: Vec<Effect<Bound>>,
 }
 
 impl WasPlayable {
@@ -81,15 +74,27 @@ impl From<Play> for Event {
     }
 }
 
-pub(super) fn prepare(cards: CardsRef, playable: WasPlayable) -> PreparedPlay {
+pub(super) fn prepare(
+    cards: CardsRef,
+    player_input: &PlayerInput,
+    playable: WasPlayable,
+) -> PreparedPlay {
     let WasPlayable {
         card,
         awaiting_targeting,
     } = playable;
     let cost = cost(cards, cards.zones.still_in_hand(&card));
+    let targeting = awaiting_targeting
+        .as_ref()
+        .map(|awaiting_targeting| player_input.still_targeting(awaiting_targeting));
     let play_effects = cards
         .card_def(card.object_id())
-        .bind_play_effects(|target_id| target_id);
+        .bind_play_effects(|target_id| {
+            targeting
+                .expect("a card that declares targets should be played from its targeting")
+                .targeted_for(target_id)
+                .collect()
+        });
     PreparedPlay {
         card,
         awaiting_targeting,
@@ -114,22 +119,10 @@ pub(super) fn play(
     } = prepared;
     let player_id = card.player_id();
     players.mana_mut(player_id).pay(cost);
-    let targeting = awaiting_targeting
-        .map(|awaiting_targeting| player_input.commit_targeting(awaiting_targeting));
+    if let Some(awaiting_targeting) = awaiting_targeting {
+        player_input.commit_targeting(awaiting_targeting);
+    }
     let object_id = zones.take_from_hand(card);
-
-    let play_effects = play_effects
-        .into_iter()
-        .map(|effect| {
-            effect.map_targeted(|target_id| {
-                targeting
-                    .as_ref()
-                    .expect("a card that declares targets should be played from its targeting")
-                    .targeted_for(target_id)
-                    .collect()
-            })
-        })
-        .collect::<Vec<_>>();
     if !play_effects.is_empty() {
         effect_stack.push(object_id, play_effects);
     }
