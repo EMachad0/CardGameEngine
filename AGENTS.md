@@ -79,6 +79,8 @@ the code matches your intent. The work is not done until they are green.
 - Beyond that, how and when to commit is your call. GitHub squashes a pull request's commits, so
   don't ask me about messages or how to split them. A commit may hold red tests, clippy errors or
   warnings.
+- When you push to a branch that has a pull request, or open one, keep its body up to date. After
+  each push, edit it so it describes the whole branch as it stands.
 
 ## Plan before implementing
 
@@ -97,7 +99,7 @@ green, refactor. No permission checkpoints inside it.
 ## Agent skills
 
 Most skills are installed outside this repo and read their per-repo configuration from
-`docs/agents/`. Two ship here instead.
+`docs/agents/`. Some ship here instead, in `.agents/skills/`.
 
 ### Teach
 
