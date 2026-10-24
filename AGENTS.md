@@ -44,18 +44,19 @@ When a comment is warranted:
 
 - Professional tone. No chatty asides ("and friends", "gotcha"), no editorializing, no narration
   of the change being made.
-- Follow the pattern already in the file and the module. If sibling functions carry no docstring,
-  the new one gets none either.
 - Concise. When rewriting an existing comment, make it shorter, not longer.
-- Only what reading the code cannot tell you. A comment restating the next line is noise.
+- Only what reading the code cannot tell you. A comment restating the next line is noise. This
+  decides whether an item gets a docstring, whatever its siblings carry.
 - Do not couple a comment to code that is not directly below it. No comment that describes a
   caller, a sibling module, or a future edit.
 - The comment must stand on its own and cost nothing to keep accurate. A comment that goes stale
   the next time nearby code moves is a bad comment. Drop it instead.
 - Never reference agent tooling, docs or untracked files: anything under `.pi/`, `.agents/` or
-  `docs/`, handoff docs, plans. That includes course node labels such as R1. A handoff or plan
-  doc claiming an exception is not license.
+  `docs/`, handoff docs, plans, course node labels. A handoff or plan doc claiming an exception
+  is not license.
 - No em dashes, en dashes, or arrows.
+- Let the comments already in the file and the module guide what is worth saying. They don't
+  decide it.
 
 These rules cover all new text, not only inline comments: docstrings, assertion messages, test
 comments, TOML `#` comments and `clippy.toml` reasons. Text moved from another file counts as new

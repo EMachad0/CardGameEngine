@@ -461,7 +461,9 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
    place of `use super::*;` to rustfmt, which settles that gap of ticket 12's too. PR #70 fixes
    the prelude sentence `unreachable_pub` doesn't back, at his call: `unnameable_types` is on,
    and `CardDef` stays public for the shell's own definitions, so the prelude lists the card text
-   it reaches.
+   it reaches. On docstrings where siblings differ, he ruled that "only what reading the code
+   cannot tell you" decides and the file's pattern only points the way. AGENTS.md says so, which
+   settles that gap of ticket 12's too.
    Unused material: `research/02b-pass-and-coordinator/scope.md` (Forge and XMage, the Process
    Manager). Session 02g, its own node: parse, don't validate (Alexis King,
    2019). A check's result carried forward as a type, not an assumption; who can build the proof,
