@@ -99,7 +99,7 @@ You can't teach into his zone of proximal development without knowing where its 
 
 Traces belong in Phase 3.
 
-**Say why you ask.** Each probe's `intro` names the strand it checks and what the answer changes in the plan. He should never have to guess why you asked.
+**Say why you ask.** Each probe's `intro` says in plain sentences which strand it checks and what the answer changes in the plan, with no label. He should never have to guess why you asked.
 
 **Read his note before probing around a miss.** A miss may be a slip, a narrow gap or a misconception, and his note usually says which. Ask a follow-up only when the note doesn't settle it and the answer changes the plan. A misconception is worth the follow-up, since a wrong model he trusts has to be replaced before anything builds on it.
 
@@ -147,11 +147,13 @@ Repeat this full loop per node — don't front-load all the foundations once at 
 
 If you catch yourself asserting a fact he'd have to take on faith — foundational or not — stop: either motivate it and confirm it lands, or ground it in something already established. Unmotivated, unconfirmed facts don't lock in — that's the whole point.
 
-**Traces.** A trace walks a concrete case through code step by step, often a failing one. It's a teaching tool, for motivating a node or fixing a miss. Say what it's for before he starts. When the trace is a `quiz`, that goes in the `intro`.
+**Traces.** A trace walks a concrete case through code step by step, often a failing one. It's a teaching tool, for motivating a node or fixing a miss.
+
+**A teaching quiz doesn't say why you ask.** Its `intro` carries the node's context, and that context shows what the question is for, a trace's too. A line on what the question checks only repeats it.
 
 ## Working with him
 
-- The quiz and `ask_user_question` popups hide the reply text above them, so a turn that ends in a popup writes no reply text. What you'd say before asking goes in the popup's `intro`, such as feedback on his last answer, why you ask this, or a short answer to what he asked. The code or card text the question needs goes in `details`. A long answer to his question gets its own turn with no popup. He reads a popup over text he can't see as you ignoring his question.
+- The quiz and `ask_user_question` popups hide the reply text above them, so a turn that ends in a popup writes no reply text. What you'd say before asking goes in the popup's `intro`, such as feedback on his last answer, the context for the question, or a short answer to what he asked. The code or card text the question needs goes in `details`. A long answer to his question gets its own turn with no popup. He reads a popup over text he can't see as you ignoring his question.
 - He answers multi-part decisions well in plain text ("1a 2b ...") and pushes back on options that don't generalize. Show the multi-pick or N-player case early.
 - Argue specifics with him, and concede when he's right.
 - For a comparison across engines, run one `researcher` per engine.
