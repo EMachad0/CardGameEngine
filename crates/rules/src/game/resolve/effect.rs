@@ -138,8 +138,7 @@ pub(in crate::game) fn resolve(
     let mut reports = Vec::new();
     match prepared.0 {
         Prepared::Players { players, verbs } => {
-            let verb = only_verb(&verbs);
-            for player_id in players.resolve(rng) {
+            for (verb, player_id) in verbs_on(players, &verbs, rng) {
                 match verb {
                     PreparedPlayerVerb::Draw(amount) => {
                         reports.extend(draw(player_id, *amount, zones, objects));
@@ -152,8 +151,7 @@ pub(in crate::game) fn resolve(
             }
         }
         Prepared::Characters { characters, verbs } => {
-            let verb = only_verb(&verbs);
-            for character in characters.resolve(rng) {
+            for (verb, character) in verbs_on(characters, &verbs, rng) {
                 match verb {
                     PreparedCharacterVerb::Damage { amount, source } => {
                         reports.push(damage(character, *amount, *source, objects));
@@ -195,11 +193,18 @@ pub(in crate::game) fn resolve(
     reports
 }
 
-fn only_verb<V>(verbs: &[V]) -> &V {
-    let [verb] = verbs else {
-        panic!("card data should give every effect exactly one verb");
-    };
-    verb
+/// Pairs each verb, in order, with every value of the selection. The selection is read once, so a
+/// random one gives every verb the same value.
+fn verbs_on<'v, T: Copy, V>(
+    selection: Selection<T>,
+    verbs: &'v [V],
+    rng: &mut Rng,
+) -> Vec<(&'v V, T)> {
+    let selected = selection.resolve(rng);
+    verbs
+        .iter()
+        .flat_map(|verb| selected.iter().map(move |&value| (verb, value)))
+        .collect()
 }
 
 fn reveal(

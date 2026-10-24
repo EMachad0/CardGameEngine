@@ -58,6 +58,9 @@ def_ids!(
     SWEEP = "base.sweep.v0",
     HOARDER = "base.hoarder.v0",
     DRUMMER = "base.drummer.v0",
+    FRENZY = "base.frenzy.v0",
+    GOAD = "base.goad.v0",
+    AFTERSHOCK = "base.aftershock.v0",
 );
 
 pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
@@ -556,6 +559,68 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                     verbs: vec![CharacterVerb::Modify(ModifierEffect::BuffHealth {
                         amount: 1.into(),
                     })],
+                }],
+                ..Default::default()
+            },
+        ),
+        (
+            FRENZY,
+            CardDef {
+                name: "Frenzy".to_string(),
+                kind: CardKindDef::Spell(SpellCardDef),
+                mana_cost: 1,
+                play_effects: vec![Effect::Characters {
+                    selector: CharacterSelector::Random(CharacterFilter {
+                        kind: EnumSet::only(CharacterKind::Minion),
+                        side: EnumSet::only(Side::Friendly),
+                    }),
+                    verbs: vec![
+                        CharacterVerb::Damage(1.into()),
+                        CharacterVerb::Modify(ModifierEffect::BuffAtk { amount: 2.into() }),
+                    ],
+                }],
+                ..Default::default()
+            },
+        ),
+        (
+            GOAD,
+            CardDef {
+                name: "Goad".to_string(),
+                kind: CardKindDef::Spell(SpellCardDef),
+                mana_cost: 1,
+                play_effects: vec![Effect::Characters {
+                    selector: CharacterSelector::Targeted(Choice {
+                        options: CharacterFilter {
+                            kind: EnumSet::only(CharacterKind::Minion),
+                            side: EnumSet::all(),
+                        },
+                        count: 1.into(),
+                        bound: AmountBound::Exactly,
+                        different: true,
+                    }),
+                    verbs: vec![
+                        CharacterVerb::Damage(2.into()),
+                        CharacterVerb::Modify(ModifierEffect::BuffAtk { amount: 2.into() }),
+                    ],
+                }],
+                ..Default::default()
+            },
+        ),
+        (
+            AFTERSHOCK,
+            CardDef {
+                name: "Aftershock".to_string(),
+                kind: CardKindDef::Spell(SpellCardDef),
+                mana_cost: 2,
+                play_effects: vec![Effect::Characters {
+                    selector: CharacterSelector::All(CharacterFilter {
+                        kind: EnumSet::only(CharacterKind::Minion),
+                        side: EnumSet::only(Side::Enemy),
+                    }),
+                    verbs: vec![
+                        CharacterVerb::Damage(2.into()),
+                        CharacterVerb::Damage(1.into()),
+                    ],
                 }],
                 ..Default::default()
             },
