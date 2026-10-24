@@ -233,10 +233,6 @@ impl Game {
                 &mut self.zones,
                 &mut self.objects,
             ),
-            #[expect(
-                clippy::disallowed_methods,
-                reason = "the one end of a turn, as the EndTurn action's step"
-            )]
             Step::Action(ActionStep::EndTurn) => turn_change::end_turn(
                 &mut self.turn_order,
                 &mut self.players,
@@ -306,10 +302,6 @@ impl Game {
                     &mut self.standings,
                 )
             }
-            #[expect(
-                clippy::disallowed_methods,
-                reason = "the one decision of the outcome, as the state check's step"
-            )]
             Step::DecideOutcome => vec![Report::GameEnded(self.standings.decide()?)],
         };
         Some(reports)
@@ -336,35 +328,74 @@ impl Game {
     }
 }
 
-/// A game in setup, until its first turn starts.
+/// The parts of a game being made in setup, before its players take their seats.
+pub(super) struct Seating {
+    rng: Rng,
+    binder: Binder,
+    players: Players,
+    objects: ObjectBag,
+}
+
+impl Seating {
+    pub(super) fn new(seed: u64, binder: Binder, player_count: usize) -> Self {
+        Self {
+            rng: Rng::new(seed),
+            binder,
+            players: Players::new(player_count),
+            objects: ObjectBag::default(),
+        }
+    }
+
+    /// By ID.
+    pub(super) fn player_ids(&self) -> Vec<PlayerId> {
+        self.players.iter().map(Player::id).collect()
+    }
+
+    pub(super) fn make_object(&mut self, def_id: DefId, owner: PlayerId) -> ObjectId {
+        self.objects.insert(def_id, owner)
+    }
+
+    /// Takes one hero and one deck, top first, per player in `PlayerId` order.
+    pub(super) fn seat(
+        self,
+        seat_order: Vec<PlayerId>,
+        heroes_and_decks: impl IntoIterator<Item = (ObjectId, Vec<ObjectId>)>,
+    ) -> SettingUp {
+        let Self {
+            rng,
+            binder,
+            players,
+            objects,
+        } = self;
+        SettingUp {
+            game: Game {
+                rng,
+                turn_order: TurnOrder::new(seat_order.clone()),
+                players,
+                zones: Zones::new(heroes_and_decks),
+                player_input: Default::default(),
+                objects,
+                binder,
+                history: History::default(),
+                #[expect(
+                    clippy::disallowed_methods,
+                    reason = "the one start of the standings, as the game is set up"
+                )]
+                standings: Standings::new(seat_order),
+                effect_stack: Default::default(),
+            },
+        }
+    }
+}
+
+/// A game in setup, from its players taking their seats until its first turn starts.
 pub(super) struct SettingUp {
     game: Game,
 }
 
 impl SettingUp {
-    pub(super) fn new(
-        rng: Rng,
-        turn_order: TurnOrder,
-        players: Players,
-        zones: Zones,
-        objects: ObjectBag,
-        binder: Binder,
-        standings: Standings,
-    ) -> Self {
-        Self {
-            game: Game {
-                rng,
-                turn_order,
-                players,
-                zones,
-                player_input: Default::default(),
-                objects,
-                binder,
-                history: History::default(),
-                standings,
-                effect_stack: Default::default(),
-            },
-        }
+    pub(super) fn shuffle_deck(&mut self, player_id: PlayerId) {
+        self.game.zones.shuffle_deck(player_id, &mut self.game.rng);
     }
 
     pub(super) fn draw(&mut self, player_id: PlayerId, count: u8) {

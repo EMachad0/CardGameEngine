@@ -17,8 +17,6 @@ disallowed-methods = [
   { path = "rules::zones::Zones::leave_board", reason = "Only the dead leave the board. The state check removes them." },
   { path = "rules::zones::Zones::entomb", reason = "Only the dead enter a graveyard. The state check puts them there." },
   { path = "rules::game::resolve::aftermath::standings::Standings::new", reason = "Setup starts the standings. Only the state check changes them after that." },
-  { path = "rules::game::resolve::aftermath::standings::Standings::decide", reason = "Only the state check decides the outcome. Game takes the decision as a step." },
-  { path = "rules::game::turn_change::end_turn", reason = "A turn ends only through the EndTurn action, as a step Game takes." },
-  { path = "rules::game::state::SettingUp::new", reason = "Setup starts every game. Start one through Game::new or Game::with_deck_order." },
+  { path = "rules::game::state::Seating::new", reason = "Setup starts every game. Start one through Game::new or Game::with_deck_order." },
   { path = "rules::observer::Observer::event", reason = "Report events through Game::report, which also records History and matches triggers." },
 ]

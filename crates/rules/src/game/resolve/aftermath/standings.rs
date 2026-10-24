@@ -63,7 +63,7 @@ impl Standings {
 #[cfg(test)]
 #[expect(
     clippy::disallowed_methods,
-    reason = "each test starts and decides the standings it tests"
+    reason = "each test starts the standings it tests"
 )]
 mod tests {
     use pretty_assertions::assert_eq;
