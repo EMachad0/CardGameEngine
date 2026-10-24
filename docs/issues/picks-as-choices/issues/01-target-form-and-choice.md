@@ -1,6 +1,6 @@
 # Card text takes a target form, and a character target is a choice
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 
@@ -38,3 +38,7 @@ None new. The existing tests pin the behavior.
 
 - No effect or selector takes a slot type as its parameter.
 - The checks pass, and tests changed only in how they build card data.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/70
