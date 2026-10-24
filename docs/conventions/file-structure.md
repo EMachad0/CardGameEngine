@@ -89,10 +89,10 @@ interface that holds still when the decision moves.
   rules.
 - Passing data between modules is fine when its layout is a decision you expect to stay put. The
   module that builds the data keeps the decision that moves.
-- Make a decision its own module when its knowledge sits in more than one place, today or in
-  planned work, and an interface of questions and commands can replace that knowledge while asking
-  callers to know less than the data would. If only one place knows it, or the interface would
-  mirror the fields, leave it where it is.
+- Make a decision its own module when two things hold. Its knowledge sits in more than one place,
+  today or in planned work, or it is likely to change and shares a module with decisions that
+  change independently of it. And an interface of questions and commands can replace that
+  knowledge while asking callers to know less than the data would.
 
 ### Orders between steps
 
@@ -336,8 +336,9 @@ where its locality is high.
   lends every command on the owner that the borrower can see. To lend fewer, lend a type that
   holds the `&mut` in a private field and has methods only for the writes it allows. The proofs in
   "Checks before writes" are such types.
-- When an owner sits in a private field, only the field's module and the code the owner is lent to
-  can write it. A command that takes the owner is restricted to them, whatever its visibility.
+- When an owner sits in a private field, only the field's module, its descendants and the code the
+  owner is lent to can write it. A command that takes the owner is restricted to them, whatever
+  its visibility.
 - A command whose only rightful caller shares its file is private.
 - Enforce the rule through nesting when the command has one rightful caller and no reason to live
   anywhere else. Its module and the keeper's share a parent, and the command is `pub(super)`.

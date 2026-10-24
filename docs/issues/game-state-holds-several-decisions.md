@@ -67,9 +67,9 @@ given any function, existing or new, can tell from the name alone whether it bel
   PR #51 recorded a neighbour: whether a main type may sit in a subtree of its commands.
 - A keeper outside `state.rs` that is lent `Game` reaches every step `Game` offers it. Restricting
   which keeper runs which step then takes a narrower type per keeper or a token per guarded step.
-  The learner left open how a keeper outside `state.rs` is restricted. Every piece leaves, so he
-  can judge in practice whether a small keeper, such as the state check's four lines, gains enough
-  to pay for the type or token it needs.
+  The learner left open how a keeper outside `state.rs` is restricted. Every piece of `state.rs`
+  leaves it, unless its decision is stable and easy, which "Build modules around decisions" lets
+  stay where it is.
 
 ## Leave alone
 
@@ -79,14 +79,16 @@ given any function, existing or new, can tell from the name alone whether it bel
 
 ## Done when
 
-- Each module that holds `Game`'s data or runs its steps holds one decision.
-- Each keeper of an order between steps is the only code that can run the steps it guards, and
-  each command with one rightful caller is reachable only from it. Where the doc's tools can't do
-  that, the PR says why.
+- Each module that holds `Game`'s data or runs its steps holds one decision, plus any stable, easy
+  ones the PR argues for.
+- Each keeper of an order between steps that leaves `state.rs` is the only code that can run the
+  steps it guards, and each command with one rightful caller is reachable only from it. Where the
+  doc's tools can't do that, the PR says why.
 - What ticket 13 made formal stays formal, or the PR justifies each place it no longer is.
-- The PR body says, for each piece that leaves `state.rs`, what it gains and what it costs: the
-  decisions it sorts out and the rules it makes formal, against the types, tokens or visibility it
-  takes.
+- The PR body lists, for each piece of `state.rs`, the changes you expect to it, and whether it
+  left or stayed. For each piece that stayed, it argues why its decision is stable and easy. For
+  each piece that left, it says what the move gains and costs: the decisions it sorts out and the
+  rules it makes formal, against the types, tokens or visibility it takes.
 - The function that takes a step, reports it and checkpoints has a name that says what it does.
 - The same events come out in the same order, each matching the same triggers, with the
   checkpoints and RNG draws at the same points among them.
