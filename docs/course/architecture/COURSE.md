@@ -455,11 +455,11 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
    gaps and those of tickets 12 and 13 wait for session 02i, after 13's review. Order: #60, #55
    reworked, 12, 13, 02i.
    PR #70's doc gaps (picks-as-choices ticket 01) were judged outside a session. He asked for
-   research first (`research/pr70-doc-gaps/`), then ruled that a trait `impl` goes with its type,
-   with the item the type's module can't name, or with the trait for another crate's type.
-   `impl Default for CardDef` moved from the card set to `definition.rs`. `testing.md` leaves the place of
-   `use super::*;` to rustfmt, which settles that gap of ticket 12's too. The prelude sentence
-   `unreachable_pub` doesn't back went to an issue.
+   research first (`research/trait-impl-placement/`), then ruled that a trait `impl` goes with its
+   type, with the item the type's module can't name, or with the trait for another crate's type.
+   `impl Default for CardDef` moved from the card set to `definition.rs`. `testing.md` leaves the
+   place of `use super::*;` to rustfmt, which settles that gap of ticket 12's too. The prelude
+   sentence `unreachable_pub` doesn't back went to an issue.
    Unused material: `research/02b-pass-and-coordinator/scope.md` (Forge and XMage, the Process
    Manager). Session 02g, its own node: parse, don't validate (Alexis King,
    2019). A check's result carried forward as a type, not an assumption; who can build the proof,
