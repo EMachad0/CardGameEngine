@@ -11,12 +11,11 @@ pub struct TargetId(pub usize);
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NoTarget {}
 
-/// A form of effect text.
+/// The state an effect's targets are in.
 pub trait TargetForm {
     type CharacterTarget: Debug + Clone + PartialEq + Eq;
 }
 
-/// Play text as printed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Declared {}
 
@@ -24,7 +23,6 @@ impl TargetForm for Declared {
     type CharacterTarget = Choice<CharacterFilter>;
 }
 
-/// Trigger text, printed or granted.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Triggered {}
 
@@ -32,7 +30,6 @@ impl TargetForm for Triggered {
     type CharacterTarget = NoTarget;
 }
 
-/// Text with each target bound to the objects targeted for it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Bound {}
 
