@@ -257,6 +257,7 @@ mod tests {
 
     use super::*;
     use crate::choice::AmountBound;
+    use crate::effect::{CharacterVerb, PlayerVerb};
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     struct Holds<T>(PhantomData<T>);
@@ -282,16 +283,16 @@ mod tests {
     }
 
     fn draw<S: TargetForm>() -> Effect<S> {
-        Effect::Draw {
+        Effect::Players {
             selector: PlayerSelector::Owner,
-            amount: 1.into(),
+            verbs: vec![PlayerVerb::Draw(1.into())],
         }
     }
 
     fn damage<S: TargetForm>(selector: CharacterSelector<S>) -> Effect<S> {
-        Effect::Damage {
+        Effect::Characters {
             selector,
-            amount: 1.into(),
+            verbs: vec![CharacterVerb::Damage(1.into())],
         }
     }
 
