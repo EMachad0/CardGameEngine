@@ -11,7 +11,7 @@ use rules::prelude::{
 use crate::support::*;
 
 /// Player 0 holds Bolt, Recruit, Captain and a drawn Bolt. Player 1 holds Spark, Spark, Recruit.
-fn opening() -> Game {
+fn after_setup() -> Game {
     let deck0 = deck_with_top(&[BOLT, RECRUIT, CAPTAIN]);
     let deck1 = deck_with_top(&[SPARK, SPARK, RECRUIT]);
     Game::with_deck_order(0, [deck0, deck1])
@@ -23,7 +23,7 @@ fn face(def_id: DefId, mana_cost: u8) -> Option<Face> {
 
 #[test]
 fn a_view_names_its_viewer_whose_turn_it_is_and_each_player_by_id() {
-    let game = opening();
+    let game = after_setup();
     let [p0, _] = players(&game);
 
     for viewer in players(&game) {
@@ -41,7 +41,7 @@ fn a_view_names_its_viewer_whose_turn_it_is_and_each_player_by_id() {
 
 #[test]
 fn a_player_sees_their_own_hand_with_each_cards_definition_and_cost() {
-    let game = opening();
+    let game = after_setup();
     let [p0, _] = players(&game);
 
     let view = game.view(p0);
@@ -63,7 +63,7 @@ fn a_player_sees_their_own_hand_with_each_cards_definition_and_cost() {
 
 #[test]
 fn a_player_sees_only_the_ids_of_the_opponents_hand() {
-    let game = opening();
+    let game = after_setup();
     let [p0, p1] = players(&game);
 
     let view = game.view(p1);
@@ -79,7 +79,7 @@ fn a_player_sees_only_the_ids_of_the_opponents_hand() {
 
 #[test]
 fn heroes_mana_and_deck_sizes_are_public() {
-    let game = opening();
+    let game = after_setup();
 
     for viewer in players(&game) {
         let view = game.view(viewer);

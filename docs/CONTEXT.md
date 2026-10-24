@@ -135,6 +135,9 @@ _Avoid_: discard pile, cemetery
 
 ### Turns
 
+**Setup**:
+The part of a game before its first turn, which readies each player's deck and hand.
+
 **Turn**:
 A stretch of the game in which the active player acts.
 
@@ -278,6 +281,9 @@ _Avoid_: emit
 
 **Checkpoint**:
 A moment during an action when each player's view can be read.
+
+**Step**:
+The changes the game makes between two checkpoints, and the events they cause.
 
 **View**:
 Everything one player may see of the game at one moment.

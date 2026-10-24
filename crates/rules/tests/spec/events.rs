@@ -67,10 +67,7 @@ fn a_turn_change_and_its_draw_share_one_step() {
 fn a_draw_from_an_empty_deck_reports_fatigue_damage_instead() {
     let mut game = Game::with_deck_order(0, [vec![SPARK; 6], vec![SPARK; 3]]);
     let [p0, p1] = players(&game);
-    assert!(
-        game.deck(p1).is_empty(),
-        "setup dealt player 1's whole deck"
-    );
+    assert!(game.deck(p1).is_empty(), "setup drew player 1's whole deck");
 
     let recorder = observe(&mut game, p0, Action::EndTurn);
 

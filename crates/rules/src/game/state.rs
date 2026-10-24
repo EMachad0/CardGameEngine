@@ -1,10 +1,10 @@
-//! `Game`, the whole state of one game: how one starts, what callers ask it, and how an action
-//! runs. An action runs in steps. A step writes only the parts of the game it is lent and returns
-//! what it did, which is reported once the step ends, before a checkpoint.
+//! `Game`, the whole state of one game: what callers ask it, and what each step is lent. A step
+//! writes only the parts of the game it is lent and returns what it did, which is reported once the
+//! step ends, before a checkpoint. Code outside this file takes a step only through a type this file
+//! defines.
 
 use crate::action::{Action, IllegalAction};
 use crate::cards::binder::def_id::DefId;
-use crate::cards::binder::sets::base::static_card_definition::HERO;
 use crate::cards::binder::store::Binder;
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::game::cards_ref::CardsRef;
@@ -18,9 +18,9 @@ use crate::game::player_input::awaiting::{
 use crate::game::reporting::Report;
 use crate::game::resolve::aftermath::death;
 use crate::game::resolve::aftermath::standings::Standings;
-use crate::game::resolve::effect;
+use crate::game::resolve::{effect, resolution_loop};
 use crate::game::view::{self, View};
-use crate::game::{legal_actions, play, stats, turn_change, zone_move};
+use crate::game::{action_steps, legal_actions, play, setup, stats, turn_change, zone_move};
 use crate::history::History;
 use crate::ids::PlayerId;
 use crate::observer::{Observer, Views};
@@ -52,11 +52,16 @@ pub enum ApplyError {
 
 /// The writes one step makes, between two checkpoints.
 enum Step {
-    Draw {
-        player_id: PlayerId,
-        count: u8,
-    },
+    Draw { player_id: PlayerId, count: u8 },
     StartTurn,
+    Action(ActionStep),
+    Effect(NextEffect),
+    DeathPass,
+    DecideOutcome,
+}
+
+/// The steps an action takes.
+pub(super) enum ActionStep {
     EndTurn,
     Play(WasPlayable),
     Summon {
@@ -74,20 +79,17 @@ enum Step {
     },
     Cancel(WasAwaitingTargeting),
     Pick(WasAwaitingPicking),
-    Effect(NextEffect),
-    DeathPass,
-    DecideOutcome,
 }
 
 impl Game {
-    /// Seeds the `Rng`, shuffles both decks, deals 3 cards each and starts player 0's turn.
+    /// Seeds the `Rng`, shuffles both decks, draws 3 cards each and starts player 0's turn.
     pub fn new(seed: u64, decks: [Vec<DefId>; 2]) -> Self {
-        Self::setup(seed, decks, true)
+        setup::set_up(seed, decks, true)
     }
 
     /// Like `new`, but keeps each deck in the given order, index 0 on top.
     pub fn with_deck_order(seed: u64, decks: [Vec<DefId>; 2]) -> Self {
-        Self::setup(seed, decks, false)
+        setup::set_up(seed, decks, false)
     }
 
     /// `Ok` if and only if `action` is in `legal_actions(player_id)`.
@@ -103,8 +105,8 @@ impl Game {
                 player_id, action,
             )));
         };
-        self.apply_action(legal_action, obs);
-        self.drain_effect_queue(obs);
+        action_steps::take_action(Acting { game: self, obs }, legal_action);
+        resolution_loop::resolve_effect_stack(Resolving { game: self, obs });
         Ok(())
     }
 
@@ -188,70 +190,6 @@ impl Game {
         self.players.iter().map(Player::id).collect()
     }
 
-    fn setup(seed: u64, decks: [Vec<DefId>; 2], shuffle: bool) -> Self {
-        let rng = Rng::new(seed);
-
-        let binder = Binder::built_in();
-
-        let mut objects = ObjectBag::default();
-
-        let players = Players::new(decks.len());
-        let player_ids = players.iter().map(Player::id).collect::<Vec<_>>();
-        let heroes = player_ids
-            .iter()
-            .map(|&player_id| objects.insert(HERO, player_id))
-            .collect::<Vec<_>>();
-        let decks = player_ids
-            .iter()
-            .zip(decks)
-            .map(|(&player_id, deck_defs)| {
-                deck_defs
-                    .into_iter()
-                    .map(|def_id| objects.insert(def_id, player_id))
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
-        let zones = Zones::new(heroes.into_iter().zip(decks));
-        let turn_order = TurnOrder::new(player_ids.clone());
-        let history = History::default();
-
-        let mut game = Self {
-            rng,
-            turn_order,
-            players,
-            zones,
-            player_input: Default::default(),
-            objects,
-            binder,
-            history,
-            #[expect(
-                clippy::disallowed_methods,
-                reason = "the one start of the standings, as the game is set up"
-            )]
-            standings: Standings::new(player_ids.clone()),
-            effect_stack: Default::default(),
-        };
-
-        if shuffle {
-            for &player_id in &player_ids {
-                game.zones.shuffle_deck(player_id, &mut game.rng);
-            }
-        }
-
-        for player_id in player_ids {
-            game.run(
-                Step::Draw {
-                    player_id,
-                    count: 3,
-                },
-                &mut (),
-            );
-        }
-
-        game.run(Step::StartTurn, &mut ());
-        game
-    }
-
     /// `None` unless `legal_actions(player_id)` lists `action`.
     fn legal_action(&self, player_id: PlayerId, action: Action) -> Option<LegalAction> {
         self.list_legal_actions(player_id)
@@ -268,92 +206,9 @@ impl Game {
         )
     }
 
-    fn apply_action(&mut self, legal_action: LegalAction, obs: &mut impl Observer) {
-        match legal_action {
-            LegalAction::Play(playable) => {
-                let (player_id, object_id) = (playable.player_id(), playable.object_id());
-                let enters_board = self.cards().card_def(object_id).has_board_presence();
-                self.run(Step::Play(playable), obs);
-                if enters_board {
-                    self.run(
-                        Step::Summon {
-                            player_id,
-                            object_id,
-                        },
-                        obs,
-                    );
-                }
-            }
-            LegalAction::Pick(awaiting_picking) => {
-                self.run(Step::Pick(awaiting_picking), obs);
-            }
-            LegalAction::EndTurn => {
-                self.run(Step::EndTurn, obs);
-            }
-            LegalAction::StartTargeting {
-                object_id,
-                awaiting_nothing,
-            } => {
-                self.run(
-                    Step::StartTargeting {
-                        object_id,
-                        awaiting_nothing,
-                    },
-                    obs,
-                );
-            }
-            LegalAction::Target {
-                awaiting_targeting,
-                target_id,
-                object_id,
-            } => {
-                self.run(
-                    Step::Target {
-                        awaiting_targeting,
-                        target_id,
-                        object_id,
-                    },
-                    obs,
-                );
-            }
-            LegalAction::Cancel(awaiting_targeting) => {
-                self.run(Step::Cancel(awaiting_targeting), obs);
-            }
-        };
-    }
-
-    fn drain_effect_queue(&mut self, obs: &mut impl Observer) {
-        while !self.player_input.any_awaiting() && self.outcome().is_none() {
-            self.continue_resolving_effect(obs);
-
-            if !self.effect_stack.is_resolving() {
-                self.check_state(obs);
-                self.effect_stack.start_next();
-            }
-
-            if self.effect_stack.is_idle() {
-                break;
-            }
-        }
-    }
-
-    fn continue_resolving_effect(&mut self, obs: &mut impl Observer) {
-        while !self.player_input.any_awaiting()
-            && let Some(next) = self.effect_stack.next_effect()
-        {
-            self.run(Step::Effect(next), obs);
-        }
-        self.effect_stack.finish_if_done();
-    }
-
-    fn check_state(&mut self, obs: &mut impl Observer) {
-        while self.run(Step::DeathPass, obs) {}
-        self.run(Step::DecideOutcome, obs);
-    }
-
     /// Makes the step's writes, reports what it did, then lets the observer read the views.
     /// `false`, with no report and no checkpoint, if `write` found no step to take.
-    fn run(&mut self, step: Step, obs: &mut impl Observer) -> bool {
+    fn take_step(&mut self, step: Step, obs: &mut impl Observer) -> bool {
         let Some(reports) = self.write(step) else {
             return false;
         };
@@ -378,13 +233,13 @@ impl Game {
                 &mut self.zones,
                 &mut self.objects,
             ),
-            Step::EndTurn => turn_change::end_turn(
+            Step::Action(ActionStep::EndTurn) => turn_change::end_turn(
                 &mut self.turn_order,
                 &mut self.players,
                 &mut self.zones,
                 &mut self.objects,
             ),
-            Step::Play(playable) => {
+            Step::Action(ActionStep::Play(playable)) => {
                 let prepared = play::prepare(self.cards(), &self.player_input, playable);
                 vec![play::play(
                     prepared,
@@ -394,32 +249,32 @@ impl Game {
                     &mut self.effect_stack,
                 )]
             }
-            Step::Summon {
+            Step::Action(ActionStep::Summon {
                 player_id,
                 object_id,
-            } => vec![zone_move::summon(player_id, object_id, &mut self.zones)],
-            Step::StartTargeting {
+            }) => vec![zone_move::summon(player_id, object_id, &mut self.zones)],
+            Step::Action(ActionStep::StartTargeting {
                 object_id,
                 awaiting_nothing,
-            } => {
+            }) => {
                 self.player_input
                     .start_targeting(awaiting_nothing, object_id);
                 Vec::new()
             }
-            Step::Target {
+            Step::Action(ActionStep::Target {
                 awaiting_targeting,
                 target_id,
                 object_id,
-            } => {
+            }) => {
                 self.player_input
                     .target(awaiting_targeting, object_id, target_id);
                 Vec::new()
             }
-            Step::Cancel(awaiting_targeting) => {
+            Step::Action(ActionStep::Cancel(awaiting_targeting)) => {
                 self.player_input.cancel(awaiting_targeting);
                 Vec::new()
             }
-            Step::Pick(awaiting_picking) => {
+            Step::Action(ActionStep::Pick(awaiting_picking)) => {
                 let (player_id, object_id) = self.player_input.pick(awaiting_picking);
                 vec![Report::Picked {
                     player_id,
@@ -470,5 +325,149 @@ impl Game {
             &self.history,
             &self.turn_order,
         )
+    }
+}
+
+/// The parts of a game being made in setup, before its players take their seats.
+pub(super) struct Seating {
+    rng: Rng,
+    binder: Binder,
+    players: Players,
+    objects: ObjectBag,
+}
+
+impl Seating {
+    pub(super) fn new(seed: u64, binder: Binder, player_count: usize) -> Self {
+        Self {
+            rng: Rng::new(seed),
+            binder,
+            players: Players::new(player_count),
+            objects: ObjectBag::default(),
+        }
+    }
+
+    /// By ID.
+    pub(super) fn player_ids(&self) -> Vec<PlayerId> {
+        self.players.iter().map(Player::id).collect()
+    }
+
+    pub(super) fn make_object(&mut self, def_id: DefId, owner: PlayerId) -> ObjectId {
+        self.objects.insert(def_id, owner)
+    }
+
+    /// Takes one hero and one deck, top first, per player in `PlayerId` order.
+    pub(super) fn seat(
+        self,
+        seat_order: Vec<PlayerId>,
+        heroes_and_decks: impl IntoIterator<Item = (ObjectId, Vec<ObjectId>)>,
+    ) -> SettingUp {
+        let Self {
+            rng,
+            binder,
+            players,
+            objects,
+        } = self;
+        SettingUp {
+            game: Game {
+                rng,
+                turn_order: TurnOrder::new(seat_order.clone()),
+                players,
+                zones: Zones::new(heroes_and_decks),
+                player_input: Default::default(),
+                objects,
+                binder,
+                history: History::default(),
+                #[expect(
+                    clippy::disallowed_methods,
+                    reason = "the one start of the standings, as the game is set up"
+                )]
+                standings: Standings::new(seat_order),
+                effect_stack: Default::default(),
+            },
+        }
+    }
+}
+
+/// A game in setup, from its players taking their seats until its first turn starts.
+pub(super) struct SettingUp {
+    game: Game,
+}
+
+impl SettingUp {
+    pub(super) fn shuffle_deck(&mut self, player_id: PlayerId) {
+        self.game.zones.shuffle_deck(player_id, &mut self.game.rng);
+    }
+
+    pub(super) fn draw(&mut self, player_id: PlayerId, count: u8) {
+        self.game
+            .take_step(Step::Draw { player_id, count }, &mut ());
+    }
+
+    pub(super) fn start_first_turn(mut self) -> Game {
+        self.game.take_step(Step::StartTurn, &mut ());
+        self.game
+    }
+}
+
+/// A game lent to the code that runs one action.
+pub(super) struct Acting<'g, O> {
+    game: &'g mut Game,
+    obs: &'g mut O,
+}
+
+impl<O: Observer> Acting<'_, O> {
+    pub(super) fn cards(&self) -> CardsRef<'_> {
+        self.game.cards()
+    }
+
+    pub(super) fn take_step(&mut self, step: ActionStep) {
+        self.game.take_step(Step::Action(step), self.obs);
+    }
+}
+
+/// A game lent to the resolution loop.
+pub(super) struct Resolving<'g, O> {
+    game: &'g mut Game,
+    obs: &'g mut O,
+}
+
+impl<O: Observer> Resolving<'_, O> {
+    pub(super) fn any_awaiting(&self) -> bool {
+        self.game.player_input.any_awaiting()
+    }
+
+    pub(super) fn is_over(&self) -> bool {
+        self.game.outcome().is_some()
+    }
+
+    pub(super) fn is_resolving(&self) -> bool {
+        self.game.effect_stack.is_resolving()
+    }
+
+    pub(super) fn is_idle(&self) -> bool {
+        self.game.effect_stack.is_idle()
+    }
+
+    pub(super) fn start_next(&mut self) {
+        self.game.effect_stack.start_next();
+    }
+
+    /// Takes the resolving effect's next effect as a step. `false`, with no step taken, if it has
+    /// none left.
+    pub(super) fn resolve_next_effect(&mut self) -> bool {
+        let Some(next) = self.game.effect_stack.next_effect() else {
+            return false;
+        };
+        self.game.take_step(Step::Effect(next), self.obs);
+        true
+    }
+
+    pub(super) fn finish_if_done(&mut self) {
+        self.game.effect_stack.finish_if_done();
+    }
+
+    pub(super) fn check_state(&mut self) {
+        while self.game.take_step(Step::DeathPass, self.obs) {}
+        self.game.take_step(Step::DecideOutcome, self.obs);
     }
 }
