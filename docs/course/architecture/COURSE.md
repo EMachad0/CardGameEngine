@@ -458,8 +458,10 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
    research first (`research/trait-impl-placement/`), then ruled that a trait `impl` goes with its
    type, with the item the type's module can't name, or with the trait for another crate's type.
    `impl Default for CardDef` moved from the card set to `definition.rs`. `testing.md` leaves the
-   place of `use super::*;` to rustfmt, which settles that gap of ticket 12's too. The prelude
-   sentence `unreachable_pub` doesn't back went to an issue.
+   place of `use super::*;` to rustfmt, which settles that gap of ticket 12's too. PR #70 fixes
+   the prelude sentence `unreachable_pub` doesn't back, at his call: `unnameable_types` is on,
+   and `CardDef` stays public for the shell's own definitions, so the prelude lists the card text
+   it reaches.
    Unused material: `research/02b-pass-and-coordinator/scope.md` (Forge and XMage, the Process
    Manager). Session 02g, its own node: parse, don't validate (Alexis King,
    2019). A check's result carried forward as a type, not an assumption; who can build the proof,
@@ -536,6 +538,8 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   21. `ResolvingEffect`'s cursor is `pub`; its caller clones, then advances (roadmap 06b). The
       stack owner's `next_effect` reads and advances in one command (02c).
   22. `CardDef`, the loader and its errors are re-exported, unused outside the crate (low).
+      Settled in PR #70: `CardDef` stays public for the shell's own definitions, and the prelude
+      lists the card text it reaches. The loader and its errors are no longer re-exported.
   23. Placeholder rule split between `definition` and `loader`, which import each other (low).
   24. `enqueue_triggers` and `apply_action` can be private: each has one caller, in its own file.
   25. The pass: "if the pass runs, no resolving effect is part-way through". It also runs after an
@@ -673,7 +677,7 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   session 02f.
 - `Binder::get` kept handing out `&CardDef` in #15, my call when he left the tickets to me: every
   interpreter reads card text as data (ADR 0004), and accessors would mirror the fields. Revisit
-  if he disagrees, at the latest in session 04 with finding 22.
+  if he disagrees, at the latest in session 04.
 - Exhaustive destructuring (a struct pattern with no `..`) for functions that must visit every
   field: #14's walk in `cards/sequences.rs` uses it, per his 01a verdict. Adding it to the Rust
   list is still his decision. The enforcing clippy lint is nightly only. See
