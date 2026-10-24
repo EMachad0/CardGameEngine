@@ -4,7 +4,7 @@ use crate::cards::binder::store::Binder;
 use crate::cards::object::ObjectBag;
 use crate::game::player::{Player, Players};
 use crate::game::resolve::aftermath::standings::Standings;
-use crate::game::state::{Game, Opening};
+use crate::game::state::{Game, SettingUp};
 use crate::rng::Rng;
 use crate::turn::TurnOrder;
 use crate::zones::Zones;
@@ -46,13 +46,11 @@ pub(super) fn set_up(seed: u64, decks: [Vec<DefId>; 2], shuffle: bool) -> Game {
         }
     }
 
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "the one opening of a game, as it is set up"
-    )]
-    let mut opening = Opening::new(rng, turn_order, players, zones, objects, binder, standings);
+    #[expect(clippy::disallowed_methods, reason = "the one start of a game's setup")]
+    let mut setting_up =
+        SettingUp::new(rng, turn_order, players, zones, objects, binder, standings);
     for player_id in player_ids {
-        opening.deal(player_id, 3);
+        setting_up.draw(player_id, 3);
     }
-    opening.start_first_turn()
+    setting_up.start_first_turn()
 }

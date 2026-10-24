@@ -1,7 +1,7 @@
 //! `Game`, the whole state of one game: what callers ask it, and what each step is lent. A step
 //! writes only the parts of the game it is lent and returns what it did, which is reported once the
-//! step ends, before a checkpoint. Code outside this file never holds a `Game` it can write. It is
-//! lent a type that takes only its own steps.
+//! step ends, before a checkpoint. Code outside this file takes a step only through a type this file
+//! lends it.
 
 use crate::action::{Action, IllegalAction};
 use crate::cards::binder::def_id::DefId;
@@ -328,12 +328,12 @@ impl Game {
     }
 }
 
-/// A game being set up, until its first turn starts.
-pub(super) struct Opening {
+/// A game in setup, until its first turn starts.
+pub(super) struct SettingUp {
     game: Game,
 }
 
-impl Opening {
+impl SettingUp {
     pub(super) fn new(
         rng: Rng,
         turn_order: TurnOrder,
@@ -359,7 +359,7 @@ impl Opening {
         }
     }
 
-    pub(super) fn deal(&mut self, player_id: PlayerId, count: u8) {
+    pub(super) fn draw(&mut self, player_id: PlayerId, count: u8) {
         self.game
             .take_step(Step::Draw { player_id, count }, &mut ());
     }

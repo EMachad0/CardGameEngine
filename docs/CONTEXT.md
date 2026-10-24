@@ -135,6 +135,9 @@ _Avoid_: discard pile, cemetery
 
 ### Turns
 
+**Setup**:
+The part of a game before its first turn, which readies each player's deck and hand.
+
 **Turn**:
 A stretch of the game in which the active player acts.
 
