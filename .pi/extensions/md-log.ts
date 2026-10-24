@@ -9,7 +9,7 @@
  * Captures only reading-relevant content:
  *   - user prompts
  *   - assistant text (lesson prose)
- *   - quiz / ask_user_question Q&A blocks
+ *   - quiz / ask_user_question Q&A blocks, with a question's intro logged as assistant text
  * Other tools (bash, read, write, edit, ...) are omitted.
  *
  * Quiz/ask questions are written BEFORE the user answers (on tool_call), so the
@@ -142,6 +142,16 @@ export default function mdLog(pi: ExtensionAPI) {
 		return callout("question", label, body);
 	}
 
+	function questionBlocks(label: string, args: any, options: Array<{ label: string }>): string[] {
+		const intro: string | undefined = args.intro?.trim() || undefined;
+		const question = questionCallout(label, args.question || "", args.details?.trim() || undefined, options);
+		return intro ? [assistantBlock(intro), question] : [question];
+	}
+
+	function appendAll(blocks: string[]): void {
+		for (const block of blocks) appendToFile(block);
+	}
+
 	function answerCalloutQuiz(details: any): string {
 		const status = details?.status;
 		if (status === "cancelled") {
@@ -247,11 +257,9 @@ export default function mdLog(pi: ExtensionAPI) {
 		const toolName = (event as any).toolName;
 		if (toolName !== "ask_user_question") return;
 		const input = (event as any).input || {};
-		const question: string = input.question || "";
-		const context: string | undefined = input.details?.trim() || undefined;
 		const options: Array<{ label: string }> = Array.isArray(input.options) ? input.options : [];
-		const block = questionCallout("Question", question, context, options);
-		await withLock(() => appendToFile(block));
+		const blocks = questionBlocks("Question", input, options);
+		await withLock(() => appendAll(blocks));
 	});
 
 	// quiz DOES shuffle its options inside execute(), so the tool_call args are
@@ -271,11 +279,9 @@ export default function mdLog(pi: ExtensionAPI) {
 		if (!shuffled || shuffled.length === 0) return;
 		loggedQuizQuestion.add(toolCallId);
 		const input = (event as any).args || {};
-		const question: string = input.question || "";
-		const context: string | undefined = input.details?.trim() || undefined;
 		const options = shuffled.map((o) => ({ label: o.label }));
-		const block = questionCallout("Quiz", question, context, options);
-		await withLock(() => appendToFile(block));
+		const blocks = questionBlocks("Quiz", input, options);
+		await withLock(() => appendAll(blocks));
 	});
 
 	pi.on("tool_result", async (event, _ctx) => {
@@ -435,7 +441,7 @@ export default function mdLog(pi: ExtensionAPI) {
 					const options = shuffled && shuffled.length > 0
 						? shuffled.map((o) => ({ label: o.label }))
 						: (Array.isArray(a.options) ? a.options : []);
-					blocks.push(questionCallout(label, a.question || "", a.details?.trim() || undefined, options));
+					blocks.push(...questionBlocks(label, a, options));
 				}
 				if (msg.toolName === "quiz") {
 					blocks.push(answerCalloutQuiz(msg.details));

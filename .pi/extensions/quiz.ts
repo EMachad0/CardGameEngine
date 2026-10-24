@@ -90,6 +90,12 @@ const OptionSchema = Type.Object({
 });
 
 const QuizParams = Type.Object({
+	intro: Type.Optional(
+		Type.String({
+			description:
+				"Optional text shown above the question, in the popup and in the transcript. The popup hides reply text written before it, so what you would say before asking goes here, such as feedback on the last answer or why you ask this question.",
+		}),
+	),
 	question: Type.String({
 		description: "The single quiz question to ask. Ask exactly one question per tool call.",
 	}),
@@ -381,9 +387,20 @@ function renderFeedback(
 	add(theme.fg("dim", " Enter/Esc to continue"));
 }
 
-// Top border + question + optional context. Shared by both components.
-function pushHeader(lines: string[], theme: any, width: number, question: string, context: string | undefined): void {
+// Top border, intro, question and context. Shared by both components.
+function pushHeader(
+	lines: string[],
+	theme: any,
+	width: number,
+	intro: string | undefined,
+	question: string,
+	context: string | undefined,
+): void {
 	lines.push(truncateToWidth(theme.fg("accent", "─".repeat(width)), width));
+	if (intro) {
+		addWrapped(lines, theme.fg("text", intro), width, " ");
+		lines.push("");
+	}
 	addWrapped(lines, theme.fg("text", question), width, " ");
 	if (context) {
 		lines.push("");
@@ -424,6 +441,7 @@ function makeNoteEditor(tui: any, theme: any): Editor {
 
 async function askSingleChoice(
 	ctx: any,
+	intro: string | undefined,
 	question: string,
 	context: string | undefined,
 	options: QuizOption[],
@@ -538,7 +556,7 @@ async function askSingleChoice(
 
 				const lines: string[] = [];
 				const add = (text: string) => lines.push(truncateToWidth(text, width));
-				pushHeader(lines, theme, width, question, context);
+				pushHeader(lines, theme, width, intro, question, context);
 
 				if (phase === "feedback") {
 					renderFeedback(
@@ -604,6 +622,7 @@ async function askSingleChoice(
 
 async function askMultiChoice(
 	ctx: any,
+	intro: string | undefined,
 	question: string,
 	context: string | undefined,
 	options: QuizOption[],
@@ -760,7 +779,7 @@ async function askMultiChoice(
 
 				const lines: string[] = [];
 				const add = (text: string) => lines.push(truncateToWidth(text, width));
-				pushHeader(lines, theme, width, question, context);
+				pushHeader(lines, theme, width, intro, question, context);
 
 				if (phase === "feedback") {
 					renderFeedback(
@@ -905,6 +924,7 @@ export default function quiz(pi: ExtensionAPI) {
 		parameters: QuizParams,
 
 		async execute(_toolCallId, params, signal, onUpdate, ctx) {
+			const intro = params.intro?.trim() || undefined;
 			const context = params.details?.trim() || undefined;
 			const explanation = params.explanation.trim();
 			const mode: QuizMode = params.multiSelect ? "multi-select" : "single-select";
@@ -963,8 +983,8 @@ export default function quiz(pi: ExtensionAPI) {
 			return withUILock(async () => {
 				const response =
 					mode === "single-select"
-						? await askSingleChoice(ctx, params.question, context, options, correctIndices, explanation)
-						: await askMultiChoice(ctx, params.question, context, options, correctIndices, explanation);
+						? await askSingleChoice(ctx, intro, params.question, context, options, correctIndices, explanation)
+						: await askMultiChoice(ctx, intro, params.question, context, options, correctIndices, explanation);
 				if (!response) {
 					return cancelledResult(params.question, mode, correctIndices, context);
 				}
@@ -982,7 +1002,9 @@ export default function quiz(pi: ExtensionAPI) {
 			const options = normalizeOptions(
 				args.options as Array<{ label: string; value?: string; description?: string }> | undefined,
 			);
-			let text = theme.fg("toolTitle", theme.bold("quiz ")) + theme.fg("muted", args.question);
+			const intro = (args.intro as string | undefined)?.trim();
+			let text = intro ? `${theme.fg("text", intro)}\n\n` : "";
+			text += theme.fg("toolTitle", theme.bold("quiz ")) + theme.fg("muted", args.question);
 			if (args.multiSelect) {
 				text += theme.fg("dim", " [multi-select]");
 			}

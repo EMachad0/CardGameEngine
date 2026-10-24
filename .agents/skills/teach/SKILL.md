@@ -85,16 +85,27 @@ If, reading the finished set cold, you can still tell which is right without kno
 
 You can't teach into his zone of proximal development without knowing where its edges are, and you can't aim the teaching without knowing what he's actually reaching for. Two separate unknowns, two separate tools — keep the boundary clean:
 
-**1a. His current level — use `quiz`. This is a mapping job, not a spot-check.** Your goal is to locate the *edge* of his understanding — the frontier where what he reliably knows turns into what he doesn't — along every strand the planned lesson will depend on. Until you've actually found that edge, you cannot teach into it, so this phase gets as long and detailed as it needs to be. There is no rush.
+**1a. His current level: use `quiz`.** You're looking for the *edge* of his understanding, where what he knows turns into what he doesn't. Find it on each strand the lesson depends on, and skip the rest. You can't teach into an edge you haven't found.
 
-**The edge is only located when it's bracketed.** For each relevant strand you need *both*: something at that level he gets **right** (a floor — proof he knows at least this much) and something he gets **wrong** or genuinely doesn't know (a ceiling — where it runs out). The edge sits between them. One side alone tells you almost nothing.
+**Start from the knowledge map.** The course's `COURSE.md` records what he holds and misses, with evidence. Probe only what it doesn't already settle. A strand with a recorded floor needs only questions above it, and a strand with both sides recorded needs none.
 
-- **All-correct is not "done" — it means the questions were too easy.** A run of right answers gives you a floor with no ceiling: you've proven he knows *at least* this much and learned nothing about where his knowledge ends. Do not advance. Escalate — go harder until something finally breaks. If he never misses, you never found the edge.
-- **Binary-search the edge.** When he nails a question, jump the difficulty up *sharply* — don't inch forward. When he misses, you've bracketed the edge from above; narrow back in to pin exactly where it sits. This finds the frontier fast, without a hundred timid questions.
-- **One wrong answer is not "done" either — and it is *not* a cue to start teaching.** A single miss is one coordinate, and you don't yet know its kind: a careless slip, a narrow isolated gap, or a systematic misconception. Probe *around* it to characterize it before concluding anything. Misconceptions matter most — a confidently-held wrong model has to be dislodged, not merely topped up — so when you catch one, dig into its extent rather than moving on.
-- **Map every strand the lesson rests on.** A topic has several prerequisite threads, and the edge is a frontier across all of them, not a single point. Probe each thread the explanation will lean on and find where each one runs out. Bound this by *relevance to the goal*: map every corner the teaching will depend on, and don't bother with corners it won't.
+**Bracket the edge.** For each strand you need a floor and a ceiling. The floor is a question he gets right, the ceiling one he gets wrong or doesn't know. The edge sits between them, and one side alone tells you almost nothing. After a right answer, jump to a much harder concept. After a miss, narrow back in only if the edge's exact place changes the plan.
 
-Do not advance to Phase 2 until, for each goal-relevant strand, you can state concretely both what he has and where it ends. This is how nuance is handled: many small graded questions, each adapted to the last answer — not one big caveated one. Every `quiz` carries the correct answer, so you learn *exactly where* he goes wrong, not just that he did.
+**Harder means a deeper concept, never more steps.** A probe question tests one idea, and he can answer it from that idea in about a minute. Escalate by moving to a subtler distinction or a concept further from the floor, never by adding state to track or conditions to hold in mind. A many-step question measures patience and working memory, and a miss on it can't tell a slip from a gap. So a probe question never:
+
+- asks him to simulate code, whether real or written into the question
+- builds on an earlier question's hypothetical, as in "same fix as before"
+- asks what today's code does. If the lesson needs that fact, show it to him.
+
+Traces belong in Phase 3.
+
+**Say why you ask.** Each probe's `intro` names the strand it checks and what the answer changes in the plan. He should never have to guess why you asked.
+
+**Read his note before probing around a miss.** A miss may be a slip, a narrow gap or a misconception, and his note usually says which. Ask a follow-up only when the note doesn't settle it and the answer changes the plan. A misconception is worth the follow-up, since a wrong model he trusts has to be replaced before anything builds on it.
+
+The retrieval quiz a course opens with follows the same question rules.
+
+Do not advance to Phase 2 until, for each goal-relevant strand, you can say what he has and where it ends.
 
 **1b. His learning goal — use `ask_user_question`.** Find out what he actually wants taught. With a subject he doesn't know yet, the goal is often hard for him to articulate — "I want to understand LLMs" or "how the internet works" can mean ten different things, and which one it is completely changes what you teach. Interrogate the vision until it's concrete. This has no right answer, so it's `ask_user_question`, never `quiz`.
 
@@ -136,9 +147,11 @@ Repeat this full loop per node — don't front-load all the foundations once at 
 
 If you catch yourself asserting a fact he'd have to take on faith — foundational or not — stop: either motivate it and confirm it lands, or ground it in something already established. Unmotivated, unconfirmed facts don't lock in — that's the whole point.
 
+**Traces.** A trace walks a concrete case through code step by step, often a failing one. It's a teaching tool, for motivating a node or fixing a miss. Say what it's for before he starts. When the trace is a `quiz`, that goes in the `intro`.
+
 ## Working with him
 
-- The quiz and `ask_user_question` popups hide the prose above them. Put any code a question depends on into the question or its `details`. When he asks something, answer in plain text and open no popup in the same turn, or put everything he needs into the popup's `details`. He reads a popup over prose he can't see as you ignoring his question.
+- The quiz and `ask_user_question` popups hide the reply text above them, so a turn that ends in a popup writes no reply text. What you'd say before asking goes in the popup's `intro`, such as feedback on his last answer, why you ask this, or a short answer to what he asked. The code or card text the question needs goes in `details`. A long answer to his question gets its own turn with no popup. He reads a popup over text he can't see as you ignoring his question.
 - He answers multi-part decisions well in plain text ("1a 2b ...") and pushes back on options that don't generalize. Show the multi-pick or N-player case early.
 - Argue specifics with him, and concede when he's right.
 - For a comparison across engines, run one `researcher` per engine.

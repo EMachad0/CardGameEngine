@@ -69,6 +69,12 @@ const OptionSchema = Type.Object({
 });
 
 const AskUserQuestionParams = Type.Object({
+	intro: Type.Optional(
+		Type.String({
+			description:
+				"Optional text shown above the question, in the popup and in the transcript. The popup hides reply text written before it, so what you would say before asking goes here, such as an answer to the user's last message or the context for this question.",
+		}),
+	),
 	question: Type.String({
 		description: "The single question to ask the user. Ask exactly one question per tool call.",
 	}),
@@ -121,6 +127,27 @@ function addWrapped(lines: string[], text: string, width: number, indent = ""): 
 	const contentWidth = Math.max(1, width - indent.length);
 	for (const line of wrapTextWithAnsi(text, contentWidth)) {
 		lines.push(truncateToWidth(`${indent}${line}`, width));
+	}
+}
+
+// Top border, intro, question and context. Shared by both components.
+function pushHeader(
+	lines: string[],
+	theme: any,
+	width: number,
+	intro: string | undefined,
+	question: string,
+	context: string | undefined,
+): void {
+	lines.push(truncateToWidth(theme.fg("accent", "─".repeat(width)), width));
+	if (intro) {
+		addWrapped(lines, theme.fg("text", intro), width, " ");
+		lines.push("");
+	}
+	addWrapped(lines, theme.fg("text", question), width, " ");
+	if (context) {
+		lines.push("");
+		addWrapped(lines, theme.fg("muted", context), width, " ");
 	}
 }
 
@@ -210,6 +237,7 @@ function buildResult(question: string, context: string | undefined, mode: AskUse
 
 async function askSingleChoice(
 	ctx: any,
+	intro: string | undefined,
 	question: string,
 	context: string | undefined,
 	options: AskOption[],
@@ -292,12 +320,7 @@ async function askSingleChoice(
 			const lines: string[] = [];
 			const add = (text: string) => lines.push(truncateToWidth(text, width));
 
-			add(theme.fg("accent", "─".repeat(width)));
-			addWrapped(lines, theme.fg("text", ` ${question}`), width);
-			if (context) {
-				lines.push("");
-				addWrapped(lines, theme.fg("muted", ` ${context}`), width);
-			}
+			pushHeader(lines, theme, width, intro, question, context);
 			lines.push("");
 
 			for (let i = 0; i < allOptions.length; i++) {
@@ -343,6 +366,7 @@ async function askSingleChoice(
 
 async function askMultiChoice(
 	ctx: any,
+	intro: string | undefined,
 	question: string,
 	context: string | undefined,
 	options: AskOption[],
@@ -469,12 +493,7 @@ async function askMultiChoice(
 			const lines: string[] = [];
 			const add = (text: string) => lines.push(truncateToWidth(text, width));
 
-			add(theme.fg("accent", "─".repeat(width)));
-			addWrapped(lines, theme.fg("text", ` ${question}`), width);
-			if (context) {
-				lines.push("");
-				addWrapped(lines, theme.fg("muted", ` ${context}`), width);
-			}
+			pushHeader(lines, theme, width, intro, question, context);
 			lines.push("");
 
 			for (let i = 0; i < allItems.length; i++) {
@@ -594,6 +613,7 @@ export default function askUserQuestion(pi: ExtensionAPI) {
 
 		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
 			const options = normalizeOptions(params.options);
+			const intro = params.intro?.trim() || undefined;
 			const context = params.details?.trim() || undefined;
 			const mode: AskUserQuestionMode = options.length === 0 ? "text" : params.multiSelect ? "multi-select" : "single-select";
 
@@ -607,7 +627,7 @@ export default function askUserQuestion(pi: ExtensionAPI) {
 
 			return withUILock(async () => {
 				if (mode === "text") {
-					const editorTitle = context ? `${params.question}\n\n${context}` : params.question;
+					const editorTitle = [intro, params.question, context].filter(Boolean).join("\n\n");
 					const answer = await ctx.ui.editor(editorTitle);
 					if (answer === undefined) {
 						return cancelledResult(params.question, mode, context);
@@ -618,14 +638,14 @@ export default function askUserQuestion(pi: ExtensionAPI) {
 				}
 
 				if (mode === "single-select") {
-					const answer = await askSingleChoice(ctx, params.question, context, options);
+					const answer = await askSingleChoice(ctx, intro, params.question, context, options);
 					if (!answer) {
 						return cancelledResult(params.question, mode, context);
 					}
 					return buildResult(params.question, context, mode, [answer]);
 				}
 
-				const answers = await askMultiChoice(ctx, params.question, context, options);
+				const answers = await askMultiChoice(ctx, intro, params.question, context, options);
 				if (!answers) {
 					return cancelledResult(params.question, mode, context);
 				}
@@ -635,7 +655,9 @@ export default function askUserQuestion(pi: ExtensionAPI) {
 
 		renderCall(args, theme) {
 			const options = normalizeOptions(args.options as Array<{ label: string; value?: string; description?: string }> | undefined);
-			let text = theme.fg("toolTitle", theme.bold("ask_user_question ")) + theme.fg("muted", args.question);
+			const intro = (args.intro as string | undefined)?.trim();
+			let text = intro ? `${theme.fg("text", intro)}\n\n` : "";
+			text += theme.fg("toolTitle", theme.bold("ask_user_question ")) + theme.fg("muted", args.question);
 			if (args.multiSelect) {
 				text += theme.fg("dim", " [multi-select]");
 			}
