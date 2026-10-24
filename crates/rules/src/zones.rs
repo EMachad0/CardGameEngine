@@ -399,13 +399,12 @@ impl Zones {
             .expect(STAYS_IN_HAND)
     }
 
-    /// Takes a card off the board into no zone. `None` if it isn't there.
-    pub(crate) fn leave_board(
-        &mut self,
-        player_id: PlayerId,
-        object_id: ObjectId,
-    ) -> Option<ObjectId> {
-        self.player_mut(player_id).board.remove(object_id)
+    /// Takes a minion off the board into no zone. Panics if it isn't there.
+    pub(crate) fn leave_board(&mut self, player_id: PlayerId, object_id: ObjectId) {
+        self.player_mut(player_id)
+            .board
+            .remove(object_id)
+            .expect("a minion found on a board should stay there until removed");
     }
 
     /// Puts a card that is in no zone at the end of the hand.
@@ -788,6 +787,34 @@ mod tests {
         let boards = zones.boards().collect::<Vec<_>>();
 
         assert_eq!(boards, [(player, &[a, b][..]), (other, &[c][..])]);
+    }
+
+    #[test]
+    #[expect(clippy::disallowed_methods, reason = "tests leaving the board itself")]
+    fn a_minion_leaves_its_board_for_no_zone() {
+        let (mut zones, [a, b, c, d]) = c_then_a_played();
+        let player = PlayerId::new(0);
+
+        zones.leave_board(player, c);
+
+        assert_eq!(zones.board(player), [a]);
+        zones.add_to_hand(player, c);
+        assert_eq!(
+            zones.hand(player),
+            [b, d, c],
+            "a minion in no zone must be free to enter a hand",
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "a minion found on a board should stay there until removed")]
+    #[expect(clippy::disallowed_methods, reason = "tests leaving the board itself")]
+    fn a_minion_cannot_leave_a_board_it_already_left() {
+        let (mut zones, [_, _, c, _]) = c_then_a_played();
+        let player = PlayerId::new(0);
+        zones.leave_board(player, c);
+
+        zones.leave_board(player, c);
     }
 
     #[test]
