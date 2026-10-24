@@ -189,6 +189,13 @@ _Avoid_: ability, entry
 The part of an effect that says what it acts on.
 _Avoid_: targeteer
 
+**Subject**:
+Whether an effect acts on players, characters or cards.
+
+**Verb**:
+One thing an effect does to what its selector selects, such as dealing damage or drawing.
+_Avoid_: action
+
 **Restore**:
 Giving back health that has been lost.
 _Avoid_: heal
@@ -300,6 +307,9 @@ The part of a card that can be hidden from a player: its definition and cost.
   action, and the game reports events while it resolves.
 - **Target** and **Pick**: a player targets while playing a card, before it resolves, and picks
   while it resolves. Where the options are, in play or elsewhere, doesn't tell them apart.
+- **Subject** and a trigger's subject: an effect's subject is whether it acts on players,
+  characters or cards. In the code, a trigger's subject is the character whose death or damage it
+  reacts to.
 - **Pending effect** and **Resolving effect**: a pending effect waits on the effect stack. The
   resolving effect has been taken off it and is being carried out, one effect at a time.
 - **Checkpoint** and **State check**: a checkpoint lets observers read views and changes nothing. A

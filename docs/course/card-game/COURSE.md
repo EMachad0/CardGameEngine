@@ -154,6 +154,7 @@ Understand card game systems well enough to design MTG, Hearthstone, or Yu-Gi-Oh
 - Random with no candidates: Stray Shot stays playable into an empty board and does nothing (Bomb Lobber), his 04b call "at least for now". `can_finish_targeting` reads only declared targets. The alternative is Deadly Shot's `REQ_MINIMUM_ENEMY_MINIONS`, a play condition that no target implies.
 - Hearthstone's random damage skips minions already at 0 health (the Advanced rulebook's "mortally wounded"). Our filters read the board, so a random pick after an earlier hit in the same card can land on a minion at 0. No card does that yet.
 - An empty filter (`EnumSet::empty()`) matches nothing, and he chose no load check. Revisit with session H's validation.
+- A choice no verb uses: a `Targeted` selector with no verbs makes the player target for nothing. Ticket 06 of `docs/issues/picks-as-choices/`, designed in session 04g before ticket 03.
 - Enter effects: `on_board_enter` is gone since 05, so "when this enters" is a trigger pattern that doesn't exist yet. Add it with the first card that needs it. Since 06 a minion enters before its play effects run, and `play`'s push order would resolve an entry reaction before the play reactions and the body, unlike Hearthstone's After Summon phase. Decide with that card.
 - `mana_cost` sums discounts with `.sum::<u8>()`, which panics in debug past 255 (unreachable).
 - A targeted object that stops matching during resolution: no verb can cause it yet (filters read kind and side, and deaths wait for the state check). When bounce, control change or a filter on damage arrives, apply MTG 608.2b: skip an illegal target, and if every target is illegal the card does nothing.
@@ -279,7 +280,8 @@ graph TD
 | 04d | E | Target declarations redesigned on PR #62's typed card text | done (concept only; ADR 0017 supersedes 0010; design posted on PR #62; deferred choice work in the open threads; MTG 602.2b and 603.3d verified) |
 | 04e | E | Picks as choices, design part 1: subjects, verbs on one selection, the choice and its timing | done (concept only; N1 to N3; glossary Choice, Target, Pick; four research reports; MTG 601.2a and 115.5 verified) |
 | 04f | E, G | Picks as choices, design part 2: the pick flow, the cards not picked, leave room, names, build plan and ADR | done (concept only; N4 to N7; ADRs 0019 and 0020; glossary Card and Modify, "card" in play reworded; tickets in `docs/issues/picks-as-choices/`; two research reports) |
-| 06b | G | Named results, the first nesting effect (`If`) and frames | next. ADR 0020 replaced its reveal half. |
+| 04g | E | A choice no verb uses: ticket 06 of picks-as-choices, from PR #74's doc gaps | next, before ticket 03 |
+| 06b | G | Named results, the first nesting effect (`If`) and frames | ADR 0020 replaced its reveal half. |
 | 06c | G | Choices inside triggers and remembered choices | |
 | 06d | G | Simultaneous picks | |
 | 07 | R5, T | Scenario DSL, replays, determinism trap, invariant fuzzing | Its retrieval quiz covers 06 (where pauses happen, the two units of time, the derived decider). |
