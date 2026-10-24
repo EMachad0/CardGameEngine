@@ -13,8 +13,7 @@ use crate::ids::PlayerId;
 use crate::rng::Rng;
 use crate::zones::Zones;
 
-/// An effect read before anything is written: its amounts counted, what it acts on listed, and the
-/// picks it moves found. Nothing has drawn from the stream yet.
+/// An effect with its amounts counted and what it may act on listed, both before its first write.
 pub(in crate::game) struct PreparedEffect(Prepared);
 
 enum Prepared {
