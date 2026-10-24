@@ -22,15 +22,14 @@ When the effort finishes:
 |---|---|---|---|
 | 01 | `issues/01-target-form-and-choice.md` | An agent | |
 | 02 | `issues/02-subjects-and-verb-lists.md` | An agent | 01 |
-| 03 | `issues/03-card-subject-and-card-targets.md` | The learner, with an agent | 02, session 04g |
+| 03 | `issues/03-card-subject-and-card-targets.md` | The learner, with an agent | 02 |
 | 04 | `issues/04-card-picks.md` | The learner, with an agent | 03 |
 | 05 | `issues/05-character-picks.md` | The learner, with an agent | 04 |
-| 06 | `issues/06-a-choice-no-verb-uses.md` | Decided in session 04g | 02, session 04g |
 
 ## Before any code
 
 Read in full: `AGENTS.md`, `docs/conventions/file-structure.md`, `docs/conventions/testing.md`,
-`docs/CONTEXT.md`, ADRs 0015, 0017, 0018, 0019 and 0020, this spec and your ticket.
+`docs/CONTEXT.md`, ADRs 0015, 0017, 0018, 0019, 0020 and 0021, this spec and your ticket.
 
 ## Roles
 

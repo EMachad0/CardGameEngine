@@ -3,7 +3,7 @@
 Status: ready-for-human
 Category: enhancement
 Type: task
-Blocked by: 02, and card-game session 04g
+Blocked by: 02
 
 ## Why
 
