@@ -8,12 +8,13 @@ use crate::cards::definition::{
 };
 use crate::cards::filter::{CardFilter, CharacterFilter, Side};
 use crate::cards::modifier::ModifierEffect;
-use crate::choice::{AmountBound, CardTargetOptions, CardTargetZone, Choice};
+use crate::choice::{AmountBound, Choice};
 use crate::effect::{
     CardDestinationZone, CardVerb, CharacterVerb, Effect, EffectAmount, PickId, PlayerVerb,
     ZoneMove,
 };
 use crate::history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter};
+use crate::target::{CardTargetOptions, CardTargetZone};
 use crate::trigger::{TriggerPattern, TriggerSubject};
 
 macro_rules! def_ids {

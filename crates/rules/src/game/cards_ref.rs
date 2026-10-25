@@ -1,14 +1,13 @@
-//! The cards of one game, borrowed together for the questions asked about them: what each object
-//! is, and which characters pass a filter.
+//! The cards of one game, borrowed together for the questions asked about them.
 
 use crate::cards::binder::def_id::DefId;
 use crate::cards::binder::store::Binder;
 use crate::cards::definition::CardDef;
 use crate::cards::filter::CharacterFilter;
 use crate::cards::object::{ObjectBag, ObjectId};
-use crate::choice::{CardTargetOptions, CardTargetZone};
 use crate::history::History;
 use crate::ids::PlayerId;
+use crate::target::{CardTargetOptions, CardTargetZone};
 use crate::turn::TurnOrder;
 use crate::zones::Zones;
 
@@ -44,6 +43,11 @@ impl<'g> CardsRef<'g> {
 
     pub(super) fn card_def(&self, object_id: ObjectId) -> &'g CardDef {
         self.binder.get(self.def_id(object_id))
+    }
+
+    /// The player who answers the choices in `source`'s text.
+    pub(super) fn chooser(&self, source: ObjectId) -> PlayerId {
+        self.objects.get(source).player_id
     }
 
     pub(super) fn scan_characters_with_filter(

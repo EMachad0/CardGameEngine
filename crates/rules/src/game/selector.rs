@@ -6,11 +6,10 @@ use crate::cards::definition::{
 };
 use crate::cards::filter::fulfill_side_filter;
 use crate::cards::object::ObjectId;
-use crate::choice::CardTargetZone;
 use crate::game::cards_ref::CardsRef;
 use crate::ids::PlayerId;
 use crate::rng::Rng;
-use crate::target::Bound;
+use crate::target::{Bound, CardTargetZone};
 
 pub(super) struct Selection<T>(Values<T>);
 
@@ -74,15 +73,15 @@ pub(super) fn select_characters(
 }
 
 pub(super) fn select_cards(
-    _cards: CardsRef,
-    owner: PlayerId,
-    _source: ObjectId,
+    cards: CardsRef,
+    _owner: PlayerId,
+    source: ObjectId,
     selector: &CardSelector<Bound>,
 ) -> CardSelection {
     match selector {
         CardSelector::Targeted(targeted) => CardSelection {
             from: targeted.zone,
-            chooser: owner,
+            chooser: cards.chooser(source),
             cards: Selection(Values::Each(targeted.object_ids.clone())),
         },
     }

@@ -1,8 +1,8 @@
 use crate::cards::object::{ObjectBag, ObjectId};
-use crate::choice::CardTargetZone;
 use crate::effect::{CardDestinationZone, ZoneMove};
 use crate::game::reporting::Report;
 use crate::ids::PlayerId;
+use crate::target::CardTargetZone;
 use crate::zones::{WasInHand, Zones};
 
 pub(super) fn zone_move(

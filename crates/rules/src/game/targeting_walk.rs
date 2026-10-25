@@ -83,10 +83,10 @@ fn untargeted_matches(
         return Vec::new();
     }
 
-    let owner = cards.objects.get(object_id).player_id;
+    let chooser = cards.chooser(object_id);
     let filtered = match target {
-        TargetChoiceRef::Character(c) => cards.scan_characters_with_filter(owner, &c.options),
-        TargetChoiceRef::Card(c) => cards.scan_cards_with_options(owner, &c.options),
+        TargetChoiceRef::Character(c) => cards.scan_characters_with_filter(chooser, &c.options),
+        TargetChoiceRef::Card(c) => cards.scan_cards_with_options(chooser, &c.options),
     };
     filtered
         .into_iter()

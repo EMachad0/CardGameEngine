@@ -1,8 +1,9 @@
 use std::fmt::Debug;
 
+use crate::cards::definition::CardKind;
 use crate::cards::filter::CharacterFilter;
 use crate::cards::object::ObjectId;
-use crate::choice::{AmountBound, CardTargetOptions, CardTargetZone, Choice};
+use crate::choice::{AmountBound, Choice};
 use crate::effect::EffectAmount;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,6 +28,17 @@ pub(crate) trait MapTargets<S: TargetForm, R: TargetForm> {
 pub(crate) enum TargetChoiceRef<'t, S: TargetForm> {
     Character(&'t S::CharacterTarget),
     Card(&'t S::CardTarget),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CardTargetOptions {
+    pub zone: CardTargetZone,
+    pub kind: enumset::EnumSet<CardKind>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CardTargetZone {
+    Hand,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

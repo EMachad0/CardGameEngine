@@ -10,7 +10,7 @@ pub use crate::cards::definition::{
 pub use crate::cards::filter::{CardFilter, CharacterFilter, Side};
 pub use crate::cards::modifier::ModifierEffect;
 pub use crate::cards::object::ObjectId;
-pub use crate::choice::{AmountBound, CardTargetOptions, CardTargetZone, Choice};
+pub use crate::choice::{AmountBound, Choice};
 pub use crate::effect::{
     CardDestinationZone, CardVerb, CharacterVerb, Effect, EffectAmount, PickId, PlayerVerb,
     ZoneMove,
@@ -25,5 +25,7 @@ pub use crate::ids::PlayerId;
 pub use crate::observer::{Observer, Views};
 pub use crate::outcome::Outcome;
 pub use crate::rng::Rng;
-pub use crate::target::{Declared, NoTarget, TargetForm, TargetId, Triggered};
+pub use crate::target::{
+    CardTargetOptions, CardTargetZone, Declared, NoTarget, TargetForm, TargetId, Triggered,
+};
 pub use crate::trigger::{TriggerPattern, TriggerSubject};

@@ -1,4 +1,3 @@
-use crate::cards::definition::CardKind;
 use crate::effect::EffectAmount;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -30,17 +29,6 @@ pub struct Choice<O> {
     pub count: EffectAmount,
     pub bound: AmountBound,
     pub different: bool,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct CardTargetOptions {
-    pub zone: CardTargetZone,
-    pub kind: enumset::EnumSet<CardKind>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CardTargetZone {
-    Hand,
 }
 
 #[cfg(test)]

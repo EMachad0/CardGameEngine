@@ -324,9 +324,10 @@ mod tests {
     use super::*;
     use crate::cards::binder::sets::base::static_card_definition::SPARK;
     use crate::cards::object::ObjectBag;
-    use crate::choice::{AmountBound, CardTargetOptions, CardTargetZone, Choice};
+    use crate::choice::{AmountBound, Choice};
     use crate::effect::{CardDestinationZone, CardVerb, CharacterVerb, PlayerVerb};
     use crate::ids::PlayerId;
+    use crate::target::{CardTargetOptions, CardTargetZone};
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     struct Holds<T>(PhantomData<T>);
