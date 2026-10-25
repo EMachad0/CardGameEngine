@@ -1,6 +1,6 @@
 # The cards subject, with targets in a hand
 
-Status: ready-for-human
+Status: resolved
 Category: enhancement
 Type: task
 Blocked by: 02
@@ -53,3 +53,7 @@ From ADR 0019, limited to what Recycle reaches:
 ## Done when
 
 The checks pass, and the agent's review against `docs/conventions/file-structure.md` is answered.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/81
