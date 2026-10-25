@@ -1,19 +1,31 @@
 use crate::cards::object::{ObjectBag, ObjectId};
-use crate::effect::{CardDestinationZone, ZoneMove};
+use crate::effect::CardDestinationZone;
 use crate::game::reporting::Report;
 use crate::ids::PlayerId;
+use crate::pick::CardPickZone;
 use crate::target::CardTargetZone;
 use crate::zones::{WasInHand, Zones};
 
-pub(super) fn zone_move(
-    player_id: PlayerId,
-    object_id: ObjectId,
-    zone_move: ZoneMove,
-    zones: &mut Zones,
-) -> Report {
-    match zone_move {
-        ZoneMove::AddToHand => add_to_hand(player_id, object_id, zones),
-        ZoneMove::Bury => bury(player_id, object_id, zones),
+/// Where a card verb finds a card, among its holder's zones.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum CardOriginZone {
+    Hand,
+    Deck,
+}
+
+impl From<CardTargetZone> for CardOriginZone {
+    fn from(zone: CardTargetZone) -> Self {
+        match zone {
+            CardTargetZone::Hand => Self::Hand,
+        }
+    }
+}
+
+impl From<CardPickZone> for CardOriginZone {
+    fn from(zone: CardPickZone) -> Self {
+        match zone {
+            CardPickZone::YourDeck(_) => Self::Deck,
+        }
     }
 }
 
@@ -22,18 +34,25 @@ pub(super) fn zone_move(
 pub(super) fn move_card(
     card: ObjectId,
     holder: PlayerId,
-    from: CardTargetZone,
+    from: CardOriginZone,
     owner: PlayerId,
     to: CardDestinationZone,
     zones: &mut Zones,
 ) -> Option<Report> {
     match from {
-        CardTargetZone::Hand => {
+        CardOriginZone::Hand => {
             let in_hand = WasInHand::from(zones.find_in_hand(holder, card)?);
             zones.take_from_hand(in_hand);
         }
+        CardOriginZone::Deck => {
+            let in_deck = zones.find_in_deck(holder, card)?;
+            zones.take_from_deck(in_deck);
+        }
     }
-    Some(zone_move(owner, card, to.into(), zones))
+    Some(match to {
+        CardDestinationZone::Hand => add_to_hand(owner, card, zones),
+        CardDestinationZone::DeckBottom => bury(owner, card, zones),
+    })
 }
 
 /// Moves the top card to the end of the hand, `count` times.
@@ -107,7 +126,7 @@ mod tests {
         let report = move_card(
             card,
             holder,
-            CardTargetZone::Hand,
+            CardOriginZone::Hand,
             owner,
             CardDestinationZone::DeckBottom,
             &mut zones,
@@ -119,5 +138,50 @@ mod tests {
         ));
         assert_eq!(zones.hand(holder), []);
         assert_eq!(zones.deck(owner), [card]);
+    }
+
+    #[test]
+    fn a_card_moves_out_of_its_holders_deck_and_the_rest_keep_their_order() {
+        let player = PlayerId::new(0);
+        let mut bag = ObjectBag::default();
+        let [hero, a, b, c] = std::array::from_fn(|_| bag.insert(SPARK, player));
+        let mut zones = Zones::new([(hero, vec![a, b, c])]);
+
+        let report = move_card(
+            b,
+            player,
+            CardOriginZone::Deck,
+            player,
+            CardDestinationZone::Hand,
+            &mut zones,
+        );
+
+        assert!(matches!(
+            report,
+            Some(Report::AddedToHand { player_id, object_id }) if player_id == player && object_id == b
+        ));
+        assert_eq!(zones.hand(player), [b]);
+        assert_eq!(zones.deck(player), [a, c]);
+    }
+
+    #[test]
+    fn a_card_no_longer_in_its_zone_is_not_moved() {
+        let player = PlayerId::new(0);
+        let mut bag = ObjectBag::default();
+        let [hero, card] = std::array::from_fn(|_| bag.insert(SPARK, player));
+        let mut zones = Zones::new([(hero, vec![card])]);
+        zones.draw(player);
+
+        let report = move_card(
+            card,
+            player,
+            CardOriginZone::Deck,
+            player,
+            CardDestinationZone::DeckBottom,
+            &mut zones,
+        );
+
+        assert!(report.is_none());
+        assert_eq!(zones.hand(player), [card]);
     }
 }

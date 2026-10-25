@@ -1,10 +1,11 @@
 use crate::action::Action;
 use crate::cards::object::ObjectId;
 use crate::game::cards_ref::CardsRef;
+use crate::game::effect_stack::{EffectStack, WasAwaitingPicking};
 use crate::game::play::WasPlayable;
 use crate::game::player::Player;
 use crate::game::player_input::awaiting::{
-    Awaiting, PlayerInput, WasAwaitingNothing, WasAwaitingPicking, WasAwaitingTargeting,
+    Awaiting, PlayerInput, WasAwaitingNothing, WasAwaitingTargeting, any_awaiting, awaiting,
 };
 use crate::game::resolve::aftermath::standings::Standings;
 use crate::game::targeting_walk::{can_start_targeting, may_stop_targeting, next_candidates};
@@ -59,6 +60,7 @@ pub(super) fn legal_actions(
     cards: CardsRef,
     standings: &Standings,
     player_input: &PlayerInput,
+    effect_stack: &EffectStack,
     player: &Player,
 ) -> Vec<LegalAction> {
     let player_id = player.id();
@@ -67,9 +69,11 @@ pub(super) fn legal_actions(
     }
 
     let mut actions = Vec::new();
-    match player_input.awaiting(player_id) {
+    match awaiting(cards, player_input, effect_stack, player_id) {
         Awaiting::Nothing(awaits_nothing) => {
-            if cards.turn_order.get_active_player_id() != player_id || player_input.any_awaiting() {
+            if cards.turn_order.get_active_player_id() != player_id
+                || any_awaiting(player_input, effect_stack)
+            {
                 return Vec::new();
             }
 

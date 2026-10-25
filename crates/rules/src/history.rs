@@ -69,8 +69,6 @@ impl History {
             | Event::TurnEnded { .. }
             | Event::Drew { .. }
             | Event::Damaged { .. }
-            | Event::Revealed { .. }
-            | Event::Picked { .. }
             | Event::Buried { .. }
             | Event::AddedToHand { .. }
             | Event::FatigueDamaged { .. }

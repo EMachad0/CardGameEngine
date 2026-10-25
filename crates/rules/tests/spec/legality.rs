@@ -50,8 +50,8 @@ fn a_picking_rejects_everything_else() {
     game.apply(p0, play(in_hand(&game, p0, FORAGE)), &mut ())
         .unwrap();
 
-    let revealed = game.revealed(p0);
-    assert_actions(&game, p0, &[pick(revealed[0]), pick(revealed[1])]);
+    let options = game.pick_options(p0);
+    assert_actions(&game, p0, &[pick(options[0]), pick(options[1])]);
     assert_unlisted_rejected(&game);
 }
 

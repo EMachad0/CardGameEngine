@@ -2,15 +2,16 @@
 
 use pretty_assertions::assert_eq;
 use rules::prelude::static_card_definition::{
-    BOMBER, DRUMMER, HOARDER, MOURNER, RALLY_BANNER, RECRUIT, SWEEP,
+    AFTERSHOCK, BOMBER, DRUMMER, FORAGE, HOARDER, MOURNER, PACKRAT, RALLY_BANNER, RECRUIT, SPARK,
+    SWEEP,
 };
 use rules::prelude::{Action, Event, Game, PlayerId};
 
 use crate::support::*;
 
-/// A pick of each card `p` has revealed.
+/// A pick of each of `p`'s pick options.
 fn picks(game: &Game, p: PlayerId) -> Vec<Action> {
-    game.revealed(p).iter().map(|&id| pick(id)).collect()
+    game.pick_options(p).into_iter().map(pick).collect()
 }
 
 /// Plays the Sweep in P0's hand and returns what the play reported.
@@ -19,10 +20,10 @@ fn sweep(b: &mut Boards) -> Vec<Event> {
     observe(&mut b.game, b.p0, play(sweep)).events()
 }
 
-/// Picks the first card `p` has revealed and returns what the pick reported.
+/// Picks the first of `p`'s pick options and returns what the pick reported.
 fn pick_first(game: &mut Game, p: PlayerId) -> Vec<Event> {
     let card = *game
-        .revealed(p)
+        .pick_options(p)
         .first()
         .unwrap_or_else(|| panic!("{p:?} has nothing to pick"));
     observe(game, p, pick(card)).events()
@@ -34,6 +35,41 @@ fn hoarder_waiting_for_its_owner() -> Boards {
     sweep(&mut b);
     pick_first(&mut b.game, b.p0);
     b
+}
+
+#[test]
+fn a_pick_that_is_its_cards_last_effect_stays_open_until_answered() {
+    let deck0 = vec![FORAGE, SPARK, SPARK, SPARK, RECRUIT, RECRUIT];
+    let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
+    let [p0, _] = players(&game);
+
+    play_def(&mut game, p0, FORAGE);
+
+    assert_eq!(game.pick_options(p0).len(), 2, "Forage's pick is open");
+    assert!(
+        !game.legal_actions(p0).contains(&Action::EndTurn),
+        "the turn can't end while the pick waits"
+    );
+}
+
+#[test]
+fn a_skipped_pick_lets_the_rest_of_its_card_resolve() {
+    let deck0 = vec![SWEEP, SPARK, SPARK, SPARK];
+    let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 20]]);
+    let [p0, _] = players(&game);
+    turn_with_mana(&mut game, p0, 2);
+    let sweep = in_hand(&game, p0, SWEEP);
+
+    let events = observe(&mut game, p0, play(sweep)).events();
+
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, Event::FatigueDamaged { player_id, .. } if *player_id == p0)),
+        "Sweep's draw, from the empty deck its pick skipped:\n{}",
+        listing(&events)
+    );
+    assert!(game.pick_options(p0).is_empty());
 }
 
 #[test]
@@ -49,11 +85,11 @@ fn sweeps_draw_waits_for_its_pick() {
         "nothing is drawn before the pick:\n{}",
         listing(&played)
     );
-    let pick_at = first(&picked, |e| matches!(e, Event::Picked { .. }));
+    let pick_at = first(&picked, |e| matches!(e, Event::AddedToHand { .. }));
     let draw_at = first(&picked, |e| matches!(e, Event::Drew { .. }));
     assert!(
         pick_at < draw_at,
-        "the pick, then the draw:\n{}",
+        "the card picked joins the hand, then the draw:\n{}",
         listing(&picked)
     );
 }
@@ -118,13 +154,53 @@ fn only_the_player_a_pick_waits_for_has_actions() {
     let b = hoarder_waiting_for_its_owner();
 
     assert_eq!(
-        b.game.revealed(b.p1).len(),
+        b.game.pick_options(b.p1).len(),
         2,
-        "the Hoarder's deathrattle revealed P1's top 2"
+        "the Hoarder's deathrattle offers P1's top 2"
     );
     assert_actions(&b.game, b.p0, &[]);
     assert_actions(&b.game, b.p1, &picks(&b.game, b.p1));
     assert_unlisted_rejected(&b.game);
+}
+
+#[test]
+fn hoarders_death_rattle_picks_from_its_owners_deck() {
+    let mut b = hoarder_waiting_for_its_owner();
+    let top_two = b.game.deck(b.p1)[..2].to_vec();
+
+    assert_eq!(b.game.pick_options(b.p1), top_two);
+    b.game.apply(b.p1, pick(top_two[0]), &mut ()).unwrap();
+    assert!(
+        b.game.hand(b.p1).ends_with(&top_two[..1]),
+        "the card picked joins P1's hand"
+    );
+}
+
+#[test]
+fn two_resolutions_of_one_sources_trigger_each_move_their_own_picks() {
+    let mut b = boards(&[], &[PACKRAT], &[AFTERSHOCK], 2);
+    let aftershock = in_hand(&b.game, b.p0, AFTERSHOCK);
+    b.game.apply(b.p0, play(aftershock), &mut ()).unwrap();
+
+    let (mut taken, mut left) = (Vec::new(), Vec::new());
+    for resolution in 0..2 {
+        let options = b.game.pick_options(b.p1);
+        let &[first, second] = options.as_slice() else {
+            panic!("resolution {resolution} of the Packrat's trigger offers {options:?}");
+        };
+        b.game.apply(b.p1, pick(first), &mut ()).unwrap();
+        taken.push(first);
+        left.push(second);
+    }
+
+    assert!(
+        b.game.hand(b.p1).ends_with(&taken),
+        "each resolution puts its own pick into P1's hand"
+    );
+    assert!(
+        b.game.deck(b.p1).ends_with(&left),
+        "each resolution buries the card it left"
+    );
 }
 
 #[test]
@@ -161,15 +237,16 @@ fn a_reaction_to_a_death_resolves_before_the_deathrattle_that_pauses() {
             &picked,
             |e| matches!(e, Event::Drew { player_id, .. } if *player_id == b.p1),
         ),
-        first(
-            &picked,
-            |e| matches!(e, Event::Revealed { player_id, .. } if *player_id == b.p1),
-        ),
     ];
     assert!(
         order.is_sorted(),
-        "Sweep's draw, the Hoarder's death, the Mourner's draw, then the Hoarder's reveal:\n{}",
+        "Sweep's draw, the Hoarder's death, then the Mourner's draw:\n{}",
         listing(&picked)
+    );
+    assert_eq!(
+        b.game.pick_options(b.p1).len(),
+        2,
+        "the Hoarder's pick opens after the Mourner's draw, and the game waits on it"
     );
 }
 
@@ -192,7 +269,7 @@ fn a_game_cloned_during_a_pick_resolves_like_the_original() {
     let bomber = b.mine[0];
     sweep(&mut b);
     let mut clone = b.game.clone();
-    let card = b.game.revealed(b.p0)[0];
+    let card = b.game.pick_options(b.p0)[0];
 
     b.game.apply(b.p0, pick(card), &mut ()).unwrap();
     clone.apply(b.p0, pick(card), &mut ()).unwrap();

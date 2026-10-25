@@ -4,7 +4,6 @@ use std::sync::Arc;
 use crate::cards::binder::def_id::DefId;
 use crate::cards::binder::sets::base;
 use crate::cards::binder::sets::base::static_card_definition::ALL_DEF_ID;
-use crate::cards::binder::validity::{self, CardDefError};
 use crate::cards::definition::CardDef;
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
@@ -13,8 +12,6 @@ enum BinderError {
     NotFound(DefId),
     #[error("Duplicate {0:?}")]
     Duplicate(DefId),
-    #[error("{1} on {0:?}")]
-    Invalid(DefId, CardDefError),
 }
 
 /// Holds one definition for every def id.
@@ -39,9 +36,6 @@ impl Binder {
         if let Some(&def_id) = ALL_DEF_ID.iter().find(|def_id| !defs.contains_key(def_id)) {
             return Err(BinderError::NotFound(def_id));
         }
-        for (&def_id, def) in &defs {
-            validity::validate(def).map_err(|error| BinderError::Invalid(def_id, error))?;
-        }
         Ok(Self {
             defs: Arc::new(defs),
         })
@@ -59,8 +53,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::cards::binder::sets::base::static_card_definition::{BOLT, FORAGE, SPARK};
-    use crate::effect::PickId;
+    use crate::cards::binder::sets::base::static_card_definition::{BOLT, SPARK};
 
     fn validate(definitions: &[(DefId, CardDef)]) -> Result<(), BinderError> {
         Binder::new(definitions.to_vec()).map(drop)
@@ -90,23 +83,5 @@ mod tests {
         defs.push(bolt);
 
         assert_eq!(validate(&defs), Err(BinderError::Duplicate(BOLT)));
-    }
-
-    #[test]
-    fn an_invalid_definition_is_rejected_with_its_def_id() {
-        let mut defs = base::definitions();
-        let (_, forage) = defs
-            .iter_mut()
-            .find(|(def_id, _)| *def_id == FORAGE)
-            .unwrap();
-        forage.play_effects.truncate(1);
-
-        assert_eq!(
-            validate(&defs),
-            Err(BinderError::Invalid(
-                FORAGE,
-                CardDefError::PickNotResolved(PickId(0))
-            )),
-        );
     }
 }

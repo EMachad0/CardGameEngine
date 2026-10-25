@@ -155,7 +155,7 @@ fn board_position(game: &Game, id: ObjectId) -> Option<(usize, usize)> {
 }
 
 fn off_board_count(game: &Game, p: PlayerId) -> usize {
-    game.hand(p).len() + game.deck(p).len() + game.revealed(p).len()
+    game.hand(p).len() + game.deck(p).len()
 }
 
 fn assert_invariants(game: &Game, history: &mut History, context: &str) {
@@ -254,8 +254,7 @@ fn assert_accessors(game: &Game, history: &History, context: &str) {
                 "{context}"
             );
         }
-        let deck = game.deck(p);
-        for &id in deck.iter().chain(game.revealed(p)) {
+        for id in game.deck(p) {
             assert_eq!(game.mana_cost(id), None, "{context}");
             assert_eq!(
                 (game.attack(id), game.health(id)),

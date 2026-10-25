@@ -2,10 +2,11 @@
 
 use pretty_assertions::assert_eq;
 use rules::prelude::static_card_definition::{
-    BOLT, CAPTAIN, FORAGE, HERO, PING, RECRUIT, RECYCLE, SPARK, TWIN_SHOT,
+    BOLT, CAPTAIN, HERO, MUSTER, PING, RECRUIT, RECYCLE, SPARK, TWIN_SHOT,
 };
 use rules::prelude::{
-    BoardCard, DefId, Face, Game, HeroCard, ObjectId, PlayerId, RevealedCard, TargetingView,
+    BoardCard, DefId, Face, Game, HeroCard, ObjectId, PickingCard, PickingView, PlayerId,
+    TargetingView,
 };
 
 use crate::support::*;
@@ -150,43 +151,51 @@ fn both_players_see_each_minions_definition_and_current_stats() {
     }
 }
 
-#[test]
-fn only_the_player_picking_sees_a_forages_options() {
-    let deck0 = vec![FORAGE, SPARK, SPARK, SPARK, RECRUIT, CAPTAIN, BOLT];
+/// Player 0 casts Muster over a Bolt, a Recruit and a Captain. Returns the game and the three.
+fn muster_over_bolt_recruit_and_captain() -> (Game, [ObjectId; 3]) {
+    let deck0 = vec![MUSTER, SPARK, SPARK, SPARK, BOLT, RECRUIT, CAPTAIN, BOLT];
     let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
-    let [p0, p1] = players(&game);
-    play_def(&mut game, p0, FORAGE);
-    let &[recruit, captain] = game.revealed(p0) else {
-        panic!("Forage revealed {:?}", game.revealed(p0));
-    };
+    let [p0, _] = players(&game);
+    let deck = game.deck(p0);
+    play_def(&mut game, p0, MUSTER);
+    (game, [deck[0], deck[1], deck[2]])
+}
 
-    let shown = |viewer: PlayerId| player_view(&game.view(viewer), p0).revealed.clone();
+#[test]
+fn the_chooser_sees_every_card_a_pick_covers_face_up_in_the_order_shown() {
+    let (game, [bolt, recruit, captain]) = muster_over_bolt_recruit_and_captain();
+    let [p0, _] = players(&game);
 
     assert_eq!(
-        shown(p0),
-        [
-            RevealedCard {
+        player_view(&game.view(p0), p0).picking,
+        Some(PickingView::Chooser(vec![
+            PickingCard {
+                object_id: bolt,
+                def_id: BOLT,
+                pickable: false
+            },
+            PickingCard {
                 object_id: recruit,
-                def_id: Some(RECRUIT)
+                def_id: RECRUIT,
+                pickable: true
             },
-            RevealedCard {
+            PickingCard {
                 object_id: captain,
-                def_id: Some(CAPTAIN)
+                def_id: CAPTAIN,
+                pickable: true
             },
-        ]
+        ]))
     );
+}
+
+#[test]
+fn every_other_player_sees_only_how_many_options_a_pick_has() {
+    let (game, _) = muster_over_bolt_recruit_and_captain();
+    let [p0, p1] = players(&game);
+
     assert_eq!(
-        shown(p1),
-        [
-            RevealedCard {
-                object_id: recruit,
-                def_id: None
-            },
-            RevealedCard {
-                object_id: captain,
-                def_id: None
-            },
-        ]
+        player_view(&game.view(p1), p0).picking,
+        Some(PickingView::Other { option_count: 2 })
     );
 }
 

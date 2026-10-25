@@ -13,6 +13,7 @@ mod history;
 mod ids;
 mod observer;
 mod outcome;
+mod pick;
 pub mod prelude;
 mod rng;
 mod target;

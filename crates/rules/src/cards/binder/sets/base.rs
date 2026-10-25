@@ -10,10 +10,10 @@ use crate::cards::filter::{CardFilter, CharacterFilter, Side};
 use crate::cards::modifier::ModifierEffect;
 use crate::choice::{AmountBound, Choice};
 use crate::effect::{
-    CardDestinationZone, CardVerb, CharacterVerb, Effect, EffectAmount, PickId, PlayerVerb,
-    ZoneMove,
+    CardDestinationZone, CardVerb, CharacterVerb, Effect, EffectAmount, PlayerVerb,
 };
 use crate::history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter};
+use crate::pick::{CardPickOptions, CardPickZone, DeckWindow};
 use crate::target::{CardTargetOptions, CardTargetZone};
 use crate::trigger::{TriggerPattern, TriggerSubject};
 
@@ -67,6 +67,8 @@ def_ids!(
     AFTERSHOCK = "base.aftershock.v0",
     DUD = "base.dud.v0",
     RECYCLE = "base.recycle.v0",
+    MUSTER = "base.muster.v0",
+    PACKRAT = "base.packrat.v0",
 );
 
 pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
@@ -138,18 +140,21 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                 name: "Forage".to_string(),
                 kind: CardKindDef::Spell(SpellCardDef),
                 mana_cost: 1,
-                play_effects: vec![
-                    Effect::Reveal {
-                        pick_id: PickId(0),
-                        selector: PlayerSelector::Owner,
-                        amount: 2.into(),
+                play_effects: vec![Effect::Cards {
+                    selector: CardSelector::Picked {
+                        choice: Choice {
+                            options: CardPickOptions {
+                                zone: CardPickZone::YourDeck(DeckWindow::Top(2)),
+                                kind: EnumSet::all(),
+                            },
+                            count: 1.into(),
+                            bound: AmountBound::Exactly,
+                            different: true,
+                        },
+                        others: vec![CardVerb::Move(CardDestinationZone::DeckBottom)],
                     },
-                    Effect::ResolvePick {
-                        pick_id: PickId(0),
-                        picked_move: ZoneMove::AddToHand,
-                        other_move: ZoneMove::Bury,
-                    },
-                ],
+                    verbs: vec![CardVerb::Move(CardDestinationZone::Hand)],
+                }],
                 ..Default::default()
             },
         ),
@@ -509,15 +514,20 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                         }),
                         verbs: vec![CharacterVerb::Damage(1.into())],
                     },
-                    Effect::Reveal {
-                        pick_id: PickId(0),
-                        selector: PlayerSelector::Owner,
-                        amount: 2.into(),
-                    },
-                    Effect::ResolvePick {
-                        pick_id: PickId(0),
-                        picked_move: ZoneMove::AddToHand,
-                        other_move: ZoneMove::Bury,
+                    Effect::Cards {
+                        selector: CardSelector::Picked {
+                            choice: Choice {
+                                options: CardPickOptions {
+                                    zone: CardPickZone::YourDeck(DeckWindow::Top(2)),
+                                    kind: EnumSet::all(),
+                                },
+                                count: 1.into(),
+                                bound: AmountBound::Exactly,
+                                different: true,
+                            },
+                            others: vec![CardVerb::Move(CardDestinationZone::DeckBottom)],
+                        },
+                        verbs: vec![CardVerb::Move(CardDestinationZone::Hand)],
                     },
                     Effect::Players {
                         selector: PlayerSelector::Owner,
@@ -535,18 +545,21 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                 mana_cost: 1,
                 triggers: vec![TriggerDef {
                     pattern: TriggerPattern::Died(TriggerSubject::Itself),
-                    effects: vec![
-                        Effect::Reveal {
-                            pick_id: PickId(0),
-                            selector: PlayerSelector::Owner,
-                            amount: 2.into(),
+                    effects: vec![Effect::Cards {
+                        selector: CardSelector::Picked {
+                            choice: Choice {
+                                options: CardPickOptions {
+                                    zone: CardPickZone::YourDeck(DeckWindow::Top(2)),
+                                    kind: EnumSet::all(),
+                                },
+                                count: 1.into(),
+                                bound: AmountBound::Exactly,
+                                different: true,
+                            },
+                            others: vec![CardVerb::Move(CardDestinationZone::DeckBottom)],
                         },
-                        Effect::ResolvePick {
-                            pick_id: PickId(0),
-                            picked_move: ZoneMove::AddToHand,
-                            other_move: ZoneMove::Bury,
-                        },
-                    ],
+                        verbs: vec![CardVerb::Move(CardDestinationZone::Hand)],
+                    }],
                 }],
                 ..Default::default()
             },
@@ -668,6 +681,57 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                         verbs: vec![PlayerVerb::Draw(EffectAmount::Static(1))],
                     },
                 ],
+                ..Default::default()
+            },
+        ),
+        (
+            MUSTER,
+            CardDef {
+                name: "Muster".to_string(),
+                kind: CardKindDef::Spell(SpellCardDef),
+                mana_cost: 1,
+                play_effects: vec![Effect::Cards {
+                    selector: CardSelector::Picked {
+                        choice: Choice {
+                            options: CardPickOptions {
+                                zone: CardPickZone::YourDeck(DeckWindow::Top(3)),
+                                kind: EnumSet::only(CardKind::Minion),
+                            },
+                            count: 1.into(),
+                            bound: AmountBound::Exactly,
+                            different: true,
+                        },
+                        others: vec![CardVerb::Move(CardDestinationZone::DeckBottom)],
+                    },
+                    verbs: vec![CardVerb::Move(CardDestinationZone::Hand)],
+                }],
+                ..Default::default()
+            },
+        ),
+        (
+            PACKRAT,
+            CardDef {
+                name: "Packrat".to_string(),
+                kind: CardKindDef::Minion(MinionCardDef::new(1, 4)),
+                mana_cost: 2,
+                triggers: vec![TriggerDef {
+                    pattern: TriggerPattern::Damaged(TriggerSubject::Itself),
+                    effects: vec![Effect::Cards {
+                        selector: CardSelector::Picked {
+                            choice: Choice {
+                                options: CardPickOptions {
+                                    zone: CardPickZone::YourDeck(DeckWindow::Top(2)),
+                                    kind: EnumSet::all(),
+                                },
+                                count: 1.into(),
+                                bound: AmountBound::Exactly,
+                                different: true,
+                            },
+                            others: vec![CardVerb::Move(CardDestinationZone::DeckBottom)],
+                        },
+                        verbs: vec![CardVerb::Move(CardDestinationZone::Hand)],
+                    }],
+                }],
                 ..Default::default()
             },
         ),

@@ -72,8 +72,8 @@ pub(crate) fn deck_defs(game: &Game, p: PlayerId) -> Vec<DefId> {
     defs(game, &game.deck(p))
 }
 
-pub(crate) fn revealed_defs(game: &Game, p: PlayerId) -> Vec<DefId> {
-    defs(game, game.revealed(p))
+pub(crate) fn pick_option_defs(game: &Game, p: PlayerId) -> Vec<DefId> {
+    defs(game, &game.pick_options(p))
 }
 
 pub(crate) fn board_defs(game: &Game, p: PlayerId) -> Vec<DefId> {
@@ -300,7 +300,7 @@ pub(crate) fn summon(game: &mut Game, p: PlayerId, def: DefId) -> ObjectId {
         .expect("the minion entered the board")
 }
 
-/// Every id in a zone: hand, deck, revealed, board and hero, for each player.
+/// Every id in a zone: hand, deck, board and hero, for each player.
 pub(crate) fn zone_ids(game: &Game) -> Vec<ObjectId> {
     players(game)
         .iter()
@@ -308,7 +308,6 @@ pub(crate) fn zone_ids(game: &Game) -> Vec<ObjectId> {
             [
                 game.hand(p),
                 &game.deck(p),
-                game.revealed(p),
                 game.player_board(p),
                 &[game.hero_id(p)],
             ]

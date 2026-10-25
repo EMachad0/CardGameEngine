@@ -11,11 +11,18 @@ use crate::support::*;
 
 /// The events of each step, leaving out the steps with none.
 fn event_steps(recorder: &Recorder) -> Vec<Vec<Event>> {
+    every_steps_events(recorder)
+        .into_iter()
+        .filter(|events| !events.is_empty())
+        .collect()
+}
+
+/// The events of each step, the steps with none included.
+fn every_steps_events(recorder: &Recorder) -> Vec<Vec<Event>> {
     recorder
         .steps
         .iter()
         .map(|step| step.events.clone())
-        .filter(|events| !events.is_empty())
         .collect()
 }
 
@@ -628,31 +635,32 @@ fn forage_over_recruit_and_captain() -> Game {
 }
 
 #[test]
-fn forage_reports_the_cards_it_revealed_in_order() {
+fn a_pick_opens_in_a_step_of_its_own_that_reports_nothing() {
     let mut game = forage_over_recruit_and_captain();
     let [p0, _] = players(&game);
     let forage = in_hand(&game, p0, FORAGE);
-    let top_two = game.deck(p0)[..2].to_vec();
 
     let recorder = observe(&mut game, p0, play(forage));
 
     assert_eq!(
-        recorder.events(),
+        every_steps_events(&recorder),
         [
-            Event::Played {
+            vec![Event::Played {
                 player_id: p0,
                 object_id: forage
-            },
-            Event::Revealed {
-                player_id: p0,
-                object_ids: top_two
-            },
+            }],
+            Vec::new(),
         ]
+    );
+    let last = recorder.steps.last().unwrap().view(p0);
+    assert!(
+        player_view(last, p0).picking.is_some(),
+        "the checkpoint after the step that opens the pick shows it"
     );
 }
 
 #[test]
-fn a_forage_that_reveals_nothing_reports_only_its_play() {
+fn a_forage_on_an_empty_deck_reports_only_its_play() {
     let deck0 = vec![FORAGE, SPARK, SPARK, SPARK];
     let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
     let [p0, _] = players(&game);
@@ -670,12 +678,12 @@ fn a_forage_that_reveals_nothing_reports_only_its_play() {
 }
 
 #[test]
-fn a_pick_reports_the_picked_card_then_buries_the_rest() {
+fn a_pick_moves_the_picked_card_into_the_hand_then_buries_the_rest() {
     let mut game = forage_over_recruit_and_captain();
     let [p0, _] = players(&game);
     play_def(&mut game, p0, FORAGE);
-    let &[recruit, captain] = game.revealed(p0) else {
-        panic!("Forage revealed {:?}", game.revealed(p0));
+    let &[recruit, captain] = game.pick_options(p0).as_slice() else {
+        panic!("Forage offers {:?}", game.pick_options(p0));
     };
 
     let recorder = observe(&mut game, p0, pick(captain));
@@ -683,10 +691,6 @@ fn a_pick_reports_the_picked_card_then_buries_the_rest() {
     assert_eq!(
         recorder.events(),
         [
-            Event::Picked {
-                player_id: p0,
-                object_id: captain
-            },
             Event::AddedToHand {
                 player_id: p0,
                 object_id: captain
@@ -704,19 +708,16 @@ fn a_pick_is_its_own_step_and_the_cards_it_moves_share_the_next() {
     let mut game = forage_over_recruit_and_captain();
     let [p0, _] = players(&game);
     play_def(&mut game, p0, FORAGE);
-    let &[recruit, captain] = game.revealed(p0) else {
-        panic!("Forage revealed {:?}", game.revealed(p0));
+    let &[recruit, captain] = game.pick_options(p0).as_slice() else {
+        panic!("Forage offers {:?}", game.pick_options(p0));
     };
 
     let recorder = observe(&mut game, p0, pick(captain));
 
     assert_eq!(
-        event_steps(&recorder),
+        every_steps_events(&recorder),
         [
-            vec![Event::Picked {
-                player_id: p0,
-                object_id: captain
-            }],
+            Vec::new(),
             vec![
                 Event::AddedToHand {
                     player_id: p0,

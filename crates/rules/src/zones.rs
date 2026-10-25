@@ -12,6 +12,7 @@ use crate::ids::PlayerId;
 use crate::rng::Rng;
 
 const STAYS_IN_HAND: &str = "a card found in a hand should stay there until taken";
+const STAYS_IN_DECK: &str = "a card found in a deck should stay there until taken";
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct Deck(VecDeque<ObjectId>);
@@ -39,6 +40,12 @@ impl Deck {
     /// Puts a card on the bottom.
     fn push_back(&mut self, card: ObjectId) {
         self.0.push_back(card);
+    }
+
+    /// Removes one card. The others keep their order.
+    fn remove(&mut self, object_id: ObjectId) -> Option<ObjectId> {
+        let idx = self.0.iter().position(|o| *o == object_id)?;
+        self.0.remove(idx)
     }
 
     fn len(&self) -> usize {
@@ -186,6 +193,12 @@ impl WasInHand {
     }
 }
 
+/// A card found in a deck. It holds no borrow, so the card may have left the deck since.
+pub(crate) struct WasInDeck {
+    player_id: PlayerId,
+    object_id: ObjectId,
+}
+
 /// A card found on a board. It borrows the zones, so the card stays there while this lives.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct OnBoard<'a> {
@@ -330,6 +343,20 @@ impl Zones {
             .expect(STAYS_IN_HAND)
     }
 
+    pub(crate) fn find_in_deck(
+        &self,
+        player_id: PlayerId,
+        object_id: ObjectId,
+    ) -> Option<WasInDeck> {
+        self.player(player_id)
+            .deck
+            .contains(&object_id)
+            .then_some(WasInDeck {
+                player_id,
+                object_id,
+            })
+    }
+
     pub(crate) fn find_on_board(
         &self,
         player_id: PlayerId,
@@ -385,18 +412,21 @@ impl Zones {
         Some(card)
     }
 
-    /// Takes up to `count` cards off the top of the deck, top first, into no zone.
-    pub(crate) fn reveal(&mut self, player_id: PlayerId, count: u8) -> Vec<ObjectId> {
-        let deck = &mut self.player_mut(player_id).deck;
-        (0..count).map_while(|_| deck.pop_front()).collect()
-    }
-
     /// Takes the card out of its hand into no zone. Panics if it has left.
     pub(crate) fn take_from_hand(&mut self, card: WasInHand) -> ObjectId {
         self.player_mut(card.player_id)
             .hand
             .remove(card.object_id)
             .expect(STAYS_IN_HAND)
+    }
+
+    /// Takes the card out of its deck into no zone. The cards left keep their order. Panics if it
+    /// has left.
+    pub(crate) fn take_from_deck(&mut self, card: WasInDeck) -> ObjectId {
+        self.player_mut(card.player_id)
+            .deck
+            .remove(card.object_id)
+            .expect(STAYS_IN_DECK)
     }
 
     /// Takes a minion off the board into no zone. Panics if it isn't there.
@@ -692,6 +722,40 @@ mod tests {
     }
 
     #[test]
+    fn a_card_found_in_a_deck_is_taken_from_there() {
+        let [hero, a, b, c] = ids();
+        let player = PlayerId::new(0);
+        let mut zones = Zones::new([(hero, vec![a, b, c])]);
+
+        let found = zones.find_in_deck(player, b).unwrap();
+
+        assert_eq!(zones.take_from_deck(found), b);
+        assert_eq!(zones.deck(player), [a, c]);
+    }
+
+    #[test]
+    #[should_panic(expected = "a card found in a deck should stay there until taken")]
+    fn a_card_cannot_be_taken_once_it_leaves_the_deck() {
+        let [hero, a] = ids();
+        let player = PlayerId::new(0);
+        let mut zones = Zones::new([(hero, vec![a])]);
+        let found = zones.find_in_deck(player, a).unwrap();
+        zones.draw(player);
+
+        zones.take_from_deck(found);
+    }
+
+    #[test]
+    fn nothing_outside_a_deck_is_found_in_it() {
+        let (zones, [hero, other_hero, summoned, held, _]) = one_of_each();
+
+        let found =
+            [hero, other_hero, summoned, held].map(|o| zones.find_in_deck(PlayerId::new(0), o));
+
+        assert!(found.iter().all(Option::is_none));
+    }
+
+    #[test]
     fn a_card_on_a_board_is_found_there() {
         let (zones, [_, _, summoned, _, _]) = one_of_each();
 
@@ -826,23 +890,5 @@ mod tests {
 
         zones.draw(player);
         zones.enter_board(player, card);
-    }
-
-    #[test]
-    #[expect(clippy::disallowed_methods, reason = "tests the reveal itself")]
-    fn a_revealed_card_leaves_its_deck_for_no_zone() {
-        let [hero, top, next] = ids();
-        let player = PlayerId::new(0);
-        let mut zones = Zones::new([(hero, vec![top, next])]);
-
-        assert_eq!(zones.reveal(player, 1), [top]);
-
-        assert_eq!(zones.deck(player), [next]);
-        zones.add_to_hand(player, top);
-        assert_eq!(
-            zones.hand(player),
-            [top],
-            "a card in no zone must be free to enter a hand",
-        );
     }
 }

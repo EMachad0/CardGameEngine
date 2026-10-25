@@ -137,20 +137,33 @@ pub(super) fn play(
 mod tests {
     use super::*;
     use crate::cards::binder::sets::base::static_card_definition::SPARK;
+    use crate::cards::binder::store::Binder;
     use crate::cards::object::ObjectBag;
-    use crate::game::player_input::awaiting::{Awaiting, PlayerInput, WasAwaitingNothing};
+    use crate::game::player_input::awaiting::{
+        Awaiting, PlayerInput, WasAwaitingNothing, awaiting,
+    };
+    use crate::history::History;
+    use crate::turn::TurnOrder;
     use crate::zones::Zones;
 
     fn started_targeting(
         input: &mut PlayerInput,
+        objects: &ObjectBag,
+        zones: &Zones,
         player: PlayerId,
         card: ObjectId,
     ) -> WasAwaitingTargeting {
-        let Awaiting::Nothing(awaits_nothing) = input.awaiting(player) else {
+        let (binder, history) = (Binder::built_in(), History::default());
+        let turn_order = TurnOrder::new(vec![player]);
+        let cards = CardsRef::new(&binder, objects, zones, &history, &turn_order);
+        let effect_stack = EffectStack::default();
+        let Awaiting::Nothing(awaits_nothing) = awaiting(cards, input, &effect_stack, player)
+        else {
             panic!("the game must await nothing from the player");
         };
         input.start_targeting(WasAwaitingNothing::from(awaits_nothing), card);
-        let Awaiting::Targeting(awaits_targeting) = input.awaiting(player) else {
+        let Awaiting::Targeting(awaits_targeting) = awaiting(cards, input, &effect_stack, player)
+        else {
             panic!("the player must be targeting");
         };
         WasAwaitingTargeting::from(awaits_targeting)
@@ -172,7 +185,7 @@ mod tests {
         let mut zones = Zones::new([(hero, vec![card, other])]);
         zones.draw(player);
         let mut input = PlayerInput::default();
-        let awaiting_targeting = started_targeting(&mut input, player, other);
+        let awaiting_targeting = started_targeting(&mut input, &bag, &zones, player, other);
 
         playable_without_mana_check(&zones, player, card).with_targeting(awaiting_targeting);
     }
@@ -187,7 +200,7 @@ mod tests {
         let mut zones = Zones::new([(hero, vec![card]), (other_hero, Vec::new())]);
         zones.draw(player);
         let mut input = PlayerInput::default();
-        let awaiting_targeting = started_targeting(&mut input, other, card);
+        let awaiting_targeting = started_targeting(&mut input, &bag, &zones, other, card);
 
         playable_without_mana_check(&zones, player, card).with_targeting(awaiting_targeting);
     }

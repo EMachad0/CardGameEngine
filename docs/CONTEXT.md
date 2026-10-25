@@ -206,12 +206,9 @@ _Avoid_: heal
 **Modify**:
 Giving an object a modifier.
 
-**Reveal**:
-Taking cards from the top of a deck for a player to pick from.
-
 **Picking**:
-A pick the game waits on from a player in the middle of resolving a card, with the cards it
-revealed to pick from.
+A pick that the resolving effect holds until it is answered: the cards it covers, which of them
+the player may pick, and what they have picked so far.
 _Avoid_: pending pick, picker
 
 **Awaiting**:
@@ -219,7 +216,7 @@ What the game waits on from one player before it goes on: targeting or picking.
 _Avoid_: question, prompt, request
 
 **Player input**:
-What the game awaits from each player, and what each player picked while a card resolved.
+The targetings the game awaits, at most one per player.
 _Avoid_: interaction, answers
 
 **Bury**:
@@ -245,8 +242,8 @@ The pending effects waiting to resolve. The newest resolves first.
 _Avoid_: queue
 
 **Resolving effect**:
-The pending effect being carried out now, with its place in the text. It can pause while a player
-is picking.
+The pending effect being carried out now, with its place in the text and the picking it holds, if
+any.
 _Avoid_: unit, current trigger
 
 **State check**:

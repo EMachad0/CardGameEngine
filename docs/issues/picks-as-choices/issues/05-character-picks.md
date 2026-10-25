@@ -20,7 +20,7 @@ From ADR 0019 and ADR 0020:
 
 - `CharacterSelector::Picked { choice: Choice<CharacterFilter>, others: Vec<CharacterVerb> }`.
 - `Picking::Characters`. Its options are the characters that match the filter when resolution
-  reaches the effect. A character pick has no window, so its `filtered_out` is empty.
+  reaches the effect. A character pick has no window, so every character it covers is an option.
 
 ## Tests
 
