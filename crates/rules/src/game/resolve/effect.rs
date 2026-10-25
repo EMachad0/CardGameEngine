@@ -8,7 +8,9 @@ use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::NextEffect;
 use crate::game::player_input::awaiting::PlayerInput;
 use crate::game::reporting::Report;
-use crate::game::selector::{Selection, select_cards, select_characters, select_players};
+use crate::game::selector::{
+    CardSelection, Selection, select_cards, select_characters, select_players,
+};
 use crate::game::zone_move::{draw, summon, zone_move};
 use crate::ids::PlayerId;
 use crate::rng::Rng;
@@ -27,7 +29,7 @@ enum Prepared {
         verbs: Vec<PreparedCharacterVerb>,
     },
     Cards {
-        cards: Selection<ObjectId>,
+        cards: CardSelection,
         verbs: Vec<PreparedCardVerb>,
     },
     Reveal {
@@ -57,7 +59,7 @@ enum PreparedCharacterVerb {
 }
 
 enum PreparedCardVerb {
-    Move { from: CardTargetZone, to: CardZone },
+    Move(CardZone),
 }
 
 pub(in crate::game) fn prepare(
@@ -110,10 +112,7 @@ pub(in crate::game) fn prepare(
             verbs: verbs
                 .into_iter()
                 .map(|verb| match verb {
-                    CardVerb::Move(zone) => PreparedCardVerb::Move {
-                        from: selector.target().unwrap().zone.into(),
-                        to: zone,
-                    },
+                    CardVerb::Move(to) => PreparedCardVerb::Move(to),
                 })
                 .collect(),
         },
@@ -185,15 +184,18 @@ pub(in crate::game) fn resolve(
                 }
             }
         }
-        Prepared::Cards { cards, verbs } => {
+        Prepared::Cards {
+            cards: CardSelection { from, cards },
+            verbs,
+        } => {
             for (verb, card) in verbs_on(cards, &verbs, rng) {
                 match verb {
-                    PreparedCardVerb::Move { from, to } => {
+                    PreparedCardVerb::Move(to) => {
                         let player_id = objects.get(card).player_id;
                         match from {
                             CardTargetZone::Hand => {
                                 let Some(in_hand) = zones.find_in_hand(player_id, card) else {
-                                    todo!();
+                                    continue;
                                 };
                                 zones.take_from_hand(in_hand.into());
                             }

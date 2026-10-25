@@ -1,17 +1,23 @@
-//! What an effect acts on, as its selector says: players or characters, each of them in the order
-//! they come, or one of them at random.
+//! What an effect acts on, as its selector says: players, characters or cards, each of them in the
+//! order they come, or one of them at random.
 
 use crate::cards::definition::{
     CardSelector, CharacterSelector, PlayerSelector, PlayerSelectorFilter,
 };
 use crate::cards::filter::fulfill_side_filter;
 use crate::cards::object::ObjectId;
+use crate::choice::CardTargetZone;
 use crate::game::cards_ref::CardsRef;
 use crate::ids::PlayerId;
 use crate::rng::Rng;
 use crate::target::Bound;
 
 pub(super) struct Selection<T>(Values<T>);
+
+pub(super) struct CardSelection {
+    pub(super) from: CardTargetZone,
+    pub(super) cards: Selection<ObjectId>,
+}
 
 enum Values<T> {
     Each(Vec<T>),
@@ -70,10 +76,13 @@ pub(super) fn select_cards(
     _owner: PlayerId,
     _source: ObjectId,
     selector: &CardSelector<Bound>,
-) -> Selection<ObjectId> {
-    Selection(match selector {
-        CardSelector::Targeted(targeted) => Values::Each(targeted.object_ids.clone()),
-    })
+) -> CardSelection {
+    match selector {
+        CardSelector::Targeted(targeted) => CardSelection {
+            from: targeted.zone,
+            cards: Selection(Values::Each(targeted.object_ids.clone())),
+        },
+    }
 }
 
 #[cfg(test)]
