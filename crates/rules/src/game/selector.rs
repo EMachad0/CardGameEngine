@@ -1,5 +1,5 @@
-//! What an effect acts on, as its selector says: players, characters or cards, each of them in the
-//! order they come, or one of them at random.
+//! What an effect acts on, as its selector says: players or characters, each of them in the order
+//! they come or one of them at random, or the cards targeted.
 
 use crate::cards::definition::{
     CardSelector, CharacterSelector, PlayerSelector, PlayerSelectorFilter,
