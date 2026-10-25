@@ -1,0 +1,47 @@
+## Summary
+
+Yes, others have written about this concern. Ousterhout says splitting code has a fixed cost, and that a small module whose interface is about as large as its body is a net loss. Capability writers justify a facet when the behaviours behind it share state, not when the code is small. Every alternative moves the cost to a different place. For a 4-line state check, my inference is that keeping it in `state.rs` and pinning it with a test or a narrow token costs less than giving it its own facet.
+
+## Findings
+
+### Q1: Is the concern documented?
+
+1. **Splitting has a fixed cost.** Ousterhout writes: "the act of subdividing creates additional complexity that was not present before subdivision … Subdivision can result in additional code to manage the components." He also writes: "The decision to split or join modules should be based on complexity." [Gien's Kindle quotes](https://www.gienverschatse.com/books/2019/06/23/philosophy-software-design/)
+2. **Shallow modules and classitis.** "a shallow module is one whose interface is relatively complex in comparison to the functionality that it provides." [Gien](https://www.gienverschatse.com/books/2019/06/23/philosophy-software-design/). A reader's clippings (close to the book's wording, not guaranteed exact) add: "Small classes also result in a verbose programming style, due to the boilerplate required for each class." The same clippings say "decorator classes tend to be shallow: they introduce a large amount of boilerplate for a small amount of new functionality." [Yiming Chen clippings](https://yiming.dev/clipping/2019/04/12/clippings-from-a-philosophy-of-software-design/). *Inference:* a facet is a wrapper type, so the decorator warning applies to it.
+3. **Ousterhout and Martin debated small functions directly.** Ousterhout: "As methods get smaller and smaller there is less and less benefit to further subdivision." Also: "Entangled methods can usually be improved by combining them so that all the code is in one place." Martin agrees: "It is certainly possible to over-decompose code." [aposd-vs-clean-code](https://github.com/johnousterhout/aposd-vs-clean-code)
+4. **Ousterhout warns against organizing modules by time order.** "When designing modules, focus on the knowledge that's needed to perform each task, not the order in which tasks occur." [Gien](https://www.gienverschatse.com/books/2019/06/23/philosophy-software-design/). *Inference:* this pushes against moving out an order rule that carries little knowledge of its own.
+5. **Capability sources say facets are justified by shared state.** "facets are objects that act as intermediaries between powerful objects and users that do not need (and should not be granted) its full power." [ERights Walnut](http://wiki.erights.org/wiki/Walnut/Secure_Distributed_Computing/Capability_Patterns). Another source: "The normal motivation is where there is state that connects these behaviors." [cap-lore, The Facet](http://cap-lore.com/CapTheory/Patterns/Facet.html), quoted from a search snippet because the page could not be fetched.
+6. **Typestate and newtype have a measured cost.** A case study found: "Typestate improves code faultlessness and testability, but comes at the cost of more boilerplate code and can degrade readability." [ACM FUNARCH experience report](https://dl.acm.org/doi/10.1145/3830438.3830958), quoted from the abstract snippet. Yosh Wuyts adds: "Type states become tricky when you start wanting to combine them with runtime logic." [blog](https://blog.yoshuawuyts.com/state-machines-3)
+
+### Q2: Alternatives and their costs
+
+1. **Keep orchestration inside the holder.** XMage's `GameImpl.checkStateAndTriggered()` is the same loop as yours. Its doc comment says: "These steps repeat in order until no further state-based actions are performed and no abilities trigger." [GameImpl.java](https://raw.githubusercontent.com/magefree/mage/master/Mage/src/main/java/mage/game/GameImpl.java). Forge's author: "GameAction is a loose collection of methods" and "GameActionUtil continues Forge's tradition of huge classes." [mtgrares](http://mtgrares.blogspot.com/2010/10/forges-architecture-or-how-to-program_25.html). **Cost:** the holder keeps growing. CodeFactor reports 3855 lines and 217 methods for a fork of `GameImpl.java`. [CodeFactor](https://www.codefactor.io/repository/github/sarvex/xmage/file/main/Mage/src/main/java/mage/game/GameImpl.java)
+2. **Declare the order as data (Bevy).** "You can explicitly order systems: by calling the `.before(this_system)` or `.after(that_system)` methods … through the use of `.add_systems((system_a, system_b, system_c).chain())`." Without that: "a system order ambiguity exists in your schedule." [bevy::ecs::system](https://docs.rs/bevy/latest/bevy/ecs/system/index.html). Run conditions use `.run_if(...)`. [Bevy Cheat Book](https://bevy-cheatbook.github.io/programming/system-sets.html), which describes itself as outdated. **Cost (inference):** you need a scheduler, and a "repeat until nothing changes" loop does not fit a flat ordering graph.
+3. **Typestate or phase types.** Operations are "only available when the object is in certain states." [Cliffle](https://cliffle.com/blog/rust-typestate/). **Cost:** the boilerplate in Q1 finding 6. *Inference:* the number of death passes is only known at runtime, so types cannot encode it well.
+4. **Per-keeper facets (attenuation).** In Bevy, each system's parameter list works as a facet (*inference*). **Cost:** one wrapper type per keeper, which is the shallow-wrapper risk from Q1 finding 2.
+5. **Per-step tokens.** In rustc, `pub struct ErrorGuaranteed(pub(crate) ());` comes with the note: "it is non-`pub`, which means values of this type cannot be constructed outside of this crate." [rustc docs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.ErrorGuaranteed.html). `TyCtxtFeed`: "This struct should only be created by `create_def`." [rustc docs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxtFeed.html). **Cost:** one zero-sized type per guarded step. rustc's own constructor for `ErrorGuaranteed` relies on a deprecation warning ("Don't use this outside of `DiagCtxtInner::emit_diagnostic`!"), which shows that visibility rules alone did not keep it narrow enough.
+6. **A lint ban.** Clippy's `disallowed-methods` takes "fully qualified paths" with optional `reason` and `replacement`. [Clippy lint configuration](https://doc.rust-lang.org/stable/clippy/lint_configuration.html). The lint is "warn-by-default". [clippy source](https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/disallowed_methods.rs). **Cost (inference):** it only advises. A local `#[allow]` turns it off, and it matches paths, not who is calling.
+7. **Tests that pin the order.** "Insta is a snapshot testing tool for Rust." [insta](https://insta.rs/docs/). Snapshotting the event log after each step catches a change in order. **Cost (inference):** it finds a problem after the fact and does not stop the bad call. Snapshots also break on harmless changes.
+
+### Q3: How large Rust context structs handle this
+
+1. **rustc keeps the orchestration out of `TyCtxt`.** "The Rust compiler is not organized as a series of passes over the code which execute sequentially." [rustc-dev-guide](https://rustc-dev-guide.rust-lang.org/overview.html). Privileged steps are guarded by crate-private tokens (Q2 finding 5).
+2. **Bevy keeps the orchestration in `Schedule`, outside `World`.** Exclusive systems "can have full unrestricted access to the whole ECS `World`." [Cheat Book](https://bevy-cheatbook.github.io/programming/exclusive.html). Structural writes are deferred: "all queued commands are automatically applied in sequence when the `ApplyDeferred` system runs." [Commands docs](https://docs.rs/bevy/latest/bevy/ecs/system/struct.Commands.html)
+3. **Inference for your case.** Your convention says a rule's keeper must be the only code that can make the writes the rule is about. The state check's rule is about order, not writes. So it could stay in `state.rs` as a documented order keeper, pinned by a test. A single `StateCheckDone` token (like `ErrorGuaranteed`) could then prove that callers ran it, at the cost of one type and no facet.
+
+## Sources
+
+- Kept: Gien's Kindle quotes from APOSD (primary text with location numbers).
+- Kept: Yiming Chen clippings (very close to the book, marked as such).
+- Kept: Ousterhout and Martin discussion repo (primary, both authors).
+- Kept: XMage `GameImpl.java` and the Forge author's blog (primary code and design notes).
+- Kept: Bevy and rustc API docs and the rustc-dev-guide (official).
+- Kept: Clippy docs, Cliffle, ERights Walnut.
+- Dropped: Lambda the Ultimate POLA thread (the most relevant reply has no clear author), DeepWiki on Forge (AI-generated), AO Integrity pages (off topic).
+
+## Gaps
+
+- I could not extract a cost-of-facets passage from Miller's *Robust Composition* (the PDF text was not readable). Look in chapters 8 and 9.
+- I did not open SabberStone or Fireplace source code.
+- The ACM and cap-lore quotes come from search snippets. Check them against the full texts.
+- The Bevy Cheat Book is outdated. Check `run_if` against current docs.rs.
