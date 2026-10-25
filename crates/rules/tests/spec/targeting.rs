@@ -2,8 +2,8 @@
 //! one at a time, and then the card is played.
 
 use pretty_assertions::assert_eq;
-use rules::prelude::Action;
-use rules::prelude::static_card_definition::{CROSSFIRE, PING, SHOVE, TWIN_SHOT};
+use rules::prelude::static_card_definition::{CROSSFIRE, PING, RECRUIT, RECYCLE, SHOVE, TWIN_SHOT};
+use rules::prelude::{Action, Game};
 
 use crate::support::*;
 
@@ -323,4 +323,71 @@ fn crossfire_deals_1_damage_to_the_targeted_minion_and_1_to_the_targeted_hero() 
         enemy_health,
         "only the targeted hero is hit"
     );
+}
+
+#[test]
+fn recycle_is_offered_as_targeting_with_a_minion_card_in_hand() {
+    let t = table(&[RECYCLE, RECRUIT], 0, 0);
+    let recycle = in_hand(&t.game, t.p0, RECYCLE);
+    let legal = t.game.legal_actions(t.p0);
+
+    assert!(legal.contains(&start_targeting(recycle)), "{legal:?}");
+    assert!(!legal.contains(&play(recycle)), "{legal:?}");
+}
+
+#[test]
+fn recycle_is_not_offered_with_no_minion_card_in_hand() {
+    let t = table(&[RECYCLE], 0, 0);
+    let recycle = in_hand(&t.game, t.p0, RECYCLE);
+    let legal = t.game.legal_actions(t.p0);
+
+    assert!(!legal.contains(&start_targeting(recycle)), "{legal:?}");
+    assert!(!legal.contains(&play(recycle)), "{legal:?}");
+}
+
+#[test]
+fn recycle_does_not_offer_a_spell_card_in_the_hand() {
+    let mut t = table(&[RECYCLE, RECRUIT], 0, 0);
+    let recycle = in_hand(&t.game, t.p0, RECYCLE);
+    let recruit = in_hand(&t.game, t.p0, RECRUIT);
+    apply_all(&mut t.game, t.p0, &[start_targeting(recycle)]);
+
+    assert_actions(&t.game, t.p0, &[target(0, recruit), cancel(recycle)]);
+}
+
+#[test]
+fn recycle_does_not_offer_a_minion_card_in_the_opponents_hand() {
+    let mut game = Game::with_deck_order(
+        0,
+        [
+            deck_with_top(&[RECYCLE, RECRUIT]),
+            deck_with_top(&[RECRUIT]),
+        ],
+    );
+    let [p0, _] = players(&game);
+    turn_with_mana(&mut game, p0, 1);
+    let recycle = in_hand(&game, p0, RECYCLE);
+    let recruit = in_hand(&game, p0, RECRUIT);
+    apply_all(&mut game, p0, &[start_targeting(recycle)]);
+
+    assert_actions(&game, p0, &[target(0, recruit), cancel(recycle)]);
+}
+
+#[test]
+fn cancel_after_targeting_a_hand_card_leaves_the_game_as_it_was_before_targeting() {
+    let mut t = table(&[RECYCLE, RECRUIT], 0, 0);
+    let recycle = in_hand(&t.game, t.p0, RECYCLE);
+    let recruit = in_hand(&t.game, t.p0, RECRUIT);
+    let before = t.game.clone();
+    apply_all(
+        &mut t.game,
+        t.p0,
+        &[
+            start_targeting(recycle),
+            target(0, recruit),
+            cancel(recycle),
+        ],
+    );
+
+    assert_eq!(t.game, before);
 }

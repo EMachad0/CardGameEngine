@@ -4,8 +4,8 @@ use std::collections::BTreeSet;
 
 use pretty_assertions::{assert_eq, assert_ne};
 use rules::prelude::static_card_definition::{
-    BARRACKS, BLAST, BOLT, CAPTAIN, DRUMMER, FORAGE, GIANT, HOARDER, RECRUIT, SPARK, SQUIRE,
-    STRAY_SHOT, SWEEP, WILD_BOLT, ZAP,
+    BARRACKS, BLAST, BOLT, CAPTAIN, DRUMMER, FORAGE, GIANT, HOARDER, RECRUIT, RECYCLE, SPARK,
+    SQUIRE, STRAY_SHOT, SWEEP, WILD_BOLT, ZAP,
 };
 use rules::prelude::{Action, Event, Game, ObjectId};
 
@@ -405,4 +405,44 @@ fn stray_shot_with_no_enemy_minion_does_nothing() {
         }],
         "the friendly Recruit and both heroes are not candidates"
     );
+}
+
+#[test]
+fn recycle_puts_the_targeted_minion_card_on_the_bottom_of_its_owners_deck() {
+    let mut t = table(&[RECYCLE, RECRUIT], 0, 0);
+    let recycle = in_hand(&t.game, t.p0, RECYCLE);
+    let recruit = in_hand(&t.game, t.p0, RECRUIT);
+
+    apply_all(
+        &mut t.game,
+        t.p0,
+        &[start_targeting(recycle), target(0, recruit), play(recycle)],
+    );
+
+    assert!(!t.game.hand(t.p0).contains(&recruit));
+    assert_eq!(t.game.deck(t.p0).last(), Some(&recruit));
+}
+
+#[test]
+fn recycle_draws_the_top_card_of_its_casters_deck() {
+    let mut t = table(&[RECYCLE, RECRUIT], 0, 0);
+    let recycle = in_hand(&t.game, t.p0, RECYCLE);
+    let recruit = in_hand(&t.game, t.p0, RECRUIT);
+    let top = t.game.deck(t.p0)[0];
+    let mut expected: Vec<ObjectId> = t
+        .game
+        .hand(t.p0)
+        .iter()
+        .copied()
+        .filter(|&id| id != recycle && id != recruit)
+        .collect();
+    expected.push(top);
+
+    apply_all(
+        &mut t.game,
+        t.p0,
+        &[start_targeting(recycle), target(0, recruit), play(recycle)],
+    );
+
+    assert_eq!(t.game.hand(t.p0), expected);
 }

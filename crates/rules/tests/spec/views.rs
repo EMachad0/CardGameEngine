@@ -2,7 +2,7 @@
 
 use pretty_assertions::assert_eq;
 use rules::prelude::static_card_definition::{
-    BOLT, CAPTAIN, FORAGE, HERO, PING, RECRUIT, SPARK, TWIN_SHOT,
+    BOLT, CAPTAIN, FORAGE, HERO, PING, RECRUIT, RECYCLE, SPARK, TWIN_SHOT,
 };
 use rules::prelude::{
     BoardCard, DefId, Face, Game, HeroCard, ObjectId, PlayerId, RevealedCard, TargetingView,
@@ -276,4 +276,67 @@ fn targeting_no_longer_shows_once_the_card_is_played() {
             "{viewer:?}"
         );
     }
+}
+
+#[test]
+fn both_players_see_the_hand_card_recycle_targeted() {
+    let mut t = table(&[RECYCLE, RECRUIT], 0, 0);
+    let recycle = in_hand(&t.game, t.p0, RECYCLE);
+    let recruit = in_hand(&t.game, t.p0, RECRUIT);
+    apply_all(
+        &mut t.game,
+        t.p0,
+        &[start_targeting(recycle), target(0, recruit)],
+    );
+
+    for viewer in players(&t.game) {
+        assert_eq!(
+            player_view(&t.game.view(viewer), t.p0).targeting,
+            Some(TargetingView {
+                object_id: recycle,
+                targeted: vec![recruit],
+            }),
+            "{viewer:?}"
+        );
+    }
+}
+
+#[test]
+fn the_opponent_sees_no_face_on_a_targeted_hand_card() {
+    let mut t = table(&[RECYCLE, RECRUIT], 0, 0);
+    let recycle = in_hand(&t.game, t.p0, RECYCLE);
+    let recruit = in_hand(&t.game, t.p0, RECRUIT);
+    apply_all(
+        &mut t.game,
+        t.p0,
+        &[start_targeting(recycle), target(0, recruit)],
+    );
+
+    let view = t.game.view(t.p1);
+    let card = player_view(&view, t.p0)
+        .hand
+        .iter()
+        .find(|card| card.object_id == recruit)
+        .expect("the targeted card stays in the hand while targeting");
+    assert_eq!(card.face, None);
+}
+
+#[test]
+fn the_owner_still_sees_the_face_of_a_targeted_hand_card() {
+    let mut t = table(&[RECYCLE, RECRUIT], 0, 0);
+    let recycle = in_hand(&t.game, t.p0, RECYCLE);
+    let recruit = in_hand(&t.game, t.p0, RECRUIT);
+    apply_all(
+        &mut t.game,
+        t.p0,
+        &[start_targeting(recycle), target(0, recruit)],
+    );
+
+    let view = t.game.view(t.p0);
+    let card = player_view(&view, t.p0)
+        .hand
+        .iter()
+        .find(|card| card.object_id == recruit)
+        .expect("the targeted card stays in the hand while targeting");
+    assert_eq!(card.face, face(RECRUIT, 2));
 }

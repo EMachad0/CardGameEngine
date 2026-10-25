@@ -3,14 +3,18 @@ use enumset::EnumSet;
 use crate::cards::binder::def_id::DefId;
 use crate::cards::binder::sets::base::static_card_definition::*;
 use crate::cards::definition::{
-    CardDef, CardKind, CardKindDef, CharacterKind, CharacterSelector, HeroCardDef, MinionCardDef,
-    PlayerSelector, SpellCardDef, TriggerDef,
+    CardDef, CardKind, CardKindDef, CardSelector, CharacterKind, CharacterSelector, HeroCardDef,
+    MinionCardDef, PlayerSelector, SpellCardDef, TriggerDef,
 };
 use crate::cards::filter::{CardFilter, CharacterFilter, Side};
 use crate::cards::modifier::ModifierEffect;
 use crate::choice::{AmountBound, Choice};
-use crate::effect::{CharacterVerb, Effect, EffectAmount, PickId, PlayerVerb, ZoneMove};
+use crate::effect::{
+    CardDestinationZone, CardVerb, CharacterVerb, Effect, EffectAmount, PickId, PlayerVerb,
+    ZoneMove,
+};
 use crate::history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter};
+use crate::target::{CardTargetOptions, CardTargetZone};
 use crate::trigger::{TriggerPattern, TriggerSubject};
 
 macro_rules! def_ids {
@@ -62,6 +66,7 @@ def_ids!(
     GOAD = "base.goad.v0",
     AFTERSHOCK = "base.aftershock.v0",
     DUD = "base.dud.v0",
+    RECYCLE = "base.recycle.v0",
 );
 
 pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
@@ -636,6 +641,33 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                     selector: CharacterSelector::Random(CharacterFilter::all()),
                     verbs: Vec::new(),
                 }],
+                ..Default::default()
+            },
+        ),
+        (
+            RECYCLE,
+            CardDef {
+                name: "Recycle".to_string(),
+                kind: CardKindDef::Spell(SpellCardDef),
+                mana_cost: 1,
+                play_effects: vec![
+                    Effect::Cards {
+                        selector: CardSelector::Targeted(Choice {
+                            options: CardTargetOptions {
+                                zone: CardTargetZone::Hand,
+                                kind: EnumSet::only(CardKind::Minion),
+                            },
+                            count: 1.into(),
+                            bound: AmountBound::Exactly,
+                            different: true,
+                        }),
+                        verbs: vec![CardVerb::Move(CardDestinationZone::DeckBottom)],
+                    },
+                    Effect::Players {
+                        selector: PlayerSelector::Owner,
+                        verbs: vec![PlayerVerb::Draw(EffectAmount::Static(1))],
+                    },
+                ],
                 ..Default::default()
             },
         ),

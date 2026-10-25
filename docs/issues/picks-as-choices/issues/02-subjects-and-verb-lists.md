@@ -1,6 +1,6 @@
 # An effect is a subject with one selector and a list of verbs
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 Blocked by: 01
@@ -43,3 +43,7 @@ draws.
 
 - No effect variant carries a selector of its own, except `Reveal` and `ResolvePick`.
 - The checks pass.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/74

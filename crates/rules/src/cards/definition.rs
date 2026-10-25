@@ -2,9 +2,11 @@ use enumset::EnumSet;
 
 use crate::cards::filter::{CharacterFilter, Side};
 use crate::cards::modifier::ModifierEffect;
-use crate::choice::Choice;
+use crate::cards::object::ObjectId;
 use crate::effect::Effect;
-use crate::target::{Declared, TargetForm, TargetId, Triggered};
+use crate::target::{
+    Bound, BoundCards, Declared, MapTargets, TargetChoiceRef, TargetForm, TargetId, Triggered,
+};
 use crate::trigger::TriggerPattern;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -100,7 +102,9 @@ impl CardDef {
 
     /// Declared by the play effects' `Targeted` selectors, in effect order. Each one's id is its
     /// place among them.
-    pub(crate) fn targets(&self) -> impl Iterator<Item = (TargetId, &Choice<CharacterFilter>)> {
+    pub(crate) fn targets(
+        &self,
+    ) -> impl Iterator<Item = (TargetId, TargetChoiceRef<'_, Declared>)> {
         self.play_effects
             .iter()
             .filter_map(Effect::target)
@@ -108,22 +112,20 @@ impl CardDef {
             .map(|(idx, target)| (TargetId(idx), target))
     }
 
-    /// The play effects, each target replaced by what `targeted` gives for its id.
-    pub(crate) fn bind_play_effects<R: TargetForm>(
+    /// The play effects, each target replaced by the objects `targeted` gives for its id, a card
+    /// target with its zone.
+    pub(crate) fn bind_play_effects(
         &self,
-        mut targeted: impl FnMut(TargetId) -> R::CharacterTarget,
-    ) -> Vec<Effect<R>> {
-        let mut target_ids = self.targets().map(|(target_id, _)| target_id);
+        targeted: impl FnMut(TargetId) -> Vec<ObjectId>,
+    ) -> Vec<Effect<Bound>> {
+        let target_ids = self.targets().map(|(target_id, _)| target_id);
+        let mut bind_targets = BindTargets {
+            target_ids,
+            targeted,
+        };
         self.play_effects
             .iter()
-            .map(|effect| {
-                effect.clone().map_targeted(|_| {
-                    let target_id = target_ids.next().expect(
-                        "every target the play effects declare should be listed by `targets`",
-                    );
-                    targeted(target_id)
-                })
-            })
+            .map(|effect| effect.clone().map_targeted(&mut bind_targets))
             .collect()
     }
 }
@@ -248,6 +250,70 @@ impl<S: TargetForm> CharacterSelector<S> {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CardSelector<S: TargetForm> {
+    Targeted(S::CardTarget),
+}
+
+impl<S: TargetForm> CardSelector<S> {
+    pub(crate) fn target(&self) -> Option<&S::CardTarget> {
+        match self {
+            CardSelector::Targeted(target) => Some(target),
+        }
+    }
+
+    pub(crate) fn map_targeted<R: TargetForm>(
+        self,
+        f: impl FnOnce(S::CardTarget) -> R::CardTarget,
+    ) -> CardSelector<R> {
+        match self {
+            CardSelector::Targeted(target) => CardSelector::Targeted(f(target)),
+        }
+    }
+}
+
+struct BindTargets<I, F> {
+    target_ids: I,
+    targeted: F,
+}
+
+impl<I, F> BindTargets<I, F>
+where
+    I: Iterator<Item = TargetId>,
+    F: FnMut(TargetId) -> Vec<ObjectId>,
+{
+    fn next_targeted(&mut self) -> Vec<ObjectId> {
+        let target_id = self
+            .target_ids
+            .next()
+            .expect("every target the play effects declare should be listed by `targets`");
+        (self.targeted)(target_id)
+    }
+}
+
+impl<I, F> MapTargets<Declared, Bound> for BindTargets<I, F>
+where
+    I: Iterator<Item = TargetId>,
+    F: FnMut(TargetId) -> Vec<ObjectId>,
+{
+    fn map_character(
+        &mut self,
+        _: <Declared as TargetForm>::CharacterTarget,
+    ) -> <Bound as TargetForm>::CharacterTarget {
+        self.next_targeted()
+    }
+
+    fn map_card(
+        &mut self,
+        choice: <Declared as TargetForm>::CardTarget,
+    ) -> <Bound as TargetForm>::CardTarget {
+        BoundCards {
+            zone: choice.options.zone,
+            object_ids: self.next_targeted(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::fmt::Debug;
@@ -256,14 +322,19 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::choice::AmountBound;
-    use crate::effect::{CharacterVerb, PlayerVerb};
+    use crate::cards::binder::sets::base::static_card_definition::SPARK;
+    use crate::cards::object::ObjectBag;
+    use crate::choice::{AmountBound, Choice};
+    use crate::effect::{CardDestinationZone, CardVerb, CharacterVerb, PlayerVerb};
+    use crate::ids::PlayerId;
+    use crate::target::{CardTargetOptions, CardTargetZone};
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     struct Holds<T>(PhantomData<T>);
 
     impl<T: Debug + Clone + PartialEq + Eq> TargetForm for Holds<T> {
         type CharacterTarget = T;
+        type CardTarget = T;
     }
 
     fn character_target(count: u8) -> Choice<CharacterFilter> {
@@ -273,6 +344,23 @@ mod tests {
             bound: AmountBound::Exactly,
             different: true,
         }
+    }
+
+    fn card_target(count: u8) -> Choice<CardTargetOptions> {
+        Choice {
+            options: CardTargetOptions {
+                zone: CardTargetZone::Hand,
+                kind: CardKind::Minion.into(),
+            },
+            count: count.into(),
+            bound: AmountBound::Exactly,
+            different: true,
+        }
+    }
+
+    fn ids<const N: usize>() -> [ObjectId; N] {
+        let mut bag = ObjectBag::default();
+        std::array::from_fn(|_| bag.insert(SPARK, PlayerId::new(0)))
     }
 
     fn card(play_effects: Vec<Effect<Declared>>) -> CardDef {
@@ -296,6 +384,13 @@ mod tests {
         }
     }
 
+    fn bury<S: TargetForm>(selector: CardSelector<S>) -> Effect<S> {
+        Effect::Cards {
+            selector,
+            verbs: vec![CardVerb::Move(CardDestinationZone::DeckBottom)],
+        }
+    }
+
     fn untargeted_effects<S: TargetForm>() -> Vec<Effect<S>> {
         vec![draw(), damage(CharacterSelector::Itself)]
     }
@@ -309,6 +404,18 @@ mod tests {
             damage(CharacterSelector::Targeted(first)),
             damage(CharacterSelector::Itself),
             damage(CharacterSelector::Targeted(second)),
+        ]
+    }
+
+    fn targets_of_both_subjects<S: TargetForm>(
+        first: S::CharacterTarget,
+        second: S::CardTarget,
+        third: S::CharacterTarget,
+    ) -> Vec<Effect<S>> {
+        vec![
+            damage(CharacterSelector::Targeted(first)),
+            bury(CardSelector::Targeted(second)),
+            damage(CharacterSelector::Targeted(third)),
         ]
     }
 
@@ -328,7 +435,25 @@ mod tests {
 
         assert_eq!(
             def.targets().collect::<Vec<_>>(),
-            [(TargetId(0), &first), (TargetId(1), &second)],
+            [
+                (TargetId(0), TargetChoiceRef::Character(&first)),
+                (TargetId(1), TargetChoiceRef::Character(&second)),
+            ],
+        );
+    }
+
+    #[test]
+    fn character_and_card_targets_take_their_ids_from_one_count() {
+        let (first, second, third) = (character_target(1), card_target(1), character_target(2));
+        let def = card(targets_of_both_subjects(first, second, third));
+
+        assert_eq!(
+            def.targets().collect::<Vec<_>>(),
+            [
+                (TargetId(0), TargetChoiceRef::Character(&first)),
+                (TargetId(1), TargetChoiceRef::Card(&second)),
+                (TargetId(2), TargetChoiceRef::Character(&third)),
+            ],
         );
     }
 
@@ -341,14 +466,37 @@ mod tests {
 
     #[test]
     fn binding_replaces_each_target_with_what_is_given_for_its_id() {
+        let [first, second] = ids();
         let def = card(two_targets_among_untargeted_effects(
             character_target(1),
             character_target(2),
         ));
 
         assert_eq!(
-            def.bind_play_effects::<Holds<TargetId>>(|target_id| target_id),
-            two_targets_among_untargeted_effects(TargetId(0), TargetId(1)),
+            def.bind_play_effects(|target_id| vec![[first, second][target_id.0]]),
+            two_targets_among_untargeted_effects::<Bound>(vec![first], vec![second]),
+        );
+    }
+
+    #[test]
+    fn binding_replaces_a_card_target_with_its_zone_and_what_is_given_for_its_id() {
+        let [first, second, third] = ids();
+        let def = card(targets_of_both_subjects(
+            character_target(1),
+            card_target(1),
+            character_target(1),
+        ));
+
+        assert_eq!(
+            def.bind_play_effects(|target_id| vec![[first, second, third][target_id.0]]),
+            targets_of_both_subjects::<Bound>(
+                vec![first],
+                BoundCards {
+                    zone: CardTargetZone::Hand,
+                    object_ids: vec![second],
+                },
+                vec![third],
+            ),
         );
     }
 
@@ -357,7 +505,10 @@ mod tests {
         let def = card(untargeted_effects());
         let mut asked = Vec::new();
 
-        def.bind_play_effects::<Holds<()>>(|target_id| asked.push(target_id));
+        def.bind_play_effects(|target_id| {
+            asked.push(target_id);
+            Vec::new()
+        });
 
         assert_eq!(asked, Vec::<TargetId>::new());
     }

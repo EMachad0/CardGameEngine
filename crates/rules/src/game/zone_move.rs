@@ -1,8 +1,9 @@
 use crate::cards::object::{ObjectBag, ObjectId};
-use crate::effect::ZoneMove;
+use crate::effect::{CardDestinationZone, ZoneMove};
 use crate::game::reporting::Report;
 use crate::ids::PlayerId;
-use crate::zones::Zones;
+use crate::target::CardTargetZone;
+use crate::zones::{WasInHand, Zones};
 
 pub(super) fn zone_move(
     player_id: PlayerId,
@@ -14,6 +15,25 @@ pub(super) fn zone_move(
         ZoneMove::AddToHand => add_to_hand(player_id, object_id, zones),
         ZoneMove::Bury => bury(player_id, object_id, zones),
     }
+}
+
+/// Takes the card out of `holder`'s `from` zone and puts it at `to` among `owner`'s zones.
+/// `None`, with nothing moved, if the card isn't in `from`.
+pub(super) fn move_card(
+    card: ObjectId,
+    holder: PlayerId,
+    from: CardTargetZone,
+    owner: PlayerId,
+    to: CardDestinationZone,
+    zones: &mut Zones,
+) -> Option<Report> {
+    match from {
+        CardTargetZone::Hand => {
+            let in_hand = WasInHand::from(zones.find_in_hand(holder, card)?);
+            zones.take_from_hand(in_hand);
+        }
+    }
+    Some(zone_move(owner, card, to.into(), zones))
 }
 
 /// Moves the top card to the end of the hand, `count` times.
@@ -66,5 +86,38 @@ fn bury(player_id: PlayerId, object_id: ObjectId, zones: &mut Zones) -> Report {
     Report::Buried {
         player_id,
         object_id,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+
+    use super::*;
+    use crate::cards::binder::sets::base::static_card_definition::SPARK;
+
+    #[test]
+    fn a_card_moves_from_its_holders_zone_into_its_owners() {
+        let (holder, owner) = (PlayerId::new(0), PlayerId::new(1));
+        let mut bag = ObjectBag::default();
+        let [holder_hero, owner_hero, card] = std::array::from_fn(|_| bag.insert(SPARK, owner));
+        let mut zones = Zones::new([(holder_hero, Vec::new()), (owner_hero, Vec::new())]);
+        zones.add_to_hand(holder, card);
+
+        let report = move_card(
+            card,
+            holder,
+            CardTargetZone::Hand,
+            owner,
+            CardDestinationZone::DeckBottom,
+            &mut zones,
+        );
+
+        assert!(matches!(
+            report,
+            Some(Report::Buried { player_id, object_id }) if player_id == owner && object_id == card
+        ));
+        assert_eq!(zones.hand(holder), []);
+        assert_eq!(zones.deck(owner), [card]);
     }
 }

@@ -1,5 +1,4 @@
-//! The cards of one game, borrowed together for the questions asked about them: what each object
-//! is, and which characters pass a filter.
+//! The cards of one game, borrowed together for the questions asked about them.
 
 use crate::cards::binder::def_id::DefId;
 use crate::cards::binder::store::Binder;
@@ -8,6 +7,7 @@ use crate::cards::filter::CharacterFilter;
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::history::History;
 use crate::ids::PlayerId;
+use crate::target::{CardTargetOptions, CardTargetZone};
 use crate::turn::TurnOrder;
 use crate::zones::Zones;
 
@@ -45,6 +45,11 @@ impl<'g> CardsRef<'g> {
         self.binder.get(self.def_id(object_id))
     }
 
+    /// The player who answers the choices in `source`'s text.
+    pub(super) fn chooser(&self, source: ObjectId) -> PlayerId {
+        self.objects.get(source).player_id
+    }
+
     pub(super) fn scan_characters_with_filter(
         &self,
         asking: PlayerId,
@@ -52,11 +57,26 @@ impl<'g> CardsRef<'g> {
     ) -> Vec<ObjectId> {
         self.zones
             .characters_in_play()
-            .filter(|&object_id| self.object_passes(asking, filter, object_id))
+            .filter(|&object_id| self.object_passes_character_filter(asking, filter, object_id))
             .collect()
     }
 
-    pub(super) fn object_passes(
+    pub(super) fn scan_cards_with_options(
+        &self,
+        asking: PlayerId,
+        filter: &CardTargetOptions,
+    ) -> Vec<ObjectId> {
+        let objects = match filter.zone {
+            CardTargetZone::Hand => self.zones.hand(asking),
+        };
+        objects
+            .iter()
+            .filter(|&object_id| filter.kind.contains(self.card_def(*object_id).card_kind()))
+            .copied()
+            .collect()
+    }
+
+    pub(super) fn object_passes_character_filter(
         &self,
         asking: PlayerId,
         filter: &CharacterFilter,

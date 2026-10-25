@@ -5,9 +5,27 @@ use crate::event::Event;
 use crate::game::cards_ref::CardsRef;
 use crate::game::modifiers::modifiers;
 use crate::ids::PlayerId;
-use crate::target::{Bound, Triggered};
+use crate::target::{Bound, MapTargets, TargetForm, Triggered};
 use crate::trigger::{Trigger, TriggerPattern, TriggerSubject};
 use crate::zones::Zones;
+
+struct NoTargets;
+
+impl<R: TargetForm> MapTargets<Triggered, R> for NoTargets {
+    fn map_character(
+        &mut self,
+        target: <Triggered as TargetForm>::CharacterTarget,
+    ) -> <R as TargetForm>::CharacterTarget {
+        match target {}
+    }
+
+    fn map_card(
+        &mut self,
+        target: <Triggered as TargetForm>::CardTarget,
+    ) -> <R as TargetForm>::CardTarget {
+        match target {}
+    }
+}
 
 pub(super) struct MatchedTrigger {
     pub(super) source: ObjectId,
@@ -18,7 +36,7 @@ impl MatchedTrigger {
     fn new(source: ObjectId, effects: Vec<Effect<Triggered>>) -> Self {
         let effects = effects
             .into_iter()
-            .map(|effect| effect.map_targeted(|no_target| match no_target {}))
+            .map(|effect| effect.map_targeted(&mut NoTargets))
             .collect();
         Self { source, effects }
     }
@@ -120,7 +138,7 @@ fn fulfill_trigger_subject(
     match subject {
         TriggerSubject::Itself => trigger_object == event_object,
         TriggerSubject::Character(character_filter) => {
-            cards.object_passes(trigger_owner, &character_filter, event_object)
+            cards.object_passes_character_filter(trigger_owner, &character_filter, event_object)
         }
     }
 }

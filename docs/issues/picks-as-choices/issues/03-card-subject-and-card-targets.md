@@ -1,6 +1,6 @@
-# The cards subject, with targets in a graveyard
+# The cards subject, with targets in a hand
 
-Status: ready-for-human
+Status: resolved
 Category: enhancement
 Type: task
 Blocked by: 02
@@ -9,35 +9,51 @@ Blocked by: 02
 
 Verbs act only on players and characters, so no card text can act on a card in a hand, a deck or
 a graveyard. ADR 0019 adds a third subject, cards, whose targets reach the chooser's hand or a
-graveyard.
+graveyard. This ticket builds the hand target, since the engine already reads, moves and shows
+hand cards.
 
 ## Forcing card
 
-Raise Dead: "Return a minion card from your graveyard to your hand." The minion card is a target.
+Recycle: "Put a minion card from your hand on the bottom of your deck. Draw a card." The minion
+card is a target.
 
 ## What
 
-From ADR 0019, limited to what Raise Dead reaches:
+From ADR 0019, limited to what Recycle reaches:
 
 - `Effect::Cards { selector: CardSelector<S>, verbs: Vec<CardVerb> }`.
 - `CardSelector<S>` with `Targeted(S::CardTarget)`. `TargetForm` gains `CardTarget`: `Declared`
   holds `Choice<CardTargetOptions>`, `Triggered` holds `NoTarget`, and `Bound` holds
-  `Vec<ObjectId>`.
-- `CardTargetOptions { zone: CardTargetZone, kind }`, with `CardTargetZone::Graveyard(sides)`.
-- `CardVerb::Move(CardDestination)` with `CardDestination::Hand`, into the card owner's zones.
-- Targeting offers graveyard cards: the targeting walk in `game/targeting_walk.rs`, the legal
-  actions and the view's targeting.
+  `BoundCards { zone, object_ids }`, so a move takes the card from the zone it was targeted in.
+- `CardTargetOptions { zone: CardTargetZone, kind }`, with `CardTargetZone::Hand`.
+- `CardVerb::Move(CardDestinationZone)` with `CardDestinationZone::DeckBottom`, into the card
+  owner's zones. Moving a card there is a bury.
+- Targeting offers hand cards: the targeting walk in `game/targeting_walk.rs`, the legal actions
+  and the view's targeting.
+
+## Not in this ticket
+
+- The graveyard target. Its gaps are an open thread in `docs/course/card-game/COURSE.md`.
+- The card being played as one of its own options. The open thread on hand targets in
+  `docs/course/card-game/COURSE.md` holds the call.
 
 ## Tests
 
-- Raise Dead moves the targeted minion card from its owner's graveyard to the hand.
-- With no minion card in its player's graveyard, Raise Dead isn't playable.
-- A spell card in the graveyard isn't offered.
-- A minion card in an opponent's graveyard isn't offered.
-- The view of an open targeting shows the targeted graveyard card to every player.
+- Recycle puts the targeted minion card on the bottom of its owner's deck.
+- Recycle draws the top card of its caster's deck.
+- The bury is reported as an event, after the play and before the draw.
+- With a minion card in its player's hand, Recycle is offered as a targeting.
+- With no minion card in its player's hand, Recycle isn't playable.
+- A spell card in the hand isn't offered.
+- A minion card in an opponent's hand isn't offered.
+- The view of an open targeting shows the targeted hand card to every player.
+- The opponent sees no face on the targeted hand card.
 - `Cancel` leaves the game as it was before the targeting started.
-- The move is reported as an event.
 
 ## Done when
 
 The checks pass, and the agent's review against `docs/conventions/file-structure.md` is answered.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/81
