@@ -70,5 +70,6 @@ Each waits for a card that needs it:
 - `AtMost` picks, with an action that ends the pick early.
 - `sample`, `DeckWindow::Every` and `DeckWindow::Bottom`.
 - Discover from a pool of definitions.
-- The hand target, and the rule that the card being played is never one of its own options.
+- The graveyard target.
+- The rule that the card being played is never one of its own options.
 - `All` and `Random` on cards, and `Modify` on cards.

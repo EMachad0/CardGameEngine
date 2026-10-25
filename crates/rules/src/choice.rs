@@ -1,4 +1,5 @@
-use crate::effect::EffectAmount;
+use crate::cards::definition::CardKind;
+use crate::effect::{CardZone, EffectAmount};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AmountBound {
@@ -29,6 +30,25 @@ pub struct Choice<O> {
     pub count: EffectAmount,
     pub bound: AmountBound,
     pub different: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CardTargetOptions {
+    pub zone: CardTargetZone,
+    pub kind: enumset::EnumSet<CardKind>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CardTargetZone {
+    Hand,
+}
+
+impl From<CardTargetZone> for CardZone {
+    fn from(value: CardTargetZone) -> Self {
+        match value {
+            CardTargetZone::Hand => Self::Hand,
+        }
+    }
 }
 
 #[cfg(test)]

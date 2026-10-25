@@ -1,13 +1,11 @@
 //! Whether a card's targeting can be finished, which objects the player may target next, and
 //! whether they may stop.
 
-use crate::cards::filter::CharacterFilter;
 use crate::cards::object::ObjectId;
-use crate::choice::Choice;
 use crate::game::amount::effect_amount;
 use crate::game::cards_ref::CardsRef;
 use crate::game::player_input::targeting::Targeting;
-use crate::target::TargetId;
+use crate::target::{Declared, TargetChoiceRef, TargetId};
 
 /// Whether the card's targeting can be finished from nothing targeted.
 pub(super) fn can_start_targeting(cards: CardsRef, object_id: ObjectId) -> bool {
@@ -42,7 +40,7 @@ fn can_finish_targeting(cards: CardsRef, targeting: &mut Targeting) -> bool {
 fn finishing_candidates<'a>(
     cards: CardsRef<'a>,
     target_id: TargetId,
-    target: &'a Choice<CharacterFilter>,
+    target: TargetChoiceRef<'a, Declared>,
     targeting: &'a mut Targeting,
 ) -> impl Iterator<Item = ObjectId> + 'a {
     let candidates = untargeted_matches(cards, target_id, target, targeting);
@@ -56,7 +54,7 @@ fn finishing_candidates<'a>(
 fn first_unsatisfied_target<'g>(
     cards: CardsRef<'g>,
     targeting: &Targeting,
-) -> Option<(TargetId, &'g Choice<CharacterFilter>)> {
+) -> Option<(TargetId, TargetChoiceRef<'g, Declared>)> {
     let object_id = targeting.object_id();
     cards
         .card_def(object_id)
@@ -64,7 +62,7 @@ fn first_unsatisfied_target<'g>(
         .find(|&(target_id, target)| {
             let count = targeting.targeted_for(target_id).count() as u8;
             !target
-                .bound
+                .bound()
                 .is_satisfied(count, required_count(cards, object_id, target))
         })
 }
@@ -72,29 +70,36 @@ fn first_unsatisfied_target<'g>(
 fn untargeted_matches(
     cards: CardsRef,
     target_id: TargetId,
-    target: &Choice<CharacterFilter>,
+    target: TargetChoiceRef<'_, Declared>,
     targeting: &Targeting,
 ) -> Vec<ObjectId> {
     let object_id = targeting.object_id();
     let objects_for_target = targeting.targeted_for(target_id).collect::<Vec<_>>();
     let count = objects_for_target.len() as u8;
     if target
-        .bound
+        .bound()
         .is_full(count, required_count(cards, object_id, target))
     {
         return Vec::new();
     }
 
     let owner = cards.objects.get(object_id).player_id;
-    cards
-        .scan_characters_with_filter(owner, &target.options)
+    let filtered = match target {
+        TargetChoiceRef::Character(c) => cards.scan_characters_with_filter(owner, &c.options),
+        TargetChoiceRef::Card(c) => cards.scan_cards_with_options(owner, &c.options),
+    };
+    filtered
         .into_iter()
-        .filter(|&candidate| !target.different || !targeting.is_targeted(candidate))
+        .filter(|&candidate| !target.different() || !targeting.is_targeted(candidate))
         .filter(|candidate| !objects_for_target.contains(candidate))
         .collect()
 }
 
-fn required_count(cards: CardsRef, object_id: ObjectId, target: &Choice<CharacterFilter>) -> u8 {
+fn required_count(
+    cards: CardsRef,
+    object_id: ObjectId,
+    target: TargetChoiceRef<'_, Declared>,
+) -> u8 {
     let owner = cards.objects.get(object_id).player_id;
-    effect_amount(cards, &target.count, owner)
+    effect_amount(cards, &target.count(), owner)
 }

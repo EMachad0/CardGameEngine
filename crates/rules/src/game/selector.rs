@@ -1,7 +1,9 @@
 //! What an effect acts on, as its selector says: players or characters, each of them in the order
 //! they come, or one of them at random.
 
-use crate::cards::definition::{CharacterSelector, PlayerSelector, PlayerSelectorFilter};
+use crate::cards::definition::{
+    CardSelector, CharacterSelector, PlayerSelector, PlayerSelectorFilter,
+};
 use crate::cards::filter::fulfill_side_filter;
 use crate::cards::object::ObjectId;
 use crate::game::cards_ref::CardsRef;
@@ -60,6 +62,17 @@ pub(super) fn select_characters(
             Values::OneOf(cards.scan_characters_with_filter(owner, filter))
         }
         CharacterSelector::Targeted(targeted) => Values::Each(targeted.clone()),
+    })
+}
+
+pub(super) fn select_cards(
+    _cards: CardsRef,
+    _owner: PlayerId,
+    _source: ObjectId,
+    selector: &CardSelector<Bound>,
+) -> Selection<ObjectId> {
+    Selection(match selector {
+        CardSelector::Targeted(targeted) => Values::Each(targeted.object_ids.clone()),
     })
 }
 

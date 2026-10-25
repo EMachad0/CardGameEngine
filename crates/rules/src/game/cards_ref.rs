@@ -6,6 +6,7 @@ use crate::cards::binder::store::Binder;
 use crate::cards::definition::CardDef;
 use crate::cards::filter::CharacterFilter;
 use crate::cards::object::{ObjectBag, ObjectId};
+use crate::choice::{CardTargetOptions, CardTargetZone};
 use crate::history::History;
 use crate::ids::PlayerId;
 use crate::turn::TurnOrder;
@@ -52,11 +53,26 @@ impl<'g> CardsRef<'g> {
     ) -> Vec<ObjectId> {
         self.zones
             .characters_in_play()
-            .filter(|&object_id| self.object_passes(asking, filter, object_id))
+            .filter(|&object_id| self.object_passes_character_filter(asking, filter, object_id))
             .collect()
     }
 
-    pub(super) fn object_passes(
+    pub(super) fn scan_cards_with_options(
+        &self,
+        asking: PlayerId,
+        filter: &CardTargetOptions,
+    ) -> Vec<ObjectId> {
+        let objects = match filter.zone {
+            CardTargetZone::Hand => self.zones.hand(asking),
+        };
+        objects
+            .iter()
+            .filter(|&object_id| filter.kind.contains(self.card_def(*object_id).card_kind()))
+            .copied()
+            .collect()
+    }
+
+    pub(super) fn object_passes_character_filter(
         &self,
         asking: PlayerId,
         filter: &CharacterFilter,

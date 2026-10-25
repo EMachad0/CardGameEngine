@@ -1,13 +1,14 @@
 use crate::cards::binder::def_id::DefId;
 use crate::cards::modifier::Modifier;
 use crate::cards::object::{ObjectBag, ObjectId};
-use crate::effect::{CharacterVerb, Effect, PickId, PlayerVerb, ZoneMove};
+use crate::choice::CardTargetZone;
+use crate::effect::{CardVerb, CardZone, CharacterVerb, Effect, PickId, PlayerVerb, ZoneMove};
 use crate::game::amount::effect_amount;
 use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::NextEffect;
 use crate::game::player_input::awaiting::PlayerInput;
 use crate::game::reporting::Report;
-use crate::game::selector::{Selection, select_characters, select_players};
+use crate::game::selector::{Selection, select_cards, select_characters, select_players};
 use crate::game::zone_move::{draw, summon, zone_move};
 use crate::ids::PlayerId;
 use crate::rng::Rng;
@@ -24,6 +25,10 @@ enum Prepared {
     Characters {
         characters: Selection<ObjectId>,
         verbs: Vec<PreparedCharacterVerb>,
+    },
+    Cards {
+        cards: Selection<ObjectId>,
+        verbs: Vec<PreparedCardVerb>,
     },
     Reveal {
         players: Selection<PlayerId>,
@@ -49,6 +54,10 @@ enum PreparedCharacterVerb {
     Damage { amount: u8, source: ObjectId },
     Modify(Modifier),
     AddFriendlyAura(Modifier),
+}
+
+enum PreparedCardVerb {
+    Move { from: CardTargetZone, to: CardZone },
 }
 
 pub(in crate::game) fn prepare(
@@ -93,6 +102,18 @@ pub(in crate::game) fn prepare(
                             effect: modifier_effect,
                         })
                     }
+                })
+                .collect(),
+        },
+        Effect::Cards { selector, verbs } => Prepared::Cards {
+            cards: select_cards(cards, owner, source, &selector),
+            verbs: verbs
+                .into_iter()
+                .map(|verb| match verb {
+                    CardVerb::Move(zone) => PreparedCardVerb::Move {
+                        from: selector.target().unwrap().zone.into(),
+                        to: zone,
+                    },
                 })
                 .collect(),
         },
@@ -160,6 +181,24 @@ pub(in crate::game) fn resolve(
                     }
                     PreparedCharacterVerb::AddFriendlyAura(modifier) => {
                         objects.grant_friendly_aura(character, modifier.clone());
+                    }
+                }
+            }
+        }
+        Prepared::Cards { cards, verbs } => {
+            for (verb, card) in verbs_on(cards, &verbs, rng) {
+                match verb {
+                    PreparedCardVerb::Move { from, to } => {
+                        let player_id = objects.get(card).player_id;
+                        match from {
+                            CardTargetZone::Hand => {
+                                let Some(in_hand) = zones.find_in_hand(player_id, card) else {
+                                    todo!();
+                                };
+                                zones.take_from_hand(in_hand.into());
+                            }
+                        }
+                        reports.push(zone_move(player_id, card, (*to).into(), zones));
                     }
                 }
             }

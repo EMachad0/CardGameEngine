@@ -2,7 +2,7 @@
 
 use pretty_assertions::assert_eq;
 use rules::prelude::static_card_definition::{
-    BARRACKS, BLAST, BOLT, CAPTAIN, DRILLMASTER, FORAGE, PING, RECRUIT, SPARK, TWIN_SHOT,
+    BARRACKS, BLAST, BOLT, CAPTAIN, DRILLMASTER, FORAGE, PING, RECRUIT, RECYCLE, SPARK, TWIN_SHOT,
     WILD_BOLT, ZAP,
 };
 use rules::prelude::{Action, Event, Game, ObjectId, Outcome, PlayerId, View};
@@ -831,5 +831,38 @@ fn a_card_with_targets_reports_played_then_hits_its_targeted_minions() {
             vec![hit(t.enemy[1]), hit(t.enemy[0])],
         ],
         "one effect over a set of targeted minions is one step, in the order they were targeted"
+    );
+}
+
+#[test]
+fn recycle_reports_its_play_then_the_bury_then_its_draw() {
+    let mut t = table(&[RECYCLE, RECRUIT], 0, 0);
+    let recycle = in_hand(&t.game, t.p0, RECYCLE);
+    let recruit = in_hand(&t.game, t.p0, RECRUIT);
+    apply_all(
+        &mut t.game,
+        t.p0,
+        &[start_targeting(recycle), target(0, recruit)],
+    );
+    let top = t.game.deck(t.p0)[0];
+
+    let events = observe(&mut t.game, t.p0, play(recycle)).events();
+
+    assert_eq!(
+        events,
+        [
+            Event::Played {
+                player_id: t.p0,
+                object_id: recycle
+            },
+            Event::Buried {
+                player_id: t.p0,
+                object_id: recruit
+            },
+            Event::Drew {
+                player_id: t.p0,
+                object_id: top
+            },
+        ]
     );
 }

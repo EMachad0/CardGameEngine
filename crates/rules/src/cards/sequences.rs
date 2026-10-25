@@ -74,6 +74,10 @@ fn collect_grants<'a, S: TargetForm>(
                 pick_id: _,
                 picked_move: _,
                 other_move: _,
+            }
+            | Effect::Cards {
+                selector: _,
+                verbs: _,
             } => {}
         }
     }

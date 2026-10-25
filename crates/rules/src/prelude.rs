@@ -4,14 +4,16 @@ pub use crate::action::{Action, IllegalAction};
 pub use crate::cards::binder::def_id::DefId;
 pub use crate::cards::binder::sets::base::static_card_definition;
 pub use crate::cards::definition::{
-    CardDef, CardKind, CardKindDef, CharacterKind, CharacterSelector, HeroCardDef, MinionCardDef,
-    PlayerSelector, PlayerSelectorFilter, SpellCardDef, TriggerDef,
+    CardDef, CardKind, CardKindDef, CardSelector, CharacterKind, CharacterSelector, HeroCardDef,
+    MinionCardDef, PlayerSelector, PlayerSelectorFilter, SpellCardDef, TriggerDef,
 };
 pub use crate::cards::filter::{CardFilter, CharacterFilter, Side};
 pub use crate::cards::modifier::ModifierEffect;
 pub use crate::cards::object::ObjectId;
-pub use crate::choice::{AmountBound, Choice};
-pub use crate::effect::{CharacterVerb, Effect, EffectAmount, PickId, PlayerVerb, ZoneMove};
+pub use crate::choice::{AmountBound, CardTargetOptions, CardTargetZone, Choice};
+pub use crate::effect::{
+    CardVerb, CardZone, CharacterVerb, Effect, EffectAmount, PickId, PlayerVerb, ZoneMove,
+};
 pub use crate::event::Event;
 pub use crate::game::state::{ApplyError, Game};
 pub use crate::game::view::{

@@ -36,6 +36,7 @@ fn validate_pick_order<S: TargetForm>(effects: &[Effect<S>]) -> Result<(), CardD
                 unresolved.remove(at);
             }
             Effect::Players { .. } | Effect::Characters { .. } => {}
+            Effect::Cards { .. } => {}
         }
     }
     match unresolved.first() {

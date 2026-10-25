@@ -26,7 +26,6 @@ From ADR 0019 and ADR 0020, limited to what the forcing cards reach:
 - `CardSelector::Picked { choice: Choice<CardPickOptions>, others: Vec<CardVerb> }`, with
   `CardPickOptions { zone: CardPickZone, kind }`, `CardPickZone::YourDeck(DeckWindow)` and
   `DeckWindow::Top(n)`.
-- `CardDestination::DeckBottom`. Moving a card there is a bury.
 - The resolving effect holds `Option<Picking>`, an enum by subject. `Picking::Cards` holds the
   effect's choice, its verbs and its `others`, plus `options`, `filtered_out` and `picked`. Opening
   a pick moves the cursor past the effect. Opening a pick and finishing it are separate steps
