@@ -110,8 +110,8 @@ impl Picking {
 type CardsWithVerbs = (Vec<ObjectId>, Vec<CardVerb>);
 
 impl PickedCards {
-    /// The player whose `from` zone holds the cards, then the cards picked with the verbs, then
-    /// the rest with `others`.
+    /// The player whose `from` zone holds the cards, then each group of cards with the verbs that
+    /// act on it, in the order the verbs run: the cards picked, then the rest.
     pub(super) fn into_groups(self) -> (PlayerId, CardOriginZone, [CardsWithVerbs; 2]) {
         (
             self.holder,

@@ -38,10 +38,8 @@ enum Prepared {
         verbs: Vec<PreparedCharacterVerb>,
     },
     Cards(PreparedCards),
-    Picked {
-        picked: PreparedCards,
-        rest: PreparedCards,
-    },
+    /// In the order their verbs run.
+    Picked([PreparedCards; 2]),
 }
 
 struct PreparedCards {
@@ -126,22 +124,14 @@ pub(in crate::game) fn prepare(
     }))
 }
 
-/// The cards picked with the effect's verbs, then the rest of what the pick covered with its
-/// `others`.
 pub(in crate::game) fn prepare_finish(picked: PickedObjects) -> PreparedEffect {
     PreparedEffect(match picked {
         PickedObjects::Cards(picked) => {
-            let (holder, from, [(picked, verbs), (rest, others)]) = picked.into_groups();
-            Prepared::Picked {
-                picked: PreparedCards {
-                    cards: select_picked_cards(holder, from, picked),
-                    verbs: prepare_card_verbs(verbs),
-                },
-                rest: PreparedCards {
-                    cards: select_picked_cards(holder, from, rest),
-                    verbs: prepare_card_verbs(others),
-                },
-            }
+            let (holder, from, groups) = picked.into_groups();
+            Prepared::Picked(groups.map(|(covered, verbs)| PreparedCards {
+                cards: select_picked_cards(holder, from, covered),
+                verbs: prepare_card_verbs(verbs),
+            }))
         }
     })
 }
@@ -185,9 +175,10 @@ pub(in crate::game) fn resolve(
         Prepared::Cards(prepared) => {
             reports.extend(resolve_cards(prepared, rng, zones, objects));
         }
-        Prepared::Picked { picked, rest } => {
-            reports.extend(resolve_cards(picked, rng, zones, objects));
-            reports.extend(resolve_cards(rest, rng, zones, objects));
+        Prepared::Picked(groups) => {
+            for group in groups {
+                reports.extend(resolve_cards(group, rng, zones, objects));
+            }
         }
     }
     reports
