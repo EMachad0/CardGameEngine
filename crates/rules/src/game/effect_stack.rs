@@ -4,7 +4,7 @@
 
 use crate::cards::object::ObjectId;
 use crate::effect::Effect;
-use crate::game::picking::Picking;
+use crate::game::picking::{PickedObjects, Picking};
 use crate::target::Bound;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -36,8 +36,8 @@ pub(super) struct NextEffect {
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum Advance {
     Effect(NextEffect),
-    /// With the picking, complete, taken off the resolving effect.
-    FinishPicking(Picking),
+    /// With the objects of the complete picking taken off the resolving effect.
+    FinishPicking(PickedObjects),
     AwaitPicking,
     /// Nothing is resolving.
     Done,
@@ -118,11 +118,14 @@ impl EffectStack {
         let Some(resolving) = &mut self.resolving else {
             return Advance::Done;
         };
-        if let Some(picking) = resolving.picking.take_if(|picking| picking.is_complete()) {
-            return Advance::FinishPicking(picking);
-        }
-        if resolving.picking.is_some() {
-            return Advance::AwaitPicking;
+        if let Some(picking) = resolving.picking.take() {
+            return match picking.finish() {
+                Ok(picked) => Advance::FinishPicking(picked),
+                Err(open) => {
+                    resolving.picking = Some(open);
+                    Advance::AwaitPicking
+                }
+            };
         }
         if let Some(next) = resolving.next_effect() {
             return Advance::Effect(next);
@@ -373,7 +376,10 @@ mod tests {
         let mut answered = picking(&[a, b]);
         answered.pick(b);
 
-        assert_eq!(stack.advance(), Advance::FinishPicking(answered));
+        assert_eq!(
+            stack.advance(),
+            Advance::FinishPicking(answered.finish().unwrap())
+        );
         assert_eq!(stack.advance(), effect(source, draw(2)));
     }
 

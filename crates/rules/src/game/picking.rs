@@ -41,7 +41,14 @@ struct WindowCard {
     pickable: bool,
 }
 
+/// A complete pick's objects, by subject.
+#[derive(Debug, PartialEq, Eq)]
+pub(super) enum PickedObjects {
+    Cards(PickedCards),
+}
+
 /// A complete card pick's cards, each group with the verbs that act on it.
+#[derive(Debug, PartialEq, Eq)]
 pub(super) struct PickedCards {
     /// Whose `from` zone holds the cards.
     pub(super) holder: PlayerId,
@@ -89,6 +96,16 @@ impl Picking {
             Picking::Cards(cards) => cards.pick(object_id),
         }
     }
+
+    /// Its objects, if it is complete. Otherwise the pick, still open.
+    pub(super) fn finish(self) -> Result<PickedObjects, Self> {
+        match self {
+            Picking::Cards(cards) => cards
+                .finish()
+                .map(PickedObjects::Cards)
+                .map_err(Picking::Cards),
+        }
+    }
 }
 
 impl CardPicking {
@@ -122,26 +139,24 @@ impl CardPicking {
         }
     }
 
-    /// Panics unless the pick is complete.
-    pub(super) fn finish(self) -> PickedCards {
-        assert!(
-            self.is_complete(),
-            "a picking should be complete before it finishes",
-        );
+    fn finish(self) -> Result<PickedCards, Self> {
+        if !self.is_complete() {
+            return Err(self);
+        }
         let rest = self
             .window
             .iter()
             .map(|card| card.object_id)
             .filter(|object_id| !self.picked.contains(object_id))
             .collect();
-        PickedCards {
+        Ok(PickedCards {
             holder: self.holder,
             from: self.from,
             picked: self.picked,
             verbs: self.verbs,
             rest,
             others: self.others,
-        }
+        })
     }
 
     fn options(&self) -> impl Iterator<Item = ObjectId> {
@@ -274,32 +289,25 @@ mod tests {
         picking.pick(d);
         picking.pick(b);
 
-        let finished = picking.finish();
-
-        assert_eq!(finished.picked, [d, b]);
-        assert_eq!(finished.rest, [a, c]);
         assert_eq!(
-            (
-                finished.holder,
-                finished.from,
-                finished.verbs,
-                finished.others
-            ),
-            (
-                PlayerId::new(1),
-                CardOriginZone::Deck,
-                vec![CardVerb::Move(CardDestinationZone::Hand)],
-                vec![CardVerb::Move(CardDestinationZone::DeckBottom)],
-            ),
+            picking.finish(),
+            Ok(PickedCards {
+                holder: PlayerId::new(1),
+                from: CardOriginZone::Deck,
+                picked: vec![d, b],
+                verbs: vec![CardVerb::Move(CardDestinationZone::Hand)],
+                rest: vec![a, c],
+                others: vec![CardVerb::Move(CardDestinationZone::DeckBottom)],
+            }),
         );
     }
 
     #[test]
-    #[should_panic(expected = "a picking should be complete before it finishes")]
-    fn an_incomplete_pick_cannot_finish() {
+    fn an_incomplete_pick_stays_open_when_it_finishes() {
         let [a, b] = ids();
+        let open = picking(&[(a, true), (b, true)], 1);
 
-        picking(&[(a, true), (b, true)], 1).finish();
+        assert_eq!(open.clone().finish(), Err(open));
     }
 
     #[test]
