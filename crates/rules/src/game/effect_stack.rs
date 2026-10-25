@@ -32,18 +32,12 @@ pub(super) struct NextEffect {
     pub(super) effect: Effect<Bound>,
 }
 
-/// A picking that holds its count, taken off its resolving effect to finish.
-#[derive(Debug, PartialEq, Eq)]
-pub(super) struct CompletePicking {
-    pub(super) source: ObjectId,
-    pub(super) picking: Picking,
-}
-
 /// What the resolving effect does next.
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum Advance {
     Effect(NextEffect),
-    FinishPicking(CompletePicking),
+    /// With the picking, complete, taken off the resolving effect.
+    FinishPicking(Picking),
     AwaitPicking,
     /// Nothing is resolving.
     Done,
@@ -125,10 +119,7 @@ impl EffectStack {
             return Advance::Done;
         };
         if let Some(picking) = resolving.picking.take_if(|picking| picking.is_complete()) {
-            return Advance::FinishPicking(CompletePicking {
-                source: resolving.pending.source,
-                picking,
-            });
+            return Advance::FinishPicking(picking);
         }
         if resolving.picking.is_some() {
             return Advance::AwaitPicking;
@@ -154,7 +145,7 @@ impl EffectStack {
         resolving.picking = Some(picking);
     }
 
-    /// The resolving effect's picking, unless it holds its count or there is none.
+    /// The resolving effect's picking, unless it is complete or there is none.
     pub(super) fn awaited_picking(&self) -> Option<AwaitsPicking<'_>> {
         let resolving = self.resolving.as_ref()?;
         let picking = resolving.picking.as_ref()?;
@@ -189,9 +180,9 @@ mod tests {
     use crate::cards::object::ObjectBag;
     use crate::choice::AmountBound;
     use crate::effect::{CardDestinationZone, CardVerb, EffectAmount, PlayerVerb};
-    use crate::game::picking::CardPicking;
+    use crate::game::picking::{CardPicking, PickWindow};
+    use crate::game::zone_move::CardOriginZone;
     use crate::ids::PlayerId;
-    use crate::pick::{CardPickZone, DeckWindow};
 
     fn sources<const N: usize>() -> [ObjectId; N] {
         let mut objects = ObjectBag::default();
@@ -208,8 +199,11 @@ mod tests {
     /// A pick of one of `options`, all pickable.
     fn picking(options: &[ObjectId]) -> Picking {
         Picking::Cards(CardPicking::new(
-            CardPickZone::YourDeck(DeckWindow::Top(2)),
-            options.iter().map(|&object_id| (object_id, true)),
+            PickWindow {
+                holder: PlayerId::new(0),
+                from: CardOriginZone::Deck,
+                cards: options.iter().map(|&object_id| (object_id, true)).collect(),
+            },
             1,
             AmountBound::Exactly,
             vec![CardVerb::Move(CardDestinationZone::Hand)],
@@ -261,22 +255,15 @@ mod tests {
     }
 
     #[test]
-    fn a_resolving_effect_hands_out_its_effects_in_order_with_its_source_then_is_done() {
+    fn a_resolving_effect_hands_out_its_effects_in_order_with_its_source() {
         let [source] = sources();
         let mut stack = EffectStack::default();
         stack.push(source, vec![draw(1), draw(2)]);
         stack.start_next();
 
-        let steps = [stack.advance(), stack.advance(), stack.advance()];
+        let steps = [stack.advance(), stack.advance()];
 
-        assert_eq!(
-            steps,
-            [
-                effect(source, draw(1)),
-                effect(source, draw(2)),
-                Advance::Done
-            ]
-        );
+        assert_eq!(steps, [effect(source, draw(1)), effect(source, draw(2))]);
     }
 
     #[test]
@@ -386,13 +373,7 @@ mod tests {
         let mut answered = picking(&[a, b]);
         answered.pick(b);
 
-        assert_eq!(
-            stack.advance(),
-            Advance::FinishPicking(CompletePicking {
-                source,
-                picking: answered
-            })
-        );
+        assert_eq!(stack.advance(), Advance::FinishPicking(answered));
         assert_eq!(stack.advance(), effect(source, draw(2)));
     }
 
@@ -407,11 +388,19 @@ mod tests {
     }
 
     #[test]
-    fn a_picking_with_no_options_is_not_awaited_and_finishes_next() {
+    fn a_picking_with_no_options_is_not_awaited() {
+        let [source] = sources();
+
+        let stack = picking_stack(source, &[]);
+
+        assert!(stack.awaited_picking().is_none());
+    }
+
+    #[test]
+    fn a_picking_with_no_options_finishes_next() {
         let [source] = sources();
         let mut stack = picking_stack(source, &[]);
 
-        assert!(stack.awaited_picking().is_none());
         assert!(matches!(stack.advance(), Advance::FinishPicking(_)));
     }
 

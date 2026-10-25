@@ -8,10 +8,9 @@ use crate::cards::binder::def_id::DefId;
 use crate::cards::binder::store::Binder;
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::game::cards_ref::CardsRef;
-use crate::game::effect_stack::{
-    Advance, CompletePicking, EffectStack, NextEffect, WasAwaitingPicking,
-};
+use crate::game::effect_stack::{Advance, EffectStack, NextEffect, WasAwaitingPicking};
 use crate::game::legal_actions::LegalAction;
+use crate::game::picking::Picking;
 use crate::game::play::WasPlayable;
 use crate::game::player::{Player, Players};
 use crate::game::player_input::awaiting::{
@@ -59,7 +58,7 @@ enum Step {
     StartTurn,
     Action(ActionStep),
     Effect(NextEffect),
-    FinishPicking(CompletePicking),
+    FinishPicking(Picking),
     DeathPass,
     DecideOutcome,
 }
@@ -182,7 +181,8 @@ impl Game {
         self.players.get(player_id).mana.current()
     }
 
-    /// The options of the player's picking, in the order shown. Empty unless they are picking.
+    /// The options of the player's picking that they haven't picked yet, in the order shown. Empty
+    /// unless they are picking.
     pub fn pick_options(&self, player_id: PlayerId) -> Vec<ObjectId> {
         match awaiting(
             self.cards(),
@@ -304,8 +304,8 @@ impl Game {
                     Vec::new()
                 }
             },
-            Step::FinishPicking(complete) => {
-                let prepared = effect::prepare_finish(self.cards(), complete);
+            Step::FinishPicking(picking) => {
+                let prepared = effect::prepare_finish(picking);
                 effect::resolve(prepared, &mut self.rng, &mut self.zones, &mut self.objects)
             }
             Step::DeathPass => {
@@ -472,8 +472,8 @@ impl<O: Observer> Resolving<'_, O> {
         self.game.take_step(Step::Effect(next), self.obs);
     }
 
-    pub(super) fn finish_picking(&mut self, complete: CompletePicking) {
-        self.game.take_step(Step::FinishPicking(complete), self.obs);
+    pub(super) fn finish_picking(&mut self, picking: Picking) {
+        self.game.take_step(Step::FinishPicking(picking), self.obs);
     }
 
     pub(super) fn check_state(&mut self) {

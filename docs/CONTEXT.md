@@ -216,7 +216,7 @@ What the game waits on from one player before it goes on: targeting or picking.
 _Avoid_: question, prompt, request
 
 **Player input**:
-The targetings the game awaits, at most one per player.
+The targetings the game awaits.
 _Avoid_: interaction, answers
 
 **Bury**:

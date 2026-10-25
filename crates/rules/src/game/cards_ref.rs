@@ -7,6 +7,8 @@ use crate::cards::binder::store::Binder;
 use crate::cards::definition::{CardDef, CardKind};
 use crate::cards::filter::CharacterFilter;
 use crate::cards::object::{ObjectBag, ObjectId};
+use crate::game::picking::PickWindow;
+use crate::game::zone_move::CardOriginZone;
 use crate::history::History;
 use crate::ids::PlayerId;
 use crate::pick::{CardPickOptions, CardPickZone, DeckWindow};
@@ -79,23 +81,26 @@ impl<'g> CardsRef<'g> {
             .collect()
     }
 
-    /// The cards a pick covers, in the order shown, each with whether it passes the kind filter.
     pub(super) fn scan_pick_window(
         &self,
         asking: PlayerId,
         options: &CardPickOptions,
-    ) -> Vec<(ObjectId, bool)> {
-        let window = match options.zone {
+    ) -> PickWindow {
+        let (holder, from, covered) = match options.zone {
             CardPickZone::YourDeck(DeckWindow::Top(count)) => {
                 let mut deck = self.zones.deck(asking);
                 deck.truncate(usize::from(count));
-                deck
+                (asking, CardOriginZone::Deck, deck)
             }
         };
-        window
-            .into_iter()
-            .map(|object_id| (object_id, self.card_is_kind(options.kind, object_id)))
-            .collect()
+        PickWindow {
+            holder,
+            from,
+            cards: covered
+                .into_iter()
+                .map(|object_id| (object_id, self.card_is_kind(options.kind, object_id)))
+                .collect(),
+        }
     }
 
     fn card_is_kind(&self, kind: EnumSet<CardKind>, object_id: ObjectId) -> bool {

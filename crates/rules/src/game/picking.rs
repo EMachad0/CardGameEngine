@@ -4,16 +4,26 @@
 use crate::cards::object::ObjectId;
 use crate::choice::AmountBound;
 use crate::effect::CardVerb;
-use crate::pick::CardPickZone;
+use crate::game::zone_move::CardOriginZone;
+use crate::ids::PlayerId;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum Picking {
     Cards(CardPicking),
 }
 
+/// The cards a pick covers, and the zone that holds them.
+pub(super) struct PickWindow {
+    pub(super) holder: PlayerId,
+    pub(super) from: CardOriginZone,
+    /// In the order shown, each with whether the pick's kind filter lets the player pick it.
+    pub(super) cards: Vec<(ObjectId, bool)>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct CardPicking {
-    zone: CardPickZone,
+    holder: PlayerId,
+    from: CardOriginZone,
     /// In the order shown.
     window: Vec<WindowCard>,
     /// In the order picked.
@@ -33,7 +43,9 @@ struct WindowCard {
 
 /// A complete card pick's cards, each group with the verbs that act on it.
 pub(super) struct PickedCards {
-    pub(super) zone: CardPickZone,
+    /// Whose `from` zone holds the cards.
+    pub(super) holder: PlayerId,
+    pub(super) from: CardOriginZone,
     /// In the order picked.
     pub(super) picked: Vec<ObjectId>,
     pub(super) verbs: Vec<CardVerb>,
@@ -71,7 +83,7 @@ impl Picking {
         }
     }
 
-    /// Panics unless `object_id` is an option not picked yet, in a pick that doesn't hold its count.
+    /// Panics unless `object_id` is an option not picked yet, in a pick that isn't complete.
     pub(super) fn pick(&mut self, object_id: ObjectId) {
         match self {
             Picking::Cards(cards) => cards.pick(object_id),
@@ -80,18 +92,22 @@ impl Picking {
 }
 
 impl CardPicking {
-    /// `window` in the order shown, each card with whether it is an option.
     pub(super) fn new(
-        zone: CardPickZone,
-        window: impl IntoIterator<Item = (ObjectId, bool)>,
+        window: PickWindow,
         count: u8,
         bound: AmountBound,
         verbs: Vec<CardVerb>,
         others: Vec<CardVerb>,
     ) -> Self {
+        let PickWindow {
+            holder,
+            from,
+            cards,
+        } = window;
         Self {
-            zone,
-            window: window
+            holder,
+            from,
+            window: cards
                 .into_iter()
                 .map(|(object_id, pickable)| WindowCard {
                     object_id,
@@ -110,7 +126,7 @@ impl CardPicking {
     pub(super) fn finish(self) -> PickedCards {
         assert!(
             self.is_complete(),
-            "a picking should hold its count before it finishes",
+            "a picking should be complete before it finishes",
         );
         let rest = self
             .window
@@ -119,7 +135,8 @@ impl CardPicking {
             .filter(|object_id| !self.picked.contains(object_id))
             .collect();
         PickedCards {
-            zone: self.zone,
+            holder: self.holder,
+            from: self.from,
             picked: self.picked,
             verbs: self.verbs,
             rest,
@@ -157,7 +174,7 @@ impl CardPicking {
     fn pick(&mut self, object_id: ObjectId) {
         assert!(
             !self.is_complete(),
-            "a picking should take no pick once it holds its count",
+            "a picking should take no pick once it is complete",
         );
         assert!(
             self.options_left().any(|option| option == object_id),
@@ -175,10 +192,6 @@ mod tests {
     use crate::cards::binder::sets::base::static_card_definition::SPARK;
     use crate::cards::object::ObjectBag;
     use crate::effect::CardDestinationZone;
-    use crate::ids::PlayerId;
-    use crate::pick::DeckWindow;
-
-    const ZONE: CardPickZone = CardPickZone::YourDeck(DeckWindow::Top(3));
 
     fn ids<const N: usize>() -> [ObjectId; N] {
         let mut bag = ObjectBag::default();
@@ -187,8 +200,11 @@ mod tests {
 
     fn picking(window: &[(ObjectId, bool)], count: u8) -> CardPicking {
         CardPicking::new(
-            ZONE,
-            window.iter().copied(),
+            PickWindow {
+                holder: PlayerId::new(1),
+                from: CardOriginZone::Deck,
+                cards: window.to_vec(),
+            },
             count,
             AmountBound::Exactly,
             vec![CardVerb::Move(CardDestinationZone::Hand)],
@@ -263,9 +279,15 @@ mod tests {
         assert_eq!(finished.picked, [d, b]);
         assert_eq!(finished.rest, [a, c]);
         assert_eq!(
-            (finished.zone, finished.verbs, finished.others),
             (
-                ZONE,
+                finished.holder,
+                finished.from,
+                finished.verbs,
+                finished.others
+            ),
+            (
+                PlayerId::new(1),
+                CardOriginZone::Deck,
                 vec![CardVerb::Move(CardDestinationZone::Hand)],
                 vec![CardVerb::Move(CardDestinationZone::DeckBottom)],
             ),
@@ -273,7 +295,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "a picking should hold its count before it finishes")]
+    #[should_panic(expected = "a picking should be complete before it finishes")]
     fn an_incomplete_pick_cannot_finish() {
         let [a, b] = ids();
 
@@ -291,8 +313,8 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "a picking should take no pick once it holds its count")]
-    fn a_pick_that_holds_its_count_takes_no_more() {
+    #[should_panic(expected = "a picking should take no pick once it is complete")]
+    fn a_complete_pick_takes_no_more() {
         let [a, b] = ids();
         let mut picking = picking(&[(a, true), (b, true)], 1);
         picking.pick(a);

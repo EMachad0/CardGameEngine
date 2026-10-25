@@ -7,7 +7,6 @@ use crate::cards::object::ObjectId;
 use crate::game::cards_ref::CardsRef;
 use crate::game::zone_move::CardOriginZone;
 use crate::ids::PlayerId;
-use crate::pick::CardPickZone;
 use crate::rng::Rng;
 use crate::target::{Bound, BoundCards};
 
@@ -84,16 +83,15 @@ pub(super) fn select_targeted_cards(
     }
 }
 
-/// `covered`, in order, found in the chooser's `zone`: cards that a pick in `source`'s text covered.
+/// `covered`, in order, from `holder`'s `from` zone: cards that a pick covered.
 pub(super) fn select_picked_cards(
-    cards: CardsRef,
-    source: ObjectId,
-    zone: CardPickZone,
+    holder: PlayerId,
+    from: CardOriginZone,
     covered: Vec<ObjectId>,
 ) -> CardSelection {
     CardSelection {
-        from: zone.into(),
-        chooser: cards.chooser(source),
+        from,
+        chooser: holder,
         cards: Selection(Values::Each(covered)),
     }
 }

@@ -2,7 +2,6 @@ use crate::cards::object::{ObjectBag, ObjectId};
 use crate::effect::CardDestinationZone;
 use crate::game::reporting::Report;
 use crate::ids::PlayerId;
-use crate::pick::CardPickZone;
 use crate::target::CardTargetZone;
 use crate::zones::{WasInHand, Zones};
 
@@ -17,14 +16,6 @@ impl From<CardTargetZone> for CardOriginZone {
     fn from(zone: CardTargetZone) -> Self {
         match zone {
             CardTargetZone::Hand => Self::Hand,
-        }
-    }
-}
-
-impl From<CardPickZone> for CardOriginZone {
-    fn from(zone: CardPickZone) -> Self {
-        match zone {
-            CardPickZone::YourDeck(_) => Self::Deck,
         }
     }
 }

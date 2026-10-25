@@ -6,7 +6,7 @@ use crate::choice::Choice;
 use crate::effect::{CardDestinationZone, CardVerb, CharacterVerb, Effect, PlayerVerb};
 use crate::game::amount::effect_amount;
 use crate::game::cards_ref::CardsRef;
-use crate::game::effect_stack::{CompletePicking, NextEffect};
+use crate::game::effect_stack::NextEffect;
 use crate::game::picking::{CardPicking, PickedCards, Picking};
 use crate::game::reporting::Report;
 use crate::game::selector::{
@@ -128,15 +128,13 @@ pub(in crate::game) fn prepare(
 
 /// The cards picked with the effect's verbs, then the rest of what the pick covered with its
 /// `others`.
-pub(in crate::game) fn prepare_finish(
-    cards: CardsRef,
-    complete: CompletePicking,
-) -> PreparedEffect {
-    let CompletePicking { source, picking } = complete;
+/// Panics unless the picking is complete.
+pub(in crate::game) fn prepare_finish(picking: Picking) -> PreparedEffect {
     PreparedEffect(match picking {
         Picking::Cards(picking) => {
             let PickedCards {
-                zone,
+                holder,
+                from,
                 picked,
                 verbs,
                 rest,
@@ -144,11 +142,11 @@ pub(in crate::game) fn prepare_finish(
             } = picking.finish();
             Prepared::Picked {
                 picked: PreparedCards {
-                    cards: select_picked_cards(cards, source, zone, picked),
+                    cards: select_picked_cards(holder, from, picked),
                     verbs: prepare_card_verbs(verbs),
                 },
                 rest: PreparedCards {
-                    cards: select_picked_cards(cards, source, zone, rest),
+                    cards: select_picked_cards(holder, from, rest),
                     verbs: prepare_card_verbs(others),
                 },
             }
@@ -219,7 +217,6 @@ fn open_card_pick(
         different: _,
     } = choice;
     Picking::Cards(CardPicking::new(
-        options.zone,
         cards.scan_pick_window(cards.chooser(source), &options),
         effect_amount(cards, &count, owner),
         bound,
