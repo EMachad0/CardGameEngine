@@ -7,7 +7,7 @@ use crate::effect::{CardDestinationZone, CardVerb, CharacterVerb, Effect, Player
 use crate::game::amount::effect_amount;
 use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::NextEffect;
-use crate::game::picking::{CardPicking, PickedCards, PickedObjects, Picking};
+use crate::game::picking::{CardPicking, PickedObjects, Picking};
 use crate::game::reporting::Report;
 use crate::game::selector::{
     CardSelection, Selection, select_characters, select_picked_cards, select_players,
@@ -130,23 +130,19 @@ pub(in crate::game) fn prepare(
 /// `others`.
 pub(in crate::game) fn prepare_finish(picked: PickedObjects) -> PreparedEffect {
     PreparedEffect(match picked {
-        PickedObjects::Cards(PickedCards {
-            holder,
-            from,
-            picked,
-            verbs,
-            rest,
-            others,
-        }) => Prepared::Picked {
-            picked: PreparedCards {
-                cards: select_picked_cards(holder, from, picked),
-                verbs: prepare_card_verbs(verbs),
-            },
-            rest: PreparedCards {
-                cards: select_picked_cards(holder, from, rest),
-                verbs: prepare_card_verbs(others),
-            },
-        },
+        PickedObjects::Cards(picked) => {
+            let (holder, from, [(picked, verbs), (rest, others)]) = picked.into_groups();
+            Prepared::Picked {
+                picked: PreparedCards {
+                    cards: select_picked_cards(holder, from, picked),
+                    verbs: prepare_card_verbs(verbs),
+                },
+                rest: PreparedCards {
+                    cards: select_picked_cards(holder, from, rest),
+                    verbs: prepare_card_verbs(others),
+                },
+            }
+        }
     })
 }
 

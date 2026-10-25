@@ -50,15 +50,14 @@ pub(super) enum PickedObjects {
 /// A complete card pick's cards, each group with the verbs that act on it.
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct PickedCards {
-    /// Whose `from` zone holds the cards.
-    pub(super) holder: PlayerId,
-    pub(super) from: CardOriginZone,
+    holder: PlayerId,
+    from: CardOriginZone,
     /// In the order picked.
-    pub(super) picked: Vec<ObjectId>,
-    pub(super) verbs: Vec<CardVerb>,
+    picked: Vec<ObjectId>,
+    verbs: Vec<CardVerb>,
     /// Every other card the pick covers, in the order shown.
-    pub(super) rest: Vec<ObjectId>,
-    pub(super) others: Vec<CardVerb>,
+    rest: Vec<ObjectId>,
+    others: Vec<CardVerb>,
 }
 
 impl Picking {
@@ -105,6 +104,20 @@ impl Picking {
                 .map(PickedObjects::Cards)
                 .map_err(Picking::Cards),
         }
+    }
+}
+
+type CardsWithVerbs = (Vec<ObjectId>, Vec<CardVerb>);
+
+impl PickedCards {
+    /// The player whose `from` zone holds the cards, then the cards picked with the verbs, then
+    /// the rest with `others`.
+    pub(super) fn into_groups(self) -> (PlayerId, CardOriginZone, [CardsWithVerbs; 2]) {
+        (
+            self.holder,
+            self.from,
+            [(self.picked, self.verbs), (self.rest, self.others)],
+        )
     }
 }
 
