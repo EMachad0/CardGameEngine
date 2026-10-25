@@ -325,7 +325,7 @@ mod tests {
     use crate::cards::binder::sets::base::static_card_definition::SPARK;
     use crate::cards::object::ObjectBag;
     use crate::choice::{AmountBound, CardTargetOptions, CardTargetZone, Choice};
-    use crate::effect::{CardVerb, CardZone, CharacterVerb, PlayerVerb};
+    use crate::effect::{CardDestinationZone, CardVerb, CharacterVerb, PlayerVerb};
     use crate::ids::PlayerId;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -386,7 +386,7 @@ mod tests {
     fn bury<S: TargetForm>(selector: CardSelector<S>) -> Effect<S> {
         Effect::Cards {
             selector,
-            verbs: vec![CardVerb::Move(CardZone::DeckBottom)],
+            verbs: vec![CardVerb::Move(CardDestinationZone::DeckBottom)],
         }
     }
 

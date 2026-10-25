@@ -66,20 +66,18 @@ pub enum CharacterVerb {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CardVerb {
-    Move(CardZone),
+    Move(CardDestinationZone),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CardZone {
-    Hand,
+pub enum CardDestinationZone {
     DeckBottom,
 }
 
-impl From<CardZone> for ZoneMove {
-    fn from(value: CardZone) -> Self {
+impl From<CardDestinationZone> for ZoneMove {
+    fn from(value: CardDestinationZone) -> Self {
         match value {
-            CardZone::DeckBottom => Self::Bury,
-            CardZone::Hand => Self::AddToHand,
+            CardDestinationZone::DeckBottom => Self::Bury,
         }
     }
 }
@@ -187,7 +185,7 @@ mod tests {
     fn targets_cards<T: Debug + Clone + PartialEq + Eq>(target: T) -> Effect<Holds<T>> {
         Effect::Cards {
             selector: CardSelector::Targeted(target),
-            verbs: vec![CardVerb::Move(CardZone::DeckBottom)],
+            verbs: vec![CardVerb::Move(CardDestinationZone::DeckBottom)],
         }
     }
 

@@ -10,7 +10,8 @@ use crate::cards::filter::{CardFilter, CharacterFilter, Side};
 use crate::cards::modifier::ModifierEffect;
 use crate::choice::{AmountBound, CardTargetOptions, CardTargetZone, Choice};
 use crate::effect::{
-    CardVerb, CardZone, CharacterVerb, Effect, EffectAmount, PickId, PlayerVerb, ZoneMove,
+    CardDestinationZone, CardVerb, CharacterVerb, Effect, EffectAmount, PickId, PlayerVerb,
+    ZoneMove,
 };
 use crate::history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter};
 use crate::trigger::{TriggerPattern, TriggerSubject};
@@ -659,7 +660,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                             bound: AmountBound::Exactly,
                             different: true,
                         }),
-                        verbs: vec![CardVerb::Move(CardZone::DeckBottom)],
+                        verbs: vec![CardVerb::Move(CardDestinationZone::DeckBottom)],
                     },
                     Effect::Players {
                         selector: PlayerSelector::Owner,

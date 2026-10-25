@@ -1,8 +1,9 @@
 use crate::cards::binder::def_id::DefId;
 use crate::cards::modifier::Modifier;
 use crate::cards::object::{ObjectBag, ObjectId};
-use crate::choice::CardTargetZone;
-use crate::effect::{CardVerb, CardZone, CharacterVerb, Effect, PickId, PlayerVerb, ZoneMove};
+use crate::effect::{
+    CardDestinationZone, CardVerb, CharacterVerb, Effect, PickId, PlayerVerb, ZoneMove,
+};
 use crate::game::amount::effect_amount;
 use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::NextEffect;
@@ -11,7 +12,7 @@ use crate::game::reporting::Report;
 use crate::game::selector::{
     CardSelection, Selection, select_cards, select_characters, select_players,
 };
-use crate::game::zone_move::{draw, summon, zone_move};
+use crate::game::zone_move::{draw, move_card, summon, zone_move};
 use crate::ids::PlayerId;
 use crate::rng::Rng;
 use crate::zones::Zones;
@@ -59,7 +60,7 @@ enum PreparedCharacterVerb {
 }
 
 enum PreparedCardVerb {
-    Move(CardZone),
+    Move(CardDestinationZone),
 }
 
 pub(in crate::game) fn prepare(
@@ -185,22 +186,19 @@ pub(in crate::game) fn resolve(
             }
         }
         Prepared::Cards {
-            cards: CardSelection { from, cards },
+            cards:
+                CardSelection {
+                    from,
+                    chooser,
+                    cards,
+                },
             verbs,
         } => {
             for (verb, card) in verbs_on(cards, &verbs, rng) {
                 match verb {
                     PreparedCardVerb::Move(to) => {
-                        let player_id = objects.get(card).player_id;
-                        match from {
-                            CardTargetZone::Hand => {
-                                let Some(in_hand) = zones.find_in_hand(player_id, card) else {
-                                    continue;
-                                };
-                                zones.take_from_hand(in_hand.into());
-                            }
-                        }
-                        reports.push(zone_move(player_id, card, (*to).into(), zones));
+                        let owner = objects.get(card).player_id;
+                        reports.extend(move_card(card, chooser, from, owner, *to, zones));
                     }
                 }
             }

@@ -25,9 +25,9 @@ From ADR 0019, limited to what Recycle reaches:
 - `CardSelector<S>` with `Targeted(S::CardTarget)`. `TargetForm` gains `CardTarget`: `Declared`
   holds `Choice<CardTargetOptions>`, `Triggered` holds `NoTarget`, and `Bound` holds
   `BoundCards { zone, object_ids }`, so a move takes the card from the zone it was targeted in.
-- `CardTargetOptions { zone: CardTargetZone, kind }`, with `CardTargetZone::YourHand`.
-- `CardVerb::Move(CardDestination)` with `CardDestination::DeckBottom`, into the card owner's
-  zones. Moving a card there is a bury.
+- `CardTargetOptions { zone: CardTargetZone, kind }`, with `CardTargetZone::Hand`.
+- `CardVerb::Move(CardDestinationZone)` with `CardDestinationZone::DeckBottom`, into the card
+  owner's zones. Moving a card there is a bury.
 - Targeting offers hand cards: the targeting walk in `game/targeting_walk.rs`, the legal actions
   and the view's targeting.
 

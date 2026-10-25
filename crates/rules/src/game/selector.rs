@@ -16,6 +16,8 @@ pub(super) struct Selection<T>(Values<T>);
 
 pub(super) struct CardSelection {
     pub(super) from: CardTargetZone,
+    /// Whose `from` zone holds the cards.
+    pub(super) chooser: PlayerId,
     pub(super) cards: Selection<ObjectId>,
 }
 
@@ -73,13 +75,14 @@ pub(super) fn select_characters(
 
 pub(super) fn select_cards(
     _cards: CardsRef,
-    _owner: PlayerId,
+    owner: PlayerId,
     _source: ObjectId,
     selector: &CardSelector<Bound>,
 ) -> CardSelection {
     match selector {
         CardSelector::Targeted(targeted) => CardSelection {
             from: targeted.zone,
+            chooser: owner,
             cards: Selection(Values::Each(targeted.object_ids.clone())),
         },
     }

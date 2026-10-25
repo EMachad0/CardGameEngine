@@ -12,7 +12,8 @@ pub use crate::cards::modifier::ModifierEffect;
 pub use crate::cards::object::ObjectId;
 pub use crate::choice::{AmountBound, CardTargetOptions, CardTargetZone, Choice};
 pub use crate::effect::{
-    CardVerb, CardZone, CharacterVerb, Effect, EffectAmount, PickId, PlayerVerb, ZoneMove,
+    CardDestinationZone, CardVerb, CharacterVerb, Effect, EffectAmount, PickId, PlayerVerb,
+    ZoneMove,
 };
 pub use crate::event::Event;
 pub use crate::game::state::{ApplyError, Game};
