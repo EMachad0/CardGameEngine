@@ -1,5 +1,5 @@
 use crate::cards::definition::CardKind;
-use crate::effect::{CardZone, EffectAmount};
+use crate::effect::EffectAmount;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AmountBound {
@@ -41,14 +41,6 @@ pub struct CardTargetOptions {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CardTargetZone {
     Hand,
-}
-
-impl From<CardTargetZone> for CardZone {
-    fn from(value: CardTargetZone) -> Self {
-        match value {
-            CardTargetZone::Hand => Self::Hand,
-        }
-    }
 }
 
 #[cfg(test)]

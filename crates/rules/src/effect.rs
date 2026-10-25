@@ -160,7 +160,6 @@ mod tests {
         type CardTarget = T;
     }
 
-    /// Tags each target with the subject it was mapped as.
     struct TagsSubject;
 
     impl MapTargets<Holds<usize>, Holds<(&'static str, usize)>> for TagsSubject {

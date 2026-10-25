@@ -112,7 +112,8 @@ impl CardDef {
             .map(|(idx, target)| (TargetId(idx), target))
     }
 
-    /// The play effects, each target replaced by what `targeted` gives for its id.
+    /// The play effects, each target replaced by the objects `targeted` gives for its id, a card
+    /// target with its zone.
     pub(crate) fn bind_play_effects(
         &self,
         targeted: impl FnMut(TargetId) -> Vec<ObjectId>,
@@ -405,7 +406,6 @@ mod tests {
         ]
     }
 
-    /// A character target, a card target, then a character target.
     fn targets_of_both_subjects<S: TargetForm>(
         first: S::CharacterTarget,
         second: S::CardTarget,

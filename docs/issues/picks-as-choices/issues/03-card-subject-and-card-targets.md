@@ -24,7 +24,7 @@ From ADR 0019, limited to what Recycle reaches:
 - `Effect::Cards { selector: CardSelector<S>, verbs: Vec<CardVerb> }`.
 - `CardSelector<S>` with `Targeted(S::CardTarget)`. `TargetForm` gains `CardTarget`: `Declared`
   holds `Choice<CardTargetOptions>`, `Triggered` holds `NoTarget`, and `Bound` holds
-  `Vec<ObjectId>`.
+  `BoundCards { zone, object_ids }`, so a move takes the card from the zone it was targeted in.
 - `CardTargetOptions { zone: CardTargetZone, kind }`, with `CardTargetZone::YourHand`.
 - `CardVerb::Move(CardDestination)` with `CardDestination::DeckBottom`, into the card owner's
   zones. Moving a card there is a bury.

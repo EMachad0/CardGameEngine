@@ -320,3 +320,23 @@ fn the_opponent_sees_no_face_on_a_targeted_hand_card() {
         .expect("the targeted card stays in the hand while targeting");
     assert_eq!(card.face, None);
 }
+
+#[test]
+fn the_owner_still_sees_the_face_of_a_targeted_hand_card() {
+    let mut t = table(&[RECYCLE, RECRUIT], 0, 0);
+    let recycle = in_hand(&t.game, t.p0, RECYCLE);
+    let recruit = in_hand(&t.game, t.p0, RECRUIT);
+    apply_all(
+        &mut t.game,
+        t.p0,
+        &[start_targeting(recycle), target(0, recruit)],
+    );
+
+    let view = t.game.view(t.p0);
+    let card = player_view(&view, t.p0)
+        .hand
+        .iter()
+        .find(|card| card.object_id == recruit)
+        .expect("the targeted card stays in the hand while targeting");
+    assert_eq!(card.face, face(RECRUIT, 2));
+}
