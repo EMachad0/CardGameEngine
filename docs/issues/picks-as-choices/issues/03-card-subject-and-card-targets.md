@@ -34,8 +34,8 @@ From ADR 0019, limited to what Recycle reaches:
 ## Not in this ticket
 
 - The graveyard target. Its gaps are an open thread in `docs/course/card-game/COURSE.md`.
-- The card being played as one of its own options. Recycle's filter takes minion cards only, so it
-  can't reach it. The open thread on hand targets holds the call.
+- The card being played as one of its own options. The open thread on hand targets in
+  `docs/course/card-game/COURSE.md` holds the call.
 
 ## Tests
 
