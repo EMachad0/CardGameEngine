@@ -69,6 +69,11 @@ def_ids!(
     RECYCLE = "base.recycle.v0",
     MUSTER = "base.muster.v0",
     PACKRAT = "base.packrat.v0",
+    TRIAGE = "base.triage.v0",
+    ENLIST = "base.enlist.v0",
+    SHARPEN = "base.sharpen.v0",
+    ROUSE = "base.rouse.v0",
+    MENTOR = "base.mentor.v0",
 );
 
 pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
@@ -730,6 +735,160 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                             others: vec![CardVerb::Move(CardDestinationZone::DeckBottom)],
                         },
                         verbs: vec![CardVerb::Move(CardDestinationZone::Hand)],
+                    }],
+                }],
+                ..Default::default()
+            },
+        ),
+        (
+            TRIAGE,
+            CardDef {
+                name: "Triage".to_string(),
+                kind: CardKindDef::Spell(SpellCardDef),
+                mana_cost: 2,
+                play_effects: vec![
+                    Effect::Characters {
+                        selector: CharacterSelector::All(CharacterFilter {
+                            kind: EnumSet::only(CharacterKind::Minion),
+                            side: EnumSet::all(),
+                        }),
+                        verbs: vec![CharacterVerb::Damage(1.into())],
+                    },
+                    Effect::Characters {
+                        selector: CharacterSelector::Picked {
+                            choice: Choice {
+                                options: CharacterFilter {
+                                    kind: EnumSet::only(CharacterKind::Minion),
+                                    side: EnumSet::all(),
+                                },
+                                count: 1.into(),
+                                bound: AmountBound::Exactly,
+                                different: true,
+                            },
+                            others: Vec::new(),
+                        },
+                        verbs: vec![CharacterVerb::Modify(ModifierEffect::BuffHealth {
+                            amount: 2.into(),
+                        })],
+                    },
+                ],
+                ..Default::default()
+            },
+        ),
+        (
+            ENLIST,
+            CardDef {
+                name: "Enlist".to_string(),
+                kind: CardKindDef::Spell(SpellCardDef),
+                mana_cost: 2,
+                play_effects: vec![
+                    Effect::Players {
+                        selector: PlayerSelector::Owner,
+                        verbs: vec![PlayerVerb::Summon(SQUIRE)],
+                    },
+                    Effect::Characters {
+                        selector: CharacterSelector::Picked {
+                            choice: Choice {
+                                options: CharacterFilter {
+                                    kind: EnumSet::only(CharacterKind::Minion),
+                                    side: EnumSet::all(),
+                                },
+                                count: 1.into(),
+                                bound: AmountBound::Exactly,
+                                different: true,
+                            },
+                            others: Vec::new(),
+                        },
+                        verbs: vec![CharacterVerb::Modify(ModifierEffect::BuffAtk {
+                            amount: 2.into(),
+                        })],
+                    },
+                ],
+                ..Default::default()
+            },
+        ),
+        (
+            SHARPEN,
+            CardDef {
+                name: "Sharpen".to_string(),
+                kind: CardKindDef::Spell(SpellCardDef),
+                mana_cost: 1,
+                play_effects: vec![
+                    Effect::Characters {
+                        selector: CharacterSelector::Picked {
+                            choice: Choice {
+                                options: CharacterFilter {
+                                    kind: EnumSet::only(CharacterKind::Minion),
+                                    side: EnumSet::all(),
+                                },
+                                count: 1.into(),
+                                bound: AmountBound::Exactly,
+                                different: true,
+                            },
+                            others: Vec::new(),
+                        },
+                        verbs: vec![CharacterVerb::Modify(ModifierEffect::BuffAtk {
+                            amount: 2.into(),
+                        })],
+                    },
+                    Effect::Players {
+                        selector: PlayerSelector::Owner,
+                        verbs: vec![PlayerVerb::Draw(1.into())],
+                    },
+                ],
+                ..Default::default()
+            },
+        ),
+        (
+            ROUSE,
+            CardDef {
+                name: "Rouse".to_string(),
+                kind: CardKindDef::Spell(SpellCardDef),
+                mana_cost: 1,
+                play_effects: vec![Effect::Characters {
+                    selector: CharacterSelector::Picked {
+                        choice: Choice {
+                            options: CharacterFilter {
+                                kind: EnumSet::only(CharacterKind::Minion),
+                                side: EnumSet::all(),
+                            },
+                            count: 1.into(),
+                            bound: AmountBound::Exactly,
+                            different: true,
+                        },
+                        others: vec![CharacterVerb::Modify(ModifierEffect::BuffAtk {
+                            amount: 1.into(),
+                        })],
+                    },
+                    verbs: Vec::new(),
+                }],
+                ..Default::default()
+            },
+        ),
+        (
+            MENTOR,
+            CardDef {
+                name: "Mentor".to_string(),
+                kind: CardKindDef::Minion(MinionCardDef::new(1, 1)),
+                mana_cost: 2,
+                triggers: vec![TriggerDef {
+                    pattern: TriggerPattern::Died(TriggerSubject::Itself),
+                    effects: vec![Effect::Characters {
+                        selector: CharacterSelector::Picked {
+                            choice: Choice {
+                                options: CharacterFilter {
+                                    kind: EnumSet::only(CharacterKind::Minion),
+                                    side: EnumSet::only(Side::Friendly),
+                                },
+                                count: 1.into(),
+                                bound: AmountBound::Exactly,
+                                different: true,
+                            },
+                            others: Vec::new(),
+                        },
+                        verbs: vec![CharacterVerb::Modify(ModifierEffect::BuffAtk {
+                            amount: 2.into(),
+                        })],
                     }],
                 }],
                 ..Default::default()

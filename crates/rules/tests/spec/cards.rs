@@ -4,8 +4,9 @@ use std::collections::BTreeSet;
 
 use pretty_assertions::{assert_eq, assert_ne};
 use rules::prelude::static_card_definition::{
-    BARRACKS, BLAST, BOLT, CAPTAIN, DRUMMER, FORAGE, GIANT, HOARDER, MUSTER, PACKRAT, RECRUIT,
-    RECYCLE, SPARK, SQUIRE, STRAY_SHOT, SWEEP, WILD_BOLT, ZAP,
+    BARRACKS, BLAST, BOLT, CAPTAIN, DRUMMER, ENLIST, FORAGE, GIANT, HOARDER, MENTOR, MUSTER,
+    PACKRAT, RECRUIT, RECYCLE, ROUSE, SHARPEN, SPARK, SQUIRE, STRAY_SHOT, SWEEP, TRIAGE, WILD_BOLT,
+    ZAP,
 };
 use rules::prelude::{Action, DefId, Event, Game, ObjectId};
 
@@ -85,6 +86,11 @@ fn every_card_pays_its_printed_cost() {
         (DRUMMER, 2),
         (MUSTER, 1),
         (PACKRAT, 2),
+        (TRIAGE, 2),
+        (ENLIST, 2),
+        (SHARPEN, 1),
+        (ROUSE, 1),
+        (MENTOR, 2),
     ];
     for (def, cost) in cases {
         let mut game = Game::with_deck_order(0, [deck_with_top(&[def]), deck_with_top(&[])]);

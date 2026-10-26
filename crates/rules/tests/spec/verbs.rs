@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 
 use pretty_assertions::assert_eq;
 use rules::prelude::static_card_definition::{
-    AFTERSHOCK, DUD, FRENZY, GOAD, MOURNER, RECRUIT, WILD_BOLT,
+    AFTERSHOCK, DUD, FRENZY, GOAD, MOURNER, RECRUIT, ROUSE, WILD_BOLT,
 };
 use rules::prelude::{Event, Game, ObjectId};
 
@@ -174,4 +174,18 @@ fn an_effect_with_no_verbs_changes_nothing() {
              so Wild Bolt hits the same hero either way",
         );
     }
+}
+
+#[test]
+fn the_verbs_in_others_act_on_every_option_not_picked() {
+    let mut t = table(&[ROUSE], 2, 1);
+    play_def(&mut t.game, t.p0, ROUSE);
+
+    t.game.apply(t.p0, pick(t.friendly[1]), &mut ()).unwrap();
+
+    assert_eq!(
+        [t.friendly[0], t.friendly[1], t.enemy[0]].map(|recruit| t.game.attack(recruit)),
+        [Some(3), Some(2), Some(3)],
+        "every Recruit but the one picked gets +1 Attack"
+    );
 }

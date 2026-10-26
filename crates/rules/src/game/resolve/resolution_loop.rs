@@ -6,7 +6,7 @@ pub(in crate::game) fn resolve_effect_stack(mut game: Resolving<'_, impl Observe
     while !game.any_targeting() && !game.is_over() {
         match game.advance() {
             Advance::Effect(next) => game.resolve_effect(next),
-            Advance::FinishPicking(picked) => game.finish_picking(picked),
+            Advance::FinishPicking(complete) => game.finish_picking(complete),
             Advance::AwaitPicking => break,
             Advance::Done => {
                 game.check_state();

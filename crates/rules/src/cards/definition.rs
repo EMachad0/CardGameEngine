@@ -4,7 +4,7 @@ use crate::cards::filter::{CharacterFilter, Side};
 use crate::cards::modifier::ModifierEffect;
 use crate::cards::object::ObjectId;
 use crate::choice::Choice;
-use crate::effect::{CardVerb, Effect};
+use crate::effect::{CardVerb, CharacterVerb, Effect};
 use crate::pick::CardPickOptions;
 use crate::target::{
     Bound, BoundCards, Declared, MapTargets, TargetChoiceRef, TargetForm, TargetId, Triggered,
@@ -218,13 +218,19 @@ pub enum PlayerSelector {
     Random(PlayerSelectorFilter),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CharacterSelector<S: TargetForm> {
     All(CharacterFilter),
     Itself,
     OwnerHero,
     Random(CharacterFilter),
     Targeted(S::CharacterTarget),
+    /// `others` acts on the options the player didn't pick, in the order shown, after the
+    /// effect's verbs act on the characters picked.
+    Picked {
+        choice: Choice<CharacterFilter>,
+        others: Vec<CharacterVerb>,
+    },
 }
 
 impl<S: TargetForm> CharacterSelector<S> {
@@ -233,7 +239,11 @@ impl<S: TargetForm> CharacterSelector<S> {
             CharacterSelector::All(_)
             | CharacterSelector::Itself
             | CharacterSelector::OwnerHero
-            | CharacterSelector::Random(_) => None,
+            | CharacterSelector::Random(_)
+            | CharacterSelector::Picked {
+                choice: _,
+                others: _,
+            } => None,
             CharacterSelector::Targeted(target) => Some(target),
         }
     }
@@ -248,6 +258,9 @@ impl<S: TargetForm> CharacterSelector<S> {
             CharacterSelector::OwnerHero => CharacterSelector::OwnerHero,
             CharacterSelector::Random(filter) => CharacterSelector::Random(filter),
             CharacterSelector::Targeted(target) => CharacterSelector::Targeted(f(target)),
+            CharacterSelector::Picked { choice, others } => {
+                CharacterSelector::Picked { choice, others }
+            }
         }
     }
 }
@@ -432,12 +445,16 @@ mod tests {
         ]
     }
 
-    fn untargeted_selectors() -> [CharacterSelector<Holds<usize>>; 4] {
+    fn untargeted_selectors() -> [CharacterSelector<Holds<usize>>; 5] {
         [
             CharacterSelector::All(CharacterFilter::all()),
             CharacterSelector::Itself,
             CharacterSelector::OwnerHero,
             CharacterSelector::Random(CharacterFilter::all()),
+            CharacterSelector::Picked {
+                choice: character_target(1),
+                others: vec![CharacterVerb::Damage(1.into())],
+            },
         ]
     }
 
@@ -540,7 +557,7 @@ mod tests {
             untargeted_selectors()
                 .each_ref()
                 .map(CharacterSelector::target),
-            [None; 4]
+            [None; 5]
         );
     }
 

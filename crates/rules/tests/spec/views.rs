@@ -2,11 +2,11 @@
 
 use pretty_assertions::assert_eq;
 use rules::prelude::static_card_definition::{
-    BOLT, CAPTAIN, HERO, MUSTER, PING, RECRUIT, RECYCLE, SPARK, TWIN_SHOT,
+    BOLT, CAPTAIN, HERO, MUSTER, PING, RECRUIT, RECYCLE, ROUSE, SPARK, TWIN_SHOT,
 };
 use rules::prelude::{
-    BoardCard, DefId, Face, Game, HeroCard, ObjectId, PickingCard, PickingView, PlayerId,
-    TargetingView,
+    BoardCard, ChooserPicking, DefId, Face, Game, HeroCard, ObjectId, PickingCard, PickingView,
+    PlayerId, TargetingView,
 };
 
 use crate::support::*;
@@ -168,7 +168,7 @@ fn the_chooser_sees_every_card_a_pick_covers_face_up_in_the_order_shown() {
 
     assert_eq!(
         player_view(&game.view(p0), p0).picking,
-        Some(PickingView::Chooser(vec![
+        Some(PickingView::Chooser(ChooserPicking::Cards(vec![
             PickingCard {
                 object_id: bolt,
                 def_id: BOLT,
@@ -184,7 +184,7 @@ fn the_chooser_sees_every_card_a_pick_covers_face_up_in_the_order_shown() {
                 def_id: CAPTAIN,
                 pickable: true
             },
-        ]))
+        ])))
     );
 }
 
@@ -196,6 +196,37 @@ fn every_other_player_sees_only_how_many_options_a_pick_has() {
     assert_eq!(
         player_view(&game.view(p1), p0).picking,
         Some(PickingView::Other { option_count: 2 })
+    );
+}
+
+/// Player 0 casts Rouse with two Recruits on their board and one on player 1's.
+fn rouse_over_three_recruits() -> Table {
+    let mut t = table(&[ROUSE], 2, 1);
+    play_def(&mut t.game, t.p0, ROUSE);
+    t
+}
+
+#[test]
+fn the_chooser_sees_a_character_picks_options_in_the_order_shown() {
+    let t = rouse_over_three_recruits();
+
+    assert_eq!(
+        player_view(&t.game.view(t.p0), t.p0).picking,
+        Some(PickingView::Chooser(ChooserPicking::Characters(vec![
+            t.friendly[0],
+            t.friendly[1],
+            t.enemy[0],
+        ])))
+    );
+}
+
+#[test]
+fn every_other_player_sees_only_how_many_options_a_character_pick_has() {
+    let t = rouse_over_three_recruits();
+
+    assert_eq!(
+        player_view(&t.game.view(t.p1), t.p0).picking,
+        Some(PickingView::Other { option_count: 3 })
     );
 }
 
