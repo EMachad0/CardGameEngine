@@ -392,7 +392,11 @@ fn mentors_death_rattle_picks_one_of_its_owners_minions() {
     let mut b = mentor_waiting_for_its_owner();
     let recruit = b.theirs[1];
 
-    assert_eq!(b.game.pick_options(b.p1), [recruit]);
+    assert_eq!(
+        b.game.pick_options(b.p1),
+        [recruit],
+        "the Mentor's pick offers P1's Recruit and leaves out P0's"
+    );
     b.game.apply(b.p1, pick(recruit), &mut ()).unwrap();
     assert_eq!(b.game.attack(recruit), Some(4), "2 Attack, then +2 Attack");
 }
