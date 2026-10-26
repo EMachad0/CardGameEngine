@@ -373,10 +373,10 @@ fn a_character_pick_with_an_option_holds_back_the_rest_of_its_card() {
     assert_eq!(b.game.pick_options(b.p0), b.theirs);
 }
 
-/// P1 has a Mentor and a Recruit, and P0's Ping killed the Mentor, whose deathrattle waits for
-/// P1's pick.
+/// P0 has a Recruit, P1 has a Mentor and a Recruit, and P0's Ping killed the Mentor, whose death
+/// rattle waits for P1's pick.
 fn mentor_waiting_for_its_owner() -> Boards {
-    let mut b = boards(&[], &[MENTOR, RECRUIT], &[PING], 1);
+    let mut b = boards(&[RECRUIT], &[MENTOR, RECRUIT], &[PING], 1);
     let ping = in_hand(&b.game, b.p0, PING);
     let mentor = b.theirs[0];
     apply_all(

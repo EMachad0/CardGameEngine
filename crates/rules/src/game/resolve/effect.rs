@@ -1,5 +1,4 @@
 use crate::cards::binder::def_id::DefId;
-use crate::cards::definition::CardSelector;
 use crate::cards::filter::CharacterFilter;
 use crate::cards::modifier::Modifier;
 use crate::cards::object::{ObjectBag, ObjectId};
@@ -11,8 +10,8 @@ use crate::game::effect_stack::{CompletePicking, NextEffect};
 use crate::game::picking::{CardPicking, CharacterPicking, PickedObjects, Picking};
 use crate::game::reporting::Report;
 use crate::game::selector::{
-    CardSelection, SelectedOrPick, Selection, select_characters, select_picked_cards,
-    select_picked_characters, select_players, select_targeted_cards,
+    CardSelection, SelectedOrPick, Selection, select_cards, select_characters, select_picked_cards,
+    select_picked_characters, select_players,
 };
 use crate::game::zone_move::{draw, move_card, summon};
 use crate::ids::PlayerId;
@@ -100,21 +99,17 @@ pub(in crate::game) fn prepare(
                 }
             }
         }
-        Effect::Cards {
-            selector: CardSelector::Targeted(targeted),
-            verbs,
-        } => Prepared::Cards(PreparedCards {
-            cards: select_targeted_cards(cards, source, &targeted),
-            verbs: prepare_card_verbs(verbs),
-        }),
-        Effect::Cards {
-            selector: CardSelector::Picked { choice, others },
-            verbs,
-        } => {
-            return PreparedOrOpen::Open(open_card_pick(
-                cards, owner, source, choice, verbs, others,
-            ));
-        }
+        Effect::Cards { selector, verbs } => match select_cards(cards, source, selector) {
+            SelectedOrPick::Selected(selection) => Prepared::Cards(PreparedCards {
+                cards: selection,
+                verbs: prepare_card_verbs(verbs),
+            }),
+            SelectedOrPick::Pick { choice, others } => {
+                return PreparedOrOpen::Open(open_card_pick(
+                    cards, owner, source, choice, verbs, others,
+                ));
+            }
+        },
     }))
 }
 

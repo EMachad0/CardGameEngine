@@ -1,26 +1,26 @@
 //! What an effect acts on, as its selector says: players or characters, each in turn or one at
 //! random, or the characters or cards targeted or picked.
 
-use crate::cards::definition::{CharacterSelector, PlayerSelector, PlayerSelectorFilter};
+use crate::cards::definition::{
+    CardSelector, CharacterSelector, PlayerSelector, PlayerSelectorFilter,
+};
 use crate::cards::filter::{CharacterFilter, fulfill_side_filter};
 use crate::cards::object::ObjectId;
 use crate::choice::Choice;
-use crate::effect::CharacterVerb;
+use crate::effect::{CardVerb, CharacterVerb};
 use crate::game::cards_ref::CardsRef;
 use crate::game::zone_move::CardOriginZone;
 use crate::ids::PlayerId;
+use crate::pick::CardPickOptions;
 use crate::rng::Rng;
-use crate::target::{Bound, BoundCards};
+use crate::target::Bound;
 
 pub(super) struct Selection<T>(Values<T>);
 
-/// What a character selector selects, or the choice of a pick it opens instead.
-pub(super) enum SelectedOrPick {
-    Selected(Selection<ObjectId>),
-    Pick {
-        choice: Choice<CharacterFilter>,
-        others: Vec<CharacterVerb>,
-    },
+/// What a selector selects, or the choice of a pick it opens instead.
+pub(super) enum SelectedOrPick<S, O, V> {
+    Selected(S),
+    Pick { choice: Choice<O>, others: Vec<V> },
 }
 
 pub(super) struct CardSelection {
@@ -68,7 +68,7 @@ pub(super) fn select_characters(
     owner: PlayerId,
     source: ObjectId,
     selector: CharacterSelector<Bound>,
-) -> SelectedOrPick {
+) -> SelectedOrPick<Selection<ObjectId>, CharacterFilter, CharacterVerb> {
     let values = match selector {
         CharacterSelector::All(filter) => {
             Values::Each(cards.scan_characters_with_filter(owner, &filter))
@@ -86,20 +86,22 @@ pub(super) fn select_characters(
     SelectedOrPick::Selected(Selection(values))
 }
 
-/// `picked`, in order: characters a pick covered.
-pub(super) fn select_picked_characters(picked: Vec<ObjectId>) -> Selection<ObjectId> {
-    Selection(Values::Each(picked))
+pub(super) fn select_picked_characters(covered: Vec<ObjectId>) -> Selection<ObjectId> {
+    Selection(Values::Each(covered))
 }
 
-pub(super) fn select_targeted_cards(
+pub(super) fn select_cards(
     cards: CardsRef,
     source: ObjectId,
-    targeted: &BoundCards,
-) -> CardSelection {
-    CardSelection {
-        from: targeted.zone.into(),
-        chooser: cards.chooser(source),
-        cards: Selection(Values::Each(targeted.object_ids.clone())),
+    selector: CardSelector<Bound>,
+) -> SelectedOrPick<CardSelection, CardPickOptions, CardVerb> {
+    match selector {
+        CardSelector::Targeted(targeted) => SelectedOrPick::Selected(CardSelection {
+            from: targeted.zone.into(),
+            chooser: cards.chooser(source),
+            cards: Selection(Values::Each(targeted.object_ids)),
+        }),
+        CardSelector::Picked { choice, others } => SelectedOrPick::Pick { choice, others },
     }
 }
 

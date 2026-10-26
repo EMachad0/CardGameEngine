@@ -282,7 +282,7 @@ graph TD
 | 05a | F | Mourner fix: the dead leave before any death of their pass is reported | done (green: 130 unit + 179 spec; ADR 0016 and glossary Alive; order twins for the Mourner and Medic; PR #56) |
 | 04d | E | Target declarations redesigned on PR #62's typed card text | done (concept only; ADR 0017 supersedes 0010; design posted on PR #62; deferred choice work in the open threads; MTG 602.2b and 603.3d verified) |
 | 04e | E | Picks as choices, design part 1: subjects, verbs on one selection, the choice and its timing | done (concept only; N1 to N3; glossary Choice, Target, Pick; four research reports; MTG 601.2a and 115.5 verified) |
-| 04f | E, G | Picks as choices, design part 2: the pick flow, the cards not picked, leave room, names, build plan and ADR | done (concept only; N4 to N7; ADRs 0019 and 0020; glossary Card and Modify, "card" in play reworded; tickets in `docs/issues/picks-as-choices/`; two research reports) |
+| 04f | E, G | Picks as choices, design part 2: the pick flow, the cards not picked, leave room, names, build plan and ADR | done (concept only; N4 to N7; ADRs 0019 and 0020; glossary Card and Modify, "card" in play reworded; the picks-as-choices tickets; two research reports) |
 | 04g | E | A choice no verb uses: ticket 06 of picks-as-choices, from PR #74's doc gaps | done (concept only; ADR 0021; ticket 06 closed, ticket 03 unblocked; one research report; MTG 608.2b with Defiant Strike and unused-target cards verified) |
 | 06b | G | Named results, the first nesting effect (`If`) and frames | next. ADR 0020 replaced its reveal half. Starts with Soul's Majesty's two routes (open threads). |
 | 06c | G | Choices inside triggers and remembered choices | |
