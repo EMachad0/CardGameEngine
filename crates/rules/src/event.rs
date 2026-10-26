@@ -27,14 +27,6 @@ pub enum Event {
         amount: u8,
         source: ObjectId,
     },
-    Revealed {
-        player_id: PlayerId,
-        object_ids: Vec<ObjectId>,
-    },
-    Picked {
-        player_id: PlayerId,
-        object_id: ObjectId,
-    },
     /// One per card, in the order they go to the bottom.
     Buried {
         player_id: PlayerId,

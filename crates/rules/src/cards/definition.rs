@@ -3,7 +3,9 @@ use enumset::EnumSet;
 use crate::cards::filter::{CharacterFilter, Side};
 use crate::cards::modifier::ModifierEffect;
 use crate::cards::object::ObjectId;
-use crate::effect::Effect;
+use crate::choice::Choice;
+use crate::effect::{CardVerb, Effect};
+use crate::pick::CardPickOptions;
 use crate::target::{
     Bound, BoundCards, Declared, MapTargets, TargetChoiceRef, TargetForm, TargetId, Triggered,
 };
@@ -250,15 +252,25 @@ impl<S: TargetForm> CharacterSelector<S> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CardSelector<S: TargetForm> {
     Targeted(S::CardTarget),
+    /// `others` acts on the cards the pick covered and the player didn't pick, in the order
+    /// shown, after the effect's verbs act on the cards picked.
+    Picked {
+        choice: Choice<CardPickOptions>,
+        others: Vec<CardVerb>,
+    },
 }
 
 impl<S: TargetForm> CardSelector<S> {
     pub(crate) fn target(&self) -> Option<&S::CardTarget> {
         match self {
             CardSelector::Targeted(target) => Some(target),
+            CardSelector::Picked {
+                choice: _,
+                others: _,
+            } => None,
         }
     }
 
@@ -268,6 +280,7 @@ impl<S: TargetForm> CardSelector<S> {
     ) -> CardSelector<R> {
         match self {
             CardSelector::Targeted(target) => CardSelector::Targeted(f(target)),
+            CardSelector::Picked { choice, others } => CardSelector::Picked { choice, others },
         }
     }
 }
@@ -324,8 +337,8 @@ mod tests {
     use super::*;
     use crate::cards::binder::sets::base::static_card_definition::SPARK;
     use crate::cards::object::ObjectBag;
-    use crate::choice::{AmountBound, Choice};
-    use crate::effect::{CardDestinationZone, CardVerb, CharacterVerb, PlayerVerb};
+    use crate::choice::AmountBound;
+    use crate::effect::{CardDestinationZone, CharacterVerb, PlayerVerb};
     use crate::ids::PlayerId;
     use crate::target::{CardTargetOptions, CardTargetZone};
 

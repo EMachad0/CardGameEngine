@@ -3,7 +3,7 @@
 use std::ops::Range;
 
 use pretty_assertions::assert_eq;
-use rules::prelude::Game;
+use rules::prelude::{Game, PickingView};
 
 use crate::playout::{checked_playout, random_playout, sample_deck};
 use crate::support::{Recorder, observe, players};
@@ -135,14 +135,14 @@ fn hidden_cards_show_only_to_whoever_may_see_them() {
                             card
                         );
                     }
-                    for card in &player.revealed {
+                    if let Some(picking) = &player.picking {
                         assert_eq!(
-                            card.def_id.is_some(),
+                            matches!(picking, PickingView::Chooser(_)),
                             owner,
-                            "{context}: {:?}'s view of {:?}'s revealed card {:?}",
+                            "{context}: {:?}'s view of {:?}'s picking {:?}",
                             view.viewer,
                             player.player_id,
-                            card
+                            picking
                         );
                     }
                 }

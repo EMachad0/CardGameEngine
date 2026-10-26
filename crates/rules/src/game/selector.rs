@@ -1,20 +1,19 @@
 //! What an effect acts on, as its selector says: players or characters, each in turn or one at
-//! random, or the cards targeted.
+//! random, or the cards targeted or picked.
 
-use crate::cards::definition::{
-    CardSelector, CharacterSelector, PlayerSelector, PlayerSelectorFilter,
-};
+use crate::cards::definition::{CharacterSelector, PlayerSelector, PlayerSelectorFilter};
 use crate::cards::filter::fulfill_side_filter;
 use crate::cards::object::ObjectId;
 use crate::game::cards_ref::CardsRef;
+use crate::game::zone_move::CardOriginZone;
 use crate::ids::PlayerId;
 use crate::rng::Rng;
-use crate::target::{Bound, CardTargetZone};
+use crate::target::{Bound, BoundCards};
 
 pub(super) struct Selection<T>(Values<T>);
 
 pub(super) struct CardSelection {
-    pub(super) from: CardTargetZone,
+    pub(super) from: CardOriginZone,
     /// Whose `from` zone holds the cards.
     pub(super) chooser: PlayerId,
     pub(super) cards: Selection<ObjectId>,
@@ -72,18 +71,28 @@ pub(super) fn select_characters(
     })
 }
 
-pub(super) fn select_cards(
+pub(super) fn select_targeted_cards(
     cards: CardsRef,
-    _owner: PlayerId,
     source: ObjectId,
-    selector: &CardSelector<Bound>,
+    targeted: &BoundCards,
 ) -> CardSelection {
-    match selector {
-        CardSelector::Targeted(targeted) => CardSelection {
-            from: targeted.zone,
-            chooser: cards.chooser(source),
-            cards: Selection(Values::Each(targeted.object_ids.clone())),
-        },
+    CardSelection {
+        from: targeted.zone.into(),
+        chooser: cards.chooser(source),
+        cards: Selection(Values::Each(targeted.object_ids.clone())),
+    }
+}
+
+/// `covered`, in order, from `holder`'s `from` zone: cards that a pick covered.
+pub(super) fn select_picked_cards(
+    holder: PlayerId,
+    from: CardOriginZone,
+    covered: Vec<ObjectId>,
+) -> CardSelection {
+    CardSelection {
+        from,
+        chooser: holder,
+        cards: Selection(Values::Each(covered)),
     }
 }
 

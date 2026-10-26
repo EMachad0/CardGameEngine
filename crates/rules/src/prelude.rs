@@ -12,18 +12,18 @@ pub use crate::cards::modifier::ModifierEffect;
 pub use crate::cards::object::ObjectId;
 pub use crate::choice::{AmountBound, Choice};
 pub use crate::effect::{
-    CardDestinationZone, CardVerb, CharacterVerb, Effect, EffectAmount, PickId, PlayerVerb,
-    ZoneMove,
+    CardDestinationZone, CardVerb, CharacterVerb, Effect, EffectAmount, PlayerVerb,
 };
 pub use crate::event::Event;
 pub use crate::game::state::{ApplyError, Game};
 pub use crate::game::view::{
-    BoardCard, Face, HandCard, HeroCard, PlayerView, RevealedCard, TargetingView, View,
+    BoardCard, Face, HandCard, HeroCard, PickingCard, PickingView, PlayerView, TargetingView, View,
 };
 pub use crate::history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter};
 pub use crate::ids::PlayerId;
 pub use crate::observer::{Observer, Views};
 pub use crate::outcome::Outcome;
+pub use crate::pick::{CardPickOptions, CardPickZone, DeckWindow};
 pub use crate::rng::Rng;
 pub use crate::target::{
     CardTargetOptions, CardTargetZone, Declared, NoTarget, TargetForm, TargetId, Triggered,

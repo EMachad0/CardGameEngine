@@ -4,10 +4,10 @@ use std::collections::BTreeSet;
 
 use pretty_assertions::{assert_eq, assert_ne};
 use rules::prelude::static_card_definition::{
-    BARRACKS, BLAST, BOLT, CAPTAIN, DRUMMER, FORAGE, GIANT, HOARDER, RECRUIT, RECYCLE, SPARK,
-    SQUIRE, STRAY_SHOT, SWEEP, WILD_BOLT, ZAP,
+    BARRACKS, BLAST, BOLT, CAPTAIN, DRUMMER, FORAGE, GIANT, HOARDER, MUSTER, PACKRAT, RECRUIT,
+    RECYCLE, SPARK, SQUIRE, STRAY_SHOT, SWEEP, WILD_BOLT, ZAP,
 };
-use rules::prelude::{Action, Event, Game, ObjectId};
+use rules::prelude::{Action, DefId, Event, Game, ObjectId};
 
 use crate::support::*;
 
@@ -83,6 +83,8 @@ fn every_card_pays_its_printed_cost() {
         (SWEEP, 2),
         (HOARDER, 1),
         (DRUMMER, 2),
+        (MUSTER, 1),
+        (PACKRAT, 2),
     ];
     for (def, cost) in cases {
         let mut game = Game::with_deck_order(0, [deck_with_top(&[def]), deck_with_top(&[])]);
@@ -192,7 +194,7 @@ fn each_barracks_summons_a_new_object() {
 }
 
 /// Player 0 casts Forage with a Recruit and a Captain on top of the deck and a Bolt under them.
-fn forage_revealing_recruit_and_captain() -> Game {
+fn forage_over_recruit_and_captain() -> Game {
     let deck0 = vec![FORAGE, SPARK, SPARK, SPARK, RECRUIT, CAPTAIN, BOLT];
     let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
     let [p0, _] = players(&game);
@@ -201,41 +203,53 @@ fn forage_revealing_recruit_and_captain() -> Game {
 }
 
 #[test]
-fn forage_reveals_the_top_two_cards_of_the_deck() {
-    let game = forage_revealing_recruit_and_captain();
+fn forage_offers_the_top_two_cards_of_the_deck() {
+    let game = forage_over_recruit_and_captain();
     let [p0, _] = players(&game);
 
-    assert_eq!(revealed_defs(&game, p0), [RECRUIT, CAPTAIN]);
-    assert_eq!(deck_defs(&game, p0), [BOLT]);
+    assert_eq!(pick_option_defs(&game, p0), [RECRUIT, CAPTAIN]);
+}
+
+#[test]
+fn the_deck_keeps_its_size_and_its_order_while_a_pick_is_open() {
+    let deck0 = vec![FORAGE, SPARK, SPARK, SPARK, RECRUIT, CAPTAIN, BOLT];
+    let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
+    let [p0, _] = players(&game);
+    let before = game.deck(p0);
+
+    play_def(&mut game, p0, FORAGE);
+
+    assert_eq!(game.pick_options(p0).len(), 2, "Forage's pick must be open");
+    assert_eq!(game.deck(p0), before);
 }
 
 #[test]
 fn a_forages_picking_offers_nothing_but_picks() {
-    let game = forage_revealing_recruit_and_captain();
+    let game = forage_over_recruit_and_captain();
     let [p0, p1] = players(&game);
 
-    let revealed = game.revealed(p0);
-    assert_actions(&game, p0, &[pick(revealed[0]), pick(revealed[1])]);
+    let options = game.pick_options(p0);
+    assert_actions(&game, p0, &[pick(options[0]), pick(options[1])]);
     assert_actions(&game, p1, &[]);
 }
 
 #[test]
 fn the_picked_card_goes_to_the_end_of_the_hand() {
-    let mut game = forage_revealing_recruit_and_captain();
+    let mut game = forage_over_recruit_and_captain();
     let [p0, _] = players(&game);
 
-    let captain = game.revealed(p0)[1];
+    let captain = game.pick_options(p0)[1];
     game.apply(p0, pick(captain), &mut ()).unwrap();
 
     assert_eq!(hand_defs(&game, p0), [SPARK, SPARK, SPARK, CAPTAIN]);
 }
 
 #[test]
-fn the_unpicked_card_goes_to_the_bottom_of_the_deck() {
-    let mut game = forage_revealing_recruit_and_captain();
+fn the_card_not_picked_goes_to_the_bottom_of_the_deck() {
+    let mut game = forage_over_recruit_and_captain();
     let [p0, _] = players(&game);
 
-    let captain = game.revealed(p0)[1];
+    let captain = game.pick_options(p0)[1];
     game.apply(p0, pick(captain), &mut ()).unwrap();
 
     assert_eq!(deck_defs(&game, p0), [BOLT, RECRUIT]);
@@ -243,28 +257,28 @@ fn the_unpicked_card_goes_to_the_bottom_of_the_deck() {
 
 #[test]
 fn a_pick_ends_the_forages_picking() {
-    let mut game = forage_revealing_recruit_and_captain();
+    let mut game = forage_over_recruit_and_captain();
     let [p0, _] = players(&game);
 
-    let captain = game.revealed(p0)[1];
+    let captain = game.pick_options(p0)[1];
     game.apply(p0, pick(captain), &mut ()).unwrap();
 
-    assert!(game.revealed(p0).is_empty());
+    assert!(game.pick_options(p0).is_empty());
     // Forage spent player 0's only mana, so ending the turn is all that is left.
     assert_actions(&game, p0, &[Action::EndTurn]);
 }
 
 #[test]
-fn forage_with_one_card_left_still_asks_for_the_pick() {
+fn a_deck_with_fewer_cards_than_the_window_offers_the_cards_it_has() {
     let deck0 = vec![FORAGE, SPARK, SPARK, SPARK, RECRUIT];
     let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
     let [p0, _] = players(&game);
 
     play_def(&mut game, p0, FORAGE);
 
-    assert_eq!(revealed_defs(&game, p0), [RECRUIT]);
-    let revealed = game.revealed(p0);
-    assert_actions(&game, p0, &[pick(revealed[0])]);
+    assert_eq!(pick_option_defs(&game, p0), [RECRUIT]);
+    let options = game.pick_options(p0);
+    assert_actions(&game, p0, &[pick(options[0])]);
 }
 
 #[test]
@@ -275,8 +289,76 @@ fn forage_on_an_empty_deck_does_nothing() {
 
     play_def(&mut game, p0, FORAGE);
 
-    assert!(game.revealed(p0).is_empty());
+    assert!(game.pick_options(p0).is_empty());
     assert_eq!(hand_defs(&game, p0), [SPARK, SPARK, SPARK]);
+    assert_actions(&game, p0, &[Action::EndTurn]);
+}
+
+/// Player 0 casts Muster with `top` on top of the deck and a Giant, a minion, under them.
+fn muster_over(top: [DefId; 3]) -> Game {
+    let deck0 = [&[MUSTER, SPARK, SPARK, SPARK][..], &top, &[GIANT]].concat();
+    let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
+    let [p0, _] = players(&game);
+    play_def(&mut game, p0, MUSTER);
+    game
+}
+
+#[test]
+fn muster_offers_only_the_minions_among_the_top_three() {
+    let game = muster_over([BOLT, RECRUIT, CAPTAIN]);
+    let [p0, _] = players(&game);
+    let deck = game.deck(p0);
+
+    assert_eq!(game.pick_options(p0), [deck[1], deck[2]]);
+    assert_actions(&game, p0, &[pick(deck[1]), pick(deck[2])]);
+}
+
+#[test]
+fn muster_buries_every_card_it_looked_at_but_the_one_taken() {
+    let mut game = muster_over([RECRUIT, BOLT, CAPTAIN]);
+    let [p0, _] = players(&game);
+    let &[recruit, bolt, captain, giant] = game.deck(p0).as_slice() else {
+        panic!("the deck holds {:?}", deck_defs(&game, p0));
+    };
+
+    game.apply(p0, pick(captain), &mut ()).unwrap();
+
+    let deck = game.deck(p0);
+    assert_eq!(
+        deck[0], giant,
+        "the Giant was under the cards Muster looked at"
+    );
+    assert_eq!(
+        deck[1..].iter().copied().collect::<BTreeSet<_>>(),
+        BTreeSet::from([recruit, bolt]),
+        "the Bolt Muster looked at and the Recruit not taken go to the bottom",
+    );
+    assert!(game.hand(p0).ends_with(&[captain]));
+}
+
+#[test]
+fn the_cards_a_pick_leaves_reach_the_bottom_in_the_order_shown() {
+    for top in [[BOLT, RECRUIT, CAPTAIN], [RECRUIT, BOLT, CAPTAIN]] {
+        let mut game = muster_over(top);
+        let [p0, _] = players(&game);
+        let captain = game.deck(p0)[2];
+
+        game.apply(p0, pick(captain), &mut ()).unwrap();
+
+        assert_eq!(
+            deck_defs(&game, p0),
+            [GIANT, top[0], top[1]],
+            "Muster over {top:?}, with the Captain taken"
+        );
+    }
+}
+
+#[test]
+fn muster_with_no_minion_among_the_top_three_buries_all_three_without_asking() {
+    let game = muster_over([BOLT, SPARK, BLAST]);
+    let [p0, _] = players(&game);
+
+    assert_eq!(deck_defs(&game, p0), [GIANT, BOLT, SPARK, BLAST]);
     assert_actions(&game, p0, &[Action::EndTurn]);
 }
 

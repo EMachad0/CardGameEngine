@@ -1,21 +1,29 @@
 use crate::cards::binder::def_id::DefId;
+use crate::cards::definition::CardSelector;
 use crate::cards::modifier::Modifier;
 use crate::cards::object::{ObjectBag, ObjectId};
-use crate::effect::{
-    CardDestinationZone, CardVerb, CharacterVerb, Effect, PickId, PlayerVerb, ZoneMove,
-};
+use crate::choice::Choice;
+use crate::effect::{CardDestinationZone, CardVerb, CharacterVerb, Effect, PlayerVerb};
 use crate::game::amount::effect_amount;
 use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::NextEffect;
-use crate::game::player_input::awaiting::PlayerInput;
+use crate::game::picking::{CardPicking, PickedObjects, Picking};
 use crate::game::reporting::Report;
 use crate::game::selector::{
-    CardSelection, Selection, select_cards, select_characters, select_players,
+    CardSelection, Selection, select_characters, select_picked_cards, select_players,
+    select_targeted_cards,
 };
-use crate::game::zone_move::{draw, move_card, summon, zone_move};
+use crate::game::zone_move::{draw, move_card, summon};
 use crate::ids::PlayerId;
+use crate::pick::CardPickOptions;
 use crate::rng::Rng;
 use crate::zones::Zones;
+
+/// An effect read before its first write: ready to resolve, or a pick to open.
+pub(in crate::game) enum PreparedOrOpen {
+    Prepared(PreparedEffect),
+    Open(Picking),
+}
 
 /// An effect with its amounts counted and what it may act on listed, both before its first write.
 pub(in crate::game) struct PreparedEffect(Prepared);
@@ -29,23 +37,14 @@ enum Prepared {
         characters: Selection<ObjectId>,
         verbs: Vec<PreparedCharacterVerb>,
     },
-    Cards {
-        cards: CardSelection,
-        verbs: Vec<PreparedCardVerb>,
-    },
-    Reveal {
-        players: Selection<PlayerId>,
-        amount: u8,
-        source: ObjectId,
-        pick_id: PickId,
-    },
-    ResolvePick {
-        owner: PlayerId,
-        picked: Vec<ObjectId>,
-        others: Vec<ObjectId>,
-        picked_move: ZoneMove,
-        other_move: ZoneMove,
-    },
+    Cards(PreparedCards),
+    /// In the order their verbs run.
+    Picked([PreparedCards; 2]),
+}
+
+struct PreparedCards {
+    cards: CardSelection,
+    verbs: Vec<PreparedCardVerb>,
 }
 
 enum PreparedPlayerVerb {
@@ -66,12 +65,11 @@ enum PreparedCardVerb {
 pub(in crate::game) fn prepare(
     cards: CardsRef,
     player_ids: &[PlayerId],
-    player_input: &PlayerInput,
     next: NextEffect,
-) -> PreparedEffect {
+) -> PreparedOrOpen {
     let NextEffect { source, effect } = next;
     let owner = cards.objects.get(source).player_id;
-    PreparedEffect(match effect {
+    PreparedOrOpen::Prepared(PreparedEffect(match effect {
         Effect::Players { selector, verbs } => Prepared::Players {
             players: select_players(player_ids, owner, &selector),
             verbs: verbs
@@ -108,42 +106,32 @@ pub(in crate::game) fn prepare(
                 })
                 .collect(),
         },
-        Effect::Cards { selector, verbs } => Prepared::Cards {
-            cards: select_cards(cards, owner, source, &selector),
-            verbs: verbs
-                .into_iter()
-                .map(|verb| match verb {
-                    CardVerb::Move(to) => PreparedCardVerb::Move(to),
-                })
-                .collect(),
-        },
-        Effect::Reveal {
-            pick_id,
-            selector,
-            amount,
-        } => Prepared::Reveal {
-            amount: effect_amount(cards, &amount, owner),
-            players: select_players(player_ids, owner, &selector),
-            source,
-            pick_id,
-        },
-        Effect::ResolvePick {
-            pick_id,
-            picked_move,
-            other_move,
+        Effect::Cards {
+            selector: CardSelector::Targeted(targeted),
+            verbs,
+        } => Prepared::Cards(PreparedCards {
+            cards: select_targeted_cards(cards, source, &targeted),
+            verbs: prepare_card_verbs(verbs),
+        }),
+        Effect::Cards {
+            selector: CardSelector::Picked { choice, others },
+            verbs,
         } => {
-            let (picked, others) = player_input
-                .picks(source, pick_id)
-                .map_or_else(Default::default, |picks| {
-                    (picks.picked().to_vec(), picks.others().to_vec())
-                });
-            Prepared::ResolvePick {
-                owner,
-                picked,
-                others,
-                picked_move,
-                other_move,
-            }
+            return PreparedOrOpen::Open(open_card_pick(
+                cards, owner, source, choice, verbs, others,
+            ));
+        }
+    }))
+}
+
+pub(in crate::game) fn prepare_finish(picked: PickedObjects) -> PreparedEffect {
+    PreparedEffect(match picked {
+        PickedObjects::Cards(picked) => {
+            let (holder, from, groups) = picked.into_groups();
+            Prepared::Picked(groups.map(|(covered, verbs)| PreparedCards {
+                cards: select_picked_cards(holder, from, covered),
+                verbs: prepare_card_verbs(verbs),
+            }))
         }
     })
 }
@@ -153,7 +141,6 @@ pub(in crate::game) fn resolve(
     rng: &mut Rng,
     zones: &mut Zones,
     objects: &mut ObjectBag,
-    player_input: &mut PlayerInput,
 ) -> Vec<Report> {
     let mut reports = Vec::new();
     match prepared.0 {
@@ -185,46 +172,71 @@ pub(in crate::game) fn resolve(
                 }
             }
         }
-        Prepared::Cards {
-            cards:
-                CardSelection {
-                    from,
-                    chooser,
-                    cards,
-                },
-            verbs,
-        } => {
-            for (verb, card) in verbs_on(cards, &verbs, rng) {
-                match verb {
-                    PreparedCardVerb::Move(to) => {
-                        let owner = objects.get(card).player_id;
-                        reports.extend(move_card(card, chooser, from, owner, *to, zones));
-                    }
-                }
+        Prepared::Cards(prepared) => {
+            reports.extend(resolve_cards(prepared, rng, zones, objects));
+        }
+        Prepared::Picked(groups) => {
+            for group in groups {
+                reports.extend(resolve_cards(group, rng, zones, objects));
             }
         }
-        Prepared::Reveal {
-            players,
-            amount,
-            source,
-            pick_id,
-        } => {
-            for target in players.resolve(rng) {
-                reports.extend(reveal(target, source, pick_id, amount, zones, player_input));
-            }
-        }
-        Prepared::ResolvePick {
-            owner,
-            picked,
-            others,
-            picked_move,
-            other_move,
-        } => {
-            for id in picked {
-                reports.push(zone_move(owner, id, picked_move, zones));
-            }
-            for id in others {
-                reports.push(zone_move(owner, id, other_move, zones));
+    }
+    reports
+}
+
+/// A pick of `choice` from the chooser's zone, counted before anything is picked.
+fn open_card_pick(
+    cards: CardsRef,
+    owner: PlayerId,
+    source: ObjectId,
+    choice: Choice<CardPickOptions>,
+    verbs: Vec<CardVerb>,
+    others: Vec<CardVerb>,
+) -> Picking {
+    let Choice {
+        options,
+        count,
+        bound,
+        different: _,
+    } = choice;
+    Picking::Cards(CardPicking::new(
+        cards.scan_pick_window(cards.chooser(source), &options),
+        effect_amount(cards, &count, owner),
+        bound,
+        verbs,
+        others,
+    ))
+}
+
+fn prepare_card_verbs(verbs: Vec<CardVerb>) -> Vec<PreparedCardVerb> {
+    verbs
+        .into_iter()
+        .map(|verb| match verb {
+            CardVerb::Move(to) => PreparedCardVerb::Move(to),
+        })
+        .collect()
+}
+
+fn resolve_cards(
+    prepared: PreparedCards,
+    rng: &mut Rng,
+    zones: &mut Zones,
+    objects: &ObjectBag,
+) -> Vec<Report> {
+    let PreparedCards {
+        cards: CardSelection {
+            from,
+            chooser,
+            cards,
+        },
+        verbs,
+    } = prepared;
+    let mut reports = Vec::new();
+    for (verb, card) in verbs_on(cards, &verbs, rng) {
+        match verb {
+            PreparedCardVerb::Move(to) => {
+                let owner = objects.get(card).player_id;
+                reports.extend(move_card(card, chooser, from, owner, *to, zones));
             }
         }
     }
@@ -247,28 +259,6 @@ fn verbs_on<'v, T: Copy, V>(
         .iter()
         .flat_map(|verb| selected.iter().map(move |&value| (verb, value)))
         .collect()
-}
-
-fn reveal(
-    player_id: PlayerId,
-    source: ObjectId,
-    pick_id: PickId,
-    count: u8,
-    zones: &mut Zones,
-    player_input: &mut PlayerInput,
-) -> Option<Report> {
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "the one reveal, which starts a picking"
-    )]
-    let options = zones.reveal(player_id, count);
-    let report = Report::Revealed {
-        player_id,
-        object_ids: options.clone(),
-    };
-    player_input
-        .start_picking(player_id, source, pick_id, options)
-        .then_some(report)
 }
 
 fn damage(target: ObjectId, amount: u8, source: ObjectId, objects: &mut ObjectBag) -> Report {

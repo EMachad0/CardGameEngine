@@ -31,14 +31,6 @@ pub(super) enum Report {
         amount: u8,
         source: ObjectId,
     },
-    Revealed {
-        player_id: PlayerId,
-        object_ids: Vec<ObjectId>,
-    },
-    Picked {
-        player_id: PlayerId,
-        object_id: ObjectId,
-    },
     Buried {
         player_id: PlayerId,
         object_id: ObjectId,
@@ -87,20 +79,6 @@ impl Report {
                 target,
                 amount,
                 source,
-            },
-            Report::Revealed {
-                player_id,
-                object_ids,
-            } => Event::Revealed {
-                player_id,
-                object_ids,
-            },
-            Report::Picked {
-                player_id,
-                object_id,
-            } => Event::Picked {
-                player_id,
-                object_id,
             },
             Report::Buried {
                 player_id,

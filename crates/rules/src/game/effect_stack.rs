@@ -1,8 +1,10 @@
 //! The effect stack and the resolving effect. The newest pending effect resolves first, and one
-//! resolves at a time: the next is taken off the stack only once the resolving one finishes.
+//! resolves at a time: the next is taken off the stack only once the resolving one finishes. The
+//! resolving effect holds the picking its last effect opened until the picking finishes.
 
 use crate::cards::object::ObjectId;
 use crate::effect::Effect;
+use crate::game::picking::{PickedObjects, Picking};
 use crate::target::Bound;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -21,12 +23,63 @@ struct PendingEffect {
 struct ResolvingEffect {
     pending: PendingEffect,
     idx: usize,
+    picking: Option<Picking>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct NextEffect {
     pub(super) source: ObjectId,
     pub(super) effect: Effect<Bound>,
+}
+
+/// What the resolving effect does next.
+#[derive(Debug, PartialEq, Eq)]
+pub(super) enum Advance {
+    Effect(NextEffect),
+    /// With the objects of the complete picking taken off the resolving effect.
+    FinishPicking(PickedObjects),
+    AwaitPicking,
+    /// Nothing is resolving.
+    Done,
+}
+
+/// That the resolving effect's picking waits on an answer. It borrows the effect stack, so the
+/// picking stays open while this lives.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct AwaitsPicking<'a> {
+    source: ObjectId,
+    picking: &'a Picking,
+}
+
+impl<'a> AwaitsPicking<'a> {
+    /// The object whose text opened the pick.
+    pub(super) fn source(self) -> ObjectId {
+        self.source
+    }
+
+    pub(super) fn picking(self) -> &'a Picking {
+        self.picking
+    }
+
+    /// One per option left, in the order shown.
+    pub(super) fn options(self) -> impl Iterator<Item = WasAwaitingPicking> + 'a {
+        self.picking
+            .options_left()
+            .map(|object_id| WasAwaitingPicking { object_id })
+    }
+}
+
+/// That the resolving effect's picking was waiting on an answer, and one of its options left. It
+/// holds no borrow, so the picking may have closed since.
+pub(super) struct WasAwaitingPicking {
+    object_id: ObjectId,
+}
+
+impl WasAwaitingPicking {
+    /// The option.
+    pub(super) fn object_id(&self) -> ObjectId {
+        self.object_id
+    }
 }
 
 impl ResolvingEffect {
@@ -37,10 +90,6 @@ impl ResolvingEffect {
             source: self.pending.source,
             effect,
         })
-    }
-
-    fn is_done(&self) -> bool {
-        self.pending.effects.len() <= self.idx
     }
 }
 
@@ -56,30 +105,71 @@ impl EffectStack {
             self.resolving.is_none(),
             "the resolving effect should finish before the next one starts",
         );
-        self.resolving = self
-            .pending
-            .pop()
-            .map(|pending| ResolvingEffect { pending, idx: 0 });
+        self.resolving = self.pending.pop().map(|pending| ResolvingEffect {
+            pending,
+            idx: 0,
+            picking: None,
+        });
     }
 
-    /// The resolving effect's next effect. Moves the resolving effect past it.
-    pub(super) fn next_effect(&mut self) -> Option<NextEffect> {
-        self.resolving.as_mut()?.next_effect()
+    /// Moves the resolving effect on to what it does next: off its complete picking, past its next
+    /// effect, or, with neither left, off the stack.
+    pub(super) fn advance(&mut self) -> Advance {
+        let Some(resolving) = &mut self.resolving else {
+            return Advance::Done;
+        };
+        if let Some(picking) = resolving.picking.take() {
+            return match picking.finish() {
+                Ok(picked) => Advance::FinishPicking(picked),
+                Err(open) => {
+                    resolving.picking = Some(open);
+                    Advance::AwaitPicking
+                }
+            };
+        }
+        if let Some(next) = resolving.next_effect() {
+            return Advance::Effect(next);
+        }
+        self.resolving = None;
+        Advance::Done
     }
 
-    /// Ends the resolving effect if it has no effects left, and returns whether it did.
-    pub(super) fn finish_if_done(&mut self) -> bool {
+    /// Gives the resolving effect the picking its last effect opened. Panics unless an effect is
+    /// resolving with no picking.
+    pub(super) fn open_picking(&mut self, picking: Picking) {
+        let resolving = self
+            .resolving
+            .as_mut()
+            .expect("a picking should open only while an effect resolves");
+        assert!(
+            resolving.picking.is_none(),
+            "a resolving effect should finish its picking before it opens another",
+        );
+        resolving.picking = Some(picking);
+    }
+
+    /// The resolving effect's picking, unless it is complete or there is none.
+    pub(super) fn awaited_picking(&self) -> Option<AwaitsPicking<'_>> {
+        let resolving = self.resolving.as_ref()?;
+        let picking = resolving.picking.as_ref()?;
+        (!picking.is_complete()).then_some(AwaitsPicking {
+            source: resolving.pending.source,
+            picking,
+        })
+    }
+
+    /// Adds the option to the resolving effect's picking. Panics unless that picking still awaits
+    /// an answer with the option left.
+    pub(super) fn pick(&mut self, awaiting_picking: WasAwaitingPicking) {
         self.resolving
-            .take_if(|resolving| resolving.is_done())
-            .is_some()
-    }
-
-    pub(super) fn is_resolving(&self) -> bool {
-        self.resolving.is_some()
+            .as_mut()
+            .and_then(|resolving| resolving.picking.as_mut())
+            .expect("a picking found awaiting an answer should stay open until it finishes")
+            .pick(awaiting_picking.object_id);
     }
 
     pub(super) fn is_idle(&self) -> bool {
-        self.pending.is_empty() && !self.is_resolving()
+        self.pending.is_empty() && self.resolving.is_none()
     }
 }
 
@@ -91,7 +181,10 @@ mod tests {
     use crate::cards::binder::sets::base::static_card_definition::SPARK;
     use crate::cards::definition::PlayerSelector;
     use crate::cards::object::ObjectBag;
-    use crate::effect::{EffectAmount, PlayerVerb};
+    use crate::choice::AmountBound;
+    use crate::effect::{CardDestinationZone, CardVerb, EffectAmount, PlayerVerb};
+    use crate::game::picking::{CardPicking, PickWindow};
+    use crate::game::zone_move::CardOriginZone;
     use crate::ids::PlayerId;
 
     fn sources<const N: usize>() -> [ObjectId; N] {
@@ -106,8 +199,50 @@ mod tests {
         }
     }
 
-    fn next(source: ObjectId, effect: Effect<Bound>) -> Option<NextEffect> {
-        Some(NextEffect { source, effect })
+    /// A pick of one of `options`, all pickable.
+    fn picking(options: &[ObjectId]) -> Picking {
+        Picking::Cards(CardPicking::new(
+            PickWindow {
+                holder: PlayerId::new(0),
+                from: CardOriginZone::Deck,
+                cards: options.iter().map(|&object_id| (object_id, true)).collect(),
+            },
+            1,
+            AmountBound::Exactly,
+            vec![CardVerb::Move(CardDestinationZone::Hand)],
+            Vec::new(),
+        ))
+    }
+
+    fn effect(source: ObjectId, effect: Effect<Bound>) -> Advance {
+        Advance::Effect(NextEffect { source, effect })
+    }
+
+    /// A stack resolving `source`'s one effect, which has opened a pick of one of `options`.
+    fn picking_stack(source: ObjectId, options: &[ObjectId]) -> EffectStack {
+        let mut stack = EffectStack::default();
+        stack.push(source, vec![draw(1), draw(2)]);
+        stack.start_next();
+        stack.advance();
+        stack.open_picking(picking(options));
+        stack
+    }
+
+    fn options(stack: &EffectStack) -> Vec<ObjectId> {
+        stack
+            .awaited_picking()
+            .map(|awaits| awaits.options().map(|option| option.object_id()).collect())
+            .unwrap_or_default()
+    }
+
+    fn pick(stack: &mut EffectStack, object_id: ObjectId) {
+        let awaiting_picking = stack
+            .awaited_picking()
+            .unwrap()
+            .options()
+            .find(|option| option.object_id() == object_id)
+            .unwrap();
+        stack.pick(awaiting_picking);
     }
 
     #[test]
@@ -119,7 +254,7 @@ mod tests {
 
         stack.start_next();
 
-        assert_eq!(stack.next_effect(), next(newer, draw(2)));
+        assert_eq!(stack.advance(), effect(newer, draw(2)));
     }
 
     #[test]
@@ -129,13 +264,9 @@ mod tests {
         stack.push(source, vec![draw(1), draw(2)]);
         stack.start_next();
 
-        let steps = [
-            stack.next_effect(),
-            stack.next_effect(),
-            stack.next_effect(),
-        ];
+        let steps = [stack.advance(), stack.advance()];
 
-        assert_eq!(steps, [next(source, draw(1)), next(source, draw(2)), None]);
+        assert_eq!(steps, [effect(source, draw(1)), effect(source, draw(2))]);
     }
 
     #[test]
@@ -144,7 +275,8 @@ mod tests {
         let mut stack = EffectStack::default();
         stack.push(source, vec![draw(1)]);
 
-        assert_eq!(stack.next_effect(), None);
+        assert_eq!(stack.advance(), Advance::Done);
+        assert!(!stack.is_idle(), "the pending effect still waits");
     }
 
     #[test]
@@ -160,67 +292,31 @@ mod tests {
     }
 
     #[test]
-    fn the_next_pending_effect_starts_once_the_resolving_one_finishes() {
+    fn the_next_pending_effect_starts_once_the_resolving_one_is_done() {
         let [older, newer] = sources();
         let mut stack = EffectStack::default();
         stack.push(older, vec![draw(1)]);
         stack.push(newer, vec![draw(2)]);
         stack.start_next();
-        stack.next_effect();
+        stack.advance();
 
-        assert!(stack.finish_if_done());
+        assert_eq!(stack.advance(), Advance::Done);
         stack.start_next();
 
-        assert_eq!(stack.next_effect(), next(older, draw(1)));
+        assert_eq!(stack.advance(), effect(older, draw(1)));
     }
 
     #[test]
     #[should_panic(expected = "the resolving effect should finish before the next one starts")]
-    fn no_effect_starts_before_a_resolving_one_with_no_effects_left_finishes() {
+    fn no_effect_starts_before_a_resolving_one_with_no_effects_left_is_done() {
         let [older, newer] = sources();
         let mut stack = EffectStack::default();
         stack.push(older, vec![draw(1)]);
         stack.push(newer, vec![draw(2)]);
         stack.start_next();
-        stack.next_effect();
+        stack.advance();
 
         stack.start_next();
-    }
-
-    #[test]
-    fn a_resolving_effect_with_effects_left_does_not_finish() {
-        let [source] = sources();
-        let mut stack = EffectStack::default();
-        stack.push(source, vec![draw(1), draw(2)]);
-        stack.start_next();
-        stack.next_effect();
-
-        assert!(!stack.finish_if_done());
-        assert_eq!(stack.next_effect(), next(source, draw(2)));
-    }
-
-    #[test]
-    fn finishing_with_nothing_resolving_finishes_nothing() {
-        let [source] = sources();
-        let mut stack = EffectStack::default();
-        stack.push(source, vec![draw(1)]);
-
-        assert!(!stack.finish_if_done());
-    }
-
-    #[test]
-    fn a_started_effect_is_resolving_until_it_finishes() {
-        let [source] = sources();
-        let mut stack = EffectStack::default();
-        stack.push(source, vec![draw(1)]);
-        assert!(!stack.is_resolving(), "a pending effect is not resolving");
-
-        stack.start_next();
-        stack.next_effect();
-        assert!(stack.is_resolving(), "no effects left, but not finished");
-
-        stack.finish_if_done();
-        assert!(!stack.is_resolving());
     }
 
     #[test]
@@ -233,10 +329,117 @@ mod tests {
         assert!(!stack.is_idle(), "an effect is pending");
 
         stack.start_next();
-        assert!(!stack.is_idle(), "an effect is resolving");
+        stack.advance();
+        assert!(!stack.is_idle(), "no effects left, but not done");
 
-        stack.next_effect();
-        stack.finish_if_done();
+        stack.advance();
         assert!(stack.is_idle());
+    }
+
+    #[test]
+    fn an_open_picking_awaits_its_options() {
+        let [source, a, b] = sources();
+
+        let stack = picking_stack(source, &[a, b]);
+
+        assert_eq!(options(&stack), [a, b]);
+        assert_eq!(stack.awaited_picking().unwrap().source(), source);
+    }
+
+    #[test]
+    fn an_open_picking_holds_back_the_next_effect() {
+        let [source, a] = sources();
+        let mut stack = picking_stack(source, &[a]);
+
+        assert_eq!(stack.advance(), Advance::AwaitPicking);
+        assert_eq!(stack.advance(), Advance::AwaitPicking);
+    }
+
+    #[test]
+    fn a_picking_opened_by_the_last_effect_keeps_its_effect_resolving() {
+        let [source, a] = sources();
+        let mut stack = EffectStack::default();
+        stack.push(source, vec![draw(1)]);
+        stack.start_next();
+        stack.advance();
+        stack.open_picking(picking(&[a]));
+
+        assert_eq!(stack.advance(), Advance::AwaitPicking);
+        assert!(!stack.is_idle());
+    }
+
+    #[test]
+    fn a_complete_picking_finishes_before_the_next_effect() {
+        let [source, a, b] = sources();
+        let mut stack = picking_stack(source, &[a, b]);
+        pick(&mut stack, b);
+        let mut answered = picking(&[a, b]);
+        answered.pick(b);
+
+        assert_eq!(
+            stack.advance(),
+            Advance::FinishPicking(answered.finish().unwrap())
+        );
+        assert_eq!(stack.advance(), effect(source, draw(2)));
+    }
+
+    #[test]
+    fn a_complete_picking_is_not_awaited() {
+        let [source, a] = sources();
+        let mut stack = picking_stack(source, &[a]);
+
+        pick(&mut stack, a);
+
+        assert!(stack.awaited_picking().is_none());
+    }
+
+    #[test]
+    fn a_picking_with_no_options_is_not_awaited() {
+        let [source] = sources();
+
+        let stack = picking_stack(source, &[]);
+
+        assert!(stack.awaited_picking().is_none());
+    }
+
+    #[test]
+    fn a_picking_with_no_options_finishes_next() {
+        let [source] = sources();
+        let mut stack = picking_stack(source, &[]);
+
+        assert!(matches!(stack.advance(), Advance::FinishPicking(_)));
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "a picking found awaiting an answer should stay open until it finishes"
+    )]
+    fn an_option_cannot_be_picked_once_its_picking_finishes() {
+        let [source, a] = sources();
+        let mut stack = picking_stack(source, &[a]);
+        let stale = stack.awaited_picking().unwrap().options().next().unwrap();
+        pick(&mut stack, a);
+        stack.advance();
+
+        stack.pick(stale);
+    }
+
+    #[test]
+    #[should_panic(expected = "a picking should open only while an effect resolves")]
+    fn no_picking_opens_with_nothing_resolving() {
+        let [a] = sources();
+
+        EffectStack::default().open_picking(picking(&[a]));
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "a resolving effect should finish its picking before it opens another"
+    )]
+    fn a_picking_cannot_open_over_another() {
+        let [source, a] = sources();
+        let mut stack = picking_stack(source, &[a]);
+
+        stack.open_picking(picking(&[a]));
     }
 }

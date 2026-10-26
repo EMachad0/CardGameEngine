@@ -1,6 +1,6 @@
 # Card picks read their options in place and replace `Reveal`
 
-Status: ready-for-human
+Status: resolved
 Category: enhancement
 Type: task
 Blocked by: 03
@@ -72,3 +72,7 @@ From ADR 0019 and ADR 0020, limited to what the forcing cards reach:
 
 The checks pass, nothing named `Reveal`, `ResolvePick` or `PickId` is left, and the agent's review
 against `docs/conventions/file-structure.md` is answered.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/83

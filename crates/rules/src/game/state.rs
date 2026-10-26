@@ -8,17 +8,19 @@ use crate::cards::binder::def_id::DefId;
 use crate::cards::binder::store::Binder;
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::game::cards_ref::CardsRef;
-use crate::game::effect_stack::{EffectStack, NextEffect};
+use crate::game::effect_stack::{Advance, EffectStack, NextEffect, WasAwaitingPicking};
 use crate::game::legal_actions::LegalAction;
+use crate::game::picking::PickedObjects;
 use crate::game::play::WasPlayable;
 use crate::game::player::{Player, Players};
 use crate::game::player_input::awaiting::{
-    PlayerInput, WasAwaitingNothing, WasAwaitingPicking, WasAwaitingTargeting,
+    Awaiting, PlayerInput, WasAwaitingNothing, WasAwaitingTargeting, awaiting,
 };
 use crate::game::reporting::Report;
 use crate::game::resolve::aftermath::death;
 use crate::game::resolve::aftermath::standings::Standings;
-use crate::game::resolve::{effect, resolution_loop};
+use crate::game::resolve::effect::{self, PreparedOrOpen};
+use crate::game::resolve::resolution_loop;
 use crate::game::view::{self, View};
 use crate::game::{action_steps, legal_actions, play, setup, stats, turn_change, zone_move};
 use crate::history::History;
@@ -56,6 +58,7 @@ enum Step {
     StartTurn,
     Action(ActionStep),
     Effect(NextEffect),
+    FinishPicking(PickedObjects),
     DeathPass,
     DecideOutcome,
 }
@@ -128,6 +131,7 @@ impl Game {
             self.cards(),
             &self.players,
             &self.player_input,
+            &self.effect_stack,
             &self.standings,
             viewer,
         )
@@ -177,9 +181,21 @@ impl Game {
         self.players.get(player_id).mana.current()
     }
 
-    /// The options of the player's picking. Empty unless they are picking.
-    pub fn revealed(&self, player_id: PlayerId) -> &[ObjectId] {
-        self.player_input.revealed(player_id)
+    /// The options of the player's picking that they haven't picked yet, in the order shown. Empty
+    /// unless they are picking.
+    pub fn pick_options(&self, player_id: PlayerId) -> Vec<ObjectId> {
+        match awaiting(
+            self.cards(),
+            &self.player_input,
+            &self.effect_stack,
+            player_id,
+        ) {
+            Awaiting::Picking(awaits_picking) => awaits_picking
+                .options()
+                .map(|option| option.object_id())
+                .collect(),
+            Awaiting::Nothing(_) | Awaiting::Targeting(_) => Vec::new(),
+        }
     }
 
     pub fn outcome(&self) -> Option<Outcome> {
@@ -202,6 +218,7 @@ impl Game {
             self.cards(),
             &self.standings,
             &self.player_input,
+            &self.effect_stack,
             self.players.get(player_id),
         )
     }
@@ -275,22 +292,21 @@ impl Game {
                 Vec::new()
             }
             Step::Action(ActionStep::Pick(awaiting_picking)) => {
-                let (player_id, object_id) = self.player_input.pick(awaiting_picking);
-                vec![Report::Picked {
-                    player_id,
-                    object_id,
-                }]
+                self.effect_stack.pick(awaiting_picking);
+                Vec::new()
             }
-            Step::Effect(next) => {
-                let prepared =
-                    effect::prepare(self.cards(), &self.players(), &self.player_input, next);
-                effect::resolve(
-                    prepared,
-                    &mut self.rng,
-                    &mut self.zones,
-                    &mut self.objects,
-                    &mut self.player_input,
-                )
+            Step::Effect(next) => match effect::prepare(self.cards(), &self.players(), next) {
+                PreparedOrOpen::Prepared(prepared) => {
+                    effect::resolve(prepared, &mut self.rng, &mut self.zones, &mut self.objects)
+                }
+                PreparedOrOpen::Open(picking) => {
+                    self.effect_stack.open_picking(picking);
+                    Vec::new()
+                }
+            },
+            Step::FinishPicking(picked) => {
+                let prepared = effect::prepare_finish(picked);
+                effect::resolve(prepared, &mut self.rng, &mut self.zones, &mut self.objects)
             }
             Step::DeathPass => {
                 let death_pass =
@@ -432,16 +448,12 @@ pub(super) struct Resolving<'g, O> {
 }
 
 impl<O: Observer> Resolving<'_, O> {
-    pub(super) fn any_awaiting(&self) -> bool {
-        self.game.player_input.any_awaiting()
+    pub(super) fn any_targeting(&self) -> bool {
+        self.game.player_input.any_targeting()
     }
 
     pub(super) fn is_over(&self) -> bool {
         self.game.outcome().is_some()
-    }
-
-    pub(super) fn is_resolving(&self) -> bool {
-        self.game.effect_stack.is_resolving()
     }
 
     pub(super) fn is_idle(&self) -> bool {
@@ -452,18 +464,16 @@ impl<O: Observer> Resolving<'_, O> {
         self.game.effect_stack.start_next();
     }
 
-    /// Takes the resolving effect's next effect as a step. `false`, with no step taken, if it has
-    /// none left.
-    pub(super) fn resolve_next_effect(&mut self) -> bool {
-        let Some(next) = self.game.effect_stack.next_effect() else {
-            return false;
-        };
-        self.game.take_step(Step::Effect(next), self.obs);
-        true
+    pub(super) fn advance(&mut self) -> Advance {
+        self.game.effect_stack.advance()
     }
 
-    pub(super) fn finish_if_done(&mut self) {
-        self.game.effect_stack.finish_if_done();
+    pub(super) fn resolve_effect(&mut self, next: NextEffect) {
+        self.game.take_step(Step::Effect(next), self.obs);
+    }
+
+    pub(super) fn finish_picking(&mut self, picked: PickedObjects) {
+        self.game.take_step(Step::FinishPicking(picked), self.obs);
     }
 
     pub(super) fn check_state(&mut self) {

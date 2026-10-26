@@ -16,15 +16,6 @@ impl From<u8> for EffectAmount {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct PickId(pub usize);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ZoneMove {
-    AddToHand,
-    Bury,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Effect<S: TargetForm> {
     Players {
@@ -38,16 +29,6 @@ pub enum Effect<S: TargetForm> {
     Cards {
         selector: CardSelector<S>,
         verbs: Vec<CardVerb>,
-    },
-    Reveal {
-        pick_id: PickId,
-        selector: PlayerSelector,
-        amount: EffectAmount,
-    },
-    ResolvePick {
-        pick_id: PickId,
-        picked_move: ZoneMove,
-        other_move: ZoneMove,
     },
 }
 
@@ -71,15 +52,8 @@ pub enum CardVerb {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CardDestinationZone {
+    Hand,
     DeckBottom,
-}
-
-impl From<CardDestinationZone> for ZoneMove {
-    fn from(value: CardDestinationZone) -> Self {
-        match value {
-            CardDestinationZone::DeckBottom => Self::Bury,
-        }
-    }
 }
 
 impl<S: TargetForm> Effect<S> {
@@ -88,16 +62,6 @@ impl<S: TargetForm> Effect<S> {
             Effect::Players {
                 selector: _,
                 verbs: _,
-            }
-            | Effect::Reveal {
-                pick_id: _,
-                selector: _,
-                amount: _,
-            }
-            | Effect::ResolvePick {
-                pick_id: _,
-                picked_move: _,
-                other_move: _,
             } => None,
             Effect::Characters { selector, verbs: _ } => {
                 selector.target().map(|t| TargetChoiceRef::Character(t))
@@ -115,24 +79,6 @@ impl<S: TargetForm> Effect<S> {
                 selector: selector.map_targeted(|target| f.map_character(target)),
                 verbs,
             },
-            Effect::Reveal {
-                pick_id,
-                selector,
-                amount,
-            } => Effect::Reveal {
-                pick_id,
-                selector,
-                amount,
-            },
-            Effect::ResolvePick {
-                pick_id,
-                picked_move,
-                other_move,
-            } => Effect::ResolvePick {
-                pick_id,
-                picked_move,
-                other_move,
-            },
             Effect::Cards { selector, verbs } => Effect::Cards {
                 selector: selector.map_targeted(|target| f.map_card(target)),
                 verbs,
@@ -146,9 +92,12 @@ mod tests {
     use std::fmt::Debug;
     use std::marker::PhantomData;
 
+    use enumset::EnumSet;
     use pretty_assertions::assert_eq;
 
     use super::*;
+    use crate::choice::{AmountBound, Choice};
+    use crate::pick::{CardPickOptions, CardPickZone, DeckWindow};
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     struct Holds<T>(PhantomData<T>);
@@ -195,10 +144,20 @@ mod tests {
                 selector: PlayerSelector::Owner,
                 verbs: vec![PlayerVerb::Draw(1.into())],
             },
-            Effect::ResolvePick {
-                pick_id: PickId(1),
-                picked_move: ZoneMove::AddToHand,
-                other_move: ZoneMove::Bury,
+            Effect::Cards {
+                selector: CardSelector::Picked {
+                    choice: Choice {
+                        options: CardPickOptions {
+                            zone: CardPickZone::YourDeck(DeckWindow::Top(2)),
+                            kind: EnumSet::all(),
+                        },
+                        count: 1.into(),
+                        bound: AmountBound::Exactly,
+                        different: true,
+                    },
+                    others: vec![CardVerb::Move(CardDestinationZone::DeckBottom)],
+                },
+                verbs: vec![CardVerb::Move(CardDestinationZone::Hand)],
             },
         ]
     }

@@ -5,6 +5,7 @@ mod effect_stack;
 mod legal_actions;
 mod mana;
 mod modifiers;
+mod picking;
 mod play;
 mod player;
 mod player_input;

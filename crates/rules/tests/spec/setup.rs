@@ -85,12 +85,12 @@ fn heroes_start_at_ten_health() {
 }
 
 #[test]
-fn a_new_game_has_empty_boards_and_nothing_revealed() {
+fn a_new_game_has_empty_boards_and_no_pick_open() {
     let game = after_setup();
 
     for p in players(&game) {
         assert!(game.player_board(p).is_empty(), "{p:?}'s board");
-        assert!(game.revealed(p).is_empty(), "{p:?}'s reveal");
+        assert!(game.pick_options(p).is_empty(), "{p:?}'s pick options");
     }
 }
 
