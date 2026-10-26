@@ -9,7 +9,7 @@ use crate::cards::binder::store::Binder;
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::{
-    Advance, CompletePicking, EffectStack, NextEffect, WasAwaitingPicking,
+    Advance, EffectStack, FinishedPick, NextEffect, WasAwaitingPicking,
 };
 use crate::game::legal_actions::LegalAction;
 use crate::game::play::WasPlayable;
@@ -59,7 +59,7 @@ enum Step {
     StartTurn,
     Action(ActionStep),
     Effect(NextEffect),
-    FinishPicking(CompletePicking),
+    FinishPicking(FinishedPick),
     DeathPass,
     DecideOutcome,
 }
@@ -305,8 +305,8 @@ impl Game {
                     Vec::new()
                 }
             },
-            Step::FinishPicking(complete) => {
-                let prepared = effect::prepare_finish(self.cards(), complete);
+            Step::FinishPicking(finished) => {
+                let prepared = effect::prepare_finish(self.cards(), finished);
                 effect::resolve(prepared, &mut self.rng, &mut self.zones, &mut self.objects)
             }
             Step::DeathPass => {
@@ -473,8 +473,8 @@ impl<O: Observer> Resolving<'_, O> {
         self.game.take_step(Step::Effect(next), self.obs);
     }
 
-    pub(super) fn finish_picking(&mut self, complete: CompletePicking) {
-        self.game.take_step(Step::FinishPicking(complete), self.obs);
+    pub(super) fn finish_picking(&mut self, finished: FinishedPick) {
+        self.game.take_step(Step::FinishPicking(finished), self.obs);
     }
 
     pub(super) fn check_state(&mut self) {

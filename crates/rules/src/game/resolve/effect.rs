@@ -6,7 +6,7 @@ use crate::choice::Choice;
 use crate::effect::{CardDestinationZone, CardVerb, CharacterVerb, Effect, PlayerVerb};
 use crate::game::amount::effect_amount;
 use crate::game::cards_ref::CardsRef;
-use crate::game::effect_stack::{CompletePicking, NextEffect};
+use crate::game::effect_stack::{FinishedPick, NextEffect};
 use crate::game::picking::{CardPicking, CharacterPicking, PickedObjects, Picking};
 use crate::game::reporting::Report;
 use crate::game::selector::{
@@ -113,11 +113,8 @@ pub(in crate::game) fn prepare(
     }))
 }
 
-pub(in crate::game) fn prepare_finish(
-    cards: CardsRef,
-    complete: CompletePicking,
-) -> PreparedEffect {
-    let CompletePicking { source, picked } = complete;
+pub(in crate::game) fn prepare_finish(cards: CardsRef, finished: FinishedPick) -> PreparedEffect {
+    let FinishedPick { source, picked } = finished;
     let owner = cards.objects.get(source).player_id;
     PreparedEffect(match picked {
         PickedObjects::Characters(picked) => {
