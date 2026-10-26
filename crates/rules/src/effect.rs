@@ -96,6 +96,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
+    use crate::cards::filter::CharacterFilter;
     use crate::choice::{AmountBound, Choice};
     use crate::pick::{CardPickOptions, CardPickZone, DeckWindow};
 
@@ -138,11 +139,23 @@ mod tests {
         }
     }
 
-    fn untargeted<S: TargetForm>() -> [Effect<S>; 2] {
+    fn untargeted<S: TargetForm>() -> [Effect<S>; 3] {
         [
             Effect::Players {
                 selector: PlayerSelector::Owner,
                 verbs: vec![PlayerVerb::Draw(1.into())],
+            },
+            Effect::Characters {
+                selector: CharacterSelector::Picked {
+                    choice: Choice {
+                        options: CharacterFilter::all(),
+                        count: 1.into(),
+                        bound: AmountBound::Exactly,
+                        different: true,
+                    },
+                    others: vec![CharacterVerb::Damage(1.into())],
+                },
+                verbs: vec![CharacterVerb::Damage(2.into())],
             },
             Effect::Cards {
                 selector: CardSelector::Picked {
@@ -179,7 +192,7 @@ mod tests {
     fn an_effect_with_no_targeted_selector_has_no_target() {
         assert_eq!(
             untargeted::<Holds<usize>>().each_ref().map(Effect::target),
-            [None, None],
+            [None, None, None],
         );
     }
 

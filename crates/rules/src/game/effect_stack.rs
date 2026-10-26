@@ -32,12 +32,19 @@ pub(super) struct NextEffect {
     pub(super) effect: Effect<Bound>,
 }
 
+/// The objects of a complete picking taken off the resolving effect.
+#[derive(Debug, PartialEq, Eq)]
+pub(super) struct FinishedPick {
+    /// The object whose text opened the pick.
+    pub(super) source: ObjectId,
+    pub(super) picked: PickedObjects,
+}
+
 /// What the resolving effect does next.
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum Advance {
     Effect(NextEffect),
-    /// With the objects of the complete picking taken off the resolving effect.
-    FinishPicking(PickedObjects),
+    FinishPicking(FinishedPick),
     AwaitPicking,
     /// Nothing is resolving.
     Done,
@@ -120,7 +127,10 @@ impl EffectStack {
         };
         if let Some(picking) = resolving.picking.take() {
             return match picking.finish() {
-                Ok(picked) => Advance::FinishPicking(picked),
+                Ok(picked) => Advance::FinishPicking(FinishedPick {
+                    source: resolving.pending.source,
+                    picked,
+                }),
                 Err(open) => {
                     resolving.picking = Some(open);
                     Advance::AwaitPicking
@@ -378,7 +388,10 @@ mod tests {
 
         assert_eq!(
             stack.advance(),
-            Advance::FinishPicking(answered.finish().unwrap())
+            Advance::FinishPicking(FinishedPick {
+                source,
+                picked: answered.finish().unwrap(),
+            })
         );
         assert_eq!(stack.advance(), effect(source, draw(2)));
     }

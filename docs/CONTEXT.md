@@ -207,7 +207,7 @@ _Avoid_: heal
 Giving an object a modifier.
 
 **Picking**:
-A pick that the resolving effect holds until it is answered: the cards it covers, which of them
+A pick that the resolving effect holds until it is answered: the objects it covers, which of them
 the player may pick, and what they have picked so far.
 _Avoid_: pending pick, picker
 

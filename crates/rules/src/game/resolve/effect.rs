@@ -1,17 +1,17 @@
 use crate::cards::binder::def_id::DefId;
-use crate::cards::definition::CardSelector;
+use crate::cards::filter::CharacterFilter;
 use crate::cards::modifier::Modifier;
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::choice::Choice;
 use crate::effect::{CardDestinationZone, CardVerb, CharacterVerb, Effect, PlayerVerb};
 use crate::game::amount::effect_amount;
 use crate::game::cards_ref::CardsRef;
-use crate::game::effect_stack::NextEffect;
-use crate::game::picking::{CardPicking, PickedObjects, Picking};
+use crate::game::effect_stack::{FinishedPick, NextEffect};
+use crate::game::picking::{CardPicking, CharacterPicking, PickedObjects, Picking};
 use crate::game::reporting::Report;
 use crate::game::selector::{
-    CardSelection, Selection, select_characters, select_picked_cards, select_players,
-    select_targeted_cards,
+    CardSelection, SelectedOrPick, Selection, select_cards, select_characters, select_picked_cards,
+    select_picked_characters, select_players,
 };
 use crate::game::zone_move::{draw, move_card, summon};
 use crate::ids::PlayerId;
@@ -33,13 +33,17 @@ enum Prepared {
         players: Selection<PlayerId>,
         verbs: Vec<PreparedPlayerVerb>,
     },
-    Characters {
-        characters: Selection<ObjectId>,
-        verbs: Vec<PreparedCharacterVerb>,
-    },
+    Characters(PreparedCharacters),
     Cards(PreparedCards),
     /// In the order their verbs run.
-    Picked([PreparedCards; 2]),
+    PickedCharacters([PreparedCharacters; 2]),
+    /// In the order their verbs run.
+    PickedCards([PreparedCards; 2]),
+}
+
+struct PreparedCharacters {
+    characters: Selection<ObjectId>,
+    verbs: Vec<PreparedCharacterVerb>,
 }
 
 struct PreparedCards {
@@ -82,53 +86,48 @@ pub(in crate::game) fn prepare(
                 })
                 .collect(),
         },
-        Effect::Characters { selector, verbs } => Prepared::Characters {
-            characters: select_characters(cards, owner, source, &selector),
-            verbs: verbs
-                .into_iter()
-                .map(|verb| match verb {
-                    CharacterVerb::Damage(amount) => PreparedCharacterVerb::Damage {
-                        amount: effect_amount(cards, &amount, owner),
-                        source,
-                    },
-                    CharacterVerb::Modify(modifier_effect) => {
-                        PreparedCharacterVerb::Modify(Modifier {
-                            granted_by: source,
-                            effect: modifier_effect,
-                        })
-                    }
-                    CharacterVerb::AddFriendlyAura(modifier_effect) => {
-                        PreparedCharacterVerb::AddFriendlyAura(Modifier {
-                            granted_by: source,
-                            effect: modifier_effect,
-                        })
-                    }
-                })
-                .collect(),
-        },
-        Effect::Cards {
-            selector: CardSelector::Targeted(targeted),
-            verbs,
-        } => Prepared::Cards(PreparedCards {
-            cards: select_targeted_cards(cards, source, &targeted),
-            verbs: prepare_card_verbs(verbs),
-        }),
-        Effect::Cards {
-            selector: CardSelector::Picked { choice, others },
-            verbs,
-        } => {
-            return PreparedOrOpen::Open(open_card_pick(
-                cards, owner, source, choice, verbs, others,
-            ));
+        Effect::Characters { selector, verbs } => {
+            match select_characters(cards, owner, source, selector) {
+                SelectedOrPick::Selected(characters) => Prepared::Characters(PreparedCharacters {
+                    characters,
+                    verbs: prepare_character_verbs(cards, owner, source, verbs),
+                }),
+                SelectedOrPick::Pick { choice, others } => {
+                    return PreparedOrOpen::Open(open_character_pick(
+                        cards, owner, source, choice, verbs, others,
+                    ));
+                }
+            }
         }
+        Effect::Cards { selector, verbs } => match select_cards(cards, source, selector) {
+            SelectedOrPick::Selected(selection) => Prepared::Cards(PreparedCards {
+                cards: selection,
+                verbs: prepare_card_verbs(verbs),
+            }),
+            SelectedOrPick::Pick { choice, others } => {
+                return PreparedOrOpen::Open(open_card_pick(
+                    cards, owner, source, choice, verbs, others,
+                ));
+            }
+        },
     }))
 }
 
-pub(in crate::game) fn prepare_finish(picked: PickedObjects) -> PreparedEffect {
+pub(in crate::game) fn prepare_finish(cards: CardsRef, finished: FinishedPick) -> PreparedEffect {
+    let FinishedPick { source, picked } = finished;
+    let owner = cards.objects.get(source).player_id;
     PreparedEffect(match picked {
+        PickedObjects::Characters(picked) => {
+            Prepared::PickedCharacters(picked.into_groups().map(|(covered, verbs)| {
+                PreparedCharacters {
+                    characters: select_picked_characters(covered),
+                    verbs: prepare_character_verbs(cards, owner, source, verbs),
+                }
+            }))
+        }
         PickedObjects::Cards(picked) => {
             let (holder, from, groups) = picked.into_groups();
-            Prepared::Picked(groups.map(|(covered, verbs)| PreparedCards {
+            Prepared::PickedCards(groups.map(|(covered, verbs)| PreparedCards {
                 cards: select_picked_cards(holder, from, covered),
                 verbs: prepare_card_verbs(verbs),
             }))
@@ -157,31 +156,48 @@ pub(in crate::game) fn resolve(
                 }
             }
         }
-        Prepared::Characters { characters, verbs } => {
-            for (verb, character) in verbs_on(characters, &verbs, rng) {
-                match verb {
-                    PreparedCharacterVerb::Damage { amount, source } => {
-                        reports.push(damage(character, *amount, *source, objects));
-                    }
-                    PreparedCharacterVerb::Modify(modifier) => {
-                        objects.grant(character, modifier.clone());
-                    }
-                    PreparedCharacterVerb::AddFriendlyAura(modifier) => {
-                        objects.grant_friendly_aura(character, modifier.clone());
-                    }
-                }
-            }
+        Prepared::Characters(prepared) => {
+            reports.extend(resolve_characters(prepared, rng, objects));
         }
         Prepared::Cards(prepared) => {
             reports.extend(resolve_cards(prepared, rng, zones, objects));
         }
-        Prepared::Picked(groups) => {
+        Prepared::PickedCharacters(groups) => {
+            for group in groups {
+                reports.extend(resolve_characters(group, rng, objects));
+            }
+        }
+        Prepared::PickedCards(groups) => {
             for group in groups {
                 reports.extend(resolve_cards(group, rng, zones, objects));
             }
         }
     }
     reports
+}
+
+/// A pick of `choice` among the characters in play, counted before anything is picked.
+fn open_character_pick(
+    cards: CardsRef,
+    owner: PlayerId,
+    source: ObjectId,
+    choice: Choice<CharacterFilter>,
+    verbs: Vec<CharacterVerb>,
+    others: Vec<CharacterVerb>,
+) -> Picking {
+    let Choice {
+        options,
+        count,
+        bound,
+        different: _,
+    } = choice;
+    Picking::Characters(CharacterPicking::new(
+        cards.scan_characters_with_filter(cards.chooser(source), &options),
+        effect_amount(cards, &count, owner),
+        bound,
+        verbs,
+        others,
+    ))
 }
 
 /// A pick of `choice` from the chooser's zone, counted before anything is picked.
@@ -208,6 +224,33 @@ fn open_card_pick(
     ))
 }
 
+fn prepare_character_verbs(
+    cards: CardsRef,
+    owner: PlayerId,
+    source: ObjectId,
+    verbs: Vec<CharacterVerb>,
+) -> Vec<PreparedCharacterVerb> {
+    verbs
+        .into_iter()
+        .map(|verb| match verb {
+            CharacterVerb::Damage(amount) => PreparedCharacterVerb::Damage {
+                amount: effect_amount(cards, &amount, owner),
+                source,
+            },
+            CharacterVerb::Modify(modifier_effect) => PreparedCharacterVerb::Modify(Modifier {
+                granted_by: source,
+                effect: modifier_effect,
+            }),
+            CharacterVerb::AddFriendlyAura(modifier_effect) => {
+                PreparedCharacterVerb::AddFriendlyAura(Modifier {
+                    granted_by: source,
+                    effect: modifier_effect,
+                })
+            }
+        })
+        .collect()
+}
+
 fn prepare_card_verbs(verbs: Vec<CardVerb>) -> Vec<PreparedCardVerb> {
     verbs
         .into_iter()
@@ -215,6 +258,29 @@ fn prepare_card_verbs(verbs: Vec<CardVerb>) -> Vec<PreparedCardVerb> {
             CardVerb::Move(to) => PreparedCardVerb::Move(to),
         })
         .collect()
+}
+
+fn resolve_characters(
+    prepared: PreparedCharacters,
+    rng: &mut Rng,
+    objects: &mut ObjectBag,
+) -> Vec<Report> {
+    let PreparedCharacters { characters, verbs } = prepared;
+    let mut reports = Vec::new();
+    for (verb, character) in verbs_on(characters, &verbs, rng) {
+        match verb {
+            PreparedCharacterVerb::Damage { amount, source } => {
+                reports.push(damage(character, *amount, *source, objects));
+            }
+            PreparedCharacterVerb::Modify(modifier) => {
+                objects.grant(character, modifier.clone());
+            }
+            PreparedCharacterVerb::AddFriendlyAura(modifier) => {
+                objects.grant_friendly_aura(character, modifier.clone());
+            }
+        }
+    }
+    reports
 }
 
 fn resolve_cards(

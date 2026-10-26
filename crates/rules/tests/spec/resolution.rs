@@ -2,8 +2,8 @@
 
 use pretty_assertions::assert_eq;
 use rules::prelude::static_card_definition::{
-    AFTERSHOCK, BOMBER, DRUMMER, FORAGE, HOARDER, MOURNER, PACKRAT, RALLY_BANNER, RECRUIT, SPARK,
-    SWEEP,
+    AFTERSHOCK, BOMBER, DRUMMER, ENLIST, FORAGE, HOARDER, MENTOR, MOURNER, PACKRAT, PING,
+    RALLY_BANNER, RECRUIT, SHARPEN, SPARK, SQUIRE, SWEEP, TRIAGE,
 };
 use rules::prelude::{Action, Event, Game, PlayerId};
 
@@ -276,4 +276,136 @@ fn a_game_cloned_during_a_pick_resolves_like_the_original() {
 
     assert_eq!(clone.health(bomber), None, "the clone finished Sweep");
     assert_eq!(clone, b.game);
+}
+
+/// P0 has a Squire and P1 a Recruit, and P0 casts Triage, whose damage hits both before its pick.
+fn triage_over_squire_and_recruit() -> Boards {
+    let mut b = boards(&[SQUIRE], &[RECRUIT], &[TRIAGE], 2);
+    play_def(&mut b.game, b.p0, TRIAGE);
+    b
+}
+
+#[test]
+fn a_character_pick_offers_a_minion_an_earlier_effect_of_its_card_brought_to_0_health() {
+    let b = triage_over_squire_and_recruit();
+    let (squire, recruit) = (b.mine[0], b.theirs[0]);
+
+    assert_eq!(
+        b.game.health(squire),
+        Some(0),
+        "Triage's damage left the Squire at 0"
+    );
+    assert_eq!(b.game.pick_options(b.p0), [squire, recruit]);
+}
+
+#[test]
+fn a_minion_at_0_health_picked_for_health_survives_the_state_check_after_its_card() {
+    let mut b = triage_over_squire_and_recruit();
+    let squire = b.mine[0];
+
+    b.game.apply(b.p0, pick(squire), &mut ()).unwrap();
+
+    assert_eq!(
+        b.game.health(squire),
+        Some(2),
+        "1 Health, 1 damage, then +2 Health"
+    );
+}
+
+#[test]
+fn a_minion_at_0_health_left_unpicked_dies_in_the_state_check_after_its_card() {
+    let mut b = triage_over_squire_and_recruit();
+    let (squire, recruit) = (b.mine[0], b.theirs[0]);
+
+    b.game.apply(b.p0, pick(recruit), &mut ()).unwrap();
+
+    assert_eq!(b.game.health(squire), None, "the Squire died");
+    assert_eq!(
+        b.game.health(recruit),
+        Some(3),
+        "2 Health, 1 damage, then +2 Health"
+    );
+}
+
+#[test]
+fn a_character_pick_offers_a_minion_an_earlier_effect_of_its_card_summoned() {
+    let mut b = boards(&[], &[], &[ENLIST], 2);
+
+    play_def(&mut b.game, b.p0, ENLIST);
+
+    assert_eq!(board_defs(&b.game, b.p0), [SQUIRE]);
+    assert_eq!(b.game.pick_options(b.p0), b.game.player_board(b.p0));
+}
+
+/// Plays the Sharpen in P0's hand and returns what the play reported.
+fn sharpen(b: &mut Boards) -> Vec<Event> {
+    let sharpen = in_hand(&b.game, b.p0, SHARPEN);
+    observe(&mut b.game, b.p0, play(sharpen)).events()
+}
+
+#[test]
+fn a_character_pick_with_no_options_lets_the_rest_of_its_card_resolve() {
+    let mut b = boards(&[], &[], &[SHARPEN], 1);
+
+    let events = sharpen(&mut b);
+
+    assert_eq!(
+        draws(&events, b.p0),
+        1,
+        "Sharpen's draw, after the pick it skipped:\n{}",
+        listing(&events)
+    );
+    assert!(b.game.pick_options(b.p0).is_empty());
+}
+
+#[test]
+fn a_character_pick_with_an_option_holds_back_the_rest_of_its_card() {
+    let mut b = boards(&[], &[RECRUIT], &[SHARPEN], 1);
+
+    let events = sharpen(&mut b);
+
+    assert_eq!(
+        draws(&events, b.p0),
+        0,
+        "Sharpen's draw waits for its pick:\n{}",
+        listing(&events)
+    );
+    assert_eq!(b.game.pick_options(b.p0), b.theirs);
+}
+
+/// P0 has a Recruit, P1 has a Mentor and a Recruit, and P0's Ping killed the Mentor, whose death
+/// rattle waits for P1's pick.
+fn mentor_waiting_for_its_owner() -> Boards {
+    let mut b = boards(&[RECRUIT], &[MENTOR, RECRUIT], &[PING], 1);
+    let ping = in_hand(&b.game, b.p0, PING);
+    let mentor = b.theirs[0];
+    apply_all(
+        &mut b.game,
+        b.p0,
+        &[start_targeting(ping), target(0, mentor), play(ping)],
+    );
+    b
+}
+
+#[test]
+fn mentors_death_rattle_picks_one_of_its_owners_minions() {
+    let mut b = mentor_waiting_for_its_owner();
+    let recruit = b.theirs[1];
+
+    assert_eq!(
+        b.game.pick_options(b.p1),
+        [recruit],
+        "the Mentor's pick offers P1's Recruit and leaves out P0's"
+    );
+    b.game.apply(b.p1, pick(recruit), &mut ()).unwrap();
+    assert_eq!(b.game.attack(recruit), Some(4), "2 Attack, then +2 Attack");
+}
+
+#[test]
+fn only_the_player_a_character_pick_waits_for_has_actions() {
+    let b = mentor_waiting_for_its_owner();
+
+    assert_actions(&b.game, b.p0, &[]);
+    assert_actions(&b.game, b.p1, &picks(&b.game, b.p1));
+    assert_unlisted_rejected(&b.game);
 }
