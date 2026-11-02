@@ -333,7 +333,9 @@ No visibility opens an item to one sibling only. `pub(super)` opens it to the pa
 subtree, and `pub(in path)` accepts only an ancestor. So a keeper that must be the only caller of a
 command picks its tool by where the command lives. No tool restricts an item to one function, only
 to a module. Inside that module, which code may call or build it is informal knowledge, acceptable
-where its locality is high.
+where its locality is high. Likewise, every branch of a function reaches all the function takes.
+Which branch writes which owner is informal knowledge too, and a branch whose writes should be
+formal becomes a function that takes only them.
 
 - Visibility on a field restricts reach. Visibility on a command restricts the command. A `&mut`
   lends every command on the owner that the borrower can see. To lend fewer, lend a type that
