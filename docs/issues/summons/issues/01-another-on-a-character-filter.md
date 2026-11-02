@@ -1,6 +1,6 @@
 # A character filter can leave out the object whose text it is
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 
@@ -38,3 +38,7 @@ The friendly aura's own "other" in `modifiers()`. Auras have no filter.
 
 - The tests pass, and every existing test passes unchanged.
 - The checks pass.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/87
