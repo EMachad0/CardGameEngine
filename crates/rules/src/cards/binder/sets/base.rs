@@ -75,6 +75,11 @@ def_ids!(
     ROUSE = "base.rouse.v0",
     MENTOR = "base.mentor.v0",
     TREMOR = "base.tremor.v0",
+    KNIFE_JUGGLER = "base.knife_juggler.v0",
+    IMAGE = "base.image.v0",
+    MIRROR_IMAGE = "base.mirror_image.v0",
+    JUGGLING_ACT = "base.juggling_act.v0",
+    JUGGLING_LINE = "base.juggling_line.v0",
 );
 
 pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
@@ -936,6 +941,87 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                     }),
                     verbs: vec![CharacterVerb::Damage(1.into())],
                 }],
+                ..Default::default()
+            },
+        ),
+        (
+            KNIFE_JUGGLER,
+            CardDef {
+                name: "Knife Juggler".to_string(),
+                kind: CardKindDef::Minion(MinionCardDef::new(2, 1)),
+                mana_cost: 2,
+                triggers: vec![TriggerDef {
+                    pattern: TriggerPattern::Summoned(TriggerSubject::Character(CharacterFilter {
+                        kind: EnumSet::only(CharacterKind::Minion),
+                        side: EnumSet::only(Side::Friendly),
+                        include_itself: false,
+                    })),
+                    effects: vec![Effect::Characters {
+                        selector: CharacterSelector::Random(CharacterFilter {
+                            kind: EnumSet::all(),
+                            side: EnumSet::only(Side::Enemy),
+                            include_itself: true,
+                        }),
+                        verbs: vec![CharacterVerb::Damage(1.into())],
+                    }],
+                }],
+                ..Default::default()
+            },
+        ),
+        (
+            IMAGE,
+            CardDef {
+                name: "Image".to_string(),
+                kind: CardKindDef::Minion(MinionCardDef::new(0, 2)),
+                mana_cost: 0,
+                ..Default::default()
+            },
+        ),
+        (
+            MIRROR_IMAGE,
+            CardDef {
+                name: "Mirror Image".to_string(),
+                kind: CardKindDef::Spell(SpellCardDef),
+                mana_cost: 1,
+                play_effects: vec![Effect::Players {
+                    selector: PlayerSelector::Owner,
+                    verbs: vec![PlayerVerb::Summon(IMAGE), PlayerVerb::Summon(IMAGE)],
+                }],
+                ..Default::default()
+            },
+        ),
+        (
+            JUGGLING_ACT,
+            CardDef {
+                name: "Juggling Act".to_string(),
+                kind: CardKindDef::Spell(SpellCardDef),
+                mana_cost: 2,
+                play_effects: vec![Effect::Players {
+                    selector: PlayerSelector::Owner,
+                    verbs: vec![
+                        PlayerVerb::Summon(KNIFE_JUGGLER),
+                        PlayerVerb::Summon(KNIFE_JUGGLER),
+                    ],
+                }],
+                ..Default::default()
+            },
+        ),
+        (
+            JUGGLING_LINE,
+            CardDef {
+                name: "Juggling Line".to_string(),
+                kind: CardKindDef::Spell(SpellCardDef),
+                mana_cost: 2,
+                play_effects: vec![
+                    Effect::Players {
+                        selector: PlayerSelector::Owner,
+                        verbs: vec![PlayerVerb::Summon(KNIFE_JUGGLER)],
+                    },
+                    Effect::Players {
+                        selector: PlayerSelector::Owner,
+                        verbs: vec![PlayerVerb::Summon(KNIFE_JUGGLER)],
+                    },
+                ],
                 ..Default::default()
             },
         ),

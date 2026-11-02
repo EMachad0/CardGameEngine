@@ -230,7 +230,7 @@ fn a_checkpoint_follows_a_card_leaving_the_hand() {
 }
 
 #[test]
-fn a_minion_is_reported_entering_the_board_after_its_play() {
+fn a_minions_summon_is_reported_after_its_play() {
     let mut game = Game::with_deck_order(0, [deck_with_top(&[RECRUIT]), deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 2);
@@ -245,7 +245,7 @@ fn a_minion_is_reported_entering_the_board_after_its_play() {
                 player_id: p0,
                 object_id: recruit
             },
-            Event::BoardEntered {
+            Event::Summoned {
                 player_id: p0,
                 object_id: recruit
             },
@@ -402,7 +402,7 @@ fn the_captain_is_reported_dead_before_the_recruit_it_held_up() {
 }
 
 #[test]
-fn barracks_reports_its_play_then_the_squire_entering_the_board() {
+fn barracks_reports_its_play_then_the_squires_summon() {
     let mut game = Game::with_deck_order(0, [deck_with_top(&[BARRACKS]), deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 2);
@@ -420,7 +420,7 @@ fn barracks_reports_its_play_then_the_squire_entering_the_board() {
                 player_id: p0,
                 object_id: barracks
             },
-            Event::BoardEntered {
+            Event::Summoned {
                 player_id: p0,
                 object_id: squire
             },
@@ -567,7 +567,7 @@ fn one_state_check_pass_reports_its_deaths_in_one_step() {
 }
 
 #[test]
-fn drillmasters_squire_enters_in_its_own_step_between_the_play_and_the_spell() {
+fn drillmasters_squire_is_summoned_in_its_own_step_between_the_play_and_the_spell() {
     let mut b = boards(&[DRILLMASTER], &[], &[], 2);
     let bolt = in_hand(&b.game, b.p0, BOLT);
     let enemy_hero = b.game.hero_id(b.p1);
@@ -584,7 +584,7 @@ fn drillmasters_squire_enters_in_its_own_step_between_the_play_and_the_spell() {
                 player_id: b.p0,
                 object_id: bolt
             }],
-            vec![Event::BoardEntered {
+            vec![Event::Summoned {
                 player_id: b.p0,
                 object_id: squire
             }],

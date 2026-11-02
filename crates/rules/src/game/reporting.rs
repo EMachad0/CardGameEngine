@@ -39,7 +39,7 @@ pub(super) enum Report {
         player_id: PlayerId,
         object_id: ObjectId,
     },
-    BoardEntered {
+    Summoned {
         player_id: PlayerId,
         object_id: ObjectId,
     },
@@ -94,10 +94,10 @@ impl Report {
                 player_id,
                 object_id,
             },
-            Report::BoardEntered {
+            Report::Summoned {
                 player_id,
                 object_id,
-            } => Event::BoardEntered {
+            } => Event::Summoned {
                 player_id,
                 object_id,
             },
