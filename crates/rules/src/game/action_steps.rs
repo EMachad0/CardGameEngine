@@ -7,12 +7,16 @@ pub(super) fn take_action(mut game: Acting<'_, impl Observer>, legal_action: Leg
         LegalAction::Play(playable) => {
             let (player_id, object_id) = (playable.player_id(), playable.object_id());
             let enters_board = game.cards().card_def(object_id).has_board_presence();
+            let under_the_play = game.stack_height();
             game.take_step(ActionStep::Play(playable));
             if enters_board {
-                game.take_step(ActionStep::Summon {
-                    player_id,
-                    object_id,
-                });
+                game.take_step_under(
+                    ActionStep::Summon {
+                        player_id,
+                        object_id,
+                    },
+                    under_the_play,
+                );
             }
         }
         LegalAction::Pick(awaiting_picking) => {
