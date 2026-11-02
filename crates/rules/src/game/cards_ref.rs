@@ -55,7 +55,6 @@ impl<'g> CardsRef<'g> {
         self.objects.get(source).player_id
     }
 
-    /// `itself` is the object whose text holds `filter`.
     pub(super) fn scan_characters_with_filter(
         &self,
         asking: PlayerId,
@@ -111,7 +110,6 @@ impl<'g> CardsRef<'g> {
         kind.contains(self.card_def(object_id).card_kind())
     }
 
-    /// `itself` is the object whose text holds `filter`.
     pub(super) fn object_passes_character_filter(
         &self,
         asking: PlayerId,
