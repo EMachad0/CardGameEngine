@@ -256,20 +256,6 @@ mod tests {
         stack
     }
 
-    /// Resolves every pending effect, each holding one effect, and returns their sources in the
-    /// order they resolved.
-    fn resolution_order(stack: &mut EffectStack) -> Vec<ObjectId> {
-        let mut order = Vec::new();
-        loop {
-            stack.start_next();
-            let Advance::Effect(next) = stack.advance() else {
-                return order;
-            };
-            order.push(next.source);
-            stack.advance();
-        }
-    }
-
     fn options(stack: &EffectStack) -> Vec<ObjectId> {
         stack
             .awaited_picking()
@@ -389,7 +375,14 @@ mod tests {
 
         stack.push_all(pending);
 
-        assert_eq!(resolution_order(&mut stack), [last, first, waiting]);
+        stack.start_next();
+        assert_eq!(stack.advance(), effect(last, draw(3)));
+        stack.advance();
+        stack.start_next();
+        assert_eq!(stack.advance(), effect(first, draw(2)));
+        stack.advance();
+        stack.start_next();
+        assert_eq!(stack.advance(), effect(waiting, draw(1)));
     }
 
     #[test]
