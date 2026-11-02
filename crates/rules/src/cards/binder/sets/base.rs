@@ -74,6 +74,7 @@ def_ids!(
     SHARPEN = "base.sharpen.v0",
     ROUSE = "base.rouse.v0",
     MENTOR = "base.mentor.v0",
+    TREMOR = "base.tremor.v0",
 );
 
 pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
@@ -88,6 +89,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                     selector: CharacterSelector::All(CharacterFilter {
                         kind: EnumSet::only(CharacterKind::Hero),
                         side: EnumSet::only(Side::Enemy),
+                        include_itself: true,
                     }),
                     verbs: vec![CharacterVerb::Damage(1.into())],
                 }],
@@ -104,6 +106,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                     selector: CharacterSelector::All(CharacterFilter {
                         kind: EnumSet::only(CharacterKind::Hero),
                         side: EnumSet::only(Side::Enemy),
+                        include_itself: true,
                     }),
                     verbs: vec![CharacterVerb::Damage(2.into())],
                 }],
@@ -120,6 +123,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                     selector: CharacterSelector::Random(CharacterFilter {
                         kind: EnumSet::only(CharacterKind::Hero),
                         side: EnumSet::all(),
+                        include_itself: true,
                     }),
                     verbs: vec![CharacterVerb::Damage(3.into())],
                 }],
@@ -246,6 +250,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                         selector: CharacterSelector::All(CharacterFilter {
                             kind: EnumSet::only(CharacterKind::Hero),
                             side: EnumSet::only(Side::Enemy),
+                            include_itself: true,
                         }),
                         verbs: vec![CharacterVerb::Damage(1.into())],
                     },
@@ -267,6 +272,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                     selector: CharacterSelector::Random(CharacterFilter {
                         kind: EnumSet::only(CharacterKind::Minion),
                         side: EnumSet::only(Side::Enemy),
+                        include_itself: true,
                     }),
                     verbs: vec![CharacterVerb::Damage(2.into())],
                 }],
@@ -284,6 +290,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                         options: CharacterFilter {
                             kind: EnumSet::only(CharacterKind::Minion),
                             side: EnumSet::all(),
+                            include_itself: true,
                         },
                         count: 1.into(),
                         bound: AmountBound::Exactly,
@@ -306,6 +313,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                             options: CharacterFilter {
                                 kind: EnumSet::only(CharacterKind::Minion),
                                 side: EnumSet::all(),
+                                include_itself: true,
                             },
                             count: 1.into(),
                             bound: AmountBound::Exactly,
@@ -318,6 +326,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                             options: CharacterFilter {
                                 kind: EnumSet::only(CharacterKind::Minion),
                                 side: EnumSet::only(Side::Friendly),
+                                include_itself: true,
                             },
                             count: 1.into(),
                             bound: AmountBound::Exactly,
@@ -340,6 +349,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                         options: CharacterFilter {
                             kind: EnumSet::only(CharacterKind::Minion),
                             side: EnumSet::all(),
+                            include_itself: true,
                         },
                         count: 2.into(),
                         bound: AmountBound::Exactly,
@@ -362,6 +372,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                             options: CharacterFilter {
                                 kind: EnumSet::only(CharacterKind::Minion),
                                 side: EnumSet::all(),
+                                include_itself: true,
                             },
                             count: 1.into(),
                             bound: AmountBound::Exactly,
@@ -374,6 +385,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                             options: CharacterFilter {
                                 kind: EnumSet::only(CharacterKind::Hero),
                                 side: EnumSet::all(),
+                                include_itself: true,
                             },
                             count: 1.into(),
                             bound: AmountBound::Exactly,
@@ -397,6 +409,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                         selector: CharacterSelector::All(CharacterFilter {
                             kind: EnumSet::only(CharacterKind::Minion),
                             side: EnumSet::only(Side::Friendly),
+                            include_itself: true,
                         }),
                         verbs: vec![CharacterVerb::Modify(ModifierEffect::BuffHealth {
                             amount: 2.into(),
@@ -416,6 +429,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                     pattern: TriggerPattern::Died(TriggerSubject::Character(CharacterFilter {
                         kind: EnumSet::only(CharacterKind::Minion),
                         side: EnumSet::only(Side::Friendly),
+                        include_itself: true,
                     })),
                     effects: vec![Effect::Players {
                         selector: PlayerSelector::Owner,
@@ -476,6 +490,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                         selector: CharacterSelector::All(CharacterFilter {
                             kind: EnumSet::only(CharacterKind::Minion),
                             side: EnumSet::all(),
+                            include_itself: true,
                         }),
                         verbs: vec![CharacterVerb::Damage(1.into())],
                     }],
@@ -493,11 +508,13 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                     pattern: TriggerPattern::Died(TriggerSubject::Character(CharacterFilter {
                         kind: EnumSet::only(CharacterKind::Minion),
                         side: EnumSet::all(),
+                        include_itself: true,
                     })),
                     effects: vec![Effect::Characters {
                         selector: CharacterSelector::All(CharacterFilter {
                             kind: EnumSet::only(CharacterKind::Hero),
                             side: EnumSet::only(Side::Enemy),
+                            include_itself: true,
                         }),
                         verbs: vec![CharacterVerb::Damage(1.into())],
                     }],
@@ -516,6 +533,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                         selector: CharacterSelector::All(CharacterFilter {
                             kind: EnumSet::only(CharacterKind::Minion),
                             side: EnumSet::all(),
+                            include_itself: true,
                         }),
                         verbs: vec![CharacterVerb::Damage(1.into())],
                     },
@@ -579,6 +597,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                     selector: CharacterSelector::All(CharacterFilter {
                         kind: EnumSet::only(CharacterKind::Minion),
                         side: EnumSet::only(Side::Friendly),
+                        include_itself: true,
                     }),
                     verbs: vec![CharacterVerb::Modify(ModifierEffect::BuffHealth {
                         amount: 1.into(),
@@ -597,6 +616,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                     selector: CharacterSelector::Random(CharacterFilter {
                         kind: EnumSet::only(CharacterKind::Minion),
                         side: EnumSet::only(Side::Friendly),
+                        include_itself: true,
                     }),
                     verbs: vec![
                         CharacterVerb::Damage(1.into()),
@@ -617,6 +637,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                         options: CharacterFilter {
                             kind: EnumSet::only(CharacterKind::Minion),
                             side: EnumSet::all(),
+                            include_itself: true,
                         },
                         count: 1.into(),
                         bound: AmountBound::Exactly,
@@ -640,6 +661,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                     selector: CharacterSelector::All(CharacterFilter {
                         kind: EnumSet::only(CharacterKind::Minion),
                         side: EnumSet::only(Side::Enemy),
+                        include_itself: true,
                     }),
                     verbs: vec![
                         CharacterVerb::Damage(2.into()),
@@ -751,6 +773,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                         selector: CharacterSelector::All(CharacterFilter {
                             kind: EnumSet::only(CharacterKind::Minion),
                             side: EnumSet::all(),
+                            include_itself: true,
                         }),
                         verbs: vec![CharacterVerb::Damage(1.into())],
                     },
@@ -760,6 +783,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                                 options: CharacterFilter {
                                     kind: EnumSet::only(CharacterKind::Minion),
                                     side: EnumSet::all(),
+                                    include_itself: true,
                                 },
                                 count: 1.into(),
                                 bound: AmountBound::Exactly,
@@ -792,6 +816,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                                 options: CharacterFilter {
                                     kind: EnumSet::only(CharacterKind::Minion),
                                     side: EnumSet::all(),
+                                    include_itself: true,
                                 },
                                 count: 1.into(),
                                 bound: AmountBound::Exactly,
@@ -820,6 +845,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                                 options: CharacterFilter {
                                     kind: EnumSet::only(CharacterKind::Minion),
                                     side: EnumSet::all(),
+                                    include_itself: true,
                                 },
                                 count: 1.into(),
                                 bound: AmountBound::Exactly,
@@ -851,6 +877,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                             options: CharacterFilter {
                                 kind: EnumSet::only(CharacterKind::Minion),
                                 side: EnumSet::all(),
+                                include_itself: true,
                             },
                             count: 1.into(),
                             bound: AmountBound::Exactly,
@@ -879,6 +906,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                                 options: CharacterFilter {
                                     kind: EnumSet::only(CharacterKind::Minion),
                                     side: EnumSet::only(Side::Friendly),
+                                    include_itself: true,
                                 },
                                 count: 1.into(),
                                 bound: AmountBound::Exactly,
@@ -890,6 +918,23 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                             amount: 2.into(),
                         })],
                     }],
+                }],
+                ..Default::default()
+            },
+        ),
+        (
+            TREMOR,
+            CardDef {
+                name: "Tremor".to_string(),
+                kind: CardKindDef::Minion(MinionCardDef::new(2, 2)),
+                mana_cost: 2,
+                play_effects: vec![Effect::Characters {
+                    selector: CharacterSelector::All(CharacterFilter {
+                        kind: EnumSet::only(CharacterKind::Minion),
+                        side: EnumSet::all(),
+                        include_itself: false,
+                    }),
+                    verbs: vec![CharacterVerb::Damage(1.into())],
                 }],
                 ..Default::default()
             },

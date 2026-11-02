@@ -85,7 +85,9 @@ fn untargeted_matches(
 
     let chooser = cards.chooser(object_id);
     let filtered = match target {
-        TargetChoiceRef::Character(c) => cards.scan_characters_with_filter(chooser, &c.options),
+        TargetChoiceRef::Character(c) => {
+            cards.scan_characters_with_filter(chooser, object_id, &c.options)
+        }
         TargetChoiceRef::Card(c) => cards.scan_cards_with_options(chooser, &c.options),
     };
     filtered
