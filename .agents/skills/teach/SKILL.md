@@ -179,9 +179,9 @@ Before asking the `researcher` to check a fact, search the course's `verified-fa
 
 ## Ending a session
 
-A session ends when you and he agree it's finished. Then run the four steps below in order, with no review stop between them.
+A session ends when you and he agree it's finished. Then run the steps below in order, with no review stop between them.
 
-This close-out commits without waiting for his review. His agreement to end the session is the approval.
+This close-out commits and opens a pull request without waiting for his review. His agreement to end the session is the approval.
 
 md-log appends a reply's text to the session log when the reply ends, before the reply's tool calls run. Text written after the commit would show up as a session diff. So the close-out writes all its text in its first reply, and every reply after that is tool calls only.
 
@@ -194,22 +194,20 @@ md-log appends a reply's text to the session log when the reply ends, before the
    continue the <course> course
    ```
 
-   The start block is required in every close-out, even when he hasn't asked for it. A one-line opener such as "Now the close-out edits" doesn't count as the closing message. End the text by saying you're committing once the edits are in. Don't say it's committed, because the commit hasn't run yet.
+   The start block is required in every close-out, even when he hasn't asked for it. A one-line opener such as "Now the close-out edits" doesn't count as the closing message. End the text by saying you're committing and opening a pull request once the edits are in. Don't say either is done, because neither has run yet.
 2. **Make the edits, with no text.** Update the course's `COURSE.md`: the knowledge map, the open threads, the sessions table, and anything else `docs/conventions/skills-and-docs.md` puts there. If the next session's log doesn't exist yet, create it as an empty file, named as in the start block, because `/md-log` only links an existing file.
-3. **Commit, with no text.** One bash call:
+3. **Commit, with no text.** Commit every change in the working tree, never on `main`:
 
    ```bash
-   c=docs/course/<course>
-   files="$c/COURSE.md $c/verified-facts.md docs/CONTEXT.md <this log> <next log>"
-   git add -- $files \
-     && git commit -m "<message>" -- $files \
-     && git status --porcelain -- $files
+   { [ "$(git branch --show-current)" != main ] || git switch -c <NN-topic>; } \
+     && git add -A \
+     && git commit -m "<message>" \
+     && git status --porcelain
    ```
 
    Follow the message style in `git log`, e.g. `Close session 04: effects as data, targeting draft design; session log; prepare 04a log`.
-4. **After the commit, write nothing.** If the commit succeeded and the status output is empty, end the turn with no text at all. No question, no quiz. If the commit failed or the status lists a file, say so. The diff can't be avoided then, and he needs to know.
-
-Stage only those files. Exercise code and anything else in his working tree still follow the `AGENTS.md` git rules.
+4. **Open the pull request, with no text.** Skip this step if the pull request would be empty: `git fetch origin && git diff --quiet origin/main...HEAD` succeeds. Otherwise push with `git push -u origin HEAD`. If the branch has no pull request, open one with `gh pr create`, titled like the commit. If it has one, rewrite its body with `gh pr edit`. Either way the body describes the whole branch as it stands.
+5. **Then write nothing.** If every command succeeded and the status output was empty, end the turn with no text at all. No question, no quiz. If a command failed or the status listed a file, say so. The diff can't be avoided then, and he needs to know.
 
 ## Formatting — math renders as LaTeX
 
