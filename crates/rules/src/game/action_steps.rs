@@ -5,7 +5,9 @@ use crate::observer::Observer;
 pub(super) fn take_action(mut game: Acting<'_, impl Observer>, legal_action: LegalAction) {
     match legal_action {
         LegalAction::Play(playable) => {
-            game.play(playable);
+            if let Some(minion) = game.play(playable) {
+                game.summon(minion);
+            }
         }
         LegalAction::Pick(awaiting_picking) => {
             game.take_step(ActionStep::Pick(awaiting_picking));
