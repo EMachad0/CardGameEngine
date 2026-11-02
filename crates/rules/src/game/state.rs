@@ -238,32 +238,6 @@ impl Game {
         true
     }
 
-    /// Plays the card, then summons it if it is a minion. The summon step pushes the play's
-    /// pending effects over its own, so the reactions to the summon resolve after the play.
-    fn play(&mut self, playable: WasPlayable, obs: &mut impl Observer) {
-        let (player_id, object_id) = (playable.player_id(), playable.object_id());
-        let enters_board = self.cards().card_def(object_id).has_board_presence();
-        let play_pending = self
-            .write_and_report(Step::Play(playable), obs)
-            .expect("a play should always take a step");
-        if !enters_board {
-            self.end_step([play_pending], obs);
-            return;
-        }
-        self.end_step([], obs);
-        let summon_pending = self
-            .write_and_report(
-                Step::Summon {
-                    player_id,
-                    object_id,
-                },
-                obs,
-            )
-            .expect("a summon should always take a step");
-        self.end_step([summon_pending, play_pending], obs);
-    }
-
-    /// Pushes each of `pushes` in order, then lets the observer read the views.
     fn end_step(
         &mut self,
         pushes: impl IntoIterator<Item = PendingEffects>,
@@ -470,6 +444,14 @@ impl SettingUp {
     }
 }
 
+/// A minion just played and not yet summoned, with the pending effects of its play.
+#[must_use = "a played minion should be summoned"]
+pub(super) struct PlayedMinion {
+    player_id: PlayerId,
+    object_id: ObjectId,
+    play_pending: PendingEffects,
+}
+
 /// A game lent to the code that runs one action.
 pub(super) struct Acting<'g, O> {
     game: &'g mut Game,
@@ -481,9 +463,47 @@ impl<O: Observer> Acting<'_, O> {
         self.game.take_step(Step::Action(step), self.obs);
     }
 
-    /// Plays the card, then summons it if it is a minion.
-    pub(super) fn play(&mut self, playable: WasPlayable) {
-        self.game.play(playable, self.obs);
+    /// Takes the play step. A spell's pending effects are pushed as it ends, and a minion comes
+    /// back holding them, unsummoned.
+    #[must_use]
+    pub(super) fn play(&mut self, playable: WasPlayable) -> Option<PlayedMinion> {
+        let (player_id, object_id) = (playable.player_id(), playable.object_id());
+        let enters_board = self.game.cards().card_def(object_id).has_board_presence();
+        let play_pending = self
+            .game
+            .write_and_report(Step::Play(playable), self.obs)
+            .expect("a play should always take a step");
+        if !enters_board {
+            self.game.end_step([play_pending], self.obs);
+            return None;
+        }
+        self.game.end_step([], self.obs);
+        Some(PlayedMinion {
+            player_id,
+            object_id,
+            play_pending,
+        })
+    }
+
+    /// Takes the summon step. It pushes its own pending effects, then the play's, so the reactions
+    /// to the summon resolve after the play.
+    pub(super) fn summon(&mut self, minion: PlayedMinion) {
+        let PlayedMinion {
+            player_id,
+            object_id,
+            play_pending,
+        } = minion;
+        let summon_pending = self
+            .game
+            .write_and_report(
+                Step::Summon {
+                    player_id,
+                    object_id,
+                },
+                self.obs,
+            )
+            .expect("a summon should always take a step");
+        self.game.end_step([summon_pending, play_pending], self.obs);
     }
 }
 
