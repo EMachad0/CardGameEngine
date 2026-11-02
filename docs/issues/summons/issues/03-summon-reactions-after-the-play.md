@@ -1,6 +1,6 @@
 # A played minion's summon reactions resolve after its play
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 Blocked by: 02
@@ -44,3 +44,7 @@ The amounts may change if the events need telling apart.
 
 - The tests pass, and every existing test passes unchanged.
 - The checks pass.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/89

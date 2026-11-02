@@ -9,7 +9,7 @@ use crate::cards::binder::store::Binder;
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::{
-    Advance, EffectStack, FinishedPick, NextEffect, WasAwaitingPicking,
+    Advance, EffectStack, FinishedPick, NextEffect, PendingEffects, WasAwaitingPicking,
 };
 use crate::game::legal_actions::LegalAction;
 use crate::game::play::WasPlayable;
@@ -55,23 +55,26 @@ pub enum ApplyError {
 
 /// The writes one step makes, between two checkpoints.
 enum Step {
-    Draw { player_id: PlayerId, count: u8 },
+    Draw {
+        player_id: PlayerId,
+        count: u8,
+    },
     StartTurn,
     Action(ActionStep),
+    Play(WasPlayable),
+    Summon {
+        player_id: PlayerId,
+        object_id: ObjectId,
+    },
     Effect(NextEffect),
     FinishPicking(FinishedPick),
     DeathPass,
     DecideOutcome,
 }
 
-/// The steps an action takes.
+/// The steps an action takes, besides playing a card.
 pub(super) enum ActionStep {
     EndTurn,
-    Play(WasPlayable),
-    Summon {
-        player_id: PlayerId,
-        object_id: ObjectId,
-    },
     StartTargeting {
         object_id: ObjectId,
         awaiting_nothing: WasAwaitingNothing,
@@ -224,23 +227,43 @@ impl Game {
         )
     }
 
-    /// Makes the step's writes, reports what it did, then lets the observer read the views.
-    /// `false`, with no report and no checkpoint, if `write` found no step to take.
+    /// Makes the step's writes, reports what it did and pushes the pending effects it added, then
+    /// lets the observer read the views. `false`, with no report and no checkpoint, if `write`
+    /// found no step to take.
     fn take_step(&mut self, step: Step, obs: &mut impl Observer) -> bool {
-        let Some(reports) = self.write(step) else {
+        let Some(pending) = self.write_and_report(step, obs) else {
             return false;
         };
-        for report in reports {
-            self.report(report, obs);
+        self.end_step([pending], obs);
+        true
+    }
+
+    fn end_step(
+        &mut self,
+        pushes: impl IntoIterator<Item = PendingEffects>,
+        obs: &mut impl Observer,
+    ) {
+        for pending in pushes {
+            self.effect_stack.push_all(pending);
         }
         obs.checkpoint(Views::new(self));
-        true
+    }
+
+    /// Makes the step's writes and reports what it did. Returns the pending effects it added, in
+    /// order. `None`, with no report, if `write` found no step to take.
+    fn write_and_report(&mut self, step: Step, obs: &mut impl Observer) -> Option<PendingEffects> {
+        let mut pending = PendingEffects::default();
+        let reports = self.write(step, &mut pending)?;
+        for report in reports {
+            self.report(report, &mut pending, obs);
+        }
+        Some(pending)
     }
 
     /// Makes the step's writes, lending it what it reads and writes. Returns the events it caused,
     /// in order. `None` for a death pass that finds no dead, or a decision that doesn't end the
     /// game.
-    fn write(&mut self, step: Step) -> Option<Vec<Report>> {
+    fn write(&mut self, step: Step, pending: &mut PendingEffects) -> Option<Vec<Report>> {
         let reports = match step {
             Step::Draw { player_id, count } => {
                 zone_move::draw(player_id, count, &mut self.zones, &mut self.objects)
@@ -257,20 +280,20 @@ impl Game {
                 &mut self.zones,
                 &mut self.objects,
             ),
-            Step::Action(ActionStep::Play(playable)) => {
+            Step::Play(playable) => {
                 let prepared = play::prepare(self.cards(), &self.player_input, playable);
                 vec![play::play(
                     prepared,
                     &mut self.players,
                     &mut self.player_input,
                     &mut self.zones,
-                    &mut self.effect_stack,
+                    pending,
                 )]
             }
-            Step::Action(ActionStep::Summon {
+            Step::Summon {
                 player_id,
                 object_id,
-            }) => vec![zone_move::summon(player_id, object_id, &mut self.zones)],
+            } => vec![zone_move::summon(player_id, object_id, &mut self.zones)],
             Step::Action(ActionStep::StartTargeting {
                 object_id,
                 awaiting_nothing,
@@ -312,24 +335,19 @@ impl Game {
             Step::DeathPass => {
                 let death_pass =
                     death::find_deaths(self.cards(), &self.players(), &self.standings)?;
-                death::kill(
-                    death_pass,
-                    &mut self.zones,
-                    &mut self.effect_stack,
-                    &mut self.standings,
-                )
+                death::kill(death_pass, &mut self.zones, pending, &mut self.standings)
             }
             Step::DecideOutcome => vec![Report::GameEnded(self.standings.decide()?)],
         };
         Some(reports)
     }
 
-    fn report(&mut self, report: Report, obs: &mut impl Observer) {
+    fn report(&mut self, report: Report, pending: &mut PendingEffects, obs: &mut impl Observer) {
         report.matched(self.cards()).report(
             &mut self.history,
             self.turn_order.turn_count(),
             &self.objects,
-            &mut self.effect_stack,
+            pending,
             obs,
         );
     }
@@ -426,6 +444,13 @@ impl SettingUp {
     }
 }
 
+/// A minion just played and not yet summoned, with the pending effects of its play.
+struct PlayedMinion {
+    player_id: PlayerId,
+    object_id: ObjectId,
+    play_pending: PendingEffects,
+}
+
 /// A game lent to the code that runs one action.
 pub(super) struct Acting<'g, O> {
     game: &'g mut Game,
@@ -433,12 +458,57 @@ pub(super) struct Acting<'g, O> {
 }
 
 impl<O: Observer> Acting<'_, O> {
-    pub(super) fn cards(&self) -> CardsRef<'_> {
-        self.game.cards()
-    }
-
     pub(super) fn take_step(&mut self, step: ActionStep) {
         self.game.take_step(Step::Action(step), self.obs);
+    }
+
+    /// Plays the card, then summons it if it is a minion.
+    pub(super) fn play(&mut self, playable: WasPlayable) {
+        if let Some(minion) = self.take_play_step(playable) {
+            self.take_summon_step(minion);
+        }
+    }
+
+    /// Takes the play step. A spell's pending effects are pushed as it ends, and a minion comes
+    /// back holding them, unsummoned.
+    fn take_play_step(&mut self, playable: WasPlayable) -> Option<PlayedMinion> {
+        let (player_id, object_id) = (playable.player_id(), playable.object_id());
+        let enters_board = self.game.cards().card_def(object_id).has_board_presence();
+        let play_pending = self
+            .game
+            .write_and_report(Step::Play(playable), self.obs)
+            .expect("a play should always take a step");
+        if !enters_board {
+            self.game.end_step([play_pending], self.obs);
+            return None;
+        }
+        self.game.end_step([], self.obs);
+        Some(PlayedMinion {
+            player_id,
+            object_id,
+            play_pending,
+        })
+    }
+
+    /// Takes the summon step. It pushes its own pending effects, then the play's, so the reactions
+    /// to the summon resolve after the play.
+    fn take_summon_step(&mut self, minion: PlayedMinion) {
+        let PlayedMinion {
+            player_id,
+            object_id,
+            play_pending,
+        } = minion;
+        let summon_pending = self
+            .game
+            .write_and_report(
+                Step::Summon {
+                    player_id,
+                    object_id,
+                },
+                self.obs,
+            )
+            .expect("a summon should always take a step");
+        self.game.end_step([summon_pending, play_pending], self.obs);
     }
 }
 

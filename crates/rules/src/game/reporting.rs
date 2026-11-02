@@ -5,7 +5,7 @@
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::event::Event;
 use crate::game::cards_ref::CardsRef;
-use crate::game::effect_stack::EffectStack;
+use crate::game::effect_stack::PendingEffects;
 use crate::game::play::Play;
 use crate::game::resolve::aftermath::death::Death;
 use crate::game::resolve::aftermath::standings::Ending;
@@ -128,7 +128,7 @@ impl MatchedEvent {
         history: &mut History,
         turn: u32,
         objects: &ObjectBag,
-        effect_stack: &mut EffectStack,
+        pending: &mut PendingEffects,
         obs: &mut impl Observer,
     ) {
         let Self { event, triggers } = self;
@@ -139,7 +139,7 @@ impl MatchedEvent {
         )]
         obs.event(&event);
         for MatchedTrigger { source, effects } in triggers {
-            effect_stack.push(source, effects);
+            pending.push(source, effects);
         }
     }
 }

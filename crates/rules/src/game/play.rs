@@ -4,7 +4,7 @@ use crate::cards::object::ObjectId;
 use crate::effect::Effect;
 use crate::event::Event;
 use crate::game::cards_ref::CardsRef;
-use crate::game::effect_stack::EffectStack;
+use crate::game::effect_stack::PendingEffects;
 use crate::game::mana::Mana;
 use crate::game::player::Players;
 use crate::game::player_input::awaiting::{PlayerInput, WasAwaitingTargeting};
@@ -109,7 +109,7 @@ pub(super) fn play(
     players: &mut Players,
     player_input: &mut PlayerInput,
     zones: &mut Zones,
-    effect_stack: &mut EffectStack,
+    pending: &mut PendingEffects,
 ) -> Report {
     let PreparedPlay {
         card,
@@ -124,7 +124,7 @@ pub(super) fn play(
     }
     let object_id = zones.take_from_hand(card);
     if !play_effects.is_empty() {
-        effect_stack.push(object_id, play_effects);
+        pending.push(object_id, play_effects);
     }
 
     Report::Played(Play {
@@ -139,6 +139,7 @@ mod tests {
     use crate::cards::binder::sets::base::static_card_definition::SPARK;
     use crate::cards::binder::store::Binder;
     use crate::cards::object::ObjectBag;
+    use crate::game::effect_stack::EffectStack;
     use crate::game::player_input::awaiting::{
         Awaiting, PlayerInput, WasAwaitingNothing, awaiting,
     };
