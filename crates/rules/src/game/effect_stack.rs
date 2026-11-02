@@ -1,4 +1,4 @@
-//! The effect stack and the resolving effect. The top pending effect resolves first, and one
+//! The effect stack and the resolving effect. The newest pending effect resolves first, and one
 //! resolves at a time: the next is taken off the stack only once the resolving one finishes. The
 //! resolving effect holds the picking its last effect opened until the picking finishes.
 
@@ -11,8 +11,6 @@ use crate::target::Bound;
 pub(super) struct EffectStack {
     pending: Vec<PendingEffect>,
     resolving: Option<ResolvingEffect>,
-    /// How many pending effects have been taken off the stack to resolve.
-    started: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -21,19 +19,15 @@ struct PendingEffect {
     effects: Vec<Effect<Bound>>,
 }
 
+/// Pending effects not yet on the effect stack, in the order they go on it.
+#[derive(Debug, Default)]
+pub(super) struct PendingEffects(Vec<PendingEffect>);
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ResolvingEffect {
     pending: PendingEffect,
     idx: usize,
     picking: Option<Picking>,
-}
-
-/// A height on the effect stack: how many pending effects lie under it. It holds no borrow, so
-/// more may have been pushed over it since.
-#[derive(Debug)]
-pub(super) struct StackHeight {
-    pending: usize,
-    started: usize,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -99,6 +93,12 @@ impl WasAwaitingPicking {
     }
 }
 
+impl PendingEffects {
+    pub(super) fn push(&mut self, source: ObjectId, effects: Vec<Effect<Bound>>) {
+        self.0.push(PendingEffect { source, effects });
+    }
+}
+
 impl ResolvingEffect {
     fn next_effect(&mut self) -> Option<NextEffect> {
         let effect = self.pending.effects.get(self.idx)?.clone();
@@ -115,44 +115,21 @@ impl EffectStack {
         self.pending.push(PendingEffect { source, effects });
     }
 
-    /// The height over every pending effect.
-    pub(super) fn height(&self) -> StackHeight {
-        StackHeight {
-            pending: self.pending.len(),
-            started: self.started,
+    /// Pushes each of `pending` in order, so the last resolves first.
+    pub(super) fn push_all(&mut self, pending: PendingEffects) {
+        for PendingEffect { source, effects } in pending.0 {
+            self.push(source, effects);
         }
     }
 
-    /// Pushes `source`'s effects under every pending effect over `height`, then raises `height`
-    /// over them, so the next effects pushed under it resolve before these. Panics if an effect
-    /// has been taken off the stack to resolve since `height` was read.
-    pub(super) fn push_under(
-        &mut self,
-        height: &mut StackHeight,
-        source: ObjectId,
-        effects: Vec<Effect<Bound>>,
-    ) {
-        assert!(
-            height.started == self.started,
-            "no effect should start resolving between reading a height and pushing under it",
-        );
-        self.pending
-            .insert(height.pending, PendingEffect { source, effects });
-        height.pending += 1;
-    }
-
-    /// Takes the top pending effect off the stack to resolve it. Panics while another one is
+    /// Takes the newest pending effect off the stack to resolve it. Panics while another one is
     /// resolving.
     pub(super) fn start_next(&mut self) {
         assert!(
             self.resolving.is_none(),
             "the resolving effect should finish before the next one starts",
         );
-        let Some(pending) = self.pending.pop() else {
-            return;
-        };
-        self.started += 1;
-        self.resolving = Some(ResolvingEffect {
+        self.resolving = self.pending.pop().map(|pending| ResolvingEffect {
             pending,
             idx: 0,
             picking: None,
@@ -401,48 +378,17 @@ mod tests {
     }
 
     #[test]
-    #[expect(clippy::disallowed_methods, reason = "tests reading a height itself")]
-    fn an_effect_pushed_under_a_height_resolves_after_the_effects_pushed_since() {
-        let [before, since, under] = sources();
+    fn pending_effects_pushed_together_go_on_top_and_the_last_resolves_first() {
+        let [waiting, first, last] = sources();
         let mut stack = EffectStack::default();
-        stack.push(before, vec![draw(1)]);
-        let mut height = stack.height();
-        stack.push(since, vec![draw(2)]);
+        stack.push(waiting, vec![draw(1)]);
+        let mut pending = PendingEffects::default();
+        pending.push(first, vec![draw(2)]);
+        pending.push(last, vec![draw(3)]);
 
-        stack.push_under(&mut height, under, vec![draw(3)]);
+        stack.push_all(pending);
 
-        assert_eq!(resolution_order(&mut stack), [since, under, before]);
-    }
-
-    #[test]
-    #[expect(clippy::disallowed_methods, reason = "tests reading a height itself")]
-    fn effects_pushed_under_one_height_resolve_newest_first() {
-        let [since, older, newer] = sources();
-        let mut stack = EffectStack::default();
-        let mut height = stack.height();
-        stack.push(since, vec![draw(1)]);
-
-        stack.push_under(&mut height, older, vec![draw(2)]);
-        stack.push_under(&mut height, newer, vec![draw(3)]);
-
-        assert_eq!(resolution_order(&mut stack), [since, newer, older]);
-    }
-
-    #[test]
-    #[should_panic(
-        expected = "no effect should start resolving between reading a height and pushing under it"
-    )]
-    #[expect(clippy::disallowed_methods, reason = "tests reading a height itself")]
-    fn no_effect_is_pushed_under_a_height_read_before_an_effect_started_resolving() {
-        let [before, refill, top, under] = sources();
-        let mut stack = EffectStack::default();
-        stack.push(before, vec![draw(1)]);
-        let mut height = stack.height();
-        stack.start_next();
-        stack.push(refill, vec![draw(2)]);
-        stack.push(top, vec![draw(3)]);
-
-        stack.push_under(&mut height, under, vec![draw(4)]);
+        assert_eq!(resolution_order(&mut stack), [last, first, waiting]);
     }
 
     #[test]

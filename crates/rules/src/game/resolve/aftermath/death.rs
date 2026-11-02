@@ -1,7 +1,7 @@
 use crate::cards::object::ObjectId;
 use crate::event::Event;
 use crate::game::cards_ref::CardsRef;
-use crate::game::effect_stack::EffectStack;
+use crate::game::effect_stack::PendingEffects;
 use crate::game::reporting::Report;
 use crate::game::resolve::aftermath::standings::Standings;
 use crate::game::stats::{character_health, hero_health};
@@ -90,7 +90,7 @@ pub(in crate::game) fn find_deaths(
 pub(in crate::game) fn kill(
     death_pass: DeathPass,
     zones: &mut Zones,
-    effect_stack: &mut EffectStack,
+    pending: &mut PendingEffects,
     standings: &mut Standings,
 ) -> Vec<Report> {
     let DeathPass {
@@ -100,7 +100,7 @@ pub(in crate::game) fn kill(
         dead_players,
     } = death_pass;
     for MatchedTrigger { source, effects } in death_rattles {
-        effect_stack.push(source, effects);
+        pending.push(source, effects);
     }
     for Removal {
         player_id,
