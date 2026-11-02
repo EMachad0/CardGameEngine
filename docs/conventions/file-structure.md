@@ -134,6 +134,7 @@ the same way. Data tied by an invariant shares one owner.
   the field that holds the owner. Replacing the owner whole can't break its invariant. But putting
   an older value back undoes every change since, and putting any value in can break a rule that
   ties the owner to other data.
+- Invariants that share data share one owner, which can hold owners that keep some of them.
 - Merge owners only for an invariant the domain needs. A rule nothing depends on unnecessarily grows
   its owner.
 - An owner answers questions about its own data, and may ask other owners questions. Reading can't
@@ -240,7 +241,7 @@ files to open when they look for a decision or a place for new code.
 - Judge a name against its siblings, the other names a reader picks between at the same level. A
   parent's name covers its children, and it passes when it rules out what its siblings hold.
 - When no name passes, the code holds several decisions, or one decision the domain has no word
-  for yet. If a plausible change to one part leaves the others alone, they are separate
+  for yet. If the changes you expect to one part leave the others alone, they are separate
   decisions. Split them until each part has a name that passes. If they change together, name
   the concept and add the term to the glossary.
 - Take names from the glossary, the vocabulary that developers and domain experts share and keep
