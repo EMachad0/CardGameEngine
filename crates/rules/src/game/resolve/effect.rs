@@ -192,7 +192,7 @@ fn open_character_pick(
         different: _,
     } = choice;
     Picking::Characters(CharacterPicking::new(
-        cards.scan_characters_with_filter(cards.chooser(source), &options),
+        cards.scan_characters_with_filter(cards.chooser(source), source, &options),
         effect_amount(cards, &count, owner),
         bound,
         verbs,

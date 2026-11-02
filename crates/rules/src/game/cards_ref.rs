@@ -58,11 +58,14 @@ impl<'g> CardsRef<'g> {
     pub(super) fn scan_characters_with_filter(
         &self,
         asking: PlayerId,
+        itself: ObjectId,
         filter: &CharacterFilter,
     ) -> Vec<ObjectId> {
         self.zones
             .characters_in_play()
-            .filter(|&object_id| self.object_passes_character_filter(asking, filter, object_id))
+            .filter(|&object_id| {
+                self.object_passes_character_filter(asking, itself, filter, object_id)
+            })
             .collect()
     }
 
@@ -110,10 +113,12 @@ impl<'g> CardsRef<'g> {
     pub(super) fn object_passes_character_filter(
         &self,
         asking: PlayerId,
+        itself: ObjectId,
         filter: &CharacterFilter,
         object_id: ObjectId,
     ) -> bool {
         let owner = self.objects.get(object_id).player_id;
-        filter.passes(asking, owner, self.card_def(object_id).character_kind())
+        let kind = self.card_def(object_id).character_kind();
+        filter.passes(asking, itself, object_id, owner, kind)
     }
 }

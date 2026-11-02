@@ -71,12 +71,12 @@ pub(super) fn select_characters(
 ) -> SelectedOrPick<Selection<ObjectId>, CharacterFilter, CharacterVerb> {
     let values = match selector {
         CharacterSelector::All(filter) => {
-            Values::Each(cards.scan_characters_with_filter(owner, &filter))
+            Values::Each(cards.scan_characters_with_filter(owner, source, &filter))
         }
         CharacterSelector::Itself => Values::Each(vec![source]),
         CharacterSelector::OwnerHero => Values::Each(vec![cards.zones.hero(owner)]),
         CharacterSelector::Random(filter) => {
-            Values::OneOf(cards.scan_characters_with_filter(owner, &filter))
+            Values::OneOf(cards.scan_characters_with_filter(owner, source, &filter))
         }
         CharacterSelector::Targeted(targeted) => Values::Each(targeted),
         CharacterSelector::Picked { choice, others } => {

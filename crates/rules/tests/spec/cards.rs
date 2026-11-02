@@ -5,8 +5,8 @@ use std::collections::BTreeSet;
 use pretty_assertions::{assert_eq, assert_ne};
 use rules::prelude::static_card_definition::{
     BARRACKS, BLAST, BOLT, CAPTAIN, DRUMMER, ENLIST, FORAGE, GIANT, HOARDER, MENTOR, MUSTER,
-    PACKRAT, RECRUIT, RECYCLE, ROUSE, SHARPEN, SPARK, SQUIRE, STRAY_SHOT, SWEEP, TRIAGE, WILD_BOLT,
-    ZAP,
+    PACKRAT, RECRUIT, RECYCLE, ROUSE, SHARPEN, SPARK, SQUIRE, STRAY_SHOT, SWEEP, TREMOR, TRIAGE,
+    WILD_BOLT, ZAP,
 };
 use rules::prelude::{Action, DefId, Event, Game, ObjectId};
 
@@ -492,6 +492,36 @@ fn stray_shot_with_no_enemy_minion_does_nothing() {
             object_id: stray_shot
         }],
         "the friendly Recruit and both heroes are not candidates"
+    );
+}
+
+/// P0 plays Tremor next to one friendly Recruit, with two enemy Recruits on the other board.
+/// Returns the table and Tremor.
+fn tremor_among_recruits() -> (Table, ObjectId) {
+    let mut t = table(&[TREMOR], 1, 2);
+    let tremor = summon(&mut t.game, t.p0, TREMOR);
+    (t, tremor)
+}
+
+#[test]
+fn tremors_play_effect_leaves_tremor_undamaged() {
+    let (t, tremor) = tremor_among_recruits();
+
+    assert_eq!(
+        t.game.health(tremor),
+        Some(2),
+        "Tremor's play effect runs with Tremor on the board, and \"other\" leaves Tremor out",
+    );
+}
+
+#[test]
+fn tremors_play_effect_damages_every_other_minion_friendly_and_enemy() {
+    let (t, _) = tremor_among_recruits();
+
+    assert_eq!(
+        [t.friendly[0], t.enemy[0], t.enemy[1]].map(|recruit| t.game.health(recruit)),
+        [Some(1); 3],
+        "every Recruit takes 1 damage, on both sides",
     );
 }
 
