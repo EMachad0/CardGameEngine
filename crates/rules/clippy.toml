@@ -18,4 +18,5 @@ disallowed-methods = [
   { path = "rules::game::resolve::aftermath::standings::Standings::new", reason = "Setup starts the standings. Only the state check changes them after that." },
   { path = "rules::game::state::Seating::new", reason = "Setup starts every game. Start one through Game::new or Game::with_deck_order." },
   { path = "rules::observer::Observer::event", reason = "Report events through Game::report, which also records History and matches triggers." },
+  { path = "rules::game::effect_stack::EffectStack::height", reason = "Matches go on top, except a played minion's summon's, which go under its play. Acting::play reads that height." },
 ]
