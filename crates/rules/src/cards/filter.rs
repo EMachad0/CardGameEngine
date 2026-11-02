@@ -20,8 +20,7 @@ pub struct CardFilter {
 pub struct CharacterFilter {
     pub kind: EnumSet<CharacterKind>,
     pub side: EnumSet<Side>,
-    /// Whether the object whose text holds the filter can pass it. Card text says "another" with
-    /// `false`.
+    /// Whether the object whose text holds the filter can pass it.
     pub include_itself: bool,
 }
 
@@ -34,8 +33,8 @@ impl CharacterFilter {
         }
     }
 
-    /// `itself` is the object whose text holds the filter. `owner` and `kind` are `object_id`'s,
-    /// and `kind` is `None` for a card that is no character.
+    /// `itself` is the object whose text holds the filter. `owner` and `kind` belong to
+    /// `object_id`. `kind` is `None` for a card that is no character.
     pub(crate) fn passes(
         &self,
         asking: PlayerId,

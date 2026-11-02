@@ -495,8 +495,8 @@ fn stray_shot_with_no_enemy_minion_does_nothing() {
     );
 }
 
-/// P0 plays Tremor beside a friendly Recruit, facing two enemy Recruits. Returns the table and
-/// Tremor.
+/// P0 plays Tremor next to one friendly Recruit, with two enemy Recruits on the other board.
+/// Returns the table and Tremor.
 fn tremor_among_recruits() -> (Table, ObjectId) {
     let mut t = table(&[TREMOR], 1, 2);
     let tremor = summon(&mut t.game, t.p0, TREMOR);
@@ -510,7 +510,7 @@ fn tremors_play_effect_leaves_tremor_undamaged() {
     assert_eq!(
         t.game.health(tremor),
         Some(2),
-        "Tremor is on the board when its play effect runs, and \"all other minions\" leaves it out",
+        "Tremor's play effect runs with Tremor on the board, and \"other\" leaves Tremor out",
     );
 }
 
@@ -521,7 +521,7 @@ fn tremors_play_effect_damages_every_other_minion_friendly_and_enemy() {
     assert_eq!(
         [t.friendly[0], t.enemy[0], t.enemy[1]].map(|recruit| t.game.health(recruit)),
         [Some(1); 3],
-        "each Recruit, friendly and enemy, takes Tremor's 1 damage",
+        "every Recruit takes 1 damage, on both sides",
     );
 }
 
