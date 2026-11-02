@@ -5,16 +5,7 @@ use crate::observer::Observer;
 pub(super) fn take_action(mut game: Acting<'_, impl Observer>, legal_action: LegalAction) {
     match legal_action {
         LegalAction::Play(playable) => {
-            let (player_id, object_id) = (playable.player_id(), playable.object_id());
-            let enters_board = game.cards().card_def(object_id).has_board_presence();
-            let play_pending = game.take_step_holding(ActionStep::Play(playable));
-            if enters_board {
-                game.take_step(ActionStep::Summon {
-                    player_id,
-                    object_id,
-                });
-            }
-            game.push_all(play_pending);
+            game.play(playable);
         }
         LegalAction::Pick(awaiting_picking) => {
             game.take_step(ActionStep::Pick(awaiting_picking));
