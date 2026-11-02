@@ -4,8 +4,9 @@ use std::collections::BTreeSet;
 
 use pretty_assertions::assert_eq;
 use rules::prelude::static_card_definition::{
-    BARRACKS, BLAST, BOLT, BOMBER, DRILLMASTER, GRAVEDIGGER, JUGGLING_ACT, JUGGLING_LINE,
-    KNIFE_JUGGLER, MEDIC, MIRROR_IMAGE, MOURNER, PING, RALLY_BANNER, RECRUIT, SQUIRE, TWIN_SHOT,
+    BARRACKS, BLAST, BOLT, BOMBER, COURIER, DISPATCH, DRILLMASTER, GRAVEDIGGER, HERALD,
+    JUGGLING_ACT, JUGGLING_LINE, KNIFE_JUGGLER, MEDIC, MIRROR_IMAGE, MOURNER, PING, RALLY_BANNER,
+    RECRUIT, RINGMASTER, SQUIRE, TREMOR, TWIN_SHOT,
 };
 use rules::prelude::{Event, Game, ObjectId, Outcome};
 
@@ -30,6 +31,23 @@ fn knives_from(events: &[Event], juggler: ObjectId) -> usize {
 
 fn is_draw(e: &Event) -> bool {
     matches!(e, Event::Drew { .. })
+}
+
+/// Whether `e` is the 2 damage of `courier`'s play effect.
+fn is_couriers_play_effect(e: &Event, courier: ObjectId) -> bool {
+    matches!(e, Event::Damaged { amount: 2, source, .. } if *source == courier)
+}
+
+/// Whether `e` is the 3 damage of `courier`'s reaction to its own summon.
+fn is_couriers_summon_reaction(e: &Event, courier: ObjectId) -> bool {
+    matches!(e, Event::Damaged { amount: 3, source, .. } if *source == courier)
+}
+
+/// Plays the Courier in P0's hand and returns it, with what the play reported.
+fn play_courier(b: &mut Boards) -> (ObjectId, Vec<Event>) {
+    let courier = in_hand(&b.game, b.p0, COURIER);
+    let events = observe(&mut b.game, b.p0, play(courier)).events();
+    (courier, events)
 }
 
 /// Pings `minion` with the Ping in P0's hand and returns what the play reported.
@@ -345,6 +363,139 @@ fn juggling_line_throws_one_knife_from_the_first_juggler() {
         [1, 0],
         "each effect summons one Juggler, so the first hears the second's summon, and the second \
          was not on the board when the first's summon was matched:\n{}",
+        listing(&events)
+    );
+}
+
+#[test]
+fn with_a_knife_juggler_on_the_board_couriers_play_effect_resolves_before_the_knife() {
+    let mut b = boards(&[KNIFE_JUGGLER], &[], &[COURIER], 2);
+    let juggler = b.mine[0];
+
+    let (courier, events) = play_courier(&mut b);
+
+    assert!(
+        first(&events, |e| is_couriers_play_effect(e, courier))
+            < first(&events, |e| is_hit_from(e, juggler)),
+        "the knife reacts to Courier's summon, which goes under Courier's play effect:\n{}",
+        listing(&events)
+    );
+}
+
+#[test]
+fn couriers_play_effect_resolves_before_its_own_summon_reaction() {
+    let mut b = boards(&[], &[], &[COURIER], 2);
+
+    let (courier, events) = play_courier(&mut b);
+
+    assert!(
+        first(&events, |e| is_couriers_play_effect(e, courier))
+            < first(&events, |e| is_couriers_summon_reaction(e, courier)),
+        "the reactions to a played minion's summon go under its play effects:\n{}",
+        listing(&events)
+    );
+}
+
+#[test]
+fn with_a_knife_juggler_on_the_board_couriers_own_summon_reaction_resolves_before_the_knife() {
+    let mut b = boards(&[KNIFE_JUGGLER], &[], &[COURIER], 2);
+    let juggler = b.mine[0];
+
+    let (courier, events) = play_courier(&mut b);
+
+    assert!(
+        first(&events, |e| is_couriers_summon_reaction(e, courier))
+            < first(&events, |e| is_hit_from(e, juggler)),
+        "both react to Courier's summon, and Courier is the newer, so its reaction resolves \
+         first:\n{}",
+        listing(&events)
+    );
+}
+
+#[test]
+fn a_courier_on_the_board_does_not_react_to_another_minions_summon() {
+    let mut b = boards(&[COURIER], &[], &[RECRUIT], 2);
+    let courier = b.mine[0];
+    let recruit = in_hand(&b.game, b.p0, RECRUIT);
+
+    let events = observe(&mut b.game, b.p0, play(recruit)).events();
+
+    assert!(
+        !events.iter().any(|e| is_hit_from(e, courier)),
+        "Courier reacts only to its own summon:\n{}",
+        listing(&events)
+    );
+}
+
+#[test]
+fn with_herald_on_the_board_heralds_draw_resolves_before_couriers_play_effect() {
+    let mut b = boards(&[HERALD], &[], &[COURIER], 2);
+
+    let (courier, events) = play_courier(&mut b);
+
+    assert!(
+        first(&events, is_draw) < first(&events, |e| is_couriers_play_effect(e, courier)),
+        "Herald's draw reacts to Courier's play, so it goes on top of Courier's play effect:\n{}",
+        listing(&events)
+    );
+}
+
+#[test]
+fn dispatch_runs_couriers_summon_reaction_and_not_its_play_effect() {
+    let mut b = boards(&[], &[], &[DISPATCH], 2);
+    let dispatch = in_hand(&b.game, b.p0, DISPATCH);
+
+    let events = observe(&mut b.game, b.p0, play(dispatch)).events();
+
+    let &[courier] = b.game.player_board(b.p0) else {
+        panic!("Dispatch left {:?}", board_defs(&b.game, b.p0));
+    };
+    let hits = events
+        .iter()
+        .filter_map(|e| match e {
+            Event::Damaged { amount, source, .. } if *source == courier => Some(*amount),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        hits,
+        [3],
+        "a summoned Courier is not played, so only its summon reaction deals damage:\n{}",
+        listing(&events)
+    );
+}
+
+#[test]
+fn ringmaster_played_on_an_empty_board_throws_no_knife() {
+    let mut b = boards(&[], &[], &[RINGMASTER], 3);
+    let ringmaster = in_hand(&b.game, b.p0, RINGMASTER);
+
+    let events = observe(&mut b.game, b.p0, play(ringmaster)).events();
+
+    let &[_, juggler] = b.game.player_board(b.p0) else {
+        panic!("Ringmaster left {:?}", board_defs(&b.game, b.p0));
+    };
+    assert_eq!(
+        knives_from(&events, juggler),
+        0,
+        "the Juggler was not on the board when Ringmaster's summon was matched:\n{}",
+        listing(&events)
+    );
+}
+
+#[test]
+fn a_knife_juggler_that_tremors_play_effect_kills_still_throws_its_knife() {
+    let mut b = boards(&[KNIFE_JUGGLER], &[], &[TREMOR], 2);
+    let juggler = b.mine[0];
+    let tremor = in_hand(&b.game, b.p0, TREMOR);
+
+    let events = observe(&mut b.game, b.p0, play(tremor)).events();
+
+    assert!(
+        first(&events, |e| *e == Event::Died { object_id: juggler })
+            < first(&events, |e| is_hit_from(e, juggler)),
+        "the knife was matched at Tremor's summon, and resolves after Tremor's play effect kills \
+         the Juggler:\n{}",
         listing(&events)
     );
 }

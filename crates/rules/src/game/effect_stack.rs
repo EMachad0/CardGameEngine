@@ -1,4 +1,4 @@
-//! The effect stack and the resolving effect. The newest pending effect resolves first, and one
+//! The effect stack and the resolving effect. The top pending effect resolves first, and one
 //! resolves at a time: the next is taken off the stack only once the resolving one finishes. The
 //! resolving effect holds the picking its last effect opened until the picking finishes.
 
@@ -25,6 +25,11 @@ struct ResolvingEffect {
     idx: usize,
     picking: Option<Picking>,
 }
+
+/// A height on the effect stack: how many pending effects lie under it. It holds no borrow, so
+/// more may have been pushed over it since.
+#[derive(Debug)]
+pub(super) struct StackHeight(usize);
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct NextEffect {
@@ -105,7 +110,31 @@ impl EffectStack {
         self.pending.push(PendingEffect { source, effects });
     }
 
-    /// Takes the newest pending effect off the stack to resolve it. Panics while another one is
+    /// The height over every pending effect.
+    pub(super) fn height(&self) -> StackHeight {
+        StackHeight(self.pending.len())
+    }
+
+    /// Pushes `source`'s effects under every pending effect over `height`, then raises `height`
+    /// over them, so the next effects pushed under it resolve before these. Panics if fewer
+    /// effects are pending than lie under `height`.
+    pub(super) fn push_under(
+        &mut self,
+        height: &mut StackHeight,
+        source: ObjectId,
+        effects: Vec<Effect<Bound>>,
+    ) {
+        assert!(
+            height.0 <= self.pending.len(),
+            "the effects pending when a height was read should stay pending while effects are \
+             pushed under it",
+        );
+        self.pending
+            .insert(height.0, PendingEffect { source, effects });
+        height.0 += 1;
+    }
+
+    /// Takes the top pending effect off the stack to resolve it. Panics while another one is
     /// resolving.
     pub(super) fn start_next(&mut self) {
         assert!(
@@ -238,6 +267,20 @@ mod tests {
         stack
     }
 
+    /// Resolves every pending effect, each holding one effect, and returns their sources in the
+    /// order they resolved.
+    fn resolution_order(stack: &mut EffectStack) -> Vec<ObjectId> {
+        let mut order = Vec::new();
+        loop {
+            stack.start_next();
+            let Advance::Effect(next) = stack.advance() else {
+                return order;
+            };
+            order.push(next.source);
+            stack.advance();
+        }
+    }
+
     fn options(stack: &EffectStack) -> Vec<ObjectId> {
         stack
             .awaited_picking()
@@ -344,6 +387,46 @@ mod tests {
 
         stack.advance();
         assert!(stack.is_idle());
+    }
+
+    #[test]
+    fn an_effect_pushed_under_a_height_resolves_after_the_effects_pushed_since() {
+        let [before, since, under] = sources();
+        let mut stack = EffectStack::default();
+        stack.push(before, vec![draw(1)]);
+        let mut height = stack.height();
+        stack.push(since, vec![draw(2)]);
+
+        stack.push_under(&mut height, under, vec![draw(3)]);
+
+        assert_eq!(resolution_order(&mut stack), [since, under, before]);
+    }
+
+    #[test]
+    fn effects_pushed_under_one_height_resolve_newest_first() {
+        let [since, older, newer] = sources();
+        let mut stack = EffectStack::default();
+        let mut height = stack.height();
+        stack.push(since, vec![draw(1)]);
+
+        stack.push_under(&mut height, older, vec![draw(2)]);
+        stack.push_under(&mut height, newer, vec![draw(3)]);
+
+        assert_eq!(resolution_order(&mut stack), [since, newer, older]);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "the effects pending when a height was read should stay pending while effects are pushed under it"
+    )]
+    fn no_effect_is_pushed_under_a_height_the_stack_has_fallen_below() {
+        let [before, under] = sources();
+        let mut stack = EffectStack::default();
+        stack.push(before, vec![draw(1)]);
+        let mut height = stack.height();
+        stack.start_next();
+
+        stack.push_under(&mut height, under, vec![draw(2)]);
     }
 
     #[test]

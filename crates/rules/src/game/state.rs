@@ -9,7 +9,7 @@ use crate::cards::binder::store::Binder;
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::{
-    Advance, EffectStack, FinishedPick, NextEffect, WasAwaitingPicking,
+    Advance, EffectStack, FinishedPick, NextEffect, StackHeight, WasAwaitingPicking,
 };
 use crate::game::legal_actions::LegalAction;
 use crate::game::play::WasPlayable;
@@ -227,11 +227,22 @@ impl Game {
     /// Makes the step's writes, reports what it did, then lets the observer read the views.
     /// `false`, with no report and no checkpoint, if `write` found no step to take.
     fn take_step(&mut self, step: Step, obs: &mut impl Observer) -> bool {
+        self.take_step_under(step, None, obs)
+    }
+
+    /// `take_step`, pushing what the step's events match under `under` when given, instead of on
+    /// top.
+    fn take_step_under(
+        &mut self,
+        step: Step,
+        mut under: Option<StackHeight>,
+        obs: &mut impl Observer,
+    ) -> bool {
         let Some(reports) = self.write(step) else {
             return false;
         };
         for report in reports {
-            self.report(report, obs);
+            self.report(report, under.as_mut(), obs);
         }
         obs.checkpoint(Views::new(self));
         true
@@ -324,12 +335,13 @@ impl Game {
         Some(reports)
     }
 
-    fn report(&mut self, report: Report, obs: &mut impl Observer) {
+    fn report(&mut self, report: Report, under: Option<&mut StackHeight>, obs: &mut impl Observer) {
         report.matched(self.cards()).report(
             &mut self.history,
             self.turn_order.turn_count(),
             &self.objects,
             &mut self.effect_stack,
+            under,
             obs,
         );
     }
@@ -437,8 +449,18 @@ impl<O: Observer> Acting<'_, O> {
         self.game.cards()
     }
 
+    pub(super) fn stack_height(&self) -> StackHeight {
+        self.game.effect_stack.height()
+    }
+
     pub(super) fn take_step(&mut self, step: ActionStep) {
         self.game.take_step(Step::Action(step), self.obs);
+    }
+
+    /// Pushes what the step's events match under `height`, instead of on top.
+    pub(super) fn take_step_under(&mut self, step: ActionStep, height: StackHeight) {
+        self.game
+            .take_step_under(Step::Action(step), Some(height), self.obs);
     }
 }
 

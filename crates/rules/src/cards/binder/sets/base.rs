@@ -80,6 +80,10 @@ def_ids!(
     MIRROR_IMAGE = "base.mirror_image.v0",
     JUGGLING_ACT = "base.juggling_act.v0",
     JUGGLING_LINE = "base.juggling_line.v0",
+    COURIER = "base.courier.v0",
+    HERALD = "base.herald.v0",
+    RINGMASTER = "base.ringmaster.v0",
+    DISPATCH = "base.dispatch.v0",
 );
 
 pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
@@ -1022,6 +1026,79 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                         verbs: vec![PlayerVerb::Summon(KNIFE_JUGGLER)],
                     },
                 ],
+                ..Default::default()
+            },
+        ),
+        (
+            COURIER,
+            CardDef {
+                name: "Courier".to_string(),
+                kind: CardKindDef::Minion(MinionCardDef::new(1, 1)),
+                mana_cost: 2,
+                play_effects: vec![Effect::Characters {
+                    selector: CharacterSelector::All(CharacterFilter {
+                        kind: EnumSet::only(CharacterKind::Hero),
+                        side: EnumSet::only(Side::Enemy),
+                        include_itself: true,
+                    }),
+                    verbs: vec![CharacterVerb::Damage(2.into())],
+                }],
+                triggers: vec![TriggerDef {
+                    pattern: TriggerPattern::Summoned(TriggerSubject::Itself),
+                    effects: vec![Effect::Characters {
+                        selector: CharacterSelector::All(CharacterFilter {
+                            kind: EnumSet::only(CharacterKind::Hero),
+                            side: EnumSet::only(Side::Enemy),
+                            include_itself: true,
+                        }),
+                        verbs: vec![CharacterVerb::Damage(3.into())],
+                    }],
+                }],
+                ..Default::default()
+            },
+        ),
+        (
+            HERALD,
+            CardDef {
+                name: "Herald".to_string(),
+                kind: CardKindDef::Minion(MinionCardDef::new(1, 2)),
+                mana_cost: 2,
+                triggers: vec![TriggerDef {
+                    pattern: TriggerPattern::Played(CardFilter {
+                        kind: EnumSet::only(CardKind::Minion),
+                        side: EnumSet::only(Side::Friendly),
+                    }),
+                    effects: vec![Effect::Players {
+                        selector: PlayerSelector::Owner,
+                        verbs: vec![PlayerVerb::Draw(1.into())],
+                    }],
+                }],
+                ..Default::default()
+            },
+        ),
+        (
+            RINGMASTER,
+            CardDef {
+                name: "Ringmaster".to_string(),
+                kind: CardKindDef::Minion(MinionCardDef::new(2, 2)),
+                mana_cost: 3,
+                play_effects: vec![Effect::Players {
+                    selector: PlayerSelector::Owner,
+                    verbs: vec![PlayerVerb::Summon(KNIFE_JUGGLER)],
+                }],
+                ..Default::default()
+            },
+        ),
+        (
+            DISPATCH,
+            CardDef {
+                name: "Dispatch".to_string(),
+                kind: CardKindDef::Spell(SpellCardDef),
+                mana_cost: 2,
+                play_effects: vec![Effect::Players {
+                    selector: PlayerSelector::Owner,
+                    verbs: vec![PlayerVerb::Summon(COURIER)],
+                }],
                 ..Default::default()
             },
         ),
