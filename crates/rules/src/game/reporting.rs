@@ -1,11 +1,11 @@
 //! Matches each reported event against the triggers in play, then records it in history, tells
-//! the observer, and pushes the triggers it matched. A variant that holds a value with private
-//! fields can be built only in the file that defines the value.
+//! the observer, and adds the triggers it matched to the step's pending effects. A variant that
+//! holds a value with private fields can be built only in the file that defines the value.
 
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::event::Event;
 use crate::game::cards_ref::CardsRef;
-use crate::game::effect_stack::{EffectStack, StackHeight};
+use crate::game::effect_stack::PendingEffects;
 use crate::game::play::Play;
 use crate::game::resolve::aftermath::death::Death;
 use crate::game::resolve::aftermath::standings::Ending;
@@ -123,14 +123,12 @@ pub(super) struct MatchedEvent {
 }
 
 impl MatchedEvent {
-    /// Pushes the matches on top of the effect stack, or under `under` when given.
     pub(super) fn report(
         self,
         history: &mut History,
         turn: u32,
         objects: &ObjectBag,
-        effect_stack: &mut EffectStack,
-        mut under: Option<&mut StackHeight>,
+        pending: &mut PendingEffects,
         obs: &mut impl Observer,
     ) {
         let Self { event, triggers } = self;
@@ -141,10 +139,7 @@ impl MatchedEvent {
         )]
         obs.event(&event);
         for MatchedTrigger { source, effects } in triggers {
-            match under.as_deref_mut() {
-                Some(height) => effect_stack.push_under(height, source, effects),
-                None => effect_stack.push(source, effects),
-            }
+            pending.push(source, effects);
         }
     }
 }
