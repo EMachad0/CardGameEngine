@@ -167,14 +167,14 @@ pub(crate) struct Boards {
     pub(crate) theirs: Vec<ObjectId>,
 }
 
-/// P0 plays `mine` and P1 plays `theirs`, one minion each in turn, P0 first, so the two boards'
-/// order of play interleaves. Then it's P0's turn with at least `mana` mana, holding `hand`.
-/// Every minion costs at most 3, and anything else in either hand is Bolts.
 pub(crate) fn boards(mine: &[DefId], theirs: &[DefId], hand: &[DefId], mana: u8) -> Boards {
     seeded_boards(0, mine, theirs, hand, mana)
 }
 
-/// Like `boards`, in a game seeded with `seed`.
+/// In a game seeded with `seed`, P0 plays `mine` and P1 plays `theirs`, one minion each in turn,
+/// P0 first, so the two boards' order of play interleaves. Then it's P0's turn with at least
+/// `mana` mana, holding `hand`. Every minion costs at most 3, and anything else in either hand is
+/// Bolts.
 pub(crate) fn seeded_boards(
     seed: u64,
     mine: &[DefId],
