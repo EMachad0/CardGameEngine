@@ -21,6 +21,7 @@ struct PendingEffect {
 
 /// Pending effects not yet on the effect stack, in the order they go on it.
 #[derive(Debug, Default)]
+#[must_use = "pending effects resolve only once pushed"]
 pub(super) struct PendingEffects(Vec<PendingEffect>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -111,7 +112,7 @@ impl ResolvingEffect {
 }
 
 impl EffectStack {
-    pub(super) fn push(&mut self, source: ObjectId, effects: Vec<Effect<Bound>>) {
+    fn push(&mut self, source: ObjectId, effects: Vec<Effect<Bound>>) {
         self.pending.push(PendingEffect { source, effects });
     }
 
