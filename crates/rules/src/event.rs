@@ -36,7 +36,7 @@ pub enum Event {
         player_id: PlayerId,
         object_id: ObjectId,
     },
-    BoardEntered {
+    Summoned {
         player_id: PlayerId,
         object_id: ObjectId,
     },

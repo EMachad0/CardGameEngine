@@ -6,7 +6,7 @@ use crate::ids::PlayerId;
 enum HistoryKind {
     CardPlayed,
     CharacterDied,
-    CharacterEntered,
+    MinionSummoned,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -49,17 +49,17 @@ pub(crate) struct History {
 }
 
 impl History {
-    /// Keeps a play, a board entry or a death. A death counts for the dead character's owner.
+    /// Keeps a play, a summon or a death. A death counts for the dead character's owner.
     pub(crate) fn record(&mut self, event: &Event, turn: u32, objects: &ObjectBag) {
         let (player_id, kind, object_id) = match *event {
             Event::Played {
                 player_id,
                 object_id,
             } => (player_id, HistoryKind::CardPlayed, object_id),
-            Event::BoardEntered {
+            Event::Summoned {
                 player_id,
                 object_id,
-            } => (player_id, HistoryKind::CharacterEntered, object_id),
+            } => (player_id, HistoryKind::MinionSummoned, object_id),
             Event::Died { object_id } => (
                 objects.get(object_id).player_id,
                 HistoryKind::CharacterDied,
@@ -221,13 +221,13 @@ mod tests {
     }
 
     #[test]
-    fn entering_the_board_or_dying_is_not_a_play() {
+    fn a_summon_or_a_death_is_not_a_play() {
         let mut objects = ObjectBag::default();
         let recruit = objects.insert(RECRUIT, P0);
         let mut history = History::default();
 
         history.record(
-            &Event::BoardEntered {
+            &Event::Summoned {
                 player_id: P0,
                 object_id: recruit,
             },

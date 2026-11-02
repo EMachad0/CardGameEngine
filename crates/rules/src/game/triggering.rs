@@ -125,6 +125,12 @@ fn fulfill_trigger_pattern(
             };
             fulfill_trigger_subject(cards, subject, trigger_owner, trigger_object, *target)
         }
+        TriggerPattern::Summoned(subject) => {
+            let Event::Summoned { object_id, .. } = event else {
+                return false;
+            };
+            fulfill_trigger_subject(cards, subject, trigger_owner, trigger_object, *object_id)
+        }
     }
 }
 
