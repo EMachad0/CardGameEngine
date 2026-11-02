@@ -33,12 +33,10 @@ fn is_draw(e: &Event) -> bool {
     matches!(e, Event::Drew { .. })
 }
 
-/// Whether `e` is the 2 damage of `courier`'s play effect.
 fn is_couriers_play_effect(e: &Event, courier: ObjectId) -> bool {
     matches!(e, Event::Damaged { amount: 2, source, .. } if *source == courier)
 }
 
-/// Whether `e` is the 3 damage of `courier`'s reaction to its own summon.
 fn is_couriers_summon_reaction(e: &Event, courier: ObjectId) -> bool {
     matches!(e, Event::Damaged { amount: 3, source, .. } if *source == courier)
 }

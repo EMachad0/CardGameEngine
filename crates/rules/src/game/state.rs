@@ -55,23 +55,26 @@ pub enum ApplyError {
 
 /// The writes one step makes, between two checkpoints.
 enum Step {
-    Draw { player_id: PlayerId, count: u8 },
+    Draw {
+        player_id: PlayerId,
+        count: u8,
+    },
     StartTurn,
     Action(ActionStep),
+    Play(WasPlayable),
+    Summon {
+        player_id: PlayerId,
+        object_id: ObjectId,
+    },
     Effect(NextEffect),
     FinishPicking(FinishedPick),
     DeathPass,
     DecideOutcome,
 }
 
-/// The steps an action takes.
+/// The steps an action takes, besides playing a card.
 pub(super) enum ActionStep {
     EndTurn,
-    Play(WasPlayable),
-    Summon {
-        player_id: PlayerId,
-        object_id: ObjectId,
-    },
     StartTargeting {
         object_id: ObjectId,
         awaiting_nothing: WasAwaitingNothing,
@@ -268,7 +271,7 @@ impl Game {
                 &mut self.zones,
                 &mut self.objects,
             ),
-            Step::Action(ActionStep::Play(playable)) => {
+            Step::Play(playable) => {
                 let prepared = play::prepare(self.cards(), &self.player_input, playable);
                 vec![play::play(
                     prepared,
@@ -278,10 +281,10 @@ impl Game {
                     &mut self.effect_stack,
                 )]
             }
-            Step::Action(ActionStep::Summon {
+            Step::Summon {
                 player_id,
                 object_id,
-            }) => vec![zone_move::summon(player_id, object_id, &mut self.zones)],
+            } => vec![zone_move::summon(player_id, object_id, &mut self.zones)],
             Step::Action(ActionStep::StartTargeting {
                 object_id,
                 awaiting_nothing,
@@ -449,18 +452,31 @@ impl<O: Observer> Acting<'_, O> {
         self.game.cards()
     }
 
-    pub(super) fn stack_height(&self) -> StackHeight {
-        self.game.effect_stack.height()
-    }
-
     pub(super) fn take_step(&mut self, step: ActionStep) {
         self.game.take_step(Step::Action(step), self.obs);
     }
 
-    /// Pushes what the step's events match under `height`, instead of on top.
-    pub(super) fn take_step_under(&mut self, step: ActionStep, height: StackHeight) {
-        self.game
-            .take_step_under(Step::Action(step), Some(height), self.obs);
+    /// Plays the card, then summons it if it is a minion. What the summon matches goes under
+    /// everything the play pushed.
+    pub(super) fn play(&mut self, playable: WasPlayable) {
+        let (player_id, object_id) = (playable.player_id(), playable.object_id());
+        let enters_board = self.cards().card_def(object_id).has_board_presence();
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the one height pushed under, read before a play"
+        )]
+        let under_the_play = self.game.effect_stack.height();
+        self.game.take_step(Step::Play(playable), self.obs);
+        if enters_board {
+            self.game.take_step_under(
+                Step::Summon {
+                    player_id,
+                    object_id,
+                },
+                Some(under_the_play),
+                self.obs,
+            );
+        }
     }
 }
 
