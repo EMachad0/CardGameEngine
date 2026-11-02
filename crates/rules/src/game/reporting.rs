@@ -1,6 +1,6 @@
 //! Matches each reported event against the triggers in play, then records it in history, tells
-//! the observer, and adds the triggers it matched to the step's pending effects. A variant that
-//! holds a value with private fields can be built only in the file that defines the value.
+//! the observer, and pushes the triggers it matched. A variant that holds a value with private
+//! fields can be built only in the file that defines the value.
 
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::event::Event;

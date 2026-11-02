@@ -231,35 +231,38 @@ impl Game {
     /// lets the observer read the views. `false`, with no report and no checkpoint, if `write`
     /// found no step to take.
     fn take_step(&mut self, step: Step, obs: &mut impl Observer) -> bool {
-        self.take_step_holding(step, None, obs)
-    }
-
-    /// `take_step`, handing the pending effects the step added to `held` when given, instead of
-    /// pushing them.
-    fn take_step_holding(
-        &mut self,
-        step: Step,
-        held: Option<&mut PendingEffects>,
-        obs: &mut impl Observer,
-    ) -> bool {
-        let mut pending = PendingEffects::default();
-        let Some(reports) = self.write(step, &mut pending) else {
+        let Some(pending) = self.write_and_report(step, obs) else {
             return false;
         };
-        for report in reports {
-            self.report(report, &mut pending, obs);
-        }
-        match held {
-            Some(held) => *held = pending,
-            None => self.effect_stack.push_all(pending),
-        }
+        self.effect_stack.push_all(pending);
         obs.checkpoint(Views::new(self));
         true
     }
 
-    /// Makes the step's writes, lending it what it reads and writes, and adds the pending effects
-    /// it causes to `pending`. Returns the events it caused, in order. `None` for a death pass
-    /// that finds no dead, or a decision that doesn't end the game.
+    /// `take_step`, but returns the pending effects the step added instead of pushing them. Empty,
+    /// with no report and no checkpoint, if `write` found no step to take.
+    fn take_step_holding(&mut self, step: Step, obs: &mut impl Observer) -> PendingEffects {
+        let Some(pending) = self.write_and_report(step, obs) else {
+            return PendingEffects::default();
+        };
+        obs.checkpoint(Views::new(self));
+        pending
+    }
+
+    /// Makes the step's writes and reports what it did. Returns the pending effects it added, in
+    /// order. `None`, with no report, if `write` found no step to take.
+    fn write_and_report(&mut self, step: Step, obs: &mut impl Observer) -> Option<PendingEffects> {
+        let mut pending = PendingEffects::default();
+        let reports = self.write(step, &mut pending)?;
+        for report in reports {
+            self.report(report, &mut pending, obs);
+        }
+        Some(pending)
+    }
+
+    /// Makes the step's writes, lending it what it reads and writes. Returns the events it caused,
+    /// in order. `None` for a death pass that finds no dead, or a decision that doesn't end the
+    /// game.
     fn write(&mut self, step: Step, pending: &mut PendingEffects) -> Option<Vec<Report>> {
         let reports = match step {
             Step::Draw { player_id, count } => {
@@ -461,9 +464,7 @@ impl<O: Observer> Acting<'_, O> {
     pub(super) fn play(&mut self, playable: WasPlayable) {
         let (player_id, object_id) = (playable.player_id(), playable.object_id());
         let enters_board = self.cards().card_def(object_id).has_board_presence();
-        let mut play_pending = PendingEffects::default();
-        self.game
-            .take_step_holding(Step::Play(playable), Some(&mut play_pending), self.obs);
+        let play_pending = self.game.take_step_holding(Step::Play(playable), self.obs);
         if enters_board {
             self.game.take_step(
                 Step::Summon {
