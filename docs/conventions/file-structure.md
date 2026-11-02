@@ -118,7 +118,9 @@ Output counts as observable. An output belongs to the step that outputs it, so t
 outputs changes with the order of the steps, and the two are one decision. Steps that leave the
 same state either way still have an order rule when their outputs show their order.
 
-An order that carries no decision can sit anywhere, the coordinator included.
+An order that carries no decision can sit anywhere, the coordinator included. It can still rest on
+another module's decision, such as what a listener reads. Then the code that holds it holds
+knowledge of that decision.
 
 ### Owners guard invariants
 
