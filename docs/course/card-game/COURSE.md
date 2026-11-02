@@ -9,7 +9,11 @@ Understand card game systems well enough to design MTG, Hearthstone, or Yu-Gi-Oh
 - Teaching follows the `teach` skill, `.agents/skills/teach/SKILL.md`.
 - One pi session per course session. Start with `/new`, `/name NN-topic`, `/md-log docs/course/card-game/sessions/NN-topic.md` (the file must exist first), then "continue the card-game course".
 - Only the first session of a topic (06, 07, not 06b) opens with a short retrieval quiz. It may ask about any earlier session's nodes, such as 05 and 06 to 06d for 07, and adjusts the knowledge map below if something didn't stick.
-- Roles in exercises. First we agree on the design in discussion. The learner writes the design-bearing code (types, traits, key function signatures and bodies). The agent writes scaffolding and tests against that API, then reviews. Tests come before the implementation. He sees little learning value in typing out plain data types, so the agent drafts those, such as `Event` and `View`, for him to edit. Design choices and bodies stay his.
+- Roles. He learns the concepts and makes every design call: rules, interfaces and names. He writes no code; AFK agents build what a session settles (his call, before 05b).
+- Each node ends with an exercise at the level of concepts: he judges a design the agent drafts, or traces a case through it. No signatures or code.
+- A session ends in issues. Before the close-out, the agent lists each issue with the calls it carries, and his agreement to end the session approves them. The agent then files them as `docs/agents/issue-tracker.md` says, `ready-for-agent`. Each issue names a forcing card and a test per behavior, and may add test cards (his 04f ask).
+- An AFK agent picks the interface and naming choices an issue leaves open and records them under "Choices" in its PR body. A rules call the session didn't settle stays out, under "Left out", and becomes an open thread. He checks the PR against its stated choices and merges.
+- A session whose design builds on code from earlier issues waits until those issues merge.
 - End at a node boundary, not mid-node. Commit once per node.
 
 ## Knowledge map
@@ -140,8 +144,8 @@ Understand card game systems well enough to design MTG, Hearthstone, or Yu-Gi-Oh
 ## Course plan
 
 - Build a tiny Hearthstone-like game first, in `crates/rules`.
-- Core track (A to G, T, K) is concept-first with one small exercise per session. Application track (H, I, J) gets one design session each. Implementation there is optional.
-- Final exam (K): add a Yu-Gi-Oh style chain without rewriting the core. He knows YGO best.
+- Core track (A to G, T, K) is concept-first, and each session ends in issues. Application track (H, I, J) gets one design session each. Issues there are optional.
+- Final exam (K): design a Yu-Gi-Oh style chain that agents add without rewriting the core. He knows YGO best.
 - The tooling the course works toward: card data files with validation, generated rules text, test tooling (scenario DSL, replays, fuzzer), a headless CLI with a machine-readable protocol so bots and LLM agents can playtest, a visual editor, and hot reload.
 - Session 04's exercise is three sessions, his split: 04a effect reshape, 04b targeting draft, 04c heroes, players and tokens as objects, all before 05. He moved 04c first. All three are done.
 - Session 05 built triggers only. Replacements and new statics stay concept until a card needs one (his scope call).
@@ -156,11 +160,11 @@ Understand card game systems well enough to design MTG, Hearthstone, or Yu-Gi-Oh
 - Random with no candidates: Stray Shot stays playable into an empty board and does nothing (Bomb Lobber), his 04b call "at least for now". `can_finish_targeting` reads only declared targets. The alternative is Deadly Shot's `REQ_MINIMUM_ENEMY_MINIONS`, a play condition that no target implies.
 - Hearthstone's random damage skips minions already at 0 health (the Advanced rulebook's "mortally wounded"). Our filters read the board, so a random pick after an earlier hit in the same card can land on a minion at 0. No card does that yet.
 - A choice no verb uses is asked and allowed (ADR 0021, 04g): a target with no verbs still gates play and shows in the view, and a pick with no verbs and no `others` still opens. Soul's Majesty ("Draw cards equal to the power of target creature you control") and Rabid Bite (the first target is the damage source) read a target no verb acts on, and can't be written today. Two routes, 06b's call: the target declared inside the amount or verb parameter that reads it (ADR 0017's rule extended; `EffectAmount` becomes generic over the target form, and every reader of targets looks inside amounts), or a named result read from a verbless targeted effect (Forge holds Soul's Majesty's target on a `Pump` that pumps nothing). The second needs the verbless target allowed, which ADR 0021 keeps.
-- Enter effects: `on_board_enter` is gone since 05, so "when this enters" is a trigger pattern that doesn't exist yet. Add it with the first card that needs it. Since 06 a minion enters before its play effects run, and `play`'s push order would resolve an entry reaction before the play reactions and the body, unlike Hearthstone's After Summon phase. Decide with that card.
+- Enter effects: `on_board_enter` is gone since 05, so "when this enters" is a trigger pattern that doesn't exist yet. Add it with the first card that needs it. Since 06 a minion enters before its play effects run, and `play`'s push order would resolve an entry reaction before the play reactions and the body, unlike Hearthstone's After Summon phase. Session 05b.
 - A pattern on another character's entry (Knife Juggler) breaks the summon effect's batching under
-  ADR 0018: matching runs once both minions are in, so the second hears the first one's entry. The
-  card that adds it decides whether minions summoned by one effect hear each other's entries, and
-  if not, splits the step as ADR 0018 says (architecture 02j).
+  ADR 0018: matching runs once both minions are in, so the second hears the first one's entry.
+  Session 05b decides whether minions summoned by one effect hear each other's entries, and if not,
+  splits the step as ADR 0018 says (architecture 02j).
 - `mana_cost` sums discounts with `.sum::<u8>()`, which panics in debug past 255 (unreachable).
 - A targeted object that stops matching during resolution: since ticket 03 of picks-as-choices, `CardVerb::Move` can cause it. Two card targets with `different: false` can name one card, or two `Move` verbs can act on one target, and the second move finds the card gone from the zone it was targeted in. `resolve` skips that card and reports nothing, untested (his call: no card reaches it). For characters no verb can cause it yet (filters read kind and side, and deaths wait for the state check). He wants a fizzle: apply MTG 608.2b, skip an illegal target, and if every target is illegal the card does nothing, including instructions that don't use the target (Defiant Strike draws no card, 04g). Build it with the first card that reaches it.
 - `commit_targeting` replaces what a card targeted before. ADR 0017, built in PR #62, moves targeted objects into the pending effect, which ends the overwrite and the 113.7a collision. A card that remembers what it targeted (his "deal 2 damage to it every turn", or "pick a minion in your hand, give it +1/+1 every turn") then needs somewhere to keep the objects past its resolution, a trigger whose effects can read them in place of `NoTarget`, a rule for summoned copies (nothing targeted), and a rule for when the remembered card dies or leaves. Session 06c.
@@ -288,7 +292,8 @@ graph TD
 | 04e | E | Picks as choices, design part 1: subjects, verbs on one selection, the choice and its timing | done (concept only; N1 to N3; glossary Choice, Target, Pick; four research reports; MTG 601.2a and 115.5 verified) |
 | 04f | E, G | Picks as choices, design part 2: the pick flow, the cards not picked, leave room, names, build plan and ADR | done (concept only; N4 to N7; ADRs 0019 and 0020; glossary Card and Modify, "card" in play reworded; the picks-as-choices tickets; two research reports) |
 | 04g | E | A choice no verb uses: ticket 06 of picks-as-choices, from PR #74's doc gaps | done (concept only; ADR 0021; ticket 06 closed, ticket 03 unblocked; one research report; MTG 608.2b with Defiant Strike and unused-target cards verified) |
-| 06b | G | Named results, the first nesting effect (`If`) and frames | next. ADR 0020 replaced its reveal half. Starts with Soul's Majesty's two routes (open threads). |
+| 05b | F | Board entries: Knife Juggler, whether one effect's summons hear each other, and entry reactions vs play effects | next. Before 06b, because a split summon step stops partway through an effect, which is the cursor 06b reshapes. |
+| 06b | G | Named results, the first nesting effect (`If`) and frames | After 05b's issues merge. ADR 0020 replaced its reveal half. Starts with Soul's Majesty's two routes (open threads). |
 | 06c | G | Choices inside triggers and remembered choices | |
 | 06d | G | Simultaneous picks | |
 | 07 | R5, T | Scenario DSL, replays, determinism trap, invariant fuzzing | Its retrieval quiz covers 06 (where pauses happen, the two units of time, the derived decider). |
