@@ -118,7 +118,9 @@ Output counts as observable. An output belongs to the step that outputs it, so t
 outputs changes with the order of the steps, and the two are one decision. Steps that leave the
 same state either way still have an order rule when their outputs show their order.
 
-An order that carries no decision can sit anywhere, the coordinator included.
+An order that carries no decision can sit anywhere, the coordinator included. It can still rest on
+another module's decision, such as what a listener reads. Then the code that holds it holds
+knowledge of that decision.
 
 ### Owners guard invariants
 
@@ -134,6 +136,7 @@ the same way. Data tied by an invariant shares one owner.
   the field that holds the owner. Replacing the owner whole can't break its invariant. But putting
   an older value back undoes every change since, and putting any value in can break a rule that
   ties the owner to other data.
+- Invariants that share data share one owner, which can hold owners that keep some of them.
 - Merge owners only for an invariant the domain needs. A rule nothing depends on unnecessarily grows
   its owner.
 - An owner answers questions about its own data, and may ask other owners questions. Reading can't
@@ -174,12 +177,12 @@ type that holds the data privately and offers only those commands.
 
 ### Parse, don't validate
 
-A check validates when it returns nothing, or hands back the type it was given. What it learned is
-lost, and every later step that relies on it holds "the check passed" as informal knowledge. A
-check parses when it returns what it learned in a new type that later steps take. Where the build
-checks types and only the check can build the new type, a step that takes it can't run without the
-check. Whether the check's facts are still true when the step runs depends on the data they are
-about.
+A check is a read whose result a later step uses, whether or not it can refuse. A check validates
+when it returns nothing, or hands back the type it was given. What it learned is lost, and every
+later step that relies on it holds "the check passed" as informal knowledge. A check parses when it
+returns what it learned in a new type that later steps take. Where the build checks types and only
+the check can build the new type, a step that takes it can't run without the check. Whether the
+check's facts are still true when the step runs depends on the data they are about.
 
 - A later step relies on a check when, without it, the step could get input its contract rules
   out. The check's facts are then the step's precondition. A check that only decides whether the
@@ -240,7 +243,7 @@ files to open when they look for a decision or a place for new code.
 - Judge a name against its siblings, the other names a reader picks between at the same level. A
   parent's name covers its children, and it passes when it rules out what its siblings hold.
 - When no name passes, the code holds several decisions, or one decision the domain has no word
-  for yet. If a plausible change to one part leaves the others alone, they are separate
+  for yet. If the changes you expect to one part leave the others alone, they are separate
   decisions. Split them until each part has a name that passes. If they change together, name
   the concept and add the term to the glossary.
 - Take names from the glossary, the vocabulary that developers and domain experts share and keep
@@ -330,7 +333,9 @@ No visibility opens an item to one sibling only. `pub(super)` opens it to the pa
 subtree, and `pub(in path)` accepts only an ancestor. So a keeper that must be the only caller of a
 command picks its tool by where the command lives. No tool restricts an item to one function, only
 to a module. Inside that module, which code may call or build it is informal knowledge, acceptable
-where its locality is high.
+where its locality is high. Likewise, every branch of a function reaches all the function takes.
+Which branch writes which owner is informal knowledge too, and a branch whose writes should be
+formal becomes a function that takes only them.
 
 - Visibility on a field restricts reach. Visibility on a command restricts the command. A `&mut`
   lends every command on the owner that the borrower can see. To lend fewer, lend a type that
