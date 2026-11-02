@@ -175,12 +175,12 @@ type that holds the data privately and offers only those commands.
 
 ### Parse, don't validate
 
-A check validates when it returns nothing, or hands back the type it was given. What it learned is
-lost, and every later step that relies on it holds "the check passed" as informal knowledge. A
-check parses when it returns what it learned in a new type that later steps take. Where the build
-checks types and only the check can build the new type, a step that takes it can't run without the
-check. Whether the check's facts are still true when the step runs depends on the data they are
-about.
+A check is a read whose result a later step uses, whether or not it can refuse. A check validates
+when it returns nothing, or hands back the type it was given. What it learned is lost, and every
+later step that relies on it holds "the check passed" as informal knowledge. A check parses when it
+returns what it learned in a new type that later steps take. Where the build checks types and only
+the check can build the new type, a step that takes it can't run without the check. Whether the
+check's facts are still true when the step runs depends on the data they are about.
 
 - A later step relies on a check when, without it, the step could get input its contract rules
   out. The check's facts are then the step's precondition. A check that only decides whether the
