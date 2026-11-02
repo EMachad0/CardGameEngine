@@ -1,6 +1,6 @@
 # Knife Juggler reacts to summons, and minions summoned together hear each other
 
-Status: ready-for-agent
+Status: resolved
 Category: enhancement
 Type: task
 Blocked by: 01
@@ -46,3 +46,7 @@ With no enemy minions, a knife can only hit the enemy hero.
 
 - The tests pass, and every existing test passes, changed at most in event and history names.
 - The checks pass.
+
+## Answer
+
+https://github.com/EMachad0/CardGameEngine/pull/88
