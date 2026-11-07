@@ -251,17 +251,21 @@ impl Game {
             ),
             Step::Action(LegalAction::Play(playable)) => {
                 match play::prepare(self.cards(), &self.player_input, playable) {
-                    PreparedPlay::Minion { summon, play } => {
+                    PreparedPlay::Minion { card, play } => {
+                        let player_id = card.player_id();
+                        let object_id = self.zones.take_from_hand(card);
                         next = Some(Step::Play(play));
-                        vec![play::summon(summon, &mut self.zones)]
+                        vec![zone_move::summon(player_id, object_id, &mut self.zones)]
                     }
-                    PreparedPlay::Spell(spell) => vec![play::play_spell(
-                        spell,
-                        &mut self.players,
-                        &mut self.player_input,
-                        &mut self.zones,
-                        pending,
-                    )],
+                    PreparedPlay::Spell { card, play } => {
+                        self.zones.take_from_hand(card);
+                        vec![play::play(
+                            play,
+                            &mut self.players,
+                            &mut self.player_input,
+                            pending,
+                        )]
+                    }
                 }
             }
             Step::Play(step) => vec![play::play(

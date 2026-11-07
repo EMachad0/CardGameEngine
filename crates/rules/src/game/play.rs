@@ -10,10 +10,9 @@ use crate::game::player::Players;
 use crate::game::player_input::awaiting::{PlayerInput, WasAwaitingTargeting};
 use crate::game::reporting::Report;
 use crate::game::stats::cost;
-use crate::game::zone_move;
 use crate::ids::PlayerId;
 use crate::target::Bound;
-use crate::zones::{InHand, WasInHand, Zones};
+use crate::zones::{InHand, WasInHand};
 
 pub(super) struct Play {
     player_id: PlayerId,
@@ -29,19 +28,10 @@ pub(super) struct WasPlayable {
 
 /// A card about to be played, with what its steps write, all read before the first write.
 pub(super) enum PreparedPlay {
-    Minion { summon: SummonStep, play: PlayStep },
-    Spell(SpellStep),
-}
-
-/// A played minion that a summon step moves from the hand to the board.
-pub(super) struct SummonStep {
-    card: WasInHand,
-}
-
-/// A spell that its one step takes from the hand and plays.
-pub(super) struct SpellStep {
-    card: WasInHand,
-    play: PlayStep,
+    /// Leaves the hand for the board in its summon step, before its play step.
+    Minion { card: WasInHand, play: PlayStep },
+    /// Leaves the hand in its play step.
+    Spell { card: WasInHand, play: PlayStep },
 }
 
 /// What a play step writes: the cost, the targeting it closes and the bound play effects.
@@ -116,32 +106,10 @@ pub(super) fn prepare(
         play_effects,
     };
     if card_def.has_board_presence() {
-        PreparedPlay::Minion {
-            summon: SummonStep { card },
-            play,
-        }
+        PreparedPlay::Minion { card, play }
     } else {
-        PreparedPlay::Spell(SpellStep { card, play })
+        PreparedPlay::Spell { card, play }
     }
-}
-
-pub(super) fn summon(step: SummonStep, zones: &mut Zones) -> Report {
-    let SummonStep { card } = step;
-    let player_id = card.player_id();
-    let object_id = zones.take_from_hand(card);
-    zone_move::summon(player_id, object_id, zones)
-}
-
-pub(super) fn play_spell(
-    step: SpellStep,
-    players: &mut Players,
-    player_input: &mut PlayerInput,
-    zones: &mut Zones,
-    pending: &mut PendingEffects,
-) -> Report {
-    let SpellStep { card, play: step } = step;
-    zones.take_from_hand(card);
-    play(step, players, player_input, pending)
 }
 
 /// If the card is played from the player's targeting, closes it.
