@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0025
 ---
 
 # A step's pending effects are pushed after its checkpoint
