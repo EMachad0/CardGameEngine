@@ -8,7 +8,7 @@ Category: enhancement
 - When a card is playable, and which targeting it is played from: `WasPlayable::new` and
   `WasPlayable::with_targeting`, which `legal_actions.rs` asks.
 - What a play reads before its first write, which steps it takes and what each writes: `prepare`,
-  `PreparedPlay`, `PlayStep`, `first_step` and `play`.
+  `PreparedPlay`, its step types, `summon`, `play_spell` and `play`.
 
 The play steps changed repeatedly on PR #89 without touching `WasPlayable`. Playability rules the
 domain may add, such as a full board or a card's own play condition, leave the steps alone.
