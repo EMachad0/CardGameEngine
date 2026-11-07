@@ -28,13 +28,11 @@ to pi-subagents and reports back here.
 
 ## Start
 
-From origin/main:
+Write the prompt to `/tmp/<branch>.prompt.md` with the write tool. A heredoc inside `$(...)`
+breaks on an apostrophe in macOS bash 3.2. Then, from origin/main:
 
 ```bash
-just wk::new_ui <branch> --no-focus --prompt "$(cat <<'EOF'
-<prompt>
-EOF
-)"
+just wk::new_ui <branch> --no-focus --prompt "$(cat /tmp/<branch>.prompt.md)"
 ```
 
 From another base, create the worktree with
