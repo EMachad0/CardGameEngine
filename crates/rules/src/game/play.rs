@@ -10,6 +10,7 @@ use crate::game::player::Players;
 use crate::game::player_input::awaiting::{PlayerInput, WasAwaitingTargeting};
 use crate::game::reporting::Report;
 use crate::game::stats::cost;
+use crate::game::zone_move;
 use crate::ids::PlayerId;
 use crate::target::Bound;
 use crate::zones::{InHand, WasInHand, Zones};
@@ -26,10 +27,22 @@ pub(super) struct WasPlayable {
     awaiting_targeting: Option<WasAwaitingTargeting>,
 }
 
-/// A card about to be played, with its cost and its bound play effects, both read before the
-/// first write.
-pub(super) struct PreparedPlay {
-    card: WasInHand,
+/// A card about to be played, with what its steps write, all read before the first write.
+pub(super) enum PreparedPlay {
+    /// Summoned from the hand before its play step.
+    Minion {
+        card: WasInHand,
+        play: PlayStep,
+    },
+    Spell(PlayStep),
+}
+
+/// What a play step writes: the cost, the targeting it closes and the bound play effects.
+pub(super) struct PlayStep {
+    player_id: PlayerId,
+    object_id: ObjectId,
+    /// A spell's card, which leaves the hand in its play step.
+    spell: Option<WasInHand>,
     awaiting_targeting: Option<WasAwaitingTargeting>,
     cost: u8,
     play_effects: Vec<Effect<Bound>>,
@@ -54,10 +67,6 @@ impl WasPlayable {
             awaiting_targeting: Some(awaiting_targeting),
             ..self
         }
-    }
-
-    pub(super) fn player_id(&self) -> PlayerId {
-        self.card.player_id()
     }
 
     pub(super) fn object_id(&self) -> ObjectId {
@@ -87,42 +96,62 @@ pub(super) fn prepare(
     let targeting = awaiting_targeting
         .as_ref()
         .map(|awaiting_targeting| player_input.still_targeting(awaiting_targeting));
-    let play_effects = cards
-        .card_def(card.object_id())
-        .bind_play_effects(|target_id| {
-            targeting
-                .expect("a card that declares targets should be played from its targeting")
-                .targeted_for(target_id)
-                .collect()
-        });
-    PreparedPlay {
-        card,
+    let card_def = cards.card_def(card.object_id());
+    let play_effects = card_def.bind_play_effects(|target_id| {
+        targeting
+            .expect("a card that declares targets should be played from its targeting")
+            .targeted_for(target_id)
+            .collect()
+    });
+    let (player_id, object_id) = (card.player_id(), card.object_id());
+    let play = |spell| PlayStep {
+        player_id,
+        object_id,
+        spell,
         awaiting_targeting,
         cost,
         play_effects,
+    };
+    if card_def.has_board_presence() {
+        PreparedPlay::Minion {
+            play: play(None),
+            card,
+        }
+    } else {
+        PreparedPlay::Spell(play(Some(card)))
     }
+}
+
+/// Moves a played minion from the hand to the board.
+pub(super) fn summon(card: WasInHand, zones: &mut Zones) -> Report {
+    let player_id = card.player_id();
+    let object_id = zones.take_from_hand(card);
+    zone_move::summon(player_id, object_id, zones)
 }
 
 /// If the card is played from the player's targeting, closes it.
 pub(super) fn play(
-    prepared: PreparedPlay,
+    step: PlayStep,
     players: &mut Players,
     player_input: &mut PlayerInput,
     zones: &mut Zones,
     pending: &mut PendingEffects,
 ) -> Report {
-    let PreparedPlay {
-        card,
+    let PlayStep {
+        player_id,
+        object_id,
+        spell,
         awaiting_targeting,
         cost,
         play_effects,
-    } = prepared;
-    let player_id = card.player_id();
+    } = step;
     players.mana_mut(player_id).pay(cost);
     if let Some(awaiting_targeting) = awaiting_targeting {
         player_input.commit_targeting(awaiting_targeting);
     }
-    let object_id = zones.take_from_hand(card);
+    if let Some(spell) = spell {
+        zones.take_from_hand(spell);
+    }
     if !play_effects.is_empty() {
         pending.push(object_id, play_effects);
     }

@@ -14,6 +14,8 @@ pub enum Side {
 pub struct CardFilter {
     pub kind: EnumSet<CardKind>,
     pub side: EnumSet<Side>,
+    /// Whether the object whose text holds the filter can pass it.
+    pub include_itself: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -50,8 +52,19 @@ impl CharacterFilter {
 }
 
 impl CardFilter {
-    pub(crate) fn passes(&self, asking: PlayerId, owner: PlayerId, kind: CardKind) -> bool {
-        fulfill_side_filter(self.side, asking, owner) && self.kind.contains(kind)
+    /// `itself` is the object whose text holds the filter. `owner` and `kind` belong to
+    /// `object_id`.
+    pub(crate) fn passes(
+        &self,
+        asking: PlayerId,
+        itself: ObjectId,
+        object_id: ObjectId,
+        owner: PlayerId,
+        kind: CardKind,
+    ) -> bool {
+        (self.include_itself || object_id != itself)
+            && fulfill_side_filter(self.side, asking, owner)
+            && self.kind.contains(kind)
     }
 }
 
@@ -94,6 +107,15 @@ mod tests {
         CardFilter {
             kind: CardKind::Spell.into(),
             side: Side::Friendly.into(),
+            include_itself: true,
+        }
+    }
+
+    fn other_cards() -> CardFilter {
+        CardFilter {
+            kind: EnumSet::all(),
+            side: EnumSet::all(),
+            include_itself: false,
         }
     }
 
@@ -148,16 +170,43 @@ mod tests {
 
     #[test]
     fn a_card_filter_passes_a_card_of_its_kind_and_side() {
-        assert!(friendly_spells().passes(ME, ME, CardKind::Spell));
+        let [itself, other] = ids();
+
+        assert!(friendly_spells().passes(ME, itself, other, ME, CardKind::Spell));
     }
 
     #[test]
     fn a_card_filter_rejects_a_card_of_another_side() {
-        assert!(!friendly_spells().passes(ME, THEM, CardKind::Spell));
+        let [itself, other] = ids();
+
+        assert!(!friendly_spells().passes(ME, itself, other, THEM, CardKind::Spell));
     }
 
     #[test]
     fn a_card_filter_rejects_a_card_of_another_kind() {
-        assert!(!friendly_spells().passes(ME, ME, CardKind::Minion));
+        let [itself, other] = ids();
+
+        assert!(!friendly_spells().passes(ME, itself, other, ME, CardKind::Minion));
+    }
+
+    #[test]
+    fn a_card_filter_that_includes_itself_passes_the_object_whose_text_holds_it() {
+        let [itself] = ids();
+
+        assert!(friendly_spells().passes(ME, itself, itself, ME, CardKind::Spell));
+    }
+
+    #[test]
+    fn a_card_filter_that_leaves_itself_out_rejects_the_object_whose_text_holds_it() {
+        let [itself] = ids();
+
+        assert!(!other_cards().passes(ME, itself, itself, ME, CardKind::Minion));
+    }
+
+    #[test]
+    fn a_card_filter_that_leaves_itself_out_passes_another_card() {
+        let [itself, other] = ids();
+
+        assert!(other_cards().passes(ME, itself, other, ME, CardKind::Minion));
     }
 }

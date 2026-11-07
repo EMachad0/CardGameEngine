@@ -439,6 +439,21 @@ fn with_herald_on_the_board_heralds_draw_resolves_before_couriers_play_effect() 
 }
 
 #[test]
+fn a_played_herald_draws_no_card_for_its_own_play() {
+    let mut b = boards(&[], &[], &[HERALD], 2);
+    let herald = in_hand(&b.game, b.p0, HERALD);
+
+    let events = observe(&mut b.game, b.p0, play(herald)).events();
+
+    assert_eq!(
+        draws(&events, b.p0),
+        0,
+        "Herald is on the board when its play is matched, and its filter leaves it out:\n{}",
+        listing(&events)
+    );
+}
+
+#[test]
 fn dispatch_runs_couriers_summon_reaction_and_not_its_play_effect() {
     let mut b = boards(&[], &[], &[DISPATCH], 2);
     let dispatch = in_hand(&b.game, b.p0, DISPATCH);

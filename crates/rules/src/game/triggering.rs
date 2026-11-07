@@ -117,7 +117,7 @@ fn fulfill_trigger_pattern(
                 return false;
             };
             let kind = cards.card_def(*object_id).card_kind();
-            card_filter.passes(trigger_owner, *player_id, kind)
+            card_filter.passes(trigger_owner, trigger_object, *object_id, *player_id, kind)
         }
         TriggerPattern::Damaged(subject) => {
             let Event::Damaged { target, .. } = event else {

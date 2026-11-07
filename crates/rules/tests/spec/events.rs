@@ -218,19 +218,27 @@ fn a_checkpoint_follows_a_card_leaving_the_hand() {
 
         let recorder = observe(&mut game, p0, play(card));
 
+        let leaving = if def == RECRUIT {
+            Event::Summoned {
+                player_id: p0,
+                object_id: card,
+            }
+        } else {
+            Event::Played {
+                player_id: p0,
+                object_id: card,
+            }
+        };
         assert_eq!(
             event_steps(&recorder).first(),
-            Some(&vec![Event::Played {
-                player_id: p0,
-                object_id: card
-            }]),
-            "{def:?}"
+            Some(&vec![leaving]),
+            "a spell leaves the hand in its play, a minion in its summon: {def:?}"
         );
     }
 }
 
 #[test]
-fn a_minions_summon_is_reported_after_its_play() {
+fn a_minions_summon_is_reported_before_its_play() {
     let mut game = Game::with_deck_order(0, [deck_with_top(&[RECRUIT]), deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 2);
@@ -241,11 +249,11 @@ fn a_minions_summon_is_reported_after_its_play() {
     assert_eq!(
         recorder.events(),
         [
-            Event::Played {
+            Event::Summoned {
                 player_id: p0,
                 object_id: recruit
             },
-            Event::Summoned {
+            Event::Played {
                 player_id: p0,
                 object_id: recruit
             },

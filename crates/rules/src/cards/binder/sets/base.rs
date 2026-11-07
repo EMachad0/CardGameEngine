@@ -458,6 +458,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                     pattern: TriggerPattern::Played(CardFilter {
                         kind: EnumSet::only(CardKind::Spell),
                         side: EnumSet::only(Side::Friendly),
+                        include_itself: true,
                     }),
                     effects: vec![Effect::Players {
                         selector: PlayerSelector::Owner,
@@ -1067,6 +1068,7 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                     pattern: TriggerPattern::Played(CardFilter {
                         kind: EnumSet::only(CardKind::Minion),
                         side: EnumSet::only(Side::Friendly),
+                        include_itself: false,
                     }),
                     effects: vec![Effect::Players {
                         selector: PlayerSelector::Owner,
