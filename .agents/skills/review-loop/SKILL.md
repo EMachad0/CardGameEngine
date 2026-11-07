@@ -91,8 +91,7 @@ against `docs/conventions/dependencies.md`.
 
 The ledger has one line per finding of the round: its lane, `path:line`, what it found, the three
 labels, and the outcome. The outcome is fixed, a nit, filed as `<issue path>`, waiting for the
-user, dropped because the user asked otherwise, or refuted with the reason. A last line gives the
-three judges' scores.
+user, dropped because the user asked otherwise, or refuted with the reason.
 
 ## Stop
 
@@ -115,8 +114,6 @@ The report, in this order:
    why the loop stopped early, with the evidence.
 2. The rounds run, and why the loop stopped.
 3. What each round fixed, one line per commit.
-4. The judges' scores, as a table with a row per judge and a column per round. A round without
-   judges reads `not judged`.
-5. The nits, one line each, with `path:line` and the three labels.
-6. The issues filed.
-7. The refuted and dropped findings, one line each, with the reason.
+4. The nits, one line each, with `path:line` and the three labels.
+5. The issues filed.
+6. The refuted and dropped findings, one line each, with the reason.

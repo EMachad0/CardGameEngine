@@ -19,15 +19,9 @@ Give each finding one label:
 Judge what the flaw costs, not how its lane worded it. A finding that fits nit is a nit, whatever
 its lane called it. When torn between two labels, pick the lower one.
 
-## Score
-
-Score the change in the review range out of 10. A 10 means you would merge it as it stands.
-
 ## Report
 
 ```markdown
-Score: <n>/10
-
 ### <the finding's title, as given>
 
 - Reason: <one sentence: what the flaw costs, and who pays it>
