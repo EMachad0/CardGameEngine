@@ -43,9 +43,9 @@ pushed every step's pending effects after its checkpoint so the play's could wai
 - The reactions to the play find the minion on the board and can change it, as Hearthstone's
   Hobgoblin does.
 - A new trigger pattern has to be checked against every step that reports its event. No pattern
-  matches a draw, a turn change, a reveal, a zone move or a board entry, and damage changes nothing
-  a match reads, so the steps that report several of these are safe. A pattern on a board entry
-  would let the second minion one summon effect makes hear the first one's entry.
+  matches a draw, a turn change, a reveal or a zone move, and damage changes nothing a match reads,
+  so the steps that report several of these are safe. The minions one step summons hear each
+  other's summons, as ADR 0022 decides.
 - No step takes the observer. ADR 0006's decision stands, but not its consequence that every
   function that can report takes the observer.
 
