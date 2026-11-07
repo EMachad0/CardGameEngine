@@ -28,9 +28,19 @@ pub(super) struct WasPlayable {
 }
 
 /// A card about to be played, with what its steps write, all read before the first write.
-pub(super) struct PreparedPlay {
+pub(super) enum PreparedPlay {
+    Minion { summon: SummonStep, play: PlayStep },
+    Spell(SpellStep),
+}
+
+/// A played minion that a summon step moves from the hand to the board.
+pub(super) struct SummonStep {
     card: WasInHand,
-    enters_board: bool,
+}
+
+/// A spell that its one step takes from the hand and plays.
+pub(super) struct SpellStep {
+    card: WasInHand,
     play: PlayStep,
 }
 
@@ -98,40 +108,40 @@ pub(super) fn prepare(
             .targeted_for(target_id)
             .collect()
     });
-    PreparedPlay {
-        enters_board: card_def.has_board_presence(),
-        play: PlayStep {
-            player_id: card.player_id(),
-            object_id: card.object_id(),
-            awaiting_targeting,
-            cost,
-            play_effects,
-        },
-        card,
+    let play = PlayStep {
+        player_id: card.player_id(),
+        object_id: card.object_id(),
+        awaiting_targeting,
+        cost,
+        play_effects,
+    };
+    if card_def.has_board_presence() {
+        PreparedPlay::Minion {
+            summon: SummonStep { card },
+            play,
+        }
+    } else {
+        PreparedPlay::Spell(SpellStep { card, play })
     }
 }
 
-/// A play's first step. A minion's moves it from the hand to the board and returns its play step,
-/// to take next. A spell's takes it from the hand and is its play step.
-pub(super) fn first_step(
-    prepared: PreparedPlay,
+pub(super) fn summon(step: SummonStep, zones: &mut Zones) -> Report {
+    let SummonStep { card } = step;
+    let player_id = card.player_id();
+    let object_id = zones.take_from_hand(card);
+    zone_move::summon(player_id, object_id, zones)
+}
+
+pub(super) fn play_spell(
+    step: SpellStep,
     players: &mut Players,
     player_input: &mut PlayerInput,
     zones: &mut Zones,
     pending: &mut PendingEffects,
-) -> (Report, Option<PlayStep>) {
-    let PreparedPlay {
-        card,
-        enters_board,
-        play: step,
-    } = prepared;
-    let player_id = card.player_id();
-    let object_id = zones.take_from_hand(card);
-    if enters_board {
-        (zone_move::summon(player_id, object_id, zones), Some(step))
-    } else {
-        (play(step, players, player_input, pending), None)
-    }
+) -> Report {
+    let SpellStep { card, play: step } = step;
+    zones.take_from_hand(card);
+    play(step, players, player_input, pending)
 }
 
 /// If the card is played from the player's targeting, closes it.

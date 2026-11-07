@@ -10,7 +10,7 @@ use crate::cards::object::{ObjectBag, ObjectId};
 use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::{Advance, EffectStack, FinishedPick, NextEffect, PendingEffects};
 use crate::game::legal_actions::LegalAction;
-use crate::game::play::{self, PlayStep};
+use crate::game::play::{self, PlayStep, PreparedPlay};
 use crate::game::player::{Player, Players};
 use crate::game::player_input::awaiting::{Awaiting, PlayerInput, awaiting};
 use crate::game::reporting::Report;
@@ -56,7 +56,7 @@ enum Step {
     },
     StartTurn,
     Action(LegalAction),
-    /// A minion's play step, which its summon step returns.
+    /// A minion's play step, which follows its summon step.
     Play(PlayStep),
     Effect(NextEffect),
     FinishPicking(FinishedPick),
@@ -209,28 +209,30 @@ impl Game {
         )
     }
 
-    /// Makes the step's writes, reports what it did, pushes the pending effects it added, then
-    /// lets the observer read the views. Then takes the step its action takes next, if any.
-    /// `false`, with no report and no checkpoint, if `write` found no step to take.
+    /// Takes the step, then each step its action takes next. Each makes its writes, reports what
+    /// it did, pushes the pending effects it added, then lets the observer read the views. `false`,
+    /// with no report and no checkpoint, if `write` found no step to take.
     fn take_step(&mut self, step: Step, obs: &mut impl Observer) -> bool {
-        let mut pending = PendingEffects::default();
-        let Some(Written { reports, next }) = self.write(step, &mut pending) else {
-            return false;
-        };
-        for report in reports {
-            self.report(report, &mut pending, obs);
+        let (mut next, mut took) = (Some(step), false);
+        while let Some(step) = next {
+            let mut pending = PendingEffects::default();
+            let Some(written) = self.write(step, &mut pending) else {
+                break;
+            };
+            for report in written.reports {
+                self.report(report, &mut pending, obs);
+            }
+            self.effect_stack.push_all(pending);
+            obs.checkpoint(Views::new(self));
+            (next, took) = (written.next, true);
         }
-        self.effect_stack.push_all(pending);
-        obs.checkpoint(Views::new(self));
-        if let Some(next) = next {
-            self.take_step(next, obs);
-        }
-        true
+        took
     }
 
     /// Makes the step's writes, lending it what it reads and writes. `None` for a death pass that
     /// finds no dead, or a decision that doesn't end the game.
     fn write(&mut self, step: Step, pending: &mut PendingEffects) -> Option<Written> {
+        let mut next = None;
         let reports = match step {
             Step::Draw { player_id, count } => {
                 zone_move::draw(player_id, count, &mut self.zones, &mut self.objects)
@@ -248,18 +250,19 @@ impl Game {
                 &mut self.objects,
             ),
             Step::Action(LegalAction::Play(playable)) => {
-                let prepared = play::prepare(self.cards(), &self.player_input, playable);
-                let (report, next) = play::first_step(
-                    prepared,
-                    &mut self.players,
-                    &mut self.player_input,
-                    &mut self.zones,
-                    pending,
-                );
-                return Some(Written {
-                    reports: vec![report],
-                    next: next.map(Step::Play),
-                });
+                match play::prepare(self.cards(), &self.player_input, playable) {
+                    PreparedPlay::Minion { summon, play } => {
+                        next = Some(Step::Play(play));
+                        vec![play::summon(summon, &mut self.zones)]
+                    }
+                    PreparedPlay::Spell(spell) => vec![play::play_spell(
+                        spell,
+                        &mut self.players,
+                        &mut self.player_input,
+                        &mut self.zones,
+                        pending,
+                    )],
+                }
             }
             Step::Play(step) => vec![play::play(
                 step,
@@ -312,10 +315,7 @@ impl Game {
             }
             Step::DecideOutcome => vec![Report::GameEnded(self.standings.decide()?)],
         };
-        Some(Written {
-            reports,
-            next: None,
-        })
+        Some(Written { reports, next })
     }
 
     fn report(&mut self, report: Report, pending: &mut PendingEffects, obs: &mut impl Observer) {
