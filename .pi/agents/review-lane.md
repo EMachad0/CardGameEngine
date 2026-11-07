@@ -1,6 +1,6 @@
 ---
 name: review-lane
-description: Reviews one lane of a change for the review loop, or verifies one finding, without changing anything
+description: Reviews one lane of a change for the review loop, verifies one finding, or judges a round's findings, without changing anything
 tools: read, bash, grep, find, ls
 ---
 
