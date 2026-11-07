@@ -31,10 +31,15 @@ pub(super) struct WasPlayable {
 pub(super) enum PreparedPlay {
     /// Summoned from the hand before its play step.
     Minion {
-        card: WasInHand,
+        summon: SummonStep,
         play: PlayStep,
     },
     Spell(PlayStep),
+}
+
+/// A minion that a summon step moves from the hand to the board.
+pub(super) struct SummonStep {
+    card: WasInHand,
 }
 
 /// What a play step writes: the cost, the targeting it closes and the bound play effects.
@@ -114,16 +119,16 @@ pub(super) fn prepare(
     };
     if card_def.has_board_presence() {
         PreparedPlay::Minion {
+            summon: SummonStep { card },
             play: play(None),
-            card,
         }
     } else {
         PreparedPlay::Spell(play(Some(card)))
     }
 }
 
-/// Moves a played minion from the hand to the board.
-pub(super) fn summon(card: WasInHand, zones: &mut Zones) -> Report {
+pub(super) fn summon(step: SummonStep, zones: &mut Zones) -> Report {
+    let SummonStep { card } = step;
     let player_id = card.player_id();
     let object_id = zones.take_from_hand(card);
     zone_move::summon(player_id, object_id, zones)

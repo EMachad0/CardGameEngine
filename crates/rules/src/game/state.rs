@@ -12,7 +12,7 @@ use crate::game::effect_stack::{
     Advance, EffectStack, FinishedPick, NextEffect, PendingEffects, WasAwaitingPicking,
 };
 use crate::game::legal_actions::LegalAction;
-use crate::game::play::{PlayStep, PreparedPlay, WasPlayable};
+use crate::game::play::{PlayStep, PreparedPlay, SummonStep, WasPlayable};
 use crate::game::player::{Player, Players};
 use crate::game::player_input::awaiting::{
     Awaiting, PlayerInput, WasAwaitingNothing, WasAwaitingTargeting, awaiting,
@@ -31,7 +31,7 @@ use crate::outcome::Outcome;
 use crate::rng::Rng;
 use crate::target::TargetId;
 use crate::turn::TurnOrder;
-use crate::zones::{WasInHand, Zones};
+use crate::zones::Zones;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Game {
@@ -55,10 +55,24 @@ pub enum ApplyError {
 
 /// The writes one step makes, between two checkpoints.
 enum Step {
-    Draw { player_id: PlayerId, count: u8 },
+    Draw {
+        player_id: PlayerId,
+        count: u8,
+    },
     StartTurn,
-    Action(ActionStep),
-    Summon(WasInHand),
+    EndTurn,
+    StartTargeting {
+        object_id: ObjectId,
+        awaiting_nothing: WasAwaitingNothing,
+    },
+    Target {
+        awaiting_targeting: WasAwaitingTargeting,
+        target_id: TargetId,
+        object_id: ObjectId,
+    },
+    Cancel(WasAwaitingTargeting),
+    Pick(WasAwaitingPicking),
+    Summon(SummonStep),
     Play(PlayStep),
     Effect(NextEffect),
     FinishPicking(FinishedPick),
@@ -66,8 +80,9 @@ enum Step {
     DecideOutcome,
 }
 
-/// The steps an action takes, besides playing a card.
+/// What an action does. Playing a card takes its own steps, and the rest take one step each.
 pub(super) enum ActionStep {
+    Play(WasPlayable),
     EndTurn,
     StartTargeting {
         object_id: ObjectId,
@@ -251,7 +266,7 @@ impl Game {
                 &mut self.zones,
                 &mut self.objects,
             ),
-            Step::Action(ActionStep::EndTurn) => turn_change::end_turn(
+            Step::EndTurn => turn_change::end_turn(
                 &mut self.turn_order,
                 &mut self.players,
                 &mut self.zones,
@@ -265,28 +280,28 @@ impl Game {
                 &mut self.zones,
                 pending,
             )],
-            Step::Action(ActionStep::StartTargeting {
+            Step::StartTargeting {
                 object_id,
                 awaiting_nothing,
-            }) => {
+            } => {
                 self.player_input
                     .start_targeting(awaiting_nothing, object_id);
                 Vec::new()
             }
-            Step::Action(ActionStep::Target {
+            Step::Target {
                 awaiting_targeting,
                 target_id,
                 object_id,
-            }) => {
+            } => {
                 self.player_input
                     .target(awaiting_targeting, object_id, target_id);
                 Vec::new()
             }
-            Step::Action(ActionStep::Cancel(awaiting_targeting)) => {
+            Step::Cancel(awaiting_targeting) => {
                 self.player_input.cancel(awaiting_targeting);
                 Vec::new()
             }
-            Step::Action(ActionStep::Pick(awaiting_picking)) => {
+            Step::Pick(awaiting_picking) => {
                 self.effect_stack.pick(awaiting_picking);
                 Vec::new()
             }
@@ -423,15 +438,37 @@ pub(super) struct Acting<'g, O> {
 
 impl<O: Observer> Acting<'_, O> {
     pub(super) fn take_step(&mut self, step: ActionStep) {
-        self.game.take_step(Step::Action(step), self.obs);
+        let step = match step {
+            ActionStep::Play(playable) => return self.play(playable),
+            ActionStep::EndTurn => Step::EndTurn,
+            ActionStep::StartTargeting {
+                object_id,
+                awaiting_nothing,
+            } => Step::StartTargeting {
+                object_id,
+                awaiting_nothing,
+            },
+            ActionStep::Target {
+                awaiting_targeting,
+                target_id,
+                object_id,
+            } => Step::Target {
+                awaiting_targeting,
+                target_id,
+                object_id,
+            },
+            ActionStep::Cancel(awaiting_targeting) => Step::Cancel(awaiting_targeting),
+            ActionStep::Pick(awaiting_picking) => Step::Pick(awaiting_picking),
+        };
+        self.game.take_step(step, self.obs);
     }
 
     /// Summons a minion before its play step, so the reactions to its play and its play effects
     /// resolve before the reactions to its summon.
-    pub(super) fn play(&mut self, playable: WasPlayable) {
+    fn play(&mut self, playable: WasPlayable) {
         match play::prepare(self.game.cards(), &self.game.player_input, playable) {
-            PreparedPlay::Minion { card, play } => {
-                self.game.take_step(Step::Summon(card), self.obs);
+            PreparedPlay::Minion { summon, play } => {
+                self.game.take_step(Step::Summon(summon), self.obs);
                 self.game.take_step(Step::Play(play), self.obs);
             }
             PreparedPlay::Spell(play) => {
