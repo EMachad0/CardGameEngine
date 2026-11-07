@@ -16,7 +16,7 @@ layout {
                 args "-lic" "bacon clippy-all"
             }
             pane focus=true command="$SHELL" {
-                args "-lic" "pi"
+                args "-lic" "if [ -f handoff.ignore.md ]; then pi \"$(cat handoff.ignore.md)\"; else pi; fi"
             }
         }
     }

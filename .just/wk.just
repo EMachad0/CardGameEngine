@@ -15,16 +15,22 @@ new branch:
     echo "==> Ready. 'just wk::list' to see it; 'just wk::zellij {{branch}}' for a dev tab."
 
 [doc("Create a worktree and open it in a zellij tab running the dev layout")]
-new_ui branch: (new branch) (zellij branch)
+[arg("focus", long="no-focus", value="false", help="Leave focus on the current tab")]
+[arg("prompt", long="prompt", help="Initial prompt for the tab's pi session")]
+new_ui branch focus="true" prompt="": (new branch) (zellij branch focus prompt)
 
 [doc("List all worktrees and their status")]
 list:
     @{{wt}} list
 
 [doc("Open an existing worktree in a zellij tab running the dev layout")]
-zellij branch:
+[arg("focus", long="no-focus", value="false", help="Leave focus on the current tab")]
+[arg("prompt", long="prompt", help="Initial prompt for the tab's pi session")]
+[positional-arguments]
+zellij branch focus="true" prompt="":
     #!/usr/bin/env bash
     set -euo pipefail
+    prompt="$3"
     if [ -z "${ZELLIJ_SESSION_NAME:-}" ]; then
         echo "Error: not inside a zellij session. Start zellij first."
         exit 1
@@ -34,7 +40,18 @@ zellij branch:
         echo "Error: no worktree for branch '{{branch}}'. Run 'just wk::new {{branch}}' first."
         exit 1
     fi
-    zellij action new-tab \
+    # The layout's pi pane takes this file as its initial prompt.
+    handoff="${worktree_path}/handoff.ignore.md"
+    if [ -n "${prompt}" ]; then
+        printf '%s\n' "${prompt}" > "${handoff}"
+    else
+        rm -f "${handoff}"
+    fi
+    focus_flag=""
+    if [ "{{focus}}" = "false" ]; then
+        focus_flag="--no-focus"
+    fi
+    zellij action new-tab ${focus_flag} \
         --layout "${worktree_path}/.zellij/layout.kdl" \
         --cwd "${worktree_path}" \
         --name "{{branch}}"
