@@ -29,7 +29,9 @@ siblings that `wk` expects.
 - `just wk::rm <branch>` removes one. Only when I ask.
 
 The shell stays in `main/`. In T3 Code, launch a thread bound to the new worktree as an existing
-worktree, give it the full task and hand me its link. Elsewhere, work in it by absolute path.
+worktree, give it the full task and hand me its link. Elsewhere, work in it by absolute path. In
+zellij, a task that needs its own worktree and my input goes to another pi session through the
+`delegate` skill.
 
 ## Required reading
 
@@ -126,6 +128,11 @@ Reviews a branch in parallel lanes, fixes the findings its judges pass, commits 
 then pushes and opens a pull request. AFK work always ends with it, in place of the `/code-review`
 step that `implement` names. It lives in `.agents/skills/review-loop/`, and its subagents are the
 agents under `.pi/`.
+
+### Delegate
+
+Starts a separate pi session in a new worktree and zellij tab for a task that needs its own
+worktree and my input. It lives in `.agents/skills/delegate/`.
 
 ### Issue tracker
 
