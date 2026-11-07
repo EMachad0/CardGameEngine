@@ -122,7 +122,7 @@ the pi extensions and agents under `.pi/`.
 
 ### Review loop
 
-Reviews a branch in parallel lanes, fixes the findings its verifiers confirm, commits each round,
+Reviews a branch in parallel lanes, fixes the findings its judges pass, commits each round,
 then pushes and opens a pull request. AFK work always ends with it, in place of the `/code-review`
 step that `implement` names. It lives in `.agents/skills/review-loop/`, and its subagents are the
 agents under `.pi/`.
