@@ -27,23 +27,17 @@ pub(super) struct WasPlayable {
     awaiting_targeting: Option<WasAwaitingTargeting>,
 }
 
-/// A card about to be played, with what its steps write, all read before the first write.
-pub(super) enum PreparedPlay {
-    /// Summoned from the hand before its play step.
-    Minion {
-        summon: SummonStep,
-        play: PlayStep,
-    },
-    Spell(PlayStep),
-}
+/// One of the steps a play takes. Only `prepare` builds one.
+pub(super) struct PlayingStep(Writes);
 
-/// A minion that a summon step moves from the hand to the board.
-pub(super) struct SummonStep {
-    card: WasInHand,
+enum Writes {
+    /// Moves a minion from the hand to the board.
+    Summon(WasInHand),
+    Play(PlayStep),
 }
 
 /// What a play step writes: the cost, the targeting it closes and the bound play effects.
-pub(super) struct PlayStep {
+struct PlayStep {
     player_id: PlayerId,
     object_id: ObjectId,
     /// A spell's card, which leaves the hand in its play step.
@@ -88,11 +82,13 @@ impl From<Play> for Event {
     }
 }
 
+/// The steps a play takes, in order: a minion's summon step, then its play step, or a spell's
+/// play step alone. Everything they write is read here, before the first write.
 pub(super) fn prepare(
     cards: CardsRef,
     player_input: &PlayerInput,
     playable: WasPlayable,
-) -> PreparedPlay {
+) -> impl Iterator<Item = PlayingStep> + use<> {
     let WasPlayable {
         card,
         awaiting_targeting,
@@ -109,7 +105,12 @@ pub(super) fn prepare(
             .collect()
     });
     let (player_id, object_id) = (card.player_id(), card.object_id());
-    let play = |spell| PlayStep {
+    let (summoned, spell) = if card_def.has_board_presence() {
+        (Some(card), None)
+    } else {
+        (None, Some(card))
+    };
+    let play = PlayStep {
         player_id,
         object_id,
         spell,
@@ -117,25 +118,33 @@ pub(super) fn prepare(
         cost,
         play_effects,
     };
-    if card_def.has_board_presence() {
-        PreparedPlay::Minion {
-            summon: SummonStep { card },
-            play: play(None),
-        }
-    } else {
-        PreparedPlay::Spell(play(Some(card)))
+    summoned
+        .map(|card| PlayingStep(Writes::Summon(card)))
+        .into_iter()
+        .chain([PlayingStep(Writes::Play(play))])
+}
+
+pub(super) fn write(
+    step: PlayingStep,
+    players: &mut Players,
+    player_input: &mut PlayerInput,
+    zones: &mut Zones,
+    pending: &mut PendingEffects,
+) -> Report {
+    match step.0 {
+        Writes::Summon(card) => summon(card, zones),
+        Writes::Play(step) => play(step, players, player_input, zones, pending),
     }
 }
 
-pub(super) fn summon(step: SummonStep, zones: &mut Zones) -> Report {
-    let SummonStep { card } = step;
+fn summon(card: WasInHand, zones: &mut Zones) -> Report {
     let player_id = card.player_id();
     let object_id = zones.take_from_hand(card);
     zone_move::summon(player_id, object_id, zones)
 }
 
 /// If the card is played from the player's targeting, closes it.
-pub(super) fn play(
+fn play(
     step: PlayStep,
     players: &mut Players,
     player_input: &mut PlayerInput,
