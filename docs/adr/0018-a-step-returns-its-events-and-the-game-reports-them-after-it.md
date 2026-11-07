@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0024
 ---
 
 # A step returns its events, and the game reports them after it
