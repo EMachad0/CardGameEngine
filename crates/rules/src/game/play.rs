@@ -27,21 +27,17 @@ pub(super) struct WasPlayable {
     awaiting_targeting: Option<WasAwaitingTargeting>,
 }
 
-/// One of the steps a play takes. Only `prepare` builds one.
-pub(super) struct PlayingStep(Writes);
-
-enum Writes {
-    /// Moves a minion from the hand to the board.
-    Summon(WasInHand),
-    Play(PlayStep),
+/// A card about to be played, with what its steps write, all read before the first write.
+pub(super) struct PreparedPlay {
+    card: WasInHand,
+    enters_board: bool,
+    play: PlayStep,
 }
 
 /// What a play step writes: the cost, the targeting it closes and the bound play effects.
-struct PlayStep {
+pub(super) struct PlayStep {
     player_id: PlayerId,
     object_id: ObjectId,
-    /// A spell's card, which leaves the hand in its play step.
-    spell: Option<WasInHand>,
     awaiting_targeting: Option<WasAwaitingTargeting>,
     cost: u8,
     play_effects: Vec<Effect<Bound>>,
@@ -82,13 +78,11 @@ impl From<Play> for Event {
     }
 }
 
-/// The steps a play takes, in order: a minion's summon step, then its play step, or a spell's
-/// play step alone. Everything they write is read here, before the first write.
 pub(super) fn prepare(
     cards: CardsRef,
     player_input: &PlayerInput,
     playable: WasPlayable,
-) -> impl Iterator<Item = PlayingStep> + use<> {
+) -> PreparedPlay {
     let WasPlayable {
         card,
         awaiting_targeting,
@@ -104,57 +98,52 @@ pub(super) fn prepare(
             .targeted_for(target_id)
             .collect()
     });
-    let (player_id, object_id) = (card.player_id(), card.object_id());
-    let (summoned, spell) = if card_def.has_board_presence() {
-        (Some(card), None)
-    } else {
-        (None, Some(card))
-    };
-    let play = PlayStep {
-        player_id,
-        object_id,
-        spell,
-        awaiting_targeting,
-        cost,
-        play_effects,
-    };
-    summoned
-        .map(|card| PlayingStep(Writes::Summon(card)))
-        .into_iter()
-        .chain([PlayingStep(Writes::Play(play))])
+    PreparedPlay {
+        enters_board: card_def.has_board_presence(),
+        play: PlayStep {
+            player_id: card.player_id(),
+            object_id: card.object_id(),
+            awaiting_targeting,
+            cost,
+            play_effects,
+        },
+        card,
+    }
 }
 
-pub(super) fn write(
-    step: PlayingStep,
+/// A play's first step. A minion's moves it from the hand to the board and returns its play step,
+/// to take next. A spell's takes it from the hand and is its play step.
+pub(super) fn first_step(
+    prepared: PreparedPlay,
     players: &mut Players,
     player_input: &mut PlayerInput,
     zones: &mut Zones,
     pending: &mut PendingEffects,
-) -> Report {
-    match step.0 {
-        Writes::Summon(card) => summon(card, zones),
-        Writes::Play(step) => play(step, players, player_input, zones, pending),
+) -> (Report, Option<PlayStep>) {
+    let PreparedPlay {
+        card,
+        enters_board,
+        play: step,
+    } = prepared;
+    let player_id = card.player_id();
+    let object_id = zones.take_from_hand(card);
+    if enters_board {
+        (zone_move::summon(player_id, object_id, zones), Some(step))
+    } else {
+        (play(step, players, player_input, pending), None)
     }
 }
 
-fn summon(card: WasInHand, zones: &mut Zones) -> Report {
-    let player_id = card.player_id();
-    let object_id = zones.take_from_hand(card);
-    zone_move::summon(player_id, object_id, zones)
-}
-
 /// If the card is played from the player's targeting, closes it.
-fn play(
+pub(super) fn play(
     step: PlayStep,
     players: &mut Players,
     player_input: &mut PlayerInput,
-    zones: &mut Zones,
     pending: &mut PendingEffects,
 ) -> Report {
     let PlayStep {
         player_id,
         object_id,
-        spell,
         awaiting_targeting,
         cost,
         play_effects,
@@ -162,9 +151,6 @@ fn play(
     players.mana_mut(player_id).pay(cost);
     if let Some(awaiting_targeting) = awaiting_targeting {
         player_input.commit_targeting(awaiting_targeting);
-    }
-    if let Some(spell) = spell {
-        zones.take_from_hand(spell);
     }
     if !play_effects.is_empty() {
         pending.push(object_id, play_effects);

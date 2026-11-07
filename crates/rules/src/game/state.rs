@@ -8,15 +8,11 @@ use crate::cards::binder::def_id::DefId;
 use crate::cards::binder::store::Binder;
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::game::cards_ref::CardsRef;
-use crate::game::effect_stack::{
-    Advance, EffectStack, FinishedPick, NextEffect, PendingEffects, WasAwaitingPicking,
-};
+use crate::game::effect_stack::{Advance, EffectStack, FinishedPick, NextEffect, PendingEffects};
 use crate::game::legal_actions::LegalAction;
-use crate::game::play::{self, PlayingStep, WasPlayable};
+use crate::game::play::{self, PlayStep};
 use crate::game::player::{Player, Players};
-use crate::game::player_input::awaiting::{
-    Awaiting, PlayerInput, WasAwaitingNothing, WasAwaitingTargeting, awaiting,
-};
+use crate::game::player_input::awaiting::{Awaiting, PlayerInput, awaiting};
 use crate::game::reporting::Report;
 use crate::game::resolve::aftermath::death;
 use crate::game::resolve::aftermath::standings::Standings;
@@ -29,7 +25,6 @@ use crate::ids::PlayerId;
 use crate::observer::{Observer, Views};
 use crate::outcome::Outcome;
 use crate::rng::Rng;
-use crate::target::TargetId;
 use crate::turn::TurnOrder;
 use crate::zones::Zones;
 
@@ -55,30 +50,24 @@ pub enum ApplyError {
 
 /// The writes one step makes, between two checkpoints.
 enum Step {
-    Draw { player_id: PlayerId, count: u8 },
+    Draw {
+        player_id: PlayerId,
+        count: u8,
+    },
     StartTurn,
-    Action(ActionStep),
-    Play(PlayingStep),
+    Action(LegalAction),
+    /// A minion's play step, which its summon step returns.
+    Play(PlayStep),
     Effect(NextEffect),
     FinishPicking(FinishedPick),
     DeathPass,
     DecideOutcome,
 }
 
-/// The steps an action takes, besides playing a card.
-pub(super) enum ActionStep {
-    EndTurn,
-    StartTargeting {
-        object_id: ObjectId,
-        awaiting_nothing: WasAwaitingNothing,
-    },
-    Target {
-        awaiting_targeting: WasAwaitingTargeting,
-        target_id: TargetId,
-        object_id: ObjectId,
-    },
-    Cancel(WasAwaitingTargeting),
-    Pick(WasAwaitingPicking),
+/// What one step wrote: the events it caused, in order, and the step its action takes next.
+struct Written {
+    reports: Vec<Report>,
+    next: Option<Step>,
 }
 
 impl Game {
@@ -105,12 +94,7 @@ impl Game {
                 player_id, action,
             )));
         };
-        match legal_action {
-            LegalAction::Play(playable) => self.play(playable, obs),
-            LegalAction::Step(step) => {
-                self.take_step(Step::Action(step), obs);
-            }
-        }
+        self.take_step(Step::Action(legal_action), obs);
         resolution_loop::resolve_effect_stack(Resolving { game: self, obs });
         Ok(())
     }
@@ -226,11 +210,11 @@ impl Game {
     }
 
     /// Makes the step's writes, reports what it did, pushes the pending effects it added, then
-    /// lets the observer read the views. `false`, with no report and no checkpoint, if `write`
-    /// found no step to take.
+    /// lets the observer read the views. Then takes the step its action takes next, if any.
+    /// `false`, with no report and no checkpoint, if `write` found no step to take.
     fn take_step(&mut self, step: Step, obs: &mut impl Observer) -> bool {
         let mut pending = PendingEffects::default();
-        let Some(reports) = self.write(step, &mut pending) else {
+        let Some(Written { reports, next }) = self.write(step, &mut pending) else {
             return false;
         };
         for report in reports {
@@ -238,19 +222,15 @@ impl Game {
         }
         self.effect_stack.push_all(pending);
         obs.checkpoint(Views::new(self));
+        if let Some(next) = next {
+            self.take_step(next, obs);
+        }
         true
     }
 
-    fn play(&mut self, playable: WasPlayable, obs: &mut impl Observer) {
-        for step in play::prepare(self.cards(), &self.player_input, playable) {
-            self.take_step(Step::Play(step), obs);
-        }
-    }
-
-    /// Makes the step's writes, lending it what it reads and writes. Returns the events it caused,
-    /// in order. `None` for a death pass that finds no dead, or a decision that doesn't end the
-    /// game.
-    fn write(&mut self, step: Step, pending: &mut PendingEffects) -> Option<Vec<Report>> {
+    /// Makes the step's writes, lending it what it reads and writes. `None` for a death pass that
+    /// finds no dead, or a decision that doesn't end the game.
+    fn write(&mut self, step: Step, pending: &mut PendingEffects) -> Option<Written> {
         let reports = match step {
             Step::Draw { player_id, count } => {
                 zone_move::draw(player_id, count, &mut self.zones, &mut self.objects)
@@ -261,20 +241,33 @@ impl Game {
                 &mut self.zones,
                 &mut self.objects,
             ),
-            Step::Action(ActionStep::EndTurn) => turn_change::end_turn(
+            Step::Action(LegalAction::EndTurn) => turn_change::end_turn(
                 &mut self.turn_order,
                 &mut self.players,
                 &mut self.zones,
                 &mut self.objects,
             ),
-            Step::Play(step) => vec![play::write(
+            Step::Action(LegalAction::Play(playable)) => {
+                let prepared = play::prepare(self.cards(), &self.player_input, playable);
+                let (report, next) = play::first_step(
+                    prepared,
+                    &mut self.players,
+                    &mut self.player_input,
+                    &mut self.zones,
+                    pending,
+                );
+                return Some(Written {
+                    reports: vec![report],
+                    next: next.map(Step::Play),
+                });
+            }
+            Step::Play(step) => vec![play::play(
                 step,
                 &mut self.players,
                 &mut self.player_input,
-                &mut self.zones,
                 pending,
             )],
-            Step::Action(ActionStep::StartTargeting {
+            Step::Action(LegalAction::StartTargeting {
                 object_id,
                 awaiting_nothing,
             }) => {
@@ -282,7 +275,7 @@ impl Game {
                     .start_targeting(awaiting_nothing, object_id);
                 Vec::new()
             }
-            Step::Action(ActionStep::Target {
+            Step::Action(LegalAction::Target {
                 awaiting_targeting,
                 target_id,
                 object_id,
@@ -291,11 +284,11 @@ impl Game {
                     .target(awaiting_targeting, object_id, target_id);
                 Vec::new()
             }
-            Step::Action(ActionStep::Cancel(awaiting_targeting)) => {
+            Step::Action(LegalAction::Cancel(awaiting_targeting)) => {
                 self.player_input.cancel(awaiting_targeting);
                 Vec::new()
             }
-            Step::Action(ActionStep::Pick(awaiting_picking)) => {
+            Step::Action(LegalAction::Pick(awaiting_picking)) => {
                 self.effect_stack.pick(awaiting_picking);
                 Vec::new()
             }
@@ -319,7 +312,10 @@ impl Game {
             }
             Step::DecideOutcome => vec![Report::GameEnded(self.standings.decide()?)],
         };
-        Some(reports)
+        Some(Written {
+            reports,
+            next: None,
+        })
     }
 
     fn report(&mut self, report: Report, pending: &mut PendingEffects, obs: &mut impl Observer) {
