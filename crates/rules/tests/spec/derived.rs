@@ -12,7 +12,7 @@ fn stats(game: &Game, minion: ObjectId) -> (Option<i32>, Option<i32>) {
 }
 
 #[test]
-fn minions_enter_with_their_printed_stats() {
+fn minions_are_summoned_with_their_printed_stats() {
     let cases = [
         (RECRUIT, 2, (2, 2)),
         (CAPTAIN, 3, (1, 1)),
@@ -112,18 +112,18 @@ fn recruit_captain_recruit() -> (Game, [ObjectId; 3]) {
 }
 
 #[test]
-fn a_captain_buffs_friendly_minions_whenever_they_entered() {
+fn a_captain_buffs_friendly_minions_whenever_they_were_summoned() {
     let (game, [earlier, _, later]) = recruit_captain_recruit();
 
     assert_eq!(
         stats(&game, earlier),
         (Some(3), Some(3)),
-        "entered before the Captain"
+        "summoned before the Captain"
     );
     assert_eq!(
         stats(&game, later),
         (Some(3), Some(3)),
-        "entered after the Captain"
+        "summoned after the Captain"
     );
 }
 

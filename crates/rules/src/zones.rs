@@ -450,7 +450,7 @@ impl Zones {
     }
 
     /// Puts a card that is in no zone at the right end of the board.
-    pub(crate) fn enter_board(&mut self, player_id: PlayerId, object_id: ObjectId) {
+    pub(crate) fn summon(&mut self, player_id: PlayerId, object_id: ObjectId) {
         self.stamp_entry(object_id);
         self.player_mut(player_id).board.add(object_id);
     }
@@ -609,7 +609,7 @@ mod tests {
         zones.draw(player);
         for card in [second, first] {
             take_from_hand(&mut zones, player, card);
-            zones.enter_board(player, card);
+            zones.summon(player, card);
         }
 
         let mut deaths = vec![first, hero, second];
@@ -617,7 +617,7 @@ mod tests {
         assert_eq!(
             deaths,
             [hero, second, first],
-            "the card that entered the board last must come last",
+            "the card summoned last must come last",
         );
     }
 
@@ -633,7 +633,7 @@ mod tests {
         zones.draw(player);
         zones.draw(player);
         take_from_hand(&mut zones, player, summoned);
-        zones.enter_board(player, summoned);
+        zones.summon(player, summoned);
         (zones, [hero, other_hero, summoned, held, in_deck])
     }
 
@@ -810,7 +810,7 @@ mod tests {
         }
         for card in [c, a] {
             take_from_hand(&mut zones, player, card);
-            zones.enter_board(player, card);
+            zones.summon(player, card);
         }
         (zones, [a, b, c, d])
     }
@@ -845,7 +845,7 @@ mod tests {
         for (player_id, card) in [(other, c), (player, a), (player, b)] {
             zones.draw(player_id);
             take_from_hand(&mut zones, player_id, card);
-            zones.enter_board(player_id, card);
+            zones.summon(player_id, card);
         }
 
         let boards = zones.boards().collect::<Vec<_>>();
@@ -889,6 +889,6 @@ mod tests {
         let mut zones = Zones::new([(hero, vec![card])]);
 
         zones.draw(player);
-        zones.enter_board(player, card);
+        zones.summon(player, card);
     }
 }

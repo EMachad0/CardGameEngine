@@ -208,7 +208,7 @@ fn the_spell_that_made_drillmaster_summon_hits_the_squire() {
             Event::Summoned { object_id, .. } => Some(*object_id),
             _ => None,
         })
-        .unwrap_or_else(|| panic!("no Squire entered:\n{}", listing(&events)));
+        .unwrap_or_else(|| panic!("no Squire summoned:\n{}", listing(&events)));
     assert!(
         events.contains(&Event::Damaged {
             target: squire,
@@ -523,7 +523,7 @@ fn a_minion_played_after_rally_banner_draws_when_it_takes_damage() {
     assert_eq!(
         draws(&events, b.p0),
         1,
-        "the Mourner has the Banner's trigger though it entered after the Banner:\n{}",
+        "the Mourner has the Banner's trigger though it was summoned after the Banner:\n{}",
         listing(&events)
     );
 }
@@ -617,7 +617,7 @@ fn the_triggers_reacting_to_a_death_resolve_before_the_dead_minions_own() {
 
     assert!(
         first(&events, is_draw) < first(&events, |e| is_hit_from(e, bomber)),
-        "the Mourner's draw goes on top of the Bomber's deathrattle, though the Bomber entered \
+        "the Mourner's draw goes on top of the Bomber's deathrattle, though the Bomber was summoned \
          first:\n{}",
         listing(&events)
     );
@@ -675,7 +675,7 @@ fn the_newest_of_the_triggers_matched_by_one_event_resolves_first() {
 
     assert!(
         first(&events, |e| is_hit_from(e, friendly)) < first(&events, |e| is_hit_from(e, enemy)),
-        "the enemy Gravedigger entered play before the friendly one, so the friendly one's \
+        "the enemy Gravedigger was summoned before the friendly one, so the friendly one's \
          trigger is on top of the stack:\n{}",
         listing(&events)
     );

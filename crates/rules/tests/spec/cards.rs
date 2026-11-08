@@ -106,7 +106,7 @@ fn every_card_pays_its_printed_cost() {
 }
 
 #[test]
-fn minions_enter_at_the_right_end_of_their_owners_board() {
+fn minions_are_summoned_at_the_right_end_of_their_owners_board() {
     let deck0 = deck_with_top(&[RECRUIT, CAPTAIN, RECRUIT]);
     let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
     let [p0, p1] = players(&game);
@@ -120,7 +120,7 @@ fn minions_enter_at_the_right_end_of_their_owners_board() {
     assert_eq!(board_defs(&game, p0), [RECRUIT, CAPTAIN, RECRUIT]);
     assert!(
         game.player_board(p1).is_empty(),
-        "a minion enters its owner's board only"
+        "a minion is summoned to its owner's board only"
     );
 }
 
@@ -157,7 +157,7 @@ fn barracks_summons_a_squire_at_the_right_end_of_its_casters_board() {
     assert_eq!(board_defs(&game, p0), [RECRUIT, SQUIRE]);
     assert!(
         game.player_board(p1).is_empty(),
-        "the Squire enters its caster's board only"
+        "the Squire is summoned to its caster's board only"
     );
 }
 

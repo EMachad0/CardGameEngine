@@ -76,7 +76,7 @@ pub(super) fn draw(
 }
 
 pub(super) fn summon(player_id: PlayerId, object_id: ObjectId, zones: &mut Zones) -> Report {
-    zones.enter_board(player_id, object_id);
+    zones.summon(player_id, object_id);
     Report::Summoned {
         player_id,
         object_id,

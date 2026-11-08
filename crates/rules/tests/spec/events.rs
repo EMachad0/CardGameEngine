@@ -433,7 +433,7 @@ fn barracks_reports_its_play_then_the_squires_summon() {
                 object_id: squire
             },
         ],
-        "a summoned Squire enters the board without being played"
+        "a Squire is summoned without being played"
     );
 }
 
