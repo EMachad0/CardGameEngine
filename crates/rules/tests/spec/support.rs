@@ -308,7 +308,7 @@ pub(crate) fn summon(game: &mut Game, p: PlayerId, def: DefId) -> ObjectId {
     *game
         .player_board(p)
         .last()
-        .expect("the minion entered the board")
+        .expect("the minion was summoned")
 }
 
 /// Every id in a zone: hand, deck, board and hero, for each player.
