@@ -1,56 +1,29 @@
-//! Playing a card from its owner's hand.
+//! When a card is playable, and which targeting it is played from.
 
 use crate::cards::object::ObjectId;
-use crate::effect::Effect;
-use crate::event::Event;
 use crate::game::cards_ref::CardsRef;
-use crate::game::effect_stack::PendingEffects;
 use crate::game::mana::Mana;
-use crate::game::player::Players;
-use crate::game::player_input::awaiting::{PlayerInput, WasAwaitingTargeting};
-use crate::game::reporting::Report;
+use crate::game::player_input::awaiting::WasAwaitingTargeting;
 use crate::game::stats::cost;
-use crate::ids::PlayerId;
-use crate::target::Bound;
 use crate::zones::{InHand, WasInHand};
-
-pub(super) struct Play {
-    player_id: PlayerId,
-    object_id: ObjectId,
-}
 
 /// A card its player could play when asked, and their targeting of it if they play it from there.
 /// It holds no borrow, so the card may have become unplayable since.
-pub(super) struct WasPlayable {
+pub(in crate::game) struct WasPlayable {
     card: WasInHand,
     awaiting_targeting: Option<WasAwaitingTargeting>,
 }
 
-/// A card about to be played, with what its steps write, all read before the first write.
-pub(super) enum PreparedPlay {
-    Minion { card: WasInHand, play: PlayStep },
-    Spell { card: WasInHand, play: PlayStep },
-}
-
-/// What a play step writes: the cost, the targeting it closes and the bound play effects.
-pub(super) struct PlayStep {
-    player_id: PlayerId,
-    object_id: ObjectId,
-    awaiting_targeting: Option<WasAwaitingTargeting>,
-    cost: u8,
-    play_effects: Vec<Effect<Bound>>,
-}
-
 impl WasPlayable {
     /// `None` unless the mana pays the card's cost now.
-    pub(super) fn new(cards: CardsRef, mana: &Mana, card: InHand) -> Option<Self> {
+    pub(in crate::game) fn new(cards: CardsRef, mana: &Mana, card: InHand) -> Option<Self> {
         mana.can_pay(cost(cards, card)).then(|| Self {
             card: WasInHand::from(card),
             awaiting_targeting: None,
         })
     }
 
-    pub(super) fn with_targeting(self, awaiting_targeting: WasAwaitingTargeting) -> Self {
+    pub(in crate::game) fn with_targeting(self, awaiting_targeting: WasAwaitingTargeting) -> Self {
         assert!(
             awaiting_targeting.player_id() == self.card.player_id()
                 && awaiting_targeting.object_id() == self.card.object_id(),
@@ -62,80 +35,13 @@ impl WasPlayable {
         }
     }
 
-    pub(super) fn object_id(&self) -> ObjectId {
+    pub(in crate::game) fn object_id(&self) -> ObjectId {
         self.card.object_id()
     }
-}
 
-impl From<Play> for Event {
-    fn from(play: Play) -> Self {
-        Event::Played {
-            player_id: play.player_id,
-            object_id: play.object_id,
-        }
+    pub(super) fn into_parts(self) -> (WasInHand, Option<WasAwaitingTargeting>) {
+        (self.card, self.awaiting_targeting)
     }
-}
-
-pub(super) fn prepare(
-    cards: CardsRef,
-    player_input: &PlayerInput,
-    playable: WasPlayable,
-) -> PreparedPlay {
-    let WasPlayable {
-        card,
-        awaiting_targeting,
-    } = playable;
-    let cost = cost(cards, cards.zones.still_in_hand(&card));
-    let targeting = awaiting_targeting
-        .as_ref()
-        .map(|awaiting_targeting| player_input.still_targeting(awaiting_targeting));
-    let card_def = cards.card_def(card.object_id());
-    let play_effects = card_def.bind_play_effects(|target_id| {
-        targeting
-            .expect("a card that declares targets should be played from its targeting")
-            .targeted_for(target_id)
-            .collect()
-    });
-    let play = PlayStep {
-        player_id: card.player_id(),
-        object_id: card.object_id(),
-        awaiting_targeting,
-        cost,
-        play_effects,
-    };
-    if card_def.has_board_presence() {
-        PreparedPlay::Minion { card, play }
-    } else {
-        PreparedPlay::Spell { card, play }
-    }
-}
-
-/// If the card is played from the player's targeting, closes it.
-pub(super) fn play(
-    step: PlayStep,
-    players: &mut Players,
-    player_input: &mut PlayerInput,
-    pending: &mut PendingEffects,
-) -> Report {
-    let PlayStep {
-        player_id,
-        object_id,
-        awaiting_targeting,
-        cost,
-        play_effects,
-    } = step;
-    players.mana_mut(player_id).pay(cost);
-    if let Some(awaiting_targeting) = awaiting_targeting {
-        player_input.commit_targeting(awaiting_targeting);
-    }
-    if !play_effects.is_empty() {
-        pending.push(object_id, play_effects);
-    }
-
-    Report::Played(Play {
-        player_id,
-        object_id,
-    })
 }
 
 #[cfg(test)]
@@ -149,6 +55,7 @@ mod tests {
         Awaiting, PlayerInput, WasAwaitingNothing, awaiting,
     };
     use crate::history::History;
+    use crate::ids::PlayerId;
     use crate::turn::TurnOrder;
     use crate::zones::Zones;
 

@@ -10,7 +10,7 @@ use crate::cards::object::{ObjectBag, ObjectId};
 use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::{Advance, EffectStack, FinishedPick, NextEffect, PendingEffects};
 use crate::game::legal_actions::LegalAction;
-use crate::game::play::{self, PlayStep, PreparedPlay};
+use crate::game::play::steps::{self, PlayStep, PreparedPlay};
 use crate::game::player::{Player, Players};
 use crate::game::player_input::awaiting::{Awaiting, PlayerInput, awaiting};
 use crate::game::reporting::Report;
@@ -250,7 +250,7 @@ impl Game {
                 &mut self.objects,
             ),
             Step::Action(LegalAction::Play(playable)) => {
-                match play::prepare(self.cards(), &self.player_input, playable) {
+                match steps::prepare(self.cards(), &self.player_input, playable) {
                     PreparedPlay::Minion { card, play } => {
                         let player_id = card.player_id();
                         let object_id = self.zones.take_from_hand(card);
@@ -259,7 +259,7 @@ impl Game {
                     }
                     PreparedPlay::Spell { card, play } => {
                         self.zones.take_from_hand(card);
-                        vec![play::play(
+                        vec![steps::play(
                             play,
                             &mut self.players,
                             &mut self.player_input,
@@ -268,7 +268,7 @@ impl Game {
                     }
                 }
             }
-            Step::Play(step) => vec![play::play(
+            Step::Play(step) => vec![steps::play(
                 step,
                 &mut self.players,
                 &mut self.player_input,

@@ -2,7 +2,7 @@ use crate::action::Action;
 use crate::cards::object::ObjectId;
 use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::{EffectStack, WasAwaitingPicking};
-use crate::game::play::WasPlayable;
+use crate::game::play::playability::WasPlayable;
 use crate::game::player::Player;
 use crate::game::player_input::awaiting::{
     Awaiting, PlayerInput, WasAwaitingNothing, WasAwaitingTargeting, any_awaiting, awaiting,
