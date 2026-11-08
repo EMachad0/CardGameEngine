@@ -13,6 +13,7 @@ pub enum TriggerPattern {
     Died(TriggerSubject),
     Damaged(TriggerSubject),
     Played(CardFilter),
+    Summoned(TriggerSubject),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

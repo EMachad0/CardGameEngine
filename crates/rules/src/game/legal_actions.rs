@@ -2,7 +2,7 @@ use crate::action::Action;
 use crate::cards::object::ObjectId;
 use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::{EffectStack, WasAwaitingPicking};
-use crate::game::play::WasPlayable;
+use crate::game::play::playability::{Playability, WasPlayable};
 use crate::game::player::Player;
 use crate::game::player_input::awaiting::{
     Awaiting, PlayerInput, WasAwaitingNothing, WasAwaitingTargeting, any_awaiting, awaiting,
@@ -79,22 +79,19 @@ pub(super) fn legal_actions(
 
             for card in cards.zones.hand_cards(player_id) {
                 let object_id = card.object_id();
-                let Some(playable) = WasPlayable::new(cards, &player.mana, card) else {
-                    continue;
-                };
-
-                match cards.card_def(object_id).targets().next().is_none() {
-                    true => {
+                match Playability::new(cards, &player.mana, card) {
+                    Some(Playability::WithoutTargeting(playable)) => {
                         actions.push(LegalAction::Play(playable));
                     }
-                    false => {
-                        if can_start_targeting(cards, object_id) {
-                            actions.push(LegalAction::StartTargeting {
-                                object_id,
-                                awaiting_nothing: WasAwaitingNothing::from(awaits_nothing),
-                            });
-                        }
+                    Some(Playability::FromTargeting(_))
+                        if can_start_targeting(cards, object_id) =>
+                    {
+                        actions.push(LegalAction::StartTargeting {
+                            object_id,
+                            awaiting_nothing: WasAwaitingNothing::from(awaits_nothing),
+                        });
                     }
+                    Some(Playability::FromTargeting(_)) | None => {}
                 }
             }
 
@@ -114,10 +111,10 @@ pub(super) fn legal_actions(
                 },
             ));
             if may_stop_targeting(cards, targeting)
-                && let Some(playable) = cards
+                && let Some(Playability::FromTargeting(playable)) = cards
                     .zones
                     .find_in_hand(player_id, object_id)
-                    .and_then(|card| WasPlayable::new(cards, &player.mana, card))
+                    .and_then(|card| Playability::new(cards, &player.mana, card))
             {
                 actions.push(LegalAction::Play(
                     playable.with_targeting(WasAwaitingTargeting::from(awaits_targeting)),

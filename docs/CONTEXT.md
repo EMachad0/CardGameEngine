@@ -131,6 +131,10 @@ _Avoid_: battlefield, field, play area
 **In play**:
 Being a hero, or a minion on a board.
 
+**Summon**:
+To put a minion onto a board, whether it is played or an effect puts it there.
+_Avoid_: enter, board entry
+
 **Alive**:
 A minion on a board, or a hero whose player is still playing.
 
@@ -212,7 +216,7 @@ _Avoid_: heal
 Giving an object a modifier.
 
 **Picking**:
-A pick that the resolving effect holds until it is answered: the cards it covers, which of them
+A pick that the resolving effect holds until it is answered: the objects it covers, which of them
 the player may pick, and what they have picked so far.
 _Avoid_: pending pick, picker
 
@@ -326,6 +330,8 @@ The part of a card that can be hidden from a player: its definition and cost.
   The state check is the pass that settles it.
 - **Standings** and **Outcome**: the standings say who is still playing at any moment. The outcome
   exists only once the game is over, and the standings hold it from then on.
+- **Play** and **Summon**: playing a minion summons it, and a minion an effect puts on a board is
+  summoned without being played.
 - **In play** and **Alive**: a hero stays in play after it dies, so a dead hero is in play but not
   alive. For a minion the two are the same.
 - **Draw** a card and a **draw** as an outcome: the first moves a card from deck to hand, the second

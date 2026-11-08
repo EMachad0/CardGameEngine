@@ -8,27 +8,23 @@ use crate::cards::binder::def_id::DefId;
 use crate::cards::binder::store::Binder;
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::game::cards_ref::CardsRef;
-use crate::game::effect_stack::{Advance, EffectStack, NextEffect, WasAwaitingPicking};
+use crate::game::effect_stack::{Advance, EffectStack, FinishedPick, NextEffect, PendingEffects};
 use crate::game::legal_actions::LegalAction;
-use crate::game::picking::PickedObjects;
-use crate::game::play::WasPlayable;
+use crate::game::play::play_step::{self, PlayStep, PreparedPlay};
 use crate::game::player::{Player, Players};
-use crate::game::player_input::awaiting::{
-    Awaiting, PlayerInput, WasAwaitingNothing, WasAwaitingTargeting, awaiting,
-};
+use crate::game::player_input::awaiting::{Awaiting, PlayerInput, awaiting};
 use crate::game::reporting::Report;
 use crate::game::resolve::aftermath::death;
 use crate::game::resolve::aftermath::standings::Standings;
 use crate::game::resolve::effect::{self, PreparedOrOpen};
 use crate::game::resolve::resolution_loop;
 use crate::game::view::{self, View};
-use crate::game::{action_steps, legal_actions, play, setup, stats, turn_change, zone_move};
+use crate::game::{legal_actions, setup, stats, turn_change, zone_move};
 use crate::history::History;
 use crate::ids::PlayerId;
 use crate::observer::{Observer, Views};
 use crate::outcome::Outcome;
 use crate::rng::Rng;
-use crate::target::TargetId;
 use crate::turn::TurnOrder;
 use crate::zones::Zones;
 
@@ -54,34 +50,24 @@ pub enum ApplyError {
 
 /// The writes one step makes, between two checkpoints.
 enum Step {
-    Draw { player_id: PlayerId, count: u8 },
+    Draw {
+        player_id: PlayerId,
+        count: u8,
+    },
     StartTurn,
-    Action(ActionStep),
+    Action(LegalAction),
+    /// A minion's play step, which follows its summon step.
+    Play(PlayStep),
     Effect(NextEffect),
-    FinishPicking(PickedObjects),
+    FinishPicking(FinishedPick),
     DeathPass,
     DecideOutcome,
 }
 
-/// The steps an action takes.
-pub(super) enum ActionStep {
-    EndTurn,
-    Play(WasPlayable),
-    Summon {
-        player_id: PlayerId,
-        object_id: ObjectId,
-    },
-    StartTargeting {
-        object_id: ObjectId,
-        awaiting_nothing: WasAwaitingNothing,
-    },
-    Target {
-        awaiting_targeting: WasAwaitingTargeting,
-        target_id: TargetId,
-        object_id: ObjectId,
-    },
-    Cancel(WasAwaitingTargeting),
-    Pick(WasAwaitingPicking),
+/// What one step wrote: the events it caused, in order, and the step its action takes next.
+struct Written {
+    reports: Vec<Report>,
+    next: Option<Step>,
 }
 
 impl Game {
@@ -108,7 +94,7 @@ impl Game {
                 player_id, action,
             )));
         };
-        action_steps::take_action(Acting { game: self, obs }, legal_action);
+        self.take_step(Step::Action(legal_action), obs);
         resolution_loop::resolve_effect_stack(Resolving { game: self, obs });
         Ok(())
     }
@@ -223,23 +209,30 @@ impl Game {
         )
     }
 
-    /// Makes the step's writes, reports what it did, then lets the observer read the views.
-    /// `false`, with no report and no checkpoint, if `write` found no step to take.
+    /// Takes the step, then each step its action takes next. Each makes its writes, reports what
+    /// it did, pushes the pending effects it added, then lets the observer read the views. `false`,
+    /// with no report and no checkpoint, if `write` found no step to take.
     fn take_step(&mut self, step: Step, obs: &mut impl Observer) -> bool {
-        let Some(reports) = self.write(step) else {
-            return false;
-        };
-        for report in reports {
-            self.report(report, obs);
+        let (mut next, mut took) = (Some(step), false);
+        while let Some(step) = next {
+            let mut pending = PendingEffects::default();
+            let Some(written) = self.write(step, &mut pending) else {
+                break;
+            };
+            for report in written.reports {
+                self.report(report, &mut pending, obs);
+            }
+            self.effect_stack.push_all(pending);
+            obs.checkpoint(Views::new(self));
+            (next, took) = (written.next, true);
         }
-        obs.checkpoint(Views::new(self));
-        true
+        took
     }
 
-    /// Makes the step's writes, lending it what it reads and writes. Returns the events it caused,
-    /// in order. `None` for a death pass that finds no dead, or a decision that doesn't end the
-    /// game.
-    fn write(&mut self, step: Step) -> Option<Vec<Report>> {
+    /// Makes the step's writes, lending it what it reads and writes. `None` for a death pass that
+    /// finds no dead, or a decision that doesn't end the game.
+    fn write(&mut self, step: Step, pending: &mut PendingEffects) -> Option<Written> {
+        let mut next = None;
         let reports = match step {
             Step::Draw { player_id, count } => {
                 zone_move::draw(player_id, count, &mut self.zones, &mut self.objects)
@@ -250,27 +243,38 @@ impl Game {
                 &mut self.zones,
                 &mut self.objects,
             ),
-            Step::Action(ActionStep::EndTurn) => turn_change::end_turn(
+            Step::Action(LegalAction::EndTurn) => turn_change::end_turn(
                 &mut self.turn_order,
                 &mut self.players,
                 &mut self.zones,
                 &mut self.objects,
             ),
-            Step::Action(ActionStep::Play(playable)) => {
-                let prepared = play::prepare(self.cards(), &self.player_input, playable);
-                vec![play::play(
-                    prepared,
-                    &mut self.players,
-                    &mut self.player_input,
-                    &mut self.zones,
-                    &mut self.effect_stack,
-                )]
+            Step::Action(LegalAction::Play(playable)) => {
+                match play_step::prepare(self.cards(), &self.player_input, playable) {
+                    PreparedPlay::Minion { card, play } => {
+                        let player_id = card.player_id();
+                        let object_id = self.zones.take_from_hand(card);
+                        next = Some(Step::Play(play));
+                        vec![zone_move::summon(player_id, object_id, &mut self.zones)]
+                    }
+                    PreparedPlay::Spell { card, play } => {
+                        self.zones.take_from_hand(card);
+                        vec![play_step::play(
+                            play,
+                            &mut self.players,
+                            &mut self.player_input,
+                            pending,
+                        )]
+                    }
+                }
             }
-            Step::Action(ActionStep::Summon {
-                player_id,
-                object_id,
-            }) => vec![zone_move::summon(player_id, object_id, &mut self.zones)],
-            Step::Action(ActionStep::StartTargeting {
+            Step::Play(step) => vec![play_step::play(
+                step,
+                &mut self.players,
+                &mut self.player_input,
+                pending,
+            )],
+            Step::Action(LegalAction::StartTargeting {
                 object_id,
                 awaiting_nothing,
             }) => {
@@ -278,7 +282,7 @@ impl Game {
                     .start_targeting(awaiting_nothing, object_id);
                 Vec::new()
             }
-            Step::Action(ActionStep::Target {
+            Step::Action(LegalAction::Target {
                 awaiting_targeting,
                 target_id,
                 object_id,
@@ -287,11 +291,11 @@ impl Game {
                     .target(awaiting_targeting, object_id, target_id);
                 Vec::new()
             }
-            Step::Action(ActionStep::Cancel(awaiting_targeting)) => {
+            Step::Action(LegalAction::Cancel(awaiting_targeting)) => {
                 self.player_input.cancel(awaiting_targeting);
                 Vec::new()
             }
-            Step::Action(ActionStep::Pick(awaiting_picking)) => {
+            Step::Action(LegalAction::Pick(awaiting_picking)) => {
                 self.effect_stack.pick(awaiting_picking);
                 Vec::new()
             }
@@ -304,31 +308,26 @@ impl Game {
                     Vec::new()
                 }
             },
-            Step::FinishPicking(picked) => {
-                let prepared = effect::prepare_finish(picked);
+            Step::FinishPicking(finished) => {
+                let prepared = effect::prepare_finish(self.cards(), finished);
                 effect::resolve(prepared, &mut self.rng, &mut self.zones, &mut self.objects)
             }
             Step::DeathPass => {
                 let death_pass =
                     death::find_deaths(self.cards(), &self.players(), &self.standings)?;
-                death::kill(
-                    death_pass,
-                    &mut self.zones,
-                    &mut self.effect_stack,
-                    &mut self.standings,
-                )
+                death::kill(death_pass, &mut self.zones, pending, &mut self.standings)
             }
             Step::DecideOutcome => vec![Report::GameEnded(self.standings.decide()?)],
         };
-        Some(reports)
+        Some(Written { reports, next })
     }
 
-    fn report(&mut self, report: Report, obs: &mut impl Observer) {
+    fn report(&mut self, report: Report, pending: &mut PendingEffects, obs: &mut impl Observer) {
         report.matched(self.cards()).report(
             &mut self.history,
             self.turn_order.turn_count(),
             &self.objects,
-            &mut self.effect_stack,
+            pending,
             obs,
         );
     }
@@ -425,22 +424,6 @@ impl SettingUp {
     }
 }
 
-/// A game lent to the code that runs one action.
-pub(super) struct Acting<'g, O> {
-    game: &'g mut Game,
-    obs: &'g mut O,
-}
-
-impl<O: Observer> Acting<'_, O> {
-    pub(super) fn cards(&self) -> CardsRef<'_> {
-        self.game.cards()
-    }
-
-    pub(super) fn take_step(&mut self, step: ActionStep) {
-        self.game.take_step(Step::Action(step), self.obs);
-    }
-}
-
 /// A game lent to the resolution loop.
 pub(super) struct Resolving<'g, O> {
     game: &'g mut Game,
@@ -472,8 +455,8 @@ impl<O: Observer> Resolving<'_, O> {
         self.game.take_step(Step::Effect(next), self.obs);
     }
 
-    pub(super) fn finish_picking(&mut self, picked: PickedObjects) {
-        self.game.take_step(Step::FinishPicking(picked), self.obs);
+    pub(super) fn finish_picking(&mut self, finished: FinishedPick) {
+        self.game.take_step(Step::FinishPicking(finished), self.obs);
     }
 
     pub(super) fn check_state(&mut self) {

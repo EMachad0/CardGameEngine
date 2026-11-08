@@ -61,10 +61,19 @@ pub struct Face {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PickingView {
-    /// What the chooser sees: every card the pick covers, in the order shown.
-    Chooser(Vec<PickingCard>),
+    /// What the chooser sees.
+    Chooser(ChooserPicking),
     /// What every other player sees.
     Other { option_count: usize },
+}
+
+/// What the chooser sees of a pick, by its subject.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ChooserPicking {
+    /// Every card the pick covers, in the order shown.
+    Cards(Vec<PickingCard>),
+    /// The options, in the order shown.
+    Characters(Vec<ObjectId>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -192,16 +201,21 @@ fn picking_view(
             option_count: picking.option_count(),
         };
     }
-    PickingView::Chooser(
-        picking
-            .covered()
-            .map(|(object_id, pickable)| PickingCard {
-                object_id,
-                def_id: cards.def_id(object_id),
-                pickable,
-            })
-            .collect(),
-    )
+    PickingView::Chooser(match picking {
+        Picking::Cards(card_picking) => ChooserPicking::Cards(
+            card_picking
+                .covered()
+                .map(|(object_id, pickable)| PickingCard {
+                    object_id,
+                    def_id: cards.def_id(object_id),
+                    pickable,
+                })
+                .collect(),
+        ),
+        Picking::Characters(character_picking) => {
+            ChooserPicking::Characters(character_picking.options().collect())
+        }
+    })
 }
 
 fn targeting_view(targeting: &Targeting) -> TargetingView {

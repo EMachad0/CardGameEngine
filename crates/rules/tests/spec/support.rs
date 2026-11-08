@@ -167,13 +167,24 @@ pub(crate) struct Boards {
     pub(crate) theirs: Vec<ObjectId>,
 }
 
-/// P0 plays `mine` and P1 plays `theirs`, one minion each in turn, P0 first, so the two boards'
-/// order of play interleaves. Then it's P0's turn with at least `mana` mana, holding `hand`.
-/// Every minion costs at most 3, and anything else in either hand is Bolts.
 pub(crate) fn boards(mine: &[DefId], theirs: &[DefId], hand: &[DefId], mana: u8) -> Boards {
+    seeded_boards(0, mine, theirs, hand, mana)
+}
+
+/// In a game seeded with `seed`, P0 plays `mine` and P1 plays `theirs`, one minion each in turn,
+/// P0 first, so the two boards' order of play interleaves. Then it's P0's turn with at least
+/// `mana` mana, holding `hand`. Every minion costs at most 3, and anything else in either hand is
+/// Bolts.
+pub(crate) fn seeded_boards(
+    seed: u64,
+    mine: &[DefId],
+    theirs: &[DefId],
+    hand: &[DefId],
+    mana: u8,
+) -> Boards {
     let mut top0 = mine.to_vec();
     top0.extend_from_slice(hand);
-    let mut game = Game::with_deck_order(0, [deck_with_top(&top0), deck_with_top(theirs)]);
+    let mut game = Game::with_deck_order(seed, [deck_with_top(&top0), deck_with_top(theirs)]);
     let [p0, p1] = players(&game);
     let mut mine_ids = Vec::new();
     let mut theirs_ids = Vec::new();
@@ -297,7 +308,7 @@ pub(crate) fn summon(game: &mut Game, p: PlayerId, def: DefId) -> ObjectId {
     *game
         .player_board(p)
         .last()
-        .expect("the minion entered the board")
+        .expect("the minion was summoned")
 }
 
 /// Every id in a zone: hand, deck, board and hero, for each player.

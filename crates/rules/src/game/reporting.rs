@@ -5,8 +5,8 @@
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::event::Event;
 use crate::game::cards_ref::CardsRef;
-use crate::game::effect_stack::EffectStack;
-use crate::game::play::Play;
+use crate::game::effect_stack::PendingEffects;
+use crate::game::play::play_step::Play;
 use crate::game::resolve::aftermath::death::Death;
 use crate::game::resolve::aftermath::standings::Ending;
 use crate::game::triggering::{MatchedTrigger, matched_triggers};
@@ -39,7 +39,7 @@ pub(super) enum Report {
         player_id: PlayerId,
         object_id: ObjectId,
     },
-    BoardEntered {
+    Summoned {
         player_id: PlayerId,
         object_id: ObjectId,
     },
@@ -94,10 +94,10 @@ impl Report {
                 player_id,
                 object_id,
             },
-            Report::BoardEntered {
+            Report::Summoned {
                 player_id,
                 object_id,
-            } => Event::BoardEntered {
+            } => Event::Summoned {
                 player_id,
                 object_id,
             },
@@ -128,7 +128,7 @@ impl MatchedEvent {
         history: &mut History,
         turn: u32,
         objects: &ObjectBag,
-        effect_stack: &mut EffectStack,
+        pending: &mut PendingEffects,
         obs: &mut impl Observer,
     ) {
         let Self { event, triggers } = self;
@@ -139,7 +139,7 @@ impl MatchedEvent {
         )]
         obs.event(&event);
         for MatchedTrigger { source, effects } in triggers {
-            effect_stack.push(source, effects);
+            pending.push(source, effects);
         }
     }
 }

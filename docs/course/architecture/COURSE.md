@@ -71,7 +71,8 @@ up.
   knowledge reliably but misses some of its holders (00, 01, 01a, 02, and in 02b the second call of
   `check_state`). The 02c probe went 5 of 5 again, and the 02d probe, on concepts the map had no
   evidence for, 2 of 2. The 02g probe: one right, one "I don't know", a misclick, a slip and the
-  edge.
+  edge. The 02j probe: one right, one miss on reads, and one void, worded with a term I never
+  defined.
 
 ### Coupling and hiding decisions
 
@@ -128,6 +129,11 @@ up.
 - Could come back: judging formal vs informal by "could this have a bug" instead of "does the
   build catch it" (01). Replays: thought they need only a seedable, repeatable generator, not the
   exact sequence (01).
+- Batching (02j): the probe was void, since I never defined "batching" ("I dont know what
+  batching means"). Accepted that a free order can rest on another module's decision, noting the
+  decision here is an absence: no pattern reads a board entry, "not a rule yet". Wanted an issue
+  that adds a card and fixes the batching, then sent it to a card-game thread once shown the
+  course rule against new features and the issue bar.
 
 ### Interfaces, depth and modules
 
@@ -259,6 +265,15 @@ up.
   measure, the vacuity he raised after 02f. Caught that my keeper paragraph left `state.rs`
   holding independent keepers against "a module hides one decision"; the doc's "Leave stable, easy
   decisions where they are" settled it. Prefers a rule stated positively over its negation.
+- Invariants that share data (02j): probe right that two rules sharing a field put every field
+  either mentions behind one boundary, since tied data "change together" and a field can't sit in
+  two boundaries. Asked who can break the outer rule through a nested owner's `pub(super)`
+  command, he answered by visibility ("the entire module"), then by reach after one question
+  ("only code inside the account module can do that since its private"). Judged nesting
+  "thoretically better" if the module "pays for itself". Quiz right on what decides one owner,
+  objecting that "every plausible change" is too strong, which moved the Names test to "the
+  changes you expect". Stated the rule. The `PlayerInput` exercise went moot when #83 removed its
+  second tie; his change to it, several players picking at once, already held.
 
 ### Checks and proofs
 
@@ -363,6 +378,8 @@ up.
   and a borrow granting the owner's whole interface. On the third he couldn't picture "a narrowed
   borrow listing only the owners it writes" until shown one. The 02g edge, borrow mechanics inside
   a proof's design, didn't show.
+- Accepted with no probe that every branch of a function reaches all it takes, so which branch
+  writes which owner is informal, and the sentence for it in "Restricting callers" (02j).
 
 ### Other architecture topics, probed only
 
@@ -439,6 +456,13 @@ up.
   and asked for a concrete case with an example rule. He asked who Miller was. He caught this
   project's "steps" in General doc text and a quantifier ("most") he never agreed to, and asked
   that a new rule be judged against the whole doc, not added alone.
+- In 02j a probe used "batching" undefined, and a fee example's percentage got in the way
+  ("contract? [...] reducing 1% would never overdraw"); a shipping address worked. On #51 he
+  called my open question too open: "lets go to the point". He rejected three drafts of one
+  bullet: a test restated from another section, a new term ("inner owner"), a link to a section
+  title that can go stale, a sentence that "holds its own by itself", and a singular that read as
+  "only one". A doc bullet says only what it adds. He asks for a commit once a node's text
+  settles.
 
 ## Course plan
 
@@ -488,7 +512,11 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
    Done in 02i, PR #78: a write takes reach to the data and a command, a lend hands over every
    command and a narrower type fewer, and a decision likely to change leaves a module it shares
    with independent ones, while stable, easy ones stay. The `state.rs` issue is unblocked. Two
-   gaps of #51, one of #62 and two of #68 closed with no doc change. Session 02j: the rest.
+   gaps of #51, one of #62 and two of #68 closed with no doc change. Done in 02j: invariants that
+   share data share one owner, which can hold owners that keep some of them; a check is a read
+   whose result a later step uses; a free order can rest on another module's decision; every
+   branch of a function reaches all it takes. #66's main type and #51's second builder closed
+   with no doc change, and the summon effect's batching went to a card-game thread.
    Unused material: `research/02b-pass-and-coordinator/scope.md` (Forge and XMage, the Process
    Manager). Session 02g, its own node: parse, don't validate (Alexis King,
    2019). A check's result carried forward as a type, not an assumption; who can build the proof,
@@ -657,7 +685,8 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   gaps, the doc review after 02f settled two: inherent `impl` blocks stay in the defining module,
   and the code that runs steps keeps their order rules as keeper. 02i closed the mirror struct
   (ticket 13 lends each step only what it writes) and the main type above its commands (leaf
-  definitions rule it out). The second builder for the selectors waits for 02j. Clippy's
+  definitions rule it out). 02j closed the second builder with no doc change, since the split
+  leaves callers one stable command and a second builder copies what card questions read. Clippy's
   `multiple_inherent_impl` could enforce the `impl` rule, his call.
 - The `state.rs` issue (`docs/issues/game-state-holds-several-decisions.md`), unblocked by #78.
   Every piece leaves `state.rs` unless the PR argues its decision is stable and easy. He judges
@@ -665,10 +694,6 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   token. Compare it with `research/02i-untangling-doc-gaps/alternatives.md`: XMage keeps the
   loop in its holder, Ousterhout on shallow modules, and facets defined in the holder put each
   keeper's step list back there, which tokens avoid.
-- Doc gaps for session 02j: #66's main type that is also one of its directory's decisions, and its
-  two ties that share data (one owner, or one per tie nested); #68's batching that a plausible
-  change breaks, "which owners each command writes" per function or per arm, and a step that reads
-  the state it writes; #51's call order forced by data against a second builder.
 - The stack owner (02c), for 02e and #17's redo in 02f. Private `effect_stack` and
   `resolving_effect`. `next_effect() -> Next { Effect(ObjectId, Effect), Finished, Empty }` reads
   and advances in one command. It returns `Finished` at every boundary between resolving effects,
@@ -745,7 +770,9 @@ anticipated. Socratic teaching, quiz checks, and a production exercise per node.
   (02e); when referring to his design, quote the words meant, never "the other version" (02g); show a design's shape before a quiz assumes it (02f);
   give an open question one concrete case and the rule it concerns, say who an author is before
   quoting him, keep this project's terms out of General doc text, and check a new rule against
-  the whole doc before proposing it (02i). Propose the edits to him for review.
+  the whole doc before proposing it (02i); define every term a probe uses, keep a case free of
+  arithmetic that distracts, and when he asks for the point, give the ruling and its reasons
+  (02j). Propose the edits to him for review.
 - `fulfill_character_filter` is half narrow already: the side check is a free function in
   `cards/filter.rs`, while the kind check goes from object to definition to `binder`. Material for
   sessions 02e and 04.
@@ -797,6 +824,7 @@ graph TD
   PDV["Parse, don't validate; checks before writes (done, revised in 02h)"]
   CMD["Commands and whole-state readers: lend, yield, defer, narrow (done)"]
   RCH["Reach and the command; where keepers go (done)"]
+  J["Shared invariants, reads as checks, orders resting on decisions, branches (done)"]
   DOD["Data-oriented design and ECS"]
   P["Ports, anti-corruption layers, contract tests"]
   T["Tests as design feedback"]
@@ -837,6 +865,11 @@ graph TD
   R2-->RCH
   CMD-->RCH
   RCH-->DOCS
+  O-->J
+  PDV-->J
+  ORD-->J
+  RCH-->J
+  J-->DOCS
   W-->DOD
   C-->DOD
   R1-->DOD
@@ -880,8 +913,8 @@ graph TD
 | 02g | PDV | Parse, don't validate: `apply` and `legal_actions`, `ObjectId` by zone | done (probe edge was a proof's reach, he let `apply` skip the check; four nodes, each a rule in "Parse, don't validate", plus a Rust bullet on proofs that borrow; `apply` exercise reached "&mut or owned values" after one question; `ObjectId`: identity in stored IDs, per-zone proofs from the location owner, his first proof borrowed the ID; no audit, findings 33 to 35 and 12 ticketed as 08, 11 and 12, PR #38) |
 | 02h | PDV | Parse, don't validate, revisited: a fact a read learned and a write uses; PR #55's doc gaps | done (opened on his objection that 02g taught a rule that doesn't hold; research on Python, Ruby, TS, databases, Rust std and crates, engines and Meyer; facts about the parsed value split from "Checks before writes"; only the first write refuses, an owner-defined `&mut` proof keeps facts fresh, else the write re-asks and panics; he proposed the owner-defined entry; proof names and consumed tokens; #55 audited, comment posted, ticket 11 updated, PR #60) |
 | 02i | RCH | #51's open doc gaps and those of tickets 12 and 13 | done (probe 4 of 4; a write takes reach and a command, from Miller's permission and authority; a lend hands over every command, a facet fewer; his concern about moving a four-line keeper went to an AFK PR; my keeper paragraph withdrawn for "leave stable, easy decisions"; group 3 ruled with no doc change; research on alternatives; PR #78) |
-| 02j | review | #66's two gaps, #68's batching, formal per arm and read-then-write steps, #51's second builder | next |
-| 03 | DOD | Data-oriented design, ECS organization, the rules core beside Bevy | |
+| 02j | J | #66's two gaps, #68's batching, formal per arm and read-then-write steps, #51's second builder | done (probe: one right, a miss on reads, one void on an undefined term; nested owners from reach, the bullet cut to one line at his request; premise against snapshot, a check is a read; a free order can rest on another module's decision, the batching case to a card-game thread; per-branch reach in "Restricting callers"; #66's main type and #51's builder closed with no doc change; scope research) |
+| 03 | DOD | Data-oriented design, ECS organization, the rules core beside Bevy | next |
 | 04 | R3, P, T | Ports, anti-corruption layers, contract tests, tests as feedback | |
 | 05 | F | Feature-first, shared code, naming | |
 | 06 | RS, E | Rust layer and enforcement | |

@@ -10,10 +10,10 @@ Category: enhancement
 card to the base set, where every game loads it, as Dud's empty verb list shows. A branch no base
 card reaches stays unpinned. `setup` also names `HERO` for every player.
 
-ADR 0022: the rules crate holds no cards, a game is started with a binder, and a binder is built
-from sets whose prefix it composes into each card's code. ADR 0023: card data is written in public
+ADR 0026: the rules crate holds no cards, a game is started with a binder, and a binder is built
+from sets whose prefix it composes into each card's code. ADR 0027: card data is written in public
 types that name cards by `DefCode`, and the binder parses it into private types that name them by a
-`DefId` only it builds. ADR 0024: loading rejects a code that names no card, a code used twice, and
+`DefId` only it builds. ADR 0028: loading rejects a code that names no card, a code used twice, and
 a deck whose hero names a card that is not a hero.
 
 ## What
@@ -65,9 +65,10 @@ a deck whose hero names a card that is not a hero.
 
 ### Where the cards go
 
-- The 33 base cards move to a set in `tests/spec/`, shared by the crate tests, with the prefix
-  `test`. Dud and every other card come along unchanged apart from their codes. The constants the
-  tests import, such as `BOLT`, become `DefCode` constants there.
+- Every card in `base.rs` (49 at this writing, the hero included) moves to a set in `tests/spec/`,
+  shared by the crate tests, with the prefix `test`. Dud and every other card come along unchanged
+  apart from their codes. The constants the tests import, such as `BOLT`, become `DefCode`
+  constants there.
 - A crate test may build its binder from the shared set plus a set of its own, defined in the test.
 - `benches/game.rs` builds its own set with only the cards its decks use.
 - Unit tests in `src/` can't reach the crate tests' set. Each builds the cards it needs inline.

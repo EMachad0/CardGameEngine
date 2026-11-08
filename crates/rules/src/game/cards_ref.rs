@@ -58,17 +58,23 @@ impl<'g> CardsRef<'g> {
     pub(super) fn scan_characters_with_filter(
         &self,
         asking: PlayerId,
+        itself: ObjectId,
         filter: &CharacterFilter,
     ) -> Vec<ObjectId> {
         self.zones
             .characters_in_play()
-            .filter(|&object_id| self.object_passes_character_filter(asking, filter, object_id))
+            .filter(|&object_id| {
+                self.object_passes_character_filter(asking, itself, filter, object_id)
+            })
             .collect()
     }
 
+    /// Never `itself`, the card whose targets these are, though it stays in the hand while
+    /// targeted.
     pub(super) fn scan_cards_with_options(
         &self,
         asking: PlayerId,
+        itself: ObjectId,
         filter: &CardTargetOptions,
     ) -> Vec<ObjectId> {
         let objects = match filter.zone {
@@ -77,6 +83,7 @@ impl<'g> CardsRef<'g> {
         objects
             .iter()
             .copied()
+            .filter(|&object_id| object_id != itself)
             .filter(|&object_id| self.card_is_kind(filter.kind, object_id))
             .collect()
     }
@@ -110,10 +117,12 @@ impl<'g> CardsRef<'g> {
     pub(super) fn object_passes_character_filter(
         &self,
         asking: PlayerId,
+        itself: ObjectId,
         filter: &CharacterFilter,
         object_id: ObjectId,
     ) -> bool {
         let owner = self.objects.get(object_id).player_id;
-        filter.passes(asking, owner, self.card_def(object_id).character_kind())
+        let kind = self.card_def(object_id).character_kind();
+        filter.passes(asking, itself, object_id, owner, kind)
     }
 }

@@ -19,6 +19,11 @@ struct PendingEffect {
     effects: Vec<Effect<Bound>>,
 }
 
+/// Pending effects not yet on the effect stack, in the order they go on it.
+#[derive(Debug, Default)]
+#[must_use = "pending effects resolve only once pushed"]
+pub(super) struct PendingEffects(Vec<PendingEffect>);
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ResolvingEffect {
     pending: PendingEffect,
@@ -32,12 +37,19 @@ pub(super) struct NextEffect {
     pub(super) effect: Effect<Bound>,
 }
 
+/// The objects of a complete picking taken off the resolving effect.
+#[derive(Debug, PartialEq, Eq)]
+pub(super) struct FinishedPick {
+    /// The object whose text opened the pick.
+    pub(super) source: ObjectId,
+    pub(super) picked: PickedObjects,
+}
+
 /// What the resolving effect does next.
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum Advance {
     Effect(NextEffect),
-    /// With the objects of the complete picking taken off the resolving effect.
-    FinishPicking(PickedObjects),
+    FinishPicking(FinishedPick),
     AwaitPicking,
     /// Nothing is resolving.
     Done,
@@ -82,6 +94,12 @@ impl WasAwaitingPicking {
     }
 }
 
+impl PendingEffects {
+    pub(super) fn push(&mut self, source: ObjectId, effects: Vec<Effect<Bound>>) {
+        self.0.push(PendingEffect { source, effects });
+    }
+}
+
 impl ResolvingEffect {
     fn next_effect(&mut self) -> Option<NextEffect> {
         let effect = self.pending.effects.get(self.idx)?.clone();
@@ -94,8 +112,15 @@ impl ResolvingEffect {
 }
 
 impl EffectStack {
-    pub(super) fn push(&mut self, source: ObjectId, effects: Vec<Effect<Bound>>) {
+    fn push(&mut self, source: ObjectId, effects: Vec<Effect<Bound>>) {
         self.pending.push(PendingEffect { source, effects });
+    }
+
+    /// Pushes each of `pending` in order, so the last resolves first.
+    pub(super) fn push_all(&mut self, pending: PendingEffects) {
+        for PendingEffect { source, effects } in pending.0 {
+            self.push(source, effects);
+        }
     }
 
     /// Takes the newest pending effect off the stack to resolve it. Panics while another one is
@@ -120,7 +145,10 @@ impl EffectStack {
         };
         if let Some(picking) = resolving.picking.take() {
             return match picking.finish() {
-                Ok(picked) => Advance::FinishPicking(picked),
+                Ok(picked) => Advance::FinishPicking(FinishedPick {
+                    source: resolving.pending.source,
+                    picked,
+                }),
                 Err(open) => {
                     resolving.picking = Some(open);
                     Advance::AwaitPicking
@@ -337,6 +365,27 @@ mod tests {
     }
 
     #[test]
+    fn pending_effects_pushed_together_go_on_top_and_the_last_resolves_first() {
+        let [waiting, first, last] = sources();
+        let mut stack = EffectStack::default();
+        stack.push(waiting, vec![draw(1)]);
+        let mut pending = PendingEffects::default();
+        pending.push(first, vec![draw(2)]);
+        pending.push(last, vec![draw(3)]);
+
+        stack.push_all(pending);
+
+        stack.start_next();
+        assert_eq!(stack.advance(), effect(last, draw(3)));
+        stack.advance();
+        stack.start_next();
+        assert_eq!(stack.advance(), effect(first, draw(2)));
+        stack.advance();
+        stack.start_next();
+        assert_eq!(stack.advance(), effect(waiting, draw(1)));
+    }
+
+    #[test]
     fn an_open_picking_awaits_its_options() {
         let [source, a, b] = sources();
 
@@ -378,7 +427,10 @@ mod tests {
 
         assert_eq!(
             stack.advance(),
-            Advance::FinishPicking(answered.finish().unwrap())
+            Advance::FinishPicking(FinishedPick {
+                source,
+                picked: answered.finish().unwrap(),
+            })
         );
         assert_eq!(stack.advance(), effect(source, draw(2)));
     }

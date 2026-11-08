@@ -117,13 +117,19 @@ fn fulfill_trigger_pattern(
                 return false;
             };
             let kind = cards.card_def(*object_id).card_kind();
-            card_filter.passes(trigger_owner, *player_id, kind)
+            card_filter.passes(trigger_owner, trigger_object, *object_id, *player_id, kind)
         }
         TriggerPattern::Damaged(subject) => {
             let Event::Damaged { target, .. } = event else {
                 return false;
             };
             fulfill_trigger_subject(cards, subject, trigger_owner, trigger_object, *target)
+        }
+        TriggerPattern::Summoned(subject) => {
+            let Event::Summoned { object_id, .. } = event else {
+                return false;
+            };
+            fulfill_trigger_subject(cards, subject, trigger_owner, trigger_object, *object_id)
         }
     }
 }
@@ -137,8 +143,11 @@ fn fulfill_trigger_subject(
 ) -> bool {
     match subject {
         TriggerSubject::Itself => trigger_object == event_object,
-        TriggerSubject::Character(character_filter) => {
-            cards.object_passes_character_filter(trigger_owner, &character_filter, event_object)
-        }
+        TriggerSubject::Character(character_filter) => cards.object_passes_character_filter(
+            trigger_owner,
+            trigger_object,
+            &character_filter,
+            event_object,
+        ),
     }
 }

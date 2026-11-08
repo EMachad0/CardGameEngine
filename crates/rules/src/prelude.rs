@@ -17,7 +17,8 @@ pub use crate::effect::{
 pub use crate::event::Event;
 pub use crate::game::state::{ApplyError, Game};
 pub use crate::game::view::{
-    BoardCard, Face, HandCard, HeroCard, PickingCard, PickingView, PlayerView, TargetingView, View,
+    BoardCard, ChooserPicking, Face, HandCard, HeroCard, PickingCard, PickingView, PlayerView,
+    TargetingView, View,
 };
 pub use crate::history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter};
 pub use crate::ids::PlayerId;

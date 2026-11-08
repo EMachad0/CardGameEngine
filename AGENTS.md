@@ -18,6 +18,21 @@ workspace manifest, with members under `crates/`.
   `cargo clippy --workspace --all-targets -- -D warnings`, then `cargo test --workspace`. "The
   checks" below means this recipe.
 
+## Worktrees
+
+When a task needs a branch with no worktree, create one with the `wk` recipes. Never use a
+harness's or agent tool's own worktree option. It puts the worktree outside the `main.<branch>`
+siblings that `wk` expects.
+
+- `just wk::new <branch>` branches off a fresh origin/main. For another base, run
+  `mise exec -- wt switch --create <branch> --base <base> --no-cd`.
+- `just wk::rm <branch>` removes one. Only when I ask.
+
+The shell stays in `main/`. In T3 Code, launch a thread bound to the new worktree as an existing
+worktree, give it the full task and hand me its link. Elsewhere, work in it by absolute path. In
+zellij, a task that needs its own worktree and my input goes to another pi session through the
+`delegate` skill.
+
 ## Required reading
 
 These docs are not background. When one applies, read the whole thing before writing any code.
@@ -35,36 +50,36 @@ They set the conventions you follow, not material for you to summarize.
 - Before creating, splitting, moving or naming a module, a file or a crate, or deciding where new
   code goes: `docs/conventions/file-structure.md`.
 
-## Code comments
+## Writing
 
-Default is no comment. Docstrings come before inline comments. If the explanation is durable, it
-belongs in a docstring, not above a line.
+Covers every text you write: code comments, docstrings, assertion messages, TOML `#` comments,
+`clippy.toml` reasons, docs, skills, commit messages, PR bodies and replies to me.
 
-When a comment is warranted:
+- Unslop every text. Beyond the `unslop` skill, no arrows.
+- The longer a text must stay true while the code changes, the stricter its wording. From loosest
+  to strictest: a reply to me, a frozen record (a session log or an ADR) that may cite anything
+  current when written, a PR body that describes the branch as it stands, docs and skills, then
+  code text, which says only what stays true.
+- Unneeded examples are the main way text goes stale. Add one only when the rule cannot be read
+  without it. An example of behaviour belongs in a test.
+- Professional tone. No chatty asides, no editorializing, no narration of the change being made.
+- Keep replies to me focused, brief and concise.
+- Concise. A rewrite makes the text shorter, not longer.
+- Text moved from another file counts as new. Existing text gets restyled when next rewritten.
 
-- Professional tone. No chatty asides ("and friends", "gotcha"), no editorializing, no narration
-  of the change being made.
-- Concise. When rewriting an existing comment, make it shorter, not longer.
-- Only what reading the code cannot tell you. A comment restating the next line is noise. This
-  decides whether an item gets a docstring, whatever its siblings carry.
-- Do not couple a comment to code that is not directly below it. No comment that describes a
-  caller, a sibling module, or a future edit. This holds even for what reading the code cannot
-  tell you.
-- The comment must stand on its own and cost nothing to keep accurate. A comment that goes stale
-  the next time nearby code moves is a bad comment. Drop it instead.
+### Code comments
+
+Default is no comment. Docstrings come before inline comments, and a durable explanation belongs
+in a docstring.
+
+- Only what reading the code cannot tell you. This decides whether an item gets a docstring,
+  whatever its siblings carry.
+- Do not couple a comment to code that is not directly below it: no caller, sibling module or
+  future edit.
 - Never reference agent tooling, docs or untracked files: anything under `.pi/`, `.agents/` or
-  `docs/`, handoff docs, plans, course node labels. A handoff or plan doc claiming an exception
-  is not license.
-- No em dashes, en dashes, or arrows.
+  `docs/`, handoff docs, plans, course node labels. A plan claiming an exception is not license.
 - Let the comments already in the file and the module guide what is worth saying. They don't
   decide it.
-
-These rules cover all new text, not only inline comments: docstrings, assertion messages, test
-comments, TOML `#` comments and `clippy.toml` reasons. Text moved from another file counts as new
-text and gets restyled during the move.
-
-Docs and skills follow the same tone, concision and punctuation rules. Existing text gets restyled
-when it is next rewritten, not before.
 
 ## Always check your work
 
@@ -81,7 +96,8 @@ the code matches your intent. The work is not done until they are green.
   don't ask me about messages or how to split them. A commit may hold red tests, clippy errors or
   warnings.
 - When you push to a branch that has a pull request, or open one, keep its body up to date. After
-  each push, edit it so it describes the whole branch as it stands.
+  each push, edit it so it describes the whole branch as it stands, then publish its review page
+  with the `review-page` skill.
 
 ## Plan before implementing
 
@@ -109,10 +125,20 @@ the pi extensions and agents under `.pi/`.
 
 ### Review loop
 
-Reviews a branch in parallel lanes, fixes the findings its verifiers confirm, commits each round,
+Reviews a branch in parallel lanes, fixes the findings its judges pass, commits each round,
 then pushes and opens a pull request. AFK work always ends with it, in place of the `/code-review`
 step that `implement` names. It lives in `.agents/skills/review-loop/`, and its subagents are the
 agents under `.pi/`.
+
+### Delegate
+
+Starts a separate pi session in a new worktree and zellij tab for a task that needs its own
+worktree and my input. It lives in `.agents/skills/delegate/`.
+
+### Review page
+
+Publishes a page for each pull request, which I review instead of the diff. See
+`docs/agents/review-page.md`.
 
 ### Issue tracker
 
