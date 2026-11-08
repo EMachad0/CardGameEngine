@@ -69,9 +69,12 @@ impl<'g> CardsRef<'g> {
             .collect()
     }
 
+    /// Never `itself`, the card whose targets these are, though it stays in the hand while
+    /// targeted.
     pub(super) fn scan_cards_with_options(
         &self,
         asking: PlayerId,
+        itself: ObjectId,
         filter: &CardTargetOptions,
     ) -> Vec<ObjectId> {
         let objects = match filter.zone {
@@ -80,6 +83,7 @@ impl<'g> CardsRef<'g> {
         objects
             .iter()
             .copied()
+            .filter(|&object_id| object_id != itself)
             .filter(|&object_id| self.card_is_kind(filter.kind, object_id))
             .collect()
     }

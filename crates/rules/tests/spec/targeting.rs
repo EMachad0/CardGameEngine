@@ -2,8 +2,10 @@
 //! one at a time, and then the card is played.
 
 use pretty_assertions::assert_eq;
-use rules::prelude::static_card_definition::{CROSSFIRE, PING, RECRUIT, RECYCLE, SHOVE, TWIN_SHOT};
-use rules::prelude::{Action, Game};
+use rules::prelude::static_card_definition::{
+    CROSSFIRE, PING, RECRUIT, RECYCLE, SHOVE, TINKER, TWIN_SHOT,
+};
+use rules::prelude::{Action, DefId, Game, PlayerId};
 
 use crate::support::*;
 
@@ -371,6 +373,44 @@ fn recycle_does_not_offer_a_minion_card_in_the_opponents_hand() {
     apply_all(&mut game, p0, &[start_targeting(recycle)]);
 
     assert_actions(&game, p0, &[target(0, recruit), cancel(recycle)]);
+}
+
+/// P0's turn with at least 1 mana, holding only `hand`: P0's deck holds nothing else.
+fn holding_only(hand: &[DefId]) -> (Game, PlayerId) {
+    let mut game = Game::with_deck_order(0, [hand.to_vec(), deck_with_top(&[])]);
+    let [p0, _] = players(&game);
+    turn_with_mana(&mut game, p0, 1);
+    assert_eq!(hand_defs(&game, p0), hand, "P0 holds only the given cards");
+    (game, p0)
+}
+
+#[test]
+fn tinker_is_not_offered_as_one_of_its_own_options() {
+    let (mut game, p0) = holding_only(&[TINKER, RECRUIT]);
+    let tinker = in_hand(&game, p0, TINKER);
+    let recruit = in_hand(&game, p0, RECRUIT);
+    apply_all(&mut game, p0, &[start_targeting(tinker)]);
+
+    assert_actions(&game, p0, &[target(0, recruit), cancel(tinker)]);
+}
+
+#[test]
+fn tinker_offers_another_tinker_in_the_same_hand() {
+    let (mut game, p0) = holding_only(&[TINKER, TINKER]);
+    let [tinker, other] = [game.hand(p0)[0], game.hand(p0)[1]];
+    apply_all(&mut game, p0, &[start_targeting(tinker)]);
+
+    assert_actions(&game, p0, &[target(0, other), cancel(tinker)]);
+}
+
+#[test]
+fn tinker_is_not_offered_with_no_other_card_in_hand() {
+    let (game, p0) = holding_only(&[TINKER]);
+    let tinker = in_hand(&game, p0, TINKER);
+    let legal = game.legal_actions(p0);
+
+    assert!(!legal.contains(&start_targeting(tinker)), "{legal:?}");
+    assert!(!legal.contains(&play(tinker)), "{legal:?}");
 }
 
 #[test]
