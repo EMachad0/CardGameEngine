@@ -1,5 +1,5 @@
-use crate::cards::definition::TriggerDef;
 use crate::cards::object::ObjectId;
+use crate::cards::parsed::TriggerDef;
 use crate::effect::Effect;
 use crate::event::Event;
 use crate::game::cards_ref::CardsRef;

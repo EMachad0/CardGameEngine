@@ -3,19 +3,19 @@
 use std::collections::BTreeSet;
 
 use pretty_assertions::{assert_eq, assert_ne};
-use rules::prelude::static_card_definition::{
+use rules::prelude::{Action, DefCode, Event, Game, ObjectId};
+
+use crate::support::*;
+use crate::test_set::{
     BARRACKS, BLAST, BOLT, CAPTAIN, DRUMMER, ENLIST, FORAGE, GIANT, HOARDER, MENTOR, MUSTER,
     PACKRAT, RECRUIT, RECYCLE, ROUSE, SHARPEN, SPARK, SQUIRE, STRAY_SHOT, SWEEP, TREMOR, TRIAGE,
     WILD_BOLT, ZAP,
 };
-use rules::prelude::{Action, DefId, Event, Game, ObjectId};
-
-use crate::support::*;
 
 #[test]
 fn playing_a_card_keeps_the_rest_of_the_hand_in_order() {
     let deck = vec![BOLT, SPARK, RECRUIT, CAPTAIN, BLAST];
-    let mut game = Game::with_deck_order(0, [deck.clone(), deck]);
+    let mut game = game_with_deck_order(0, [deck.clone(), deck]);
     let [p0, _] = players(&game);
 
     play_def(&mut game, p0, SPARK);
@@ -28,7 +28,7 @@ fn damage_spells_hit_the_casters_enemy() {
     for (spell, damage) in [(SPARK, 1), (BOLT, 2), (ZAP, 1)] {
         for (caster, enemy) in [(0, 1), (1, 0)] {
             let deck = deck_with_top(&[spell]);
-            let mut game = Game::with_deck_order(0, [deck.clone(), deck]);
+            let mut game = game_with_deck_order(0, [deck.clone(), deck]);
             let ids = players(&game);
             let (caster, enemy) = (ids[caster], ids[enemy]);
             turn_with_mana(&mut game, caster, 2);
@@ -47,7 +47,7 @@ fn damage_spells_hit_the_casters_enemy() {
 
 #[test]
 fn zap_draws_the_top_card_of_its_casters_deck() {
-    let mut game = Game::with_deck_order(0, [deck_with_top(&[ZAP]), deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck_with_top(&[ZAP]), deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 2);
     let zap = in_hand(&game, p0, ZAP);
@@ -93,7 +93,7 @@ fn every_card_pays_its_printed_cost() {
         (MENTOR, 2),
     ];
     for (def, cost) in cases {
-        let mut game = Game::with_deck_order(0, [deck_with_top(&[def]), deck_with_top(&[])]);
+        let mut game = game_with_deck_order(0, [deck_with_top(&[def]), deck_with_top(&[])]);
         let [p0, _] = players(&game);
         turn_with_mana(&mut game, p0, cost);
         let card = in_hand(&game, p0, def);
@@ -108,7 +108,7 @@ fn every_card_pays_its_printed_cost() {
 #[test]
 fn minions_are_summoned_at_the_right_end_of_their_owners_board() {
     let deck0 = deck_with_top(&[RECRUIT, CAPTAIN, RECRUIT]);
-    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck0, deck_with_top(&[])]);
     let [p0, p1] = players(&game);
     turn_with_mana(&mut game, p0, 2);
     play_def(&mut game, p0, RECRUIT);
@@ -127,7 +127,7 @@ fn minions_are_summoned_at_the_right_end_of_their_owners_board() {
 #[test]
 fn blast_deals_two_damage_to_every_character() {
     let deck0 = deck_with_top(&[GIANT, BLAST]);
-    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[GIANT])]);
+    let mut game = game_with_deck_order(0, [deck0, deck_with_top(&[GIANT])]);
     let [p0, p1] = players(&game);
     turn_with_mana(&mut game, p0, 8);
     let mine = summon(&mut game, p0, GIANT);
@@ -146,7 +146,7 @@ fn blast_deals_two_damage_to_every_character() {
 #[test]
 fn barracks_summons_a_squire_at_the_right_end_of_its_casters_board() {
     let deck0 = deck_with_top(&[RECRUIT, BARRACKS]);
-    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck0, deck_with_top(&[])]);
     let [p0, p1] = players(&game);
     turn_with_mana(&mut game, p0, 2);
     play_def(&mut game, p0, RECRUIT);
@@ -163,7 +163,7 @@ fn barracks_summons_a_squire_at_the_right_end_of_its_casters_board() {
 
 #[test]
 fn a_summoned_squire_has_its_printed_stats() {
-    let mut game = Game::with_deck_order(0, [deck_with_top(&[BARRACKS]), deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck_with_top(&[BARRACKS]), deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 2);
 
@@ -179,7 +179,7 @@ fn a_summoned_squire_has_its_printed_stats() {
 #[test]
 fn each_barracks_summons_a_new_object() {
     let deck0 = deck_with_top(&[BARRACKS, BARRACKS]);
-    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck0, deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 4);
     let before: BTreeSet<ObjectId> = zone_ids(&game).into_iter().collect();
@@ -202,7 +202,7 @@ fn each_barracks_summons_a_new_object() {
 /// Player 0 casts Forage with a Recruit and a Captain on top of the deck and a Bolt under them.
 fn forage_over_recruit_and_captain() -> Game {
     let deck0 = vec![FORAGE, SPARK, SPARK, SPARK, RECRUIT, CAPTAIN, BOLT];
-    let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
+    let mut game = game_with_deck_order(0, [deck0, vec![SPARK; 6]]);
     let [p0, _] = players(&game);
     play_def(&mut game, p0, FORAGE);
     game
@@ -219,7 +219,7 @@ fn forage_offers_the_top_two_cards_of_the_deck() {
 #[test]
 fn the_deck_keeps_its_size_and_its_order_while_a_pick_is_open() {
     let deck0 = vec![FORAGE, SPARK, SPARK, SPARK, RECRUIT, CAPTAIN, BOLT];
-    let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
+    let mut game = game_with_deck_order(0, [deck0, vec![SPARK; 6]]);
     let [p0, _] = players(&game);
     let before = game.deck(p0);
 
@@ -277,7 +277,7 @@ fn a_pick_ends_the_forages_picking() {
 #[test]
 fn a_deck_with_fewer_cards_than_the_window_offers_the_cards_it_has() {
     let deck0 = vec![FORAGE, SPARK, SPARK, SPARK, RECRUIT];
-    let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
+    let mut game = game_with_deck_order(0, [deck0, vec![SPARK; 6]]);
     let [p0, _] = players(&game);
 
     play_def(&mut game, p0, FORAGE);
@@ -290,7 +290,7 @@ fn a_deck_with_fewer_cards_than_the_window_offers_the_cards_it_has() {
 #[test]
 fn forage_on_an_empty_deck_does_nothing() {
     let deck0 = vec![FORAGE, SPARK, SPARK, SPARK];
-    let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
+    let mut game = game_with_deck_order(0, [deck0, vec![SPARK; 6]]);
     let [p0, _] = players(&game);
 
     play_def(&mut game, p0, FORAGE);
@@ -301,9 +301,9 @@ fn forage_on_an_empty_deck_does_nothing() {
 }
 
 /// Player 0 casts Muster with `top` on top of the deck and a Giant, a minion, under them.
-fn muster_over(top: [DefId; 3]) -> Game {
+fn muster_over(top: [DefCode; 3]) -> Game {
     let deck0 = [&[MUSTER, SPARK, SPARK, SPARK][..], &top, &[GIANT]].concat();
-    let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
+    let mut game = game_with_deck_order(0, [deck0, vec![SPARK; 6]]);
     let [p0, _] = players(&game);
     play_def(&mut game, p0, MUSTER);
     game
@@ -370,7 +370,7 @@ fn muster_with_no_minion_among_the_top_three_buries_all_three_without_asking() {
 
 /// Health lost by (caster, enemy) after player 0 casts Wild Bolt in a game seeded with `seed`.
 fn cast_wild_bolt(seed: u64) -> (i32, i32) {
-    let mut game = Game::with_deck_order(seed, [vec![WILD_BOLT; 6], vec![SPARK; 6]]);
+    let mut game = game_with_deck_order(seed, [vec![WILD_BOLT; 6], vec![SPARK; 6]]);
     let [p0, p1] = players(&game);
     play_def(&mut game, p0, WILD_BOLT);
     (10 - game.hero_health(p0), 10 - game.hero_health(p1))
@@ -405,7 +405,7 @@ fn wild_bolt_can_hit_either_hero() {
 fn stray_shot_facing_two_recruits(seed: u64) -> (Game, [ObjectId; 2]) {
     let deck0 = deck_with_top(&[RECRUIT, STRAY_SHOT]);
     let deck1 = deck_with_top(&[RECRUIT, RECRUIT]);
-    let mut game = Game::with_deck_order(seed, [deck0, deck1]);
+    let mut game = game_with_deck_order(seed, [deck0, deck1]);
     let [p0, p1] = players(&game);
     turn_with_mana(&mut game, p0, 2);
     summon(&mut game, p0, RECRUIT);
@@ -459,7 +459,7 @@ fn stray_shot_can_hit_either_enemy_minion() {
 /// in hand.
 fn stray_shot_facing_an_empty_board() -> Game {
     let deck0 = deck_with_top(&[RECRUIT, STRAY_SHOT]);
-    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck0, deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 2);
     summon(&mut game, p0, RECRUIT);

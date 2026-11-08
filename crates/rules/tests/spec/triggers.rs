@@ -3,14 +3,14 @@
 use std::collections::BTreeSet;
 
 use pretty_assertions::assert_eq;
-use rules::prelude::static_card_definition::{
+use rules::prelude::{Event, ObjectId, Outcome};
+
+use crate::support::*;
+use crate::test_set::{
     BARRACKS, BLAST, BOLT, BOMBER, COURIER, DISPATCH, DRILLMASTER, GRAVEDIGGER, HERALD,
     JUGGLING_ACT, JUGGLING_LINE, KNIFE_JUGGLER, MEDIC, MIRROR_IMAGE, MOURNER, PING, RALLY_BANNER,
     RECRUIT, RINGMASTER, SQUIRE, TREMOR, TWIN_SHOT,
 };
-use rules::prelude::{Event, Game, ObjectId, Outcome};
-
-use crate::support::*;
 
 /// How many times `target` was hit in `events`.
 fn hits_on(events: &[Event], target: ObjectId) -> usize {
@@ -252,7 +252,7 @@ fn a_knife_juggler_does_not_hear_its_own_summon() {
 #[test]
 fn a_knife_juggler_does_not_hear_an_enemy_minions_summon() {
     let deck0 = deck_with_top(&[KNIFE_JUGGLER]);
-    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[RECRUIT])]);
+    let mut game = game_with_deck_order(0, [deck0, deck_with_top(&[RECRUIT])]);
     let [p0, p1] = players(&game);
     turn_with_mana(&mut game, p0, 2);
     let juggler = summon(&mut game, p0, KNIFE_JUGGLER);
@@ -684,7 +684,7 @@ fn the_newest_of_the_triggers_matched_by_one_event_resolves_first() {
 #[test]
 fn nothing_resolves_after_the_game_ends() {
     let deck0 = vec![BOMBER, MOURNER, BLAST, BLAST];
-    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck0, deck_with_top(&[])]);
     let [p0, p1] = players(&game);
     turn_with_mana(&mut game, p0, 2);
     summon(&mut game, p0, BOMBER);

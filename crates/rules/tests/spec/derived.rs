@@ -1,10 +1,10 @@
 //! Attack, health and cost, derived on read.
 
 use pretty_assertions::assert_eq;
-use rules::prelude::static_card_definition::{BLAST, CAPTAIN, GIANT, RECRUIT, SPARK};
 use rules::prelude::{Game, ObjectId};
 
 use crate::support::*;
+use crate::test_set::{BLAST, CAPTAIN, GIANT, RECRUIT, SPARK};
 
 /// `(attack, health)`.
 fn stats(game: &Game, minion: ObjectId) -> (Option<i32>, Option<i32>) {
@@ -19,7 +19,7 @@ fn minions_are_summoned_with_their_printed_stats() {
         (GIANT, 8, (5, 5)),
     ];
     for (def, cost, (attack, health)) in cases {
-        let mut game = Game::with_deck_order(0, [deck_with_top(&[def]), deck_with_top(&[])]);
+        let mut game = game_with_deck_order(0, [deck_with_top(&[def]), deck_with_top(&[])]);
         let [p0, _] = players(&game);
         turn_with_mana(&mut game, p0, cost);
 
@@ -36,7 +36,7 @@ fn minions_are_summoned_with_their_printed_stats() {
 #[test]
 fn a_captain_does_not_buff_enemy_minions() {
     let deck0 = deck_with_top(&[CAPTAIN]);
-    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[RECRUIT])]);
+    let mut game = game_with_deck_order(0, [deck0, deck_with_top(&[RECRUIT])]);
     let [p0, p1] = players(&game);
     turn_with_mana(&mut game, p0, 3);
     summon(&mut game, p0, CAPTAIN);
@@ -53,7 +53,7 @@ fn a_captain_does_not_buff_enemy_minions() {
 
 #[test]
 fn cards_in_hand_have_a_cost_and_no_stats() {
-    let game = Game::with_deck_order(0, [deck_with_top(&[RECRUIT]), deck_with_top(&[])]);
+    let game = game_with_deck_order(0, [deck_with_top(&[RECRUIT]), deck_with_top(&[])]);
     let [p0, _] = players(&game);
     let recruit = in_hand(&game, p0, RECRUIT);
 
@@ -63,7 +63,7 @@ fn cards_in_hand_have_a_cost_and_no_stats() {
 
 #[test]
 fn a_hero_has_health_and_no_attack_or_cost() {
-    let game = Game::with_deck_order(0, [deck_with_top(&[]), deck_with_top(&[])]);
+    let game = game_with_deck_order(0, [deck_with_top(&[]), deck_with_top(&[])]);
     let [p0, _] = players(&game);
     let hero = game.hero_id(p0);
 
@@ -73,7 +73,7 @@ fn a_hero_has_health_and_no_attack_or_cost() {
 
 #[test]
 fn a_captain_does_not_buff_its_owners_hero() {
-    let mut game = Game::with_deck_order(0, [deck_with_top(&[CAPTAIN]), deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck_with_top(&[CAPTAIN]), deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 3);
 
@@ -88,7 +88,7 @@ fn a_captain_does_not_buff_its_owners_hero() {
 
 #[test]
 fn a_minion_on_the_board_has_no_cost() {
-    let mut game = Game::with_deck_order(0, [deck_with_top(&[RECRUIT]), deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck_with_top(&[RECRUIT]), deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 2);
 
@@ -100,7 +100,7 @@ fn a_minion_on_the_board_has_no_cost() {
 /// Player 0's board: a Recruit, a Captain, then a second Recruit.
 fn recruit_captain_recruit() -> (Game, [ObjectId; 3]) {
     let deck0 = deck_with_top(&[RECRUIT, CAPTAIN, RECRUIT]);
-    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck0, deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 2);
     let earlier = summon(&mut game, p0, RECRUIT);
@@ -137,7 +137,7 @@ fn a_captain_does_not_buff_itself() {
 /// Player 0's board: two Captains, then a Recruit.
 fn two_captains_and_a_recruit() -> (Game, [ObjectId; 3]) {
     let deck0 = deck_with_top(&[CAPTAIN, CAPTAIN, RECRUIT]);
-    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck0, deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 3);
     let first = summon(&mut game, p0, CAPTAIN);
@@ -171,7 +171,7 @@ fn buffs_from_two_captains_stack() {
 #[test]
 fn health_is_max_health_minus_marked_damage() {
     let deck0 = deck_with_top(&[GIANT, BLAST, BLAST]);
-    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck0, deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 8);
     let giant = summon(&mut game, p0, GIANT);
@@ -191,7 +191,7 @@ fn health_is_max_health_minus_marked_damage() {
 #[test]
 fn a_captains_buff_ends_when_the_captain_leaves() {
     let deck0 = deck_with_top(&[GIANT, CAPTAIN, BLAST]);
-    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck0, deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 8);
     let giant = summon(&mut game, p0, GIANT);
@@ -212,7 +212,7 @@ fn a_captains_buff_ends_when_the_captain_leaves() {
 #[test]
 fn giant_costs_one_less_per_spell_its_holder_has_cast() {
     let deck0 = deck_with_top(&[GIANT, SPARK, SPARK, SPARK]);
-    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck0, deck_with_top(&[])]);
     let [p0, _] = players(&game);
     let giant = in_hand(&game, p0, GIANT);
     assert_eq!(game.mana_cost(giant), Some(8));
@@ -229,7 +229,7 @@ fn giant_costs_one_less_per_spell_its_holder_has_cast() {
 #[test]
 fn opponents_spells_do_not_lower_a_giants_cost() {
     let deck0 = deck_with_top(&[GIANT]);
-    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[SPARK])]);
+    let mut game = game_with_deck_order(0, [deck0, deck_with_top(&[SPARK])]);
     let [p0, p1] = players(&game);
     let giant = in_hand(&game, p0, GIANT);
     turn_with_mana(&mut game, p1, 1);
@@ -242,7 +242,7 @@ fn opponents_spells_do_not_lower_a_giants_cost() {
 #[test]
 fn minions_do_not_lower_a_giants_cost() {
     let deck0 = deck_with_top(&[GIANT, RECRUIT]);
-    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck0, deck_with_top(&[])]);
     let [p0, _] = players(&game);
     let giant = in_hand(&game, p0, GIANT);
     turn_with_mana(&mut game, p0, 2);
@@ -255,7 +255,7 @@ fn minions_do_not_lower_a_giants_cost() {
 #[test]
 fn a_giant_drawn_later_counts_spells_cast_before_it_arrived() {
     let deck0 = deck_with_top(&[SPARK, SPARK, SPARK, BLAST, BLAST, GIANT]);
-    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck0, deck_with_top(&[])]);
     let [p0, _] = players(&game);
     play_def(&mut game, p0, SPARK);
     turn_with_mana(&mut game, p0, 2);
@@ -275,7 +275,7 @@ fn a_giant_drawn_later_counts_spells_cast_before_it_arrived() {
 fn giant_among_sparks() -> (Game, ObjectId) {
     let mut deck0 = vec![GIANT];
     deck0.extend(vec![SPARK; 20]);
-    let game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
+    let game = game_with_deck_order(0, [deck0, deck_with_top(&[])]);
     let [p0, _] = players(&game);
     let giant = in_hand(&game, p0, GIANT);
     (game, giant)

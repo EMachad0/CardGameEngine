@@ -2,13 +2,44 @@
 //! legality assertions and an observer that records what `apply` reports.
 
 use std::collections::BTreeSet;
+use std::sync::LazyLock;
 
 use pretty_assertions::assert_eq;
-use rules::prelude::static_card_definition::{BOLT, RECRUIT};
 use rules::prelude::{
-    Action, ApplyError, DefId, Event, Game, IllegalAction, ObjectId, Observer, PlayerId,
-    PlayerView, TargetId, View, Views,
+    Action, ApplyError, Binder, Deck, DefCode, Event, Game, IllegalAction, ObjectId, Observer,
+    PlayerId, PlayerView, Set, TargetId, View, Views,
 };
+
+use crate::test_set::{BOLT, HERO, RECRUIT, test_set};
+
+static TEST_BINDER: LazyLock<Binder> =
+    LazyLock::new(|| Binder::new([test_set()]).expect("the test set should parse"));
+
+/// A binder of the test set alone.
+pub(crate) fn test_binder() -> Binder {
+    TEST_BINDER.clone()
+}
+
+/// A binder of the test set and `set`.
+pub(crate) fn binder_with(set: Set) -> Binder {
+    Binder::new([test_set(), set]).expect("the sets should parse together")
+}
+
+/// `cards`, top first, with the test set's hero.
+pub(crate) fn deck(cards: Vec<DefCode>) -> Deck {
+    Deck { hero: HERO, cards }
+}
+
+/// `Game::new` with the test set's binder and hero.
+pub(crate) fn new_game(seed: u64, decks: [Vec<DefCode>; 2]) -> Game {
+    Game::new(seed, test_binder(), decks.map(deck)).expect("the decks should name test set cards")
+}
+
+/// `Game::with_deck_order` with the test set's binder and hero.
+pub(crate) fn game_with_deck_order(seed: u64, decks: [Vec<DefCode>; 2]) -> Game {
+    Game::with_deck_order(seed, test_binder(), decks.map(deck))
+        .expect("the decks should name test set cards")
+}
 
 /// The game's players, in `Game::players` order. The tests assume the player at index `i`
 /// got `decks[i]`.
@@ -54,47 +85,47 @@ pub(crate) fn other(game: &Game, p: PlayerId) -> PlayerId {
 }
 
 /// `top`, then 20 Bolts as filler.
-pub(crate) fn deck_with_top(top: &[DefId]) -> Vec<DefId> {
+pub(crate) fn deck_with_top(top: &[DefCode]) -> Vec<DefCode> {
     let mut deck = top.to_vec();
     deck.extend(vec![BOLT; 20]);
     deck
 }
 
-pub(crate) fn defs(game: &Game, ids: &[ObjectId]) -> Vec<DefId> {
-    ids.iter().map(|&id| game.def_id(id)).collect()
+pub(crate) fn defs(game: &Game, ids: &[ObjectId]) -> Vec<DefCode> {
+    ids.iter().map(|&id| game.def_code(id)).collect()
 }
 
-pub(crate) fn hand_defs(game: &Game, p: PlayerId) -> Vec<DefId> {
+pub(crate) fn hand_defs(game: &Game, p: PlayerId) -> Vec<DefCode> {
     defs(game, game.hand(p))
 }
 
-pub(crate) fn deck_defs(game: &Game, p: PlayerId) -> Vec<DefId> {
+pub(crate) fn deck_defs(game: &Game, p: PlayerId) -> Vec<DefCode> {
     defs(game, &game.deck(p))
 }
 
-pub(crate) fn pick_option_defs(game: &Game, p: PlayerId) -> Vec<DefId> {
+pub(crate) fn pick_option_defs(game: &Game, p: PlayerId) -> Vec<DefCode> {
     defs(game, &game.pick_options(p))
 }
 
-pub(crate) fn board_defs(game: &Game, p: PlayerId) -> Vec<DefId> {
+pub(crate) fn board_defs(game: &Game, p: PlayerId) -> Vec<DefCode> {
     defs(game, game.player_board(p))
 }
 
-pub(crate) fn has_in_hand(game: &Game, p: PlayerId, def: DefId) -> bool {
-    game.hand(p).iter().any(|&id| game.def_id(id) == def)
+pub(crate) fn has_in_hand(game: &Game, p: PlayerId, def: DefCode) -> bool {
+    game.hand(p).iter().any(|&id| game.def_code(id) == def)
 }
 
 /// The first card in `p`'s hand with definition `def`.
-pub(crate) fn in_hand(game: &Game, p: PlayerId, def: DefId) -> ObjectId {
+pub(crate) fn in_hand(game: &Game, p: PlayerId, def: DefCode) -> ObjectId {
     game.hand(p)
         .iter()
         .copied()
-        .find(|&id| game.def_id(id) == def)
+        .find(|&id| game.def_code(id) == def)
         .unwrap_or_else(|| panic!("no {def:?} in {p:?}'s hand"))
 }
 
 /// Plays the first card in `p`'s hand with definition `def`.
-pub(crate) fn play_def(game: &mut Game, p: PlayerId, def: DefId) {
+pub(crate) fn play_def(game: &mut Game, p: PlayerId, def: DefCode) {
     let action = play(in_hand(game, p, def));
     game.apply(p, action, &mut ())
         .unwrap_or_else(|e| panic!("playing {def:?}: {e:?}"));
@@ -122,10 +153,10 @@ pub(crate) struct Table {
 /// P0 holds `hand` and has `friendly` Recruits on the board, and P1 has `enemy` Recruits.
 /// `friendly` and `hand` together are at most 3 cards, so P0 draws them in setup.
 /// `enemy` is at most 3.
-pub(crate) fn table(hand: &[DefId], friendly: usize, enemy: usize) -> Table {
+pub(crate) fn table(hand: &[DefCode], friendly: usize, enemy: usize) -> Table {
     let mut top0 = vec![RECRUIT; friendly];
     top0.extend_from_slice(hand);
-    let mut game = Game::with_deck_order(
+    let mut game = game_with_deck_order(
         0,
         [deck_with_top(&top0), deck_with_top(&vec![RECRUIT; enemy])],
     );
@@ -167,7 +198,7 @@ pub(crate) struct Boards {
     pub(crate) theirs: Vec<ObjectId>,
 }
 
-pub(crate) fn boards(mine: &[DefId], theirs: &[DefId], hand: &[DefId], mana: u8) -> Boards {
+pub(crate) fn boards(mine: &[DefCode], theirs: &[DefCode], hand: &[DefCode], mana: u8) -> Boards {
     seeded_boards(0, mine, theirs, hand, mana)
 }
 
@@ -177,14 +208,14 @@ pub(crate) fn boards(mine: &[DefId], theirs: &[DefId], hand: &[DefId], mana: u8)
 /// Bolts.
 pub(crate) fn seeded_boards(
     seed: u64,
-    mine: &[DefId],
-    theirs: &[DefId],
-    hand: &[DefId],
+    mine: &[DefCode],
+    theirs: &[DefCode],
+    hand: &[DefCode],
     mana: u8,
 ) -> Boards {
     let mut top0 = mine.to_vec();
     top0.extend_from_slice(hand);
-    let mut game = Game::with_deck_order(seed, [deck_with_top(&top0), deck_with_top(theirs)]);
+    let mut game = game_with_deck_order(seed, [deck_with_top(&top0), deck_with_top(theirs)]);
     let [p0, p1] = players(&game);
     let mut mine_ids = Vec::new();
     let mut theirs_ids = Vec::new();
@@ -303,7 +334,7 @@ pub(crate) fn observe(game: &mut Game, p: PlayerId, a: Action) -> Recorder {
 }
 
 /// Plays minion `def` from `p`'s hand and returns its board id.
-pub(crate) fn summon(game: &mut Game, p: PlayerId, def: DefId) -> ObjectId {
+pub(crate) fn summon(game: &mut Game, p: PlayerId, def: DefCode) -> ObjectId {
     play_def(game, p, def);
     *game
         .player_board(p)

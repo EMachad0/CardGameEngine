@@ -3,15 +3,15 @@
 use std::collections::BTreeSet;
 
 use pretty_assertions::assert_eq;
-use rules::prelude::static_card_definition::{BLAST, RECRUIT, SPARK};
 use rules::prelude::{Game, ObjectId};
 
 use crate::support::*;
+use crate::test_set::{BLAST, RECRUIT, SPARK};
 
 /// Player 0's Blast has killed player 0's Recruit. Returns the game and the Recruit.
 fn dead_recruit() -> (Game, ObjectId) {
     let deck0 = deck_with_top(&[RECRUIT, BLAST]);
-    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck0, deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 2);
     let recruit = summon(&mut game, p0, RECRUIT);
@@ -28,7 +28,7 @@ fn dead_recruit() -> (Game, ObjectId) {
 fn a_dead_minion_keeps_its_definition() {
     let (game, recruit) = dead_recruit();
 
-    assert_eq!(game.def_id(recruit), RECRUIT);
+    assert_eq!(game.def_code(recruit), RECRUIT);
 }
 
 #[test]
@@ -42,8 +42,8 @@ fn a_dead_minion_has_no_cost_attack_or_health() {
 
 /// A new game of six cards, and an id from a larger game that the six-card game never made.
 fn foreign_id() -> (Game, ObjectId) {
-    let small = Game::with_deck_order(0, [vec![SPARK; 3], vec![SPARK; 3]]);
-    let large = Game::with_deck_order(0, [vec![SPARK; 30], vec![SPARK; 30]]);
+    let small = game_with_deck_order(0, [vec![SPARK; 3], vec![SPARK; 3]]);
+    let large = game_with_deck_order(0, [vec![SPARK; 30], vec![SPARK; 30]]);
     let made: BTreeSet<ObjectId> = zone_ids(&small).into_iter().collect();
     let foreign = zone_ids(&large)
         .into_iter()
@@ -54,10 +54,10 @@ fn foreign_id() -> (Game, ObjectId) {
 
 #[test]
 #[should_panic]
-fn def_id_panics_on_an_id_the_game_never_made() {
+fn def_code_panics_on_an_id_the_game_never_made() {
     let (game, id) = foreign_id();
 
-    game.def_id(id);
+    game.def_code(id);
 }
 
 #[test]

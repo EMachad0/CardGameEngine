@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0029
 ---
 
 # Loading also rejects a hero that names a card that is not a hero

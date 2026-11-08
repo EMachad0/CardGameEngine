@@ -90,8 +90,33 @@ mod tests {
     use pretty_assertions::{assert_eq, assert_ne};
 
     use super::*;
-    use crate::cards::binder::sets::base::static_card_definition::{RECRUIT, SPARK};
+    use crate::cards::binder::def_code::DefCode;
+    use crate::cards::binder::def_id::DefId;
+    use crate::cards::binder::set::{Set, SetCard};
+    use crate::cards::binder::store::Binder;
     use crate::cards::modifier::ModifierEffect;
+    use crate::cards::written;
+
+    /// The `DefId` of a card that no test looks up.
+    fn def_id() -> DefId {
+        let card = SetCard {
+            name: "card",
+            version: 0,
+            def: written::CardDef::default(),
+        };
+        let binder = Binder::new([Set {
+            prefix: "unit",
+            cards: vec![card],
+        }])
+        .unwrap();
+        binder
+            .def_id(DefCode {
+                set: "unit",
+                name: "card",
+                version: 0,
+            })
+            .unwrap()
+    }
 
     fn buff(granted_by: ObjectId, amount: u8) -> Modifier {
         Modifier {
@@ -115,7 +140,7 @@ mod tests {
     #[test]
     fn a_new_object_starts_with_no_damage_or_grants() {
         let mut bag = ObjectBag::default();
-        let recruit = bag.insert(RECRUIT, PlayerId::new(0));
+        let recruit = bag.insert(def_id(), PlayerId::new(0));
 
         let object = bag.get(recruit);
 
@@ -127,7 +152,7 @@ mod tests {
     #[test]
     fn damage_adds_up() {
         let mut bag = ObjectBag::default();
-        let recruit = bag.insert(RECRUIT, PlayerId::new(0));
+        let recruit = bag.insert(def_id(), PlayerId::new(0));
 
         bag.add_damage(recruit, 2);
         bag.add_damage(recruit, 3);
@@ -138,8 +163,8 @@ mod tests {
     #[test]
     fn granted_modifiers_keep_their_order() {
         let mut bag = ObjectBag::default();
-        let recruit = bag.insert(RECRUIT, PlayerId::new(0));
-        let spark = bag.insert(SPARK, PlayerId::new(0));
+        let recruit = bag.insert(def_id(), PlayerId::new(0));
+        let spark = bag.insert(def_id(), PlayerId::new(0));
 
         bag.grant(recruit, buff(spark, 1));
         bag.grant(recruit, buff(recruit, 2));
@@ -153,7 +178,7 @@ mod tests {
     #[test]
     fn a_granted_friendly_aura_is_not_a_modifier_of_the_object() {
         let mut bag = ObjectBag::default();
-        let recruit = bag.insert(RECRUIT, PlayerId::new(0));
+        let recruit = bag.insert(def_id(), PlayerId::new(0));
 
         bag.grant_friendly_aura(recruit, buff(recruit, 1));
 

@@ -1,6 +1,6 @@
 //! What one player can see. `view` is the one definition of it.
 
-use crate::cards::binder::def_id::DefId;
+use crate::cards::binder::def_code::DefCode;
 use crate::cards::object::ObjectId;
 use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::EffectStack;
@@ -42,7 +42,7 @@ pub struct PlayerView {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HeroCard {
     pub object_id: ObjectId,
-    pub def_id: DefId,
+    pub def_code: DefCode,
     pub health: i32,
 }
 
@@ -55,7 +55,7 @@ pub struct HandCard {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Face {
-    pub def_id: DefId,
+    pub def_code: DefCode,
     pub mana_cost: u8,
 }
 
@@ -79,7 +79,7 @@ pub enum ChooserPicking {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PickingCard {
     pub object_id: ObjectId,
-    pub def_id: DefId,
+    pub def_code: DefCode,
     /// Whether it is one of the options, rather than a card the pick's filter left out.
     pub pickable: bool,
 }
@@ -87,7 +87,7 @@ pub struct PickingCard {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BoardCard {
     pub object_id: ObjectId,
-    pub def_id: DefId,
+    pub def_code: DefCode,
     pub attack: i32,
     pub health: i32,
 }
@@ -164,7 +164,7 @@ fn player_view(
 fn hand_card(cards: CardsRef, viewer: PlayerId, player_id: PlayerId, card: InHand) -> HandCard {
     let object_id = card.object_id();
     let face = (player_id == viewer).then(|| Face {
-        def_id: cards.def_id(object_id),
+        def_code: cards.def_code(object_id),
         mana_cost: cost(cards, card),
     });
 
@@ -175,7 +175,7 @@ fn board_card(cards: CardsRef, _viewer: PlayerId, card: OnBoard) -> BoardCard {
     let object_id = card.object_id();
     BoardCard {
         object_id,
-        def_id: cards.def_id(object_id),
+        def_code: cards.def_code(object_id),
         attack: minion_attack(cards, card),
         health: character_health(cards, card.into()),
     }
@@ -185,7 +185,7 @@ fn hero_card(cards: CardsRef, _viewer: PlayerId, player_id: PlayerId) -> HeroCar
     let object_id = cards.zones.hero(player_id);
     HeroCard {
         object_id,
-        def_id: cards.def_id(object_id),
+        def_code: cards.def_code(object_id),
         health: hero_health(cards, player_id),
     }
 }
@@ -207,7 +207,7 @@ fn picking_view(
                 .covered()
                 .map(|(object_id, pickable)| PickingCard {
                     object_id,
-                    def_id: cards.def_id(object_id),
+                    def_code: cards.def_code(object_id),
                     pickable,
                 })
                 .collect(),

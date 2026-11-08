@@ -1,18 +1,19 @@
-use enumset::EnumSet;
-
-use crate::cards::filter::{CharacterFilter, Side};
+use crate::cards::filter::CharacterFilter;
+use crate::cards::hero::HeroCardDef;
+use crate::cards::kind::{CardKind, CharacterKind};
 use crate::cards::modifier::ModifierEffect;
 use crate::cards::object::ObjectId;
+use crate::cards::spell::SpellCardDef;
 use crate::choice::Choice;
-use crate::effect::{CardVerb, CharacterVerb, Effect};
-use crate::pick::CardPickOptions;
+use crate::effect::{CharacterVerb, Effect};
 use crate::target::{
     Bound, BoundCards, Declared, MapTargets, TargetChoiceRef, TargetForm, TargetId, Triggered,
 };
 use crate::trigger::TriggerPattern;
 
+/// A card definition as its binder parsed it, naming each card by a `DefId` of that binder.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CardDef {
+pub(crate) struct CardDef {
     pub name: String,
     pub kind: CardKindDef,
     pub mana_cost: u8,
@@ -132,101 +133,34 @@ impl CardDef {
     }
 }
 
-impl Default for CardDef {
-    fn default() -> Self {
-        Self {
-            name: Default::default(),
-            kind: CardKindDef::Minion(MinionCardDef::new(1, 1)),
-            mana_cost: Default::default(),
-            modifier_effects: Default::default(),
-            play_effects: Default::default(),
-            triggers: Default::default(),
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CardKindDef {
+pub(crate) enum CardKindDef {
     Spell(SpellCardDef),
     Minion(MinionCardDef),
     Hero(HeroCardDef),
 }
 
-#[derive(Debug, enumset::EnumSetType)]
-pub enum CardKind {
-    Spell,
-    Minion,
-    Hero,
-}
-
-#[derive(Debug, enumset::EnumSetType)]
-pub enum CharacterKind {
-    Hero,
-    Minion,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MinionCardDef {
+pub(crate) struct MinionCardDef {
     pub attack: i32,
     pub health: i32,
     pub friendly_aura_effects: Vec<ModifierEffect>,
     pub hostile_aura_effects: Vec<ModifierEffect>,
 }
 
-impl MinionCardDef {
-    pub fn new(attack: i32, health: i32) -> Self {
-        Self {
-            attack,
-            health,
-            friendly_aura_effects: Default::default(),
-            hostile_aura_effects: Default::default(),
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SpellCardDef;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct HeroCardDef {
-    pub health: i32,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TriggerDef {
+pub(crate) struct TriggerDef {
     pub pattern: TriggerPattern,
     pub effects: Vec<Effect<Triggered>>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct PlayerSelectorFilter {
-    pub side: EnumSet<Side>,
-}
-
-impl PlayerSelectorFilter {
-    pub fn all() -> Self {
-        Self {
-            side: EnumSet::all(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PlayerSelector {
-    All(PlayerSelectorFilter),
-    Owner,
-    Random(PlayerSelectorFilter),
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CharacterSelector<S: TargetForm> {
+pub(crate) enum CharacterSelector<S: TargetForm> {
     All(CharacterFilter),
     Itself,
     OwnerHero,
     Random(CharacterFilter),
     Targeted(S::CharacterTarget),
-    /// `others` acts on the options the player didn't pick, in the order shown, after the
-    /// effect's verbs act on the characters picked.
     Picked {
         choice: Choice<CharacterFilter>,
         others: Vec<CharacterVerb>,
@@ -261,39 +195,6 @@ impl<S: TargetForm> CharacterSelector<S> {
             CharacterSelector::Picked { choice, others } => {
                 CharacterSelector::Picked { choice, others }
             }
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CardSelector<S: TargetForm> {
-    Targeted(S::CardTarget),
-    /// `others` acts on the cards the pick covered and the player didn't pick, in the order
-    /// shown, after the effect's verbs act on the cards picked.
-    Picked {
-        choice: Choice<CardPickOptions>,
-        others: Vec<CardVerb>,
-    },
-}
-
-impl<S: TargetForm> CardSelector<S> {
-    pub(crate) fn target(&self) -> Option<&S::CardTarget> {
-        match self {
-            CardSelector::Targeted(target) => Some(target),
-            CardSelector::Picked {
-                choice: _,
-                others: _,
-            } => None,
-        }
-    }
-
-    pub(crate) fn map_targeted<R: TargetForm>(
-        self,
-        f: impl FnOnce(S::CardTarget) -> R::CardTarget,
-    ) -> CardSelector<R> {
-        match self {
-            CardSelector::Targeted(target) => CardSelector::Targeted(f(target)),
-            CardSelector::Picked { choice, others } => CardSelector::Picked { choice, others },
         }
     }
 }
@@ -348,12 +249,39 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::cards::binder::sets::base::static_card_definition::SPARK;
+    use crate::cards::binder::def_code::DefCode;
+    use crate::cards::binder::def_id::DefId;
+    use crate::cards::binder::set::{Set, SetCard};
+    use crate::cards::binder::store::Binder;
+    use crate::cards::card_selector::CardSelector;
     use crate::cards::object::ObjectBag;
+    use crate::cards::player_selector::PlayerSelector;
+    use crate::cards::written;
     use crate::choice::AmountBound;
-    use crate::effect::{CardDestinationZone, CharacterVerb, PlayerVerb};
+    use crate::effect::{CardDestinationZone, CardVerb, CharacterVerb, PlayerVerb};
     use crate::ids::PlayerId;
     use crate::target::{CardTargetOptions, CardTargetZone};
+
+    /// The `DefId` of a card that no test looks up.
+    fn def_id() -> DefId {
+        let card = SetCard {
+            name: "card",
+            version: 0,
+            def: written::CardDef::default(),
+        };
+        let binder = Binder::new([Set {
+            prefix: "unit",
+            cards: vec![card],
+        }])
+        .unwrap();
+        binder
+            .def_id(DefCode {
+                set: "unit",
+                name: "card",
+                version: 0,
+            })
+            .unwrap()
+    }
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     struct Holds<T>(PhantomData<T>);
@@ -386,13 +314,17 @@ mod tests {
 
     fn ids<const N: usize>() -> [ObjectId; N] {
         let mut bag = ObjectBag::default();
-        std::array::from_fn(|_| bag.insert(SPARK, PlayerId::new(0)))
+        std::array::from_fn(|_| bag.insert(def_id(), PlayerId::new(0)))
     }
 
     fn card(play_effects: Vec<Effect<Declared>>) -> CardDef {
         CardDef {
+            name: String::new(),
+            kind: CardKindDef::Spell(SpellCardDef),
+            mana_cost: 0,
+            modifier_effects: Vec::new(),
             play_effects,
-            ..Default::default()
+            triggers: Vec::new(),
         }
     }
 

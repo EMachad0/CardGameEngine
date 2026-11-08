@@ -3,12 +3,10 @@
 use std::collections::BTreeSet;
 
 use pretty_assertions::assert_eq;
-use rules::prelude::static_card_definition::{
-    AFTERSHOCK, DUD, FRENZY, GOAD, MOURNER, RECRUIT, ROUSE, WILD_BOLT,
-};
 use rules::prelude::{Event, Game, ObjectId};
 
 use crate::support::*;
+use crate::test_set::{AFTERSHOCK, DUD, FRENZY, GOAD, MOURNER, RECRUIT, ROUSE, WILD_BOLT};
 
 /// Each hit in `events`, as the character damaged and the amount.
 fn hits(events: &[Event]) -> Vec<(ObjectId, u8)> {
@@ -25,7 +23,7 @@ fn hits(events: &[Event]) -> Vec<(ObjectId, u8)> {
 /// Returns the game and the Recruits, left to right.
 fn frenzy_over_two_recruits(seed: u64) -> (Game, [ObjectId; 2]) {
     let deck0 = deck_with_top(&[RECRUIT, RECRUIT, FRENZY]);
-    let mut game = Game::with_deck_order(seed, [deck0, deck_with_top(&[])]);
+    let mut game = game_with_deck_order(seed, [deck0, deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 4);
     let recruits = [
@@ -142,7 +140,7 @@ fn an_effect_with_several_verbs_takes_one_checkpoint() {
 /// P0 can cast the Dud and the Wild Bolt in hand, in a game seeded with `seed`.
 fn dud_and_wild_bolt(seed: u64) -> Game {
     let deck0 = deck_with_top(&[DUD, WILD_BOLT]);
-    let mut game = Game::with_deck_order(seed, [deck0, deck_with_top(&[])]);
+    let mut game = game_with_deck_order(seed, [deck0, deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 2);
     game

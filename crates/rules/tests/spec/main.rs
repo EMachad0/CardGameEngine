@@ -1,5 +1,6 @@
 //! Crate tests, through the public interface only.
 
+mod binder;
 mod cards;
 mod derived;
 mod events;
@@ -13,6 +14,7 @@ mod setup;
 mod state_check;
 mod support;
 mod targeting;
+mod test_set;
 mod triggers;
 mod turns;
 mod verbs;

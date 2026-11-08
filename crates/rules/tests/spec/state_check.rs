@@ -1,15 +1,15 @@
 //! The state check at the end of every `apply`.
 
 use pretty_assertions::assert_eq;
-use rules::prelude::static_card_definition::{BLAST, CAPTAIN, MEDIC, RECRUIT};
-use rules::prelude::{Game, Outcome};
+use rules::prelude::Outcome;
 
 use crate::support::*;
+use crate::test_set::{BLAST, CAPTAIN, MEDIC, RECRUIT};
 
 #[test]
 fn blast_removes_every_minion_it_brings_to_zero_health() {
     let deck = deck_with_top(&[RECRUIT, BLAST]);
-    let mut game = Game::with_deck_order(0, [deck.clone(), deck]);
+    let mut game = game_with_deck_order(0, [deck.clone(), deck]);
     let [p0, p1] = players(&game);
     turn_with_mana(&mut game, p0, 2);
     let mine = summon(&mut game, p0, RECRUIT);
@@ -37,7 +37,7 @@ fn the_check_repeats_until_a_pass_removes_nothing() {
     // pass. The Recruit has 3 with the buff and survives it, then dies in the
     // second pass once the buff is gone.
     let deck0 = deck_with_top(&[RECRUIT, CAPTAIN, BLAST]);
-    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck0, deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 2);
     let recruit = summon(&mut game, p0, RECRUIT);
@@ -64,7 +64,7 @@ fn the_check_repeats_until_a_pass_removes_nothing() {
 fn a_blast_that_drops_both_heroes_to_zero_ends_the_game_in_a_draw() {
     // Both decks are empty after player 0's first draw, so every later turn
     // start costs the active player 1 health.
-    let mut game = Game::with_deck_order(0, [vec![BLAST; 4], vec![BLAST; 3]]);
+    let mut game = game_with_deck_order(0, [vec![BLAST; 4], vec![BLAST; 3]]);
     let [p0, p1] = players(&game);
     turn_with_mana(&mut game, p0, 9);
     assert_eq!(
@@ -83,7 +83,7 @@ fn a_blast_that_drops_both_heroes_to_zero_ends_the_game_in_a_draw() {
 
 #[test]
 fn a_blast_that_drops_only_its_casters_hero_to_zero_loses_the_game() {
-    let mut game = Game::with_deck_order(0, [vec![BLAST; 4], deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [vec![BLAST; 4], deck_with_top(&[])]);
     let [p0, p1] = players(&game);
     turn_with_mana(&mut game, p0, 9);
     assert_eq!(
@@ -102,7 +102,7 @@ fn a_blast_that_drops_only_its_casters_hero_to_zero_loses_the_game() {
 
 #[test]
 fn a_hero_brought_to_zero_stays_in_its_zone() {
-    let mut game = Game::with_deck_order(0, [vec![BLAST; 4], deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [vec![BLAST; 4], deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 9);
     let hero = game.hero_id(p0);

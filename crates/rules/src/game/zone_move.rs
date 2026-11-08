@@ -104,13 +104,38 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::cards::binder::sets::base::static_card_definition::SPARK;
+    use crate::cards::binder::def_code::DefCode;
+    use crate::cards::binder::def_id::DefId;
+    use crate::cards::binder::set::{Set, SetCard};
+    use crate::cards::binder::store::Binder;
+    use crate::cards::written;
+
+    /// The `DefId` of a card that no test looks up.
+    fn def_id() -> DefId {
+        let card = SetCard {
+            name: "card",
+            version: 0,
+            def: written::CardDef::default(),
+        };
+        let binder = Binder::new([Set {
+            prefix: "unit",
+            cards: vec![card],
+        }])
+        .unwrap();
+        binder
+            .def_id(DefCode {
+                set: "unit",
+                name: "card",
+                version: 0,
+            })
+            .unwrap()
+    }
 
     #[test]
     fn a_card_moves_from_its_holders_zone_into_its_owners() {
         let (holder, owner) = (PlayerId::new(0), PlayerId::new(1));
         let mut bag = ObjectBag::default();
-        let [holder_hero, owner_hero, card] = std::array::from_fn(|_| bag.insert(SPARK, owner));
+        let [holder_hero, owner_hero, card] = std::array::from_fn(|_| bag.insert(def_id(), owner));
         let mut zones = Zones::new([(holder_hero, Vec::new()), (owner_hero, Vec::new())]);
         zones.add_to_hand(holder, card);
 
@@ -135,7 +160,7 @@ mod tests {
     fn a_card_moves_out_of_its_holders_deck_and_the_rest_keep_their_order() {
         let player = PlayerId::new(0);
         let mut bag = ObjectBag::default();
-        let [hero, a, b, c] = std::array::from_fn(|_| bag.insert(SPARK, player));
+        let [hero, a, b, c] = std::array::from_fn(|_| bag.insert(def_id(), player));
         let mut zones = Zones::new([(hero, vec![a, b, c])]);
 
         let report = move_card(
@@ -159,7 +184,7 @@ mod tests {
     fn a_card_no_longer_in_its_zone_is_not_moved() {
         let player = PlayerId::new(0);
         let mut bag = ObjectBag::default();
-        let [hero, card] = std::array::from_fn(|_| bag.insert(SPARK, player));
+        let [hero, card] = std::array::from_fn(|_| bag.insert(def_id(), player));
         let mut zones = Zones::new([(hero, vec![card])]);
         zones.draw(player);
 

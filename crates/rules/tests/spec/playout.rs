@@ -3,18 +3,18 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use pretty_assertions::assert_eq;
-use rules::prelude::static_card_definition::{
-    BARRACKS, BLAST, BOLT, CAPTAIN, CROSSFIRE, FORAGE, GIANT, PING, RECRUIT, SHOVE, SPARK,
-    TWIN_SHOT, WILD_BOLT,
-};
-use rules::prelude::{Action, DefId, Game, ObjectId, Outcome, PlayerId, Rng};
+use rules::prelude::{Action, DefCode, Game, ObjectId, Outcome, PlayerId, Rng};
 
 use crate::model::{BoardModel, damage_per_target, expected_cost, is_spell};
 use crate::support::*;
+use crate::test_set::{
+    BARRACKS, BLAST, BOLT, CAPTAIN, CROSSFIRE, FORAGE, GIANT, PING, RECRUIT, SHOVE, SPARK,
+    TWIN_SHOT, WILD_BOLT,
+};
 
 const MAX_STEPS: usize = 5_000;
 
-pub(crate) fn sample_deck() -> Vec<DefId> {
+pub(crate) fn sample_deck() -> Vec<DefCode> {
     vec![
         SPARK, BOLT, WILD_BOLT, FORAGE, BLAST, RECRUIT, CAPTAIN, GIANT, RECRUIT, CAPTAIN, SPARK,
         FORAGE, BLAST, RECRUIT, CAPTAIN, BOLT, BARRACKS, BARRACKS, PING, TWIN_SHOT, CROSSFIRE,
@@ -26,7 +26,7 @@ pub(crate) fn sample_deck() -> Vec<DefId> {
 #[derive(Default)]
 struct History {
     /// The definition each id had when first seen.
-    defs: BTreeMap<ObjectId, DefId>,
+    defs: BTreeMap<ObjectId, DefCode>,
     /// Ids that were in a zone once and are in none now.
     gone: BTreeSet<ObjectId>,
     /// By index in `Game::players`.
@@ -50,7 +50,7 @@ pub(crate) fn checked_playout(seed: u64, picker_seed: u64) -> (Game, Vec<(Player
 }
 
 fn playout(seed: u64, picker_seed: u64, checked: bool) -> (Game, Vec<(PlayerId, Action)>) {
-    let mut game = Game::new(seed, [sample_deck(), sample_deck()]);
+    let mut game = new_game(seed, [sample_deck(), sample_deck()]);
     let mut picker = Rng::new(picker_seed);
     let mut history = History::default();
     let mut log = Vec::new();
@@ -87,7 +87,7 @@ fn apply_checked(game: &mut Game, history: &mut History, p: PlayerId, a: Action,
     let off_board_before = players(game).map(|q| off_board_count(game, q));
     let mana_before = game.mana(p);
     let played = match a {
-        Action::Play { object_id } => Some(game.def_id(object_id)),
+        Action::Play { object_id } => Some(game.def_code(object_id)),
         _ => None,
     };
     let targeted_minions: Vec<(usize, usize)> = match a {
@@ -224,7 +224,7 @@ fn assert_ids(game: &Game, history: &mut History, context: &str) {
 
     for &id in &ids {
         assert!(!history.gone.contains(&id), "{context}: {id:?} came back");
-        let def = game.def_id(id);
+        let def = game.def_code(id);
         let first = *history.defs.entry(id).or_insert(def);
         assert_eq!(def, first, "{context}: {id:?} changed its definition");
     }
@@ -245,7 +245,7 @@ fn assert_accessors(game: &Game, history: &History, context: &str) {
             "{context}: {p:?}'s hero"
         );
         for &id in game.hand(p) {
-            let def = game.def_id(id);
+            let def = game.def_code(id);
             let cost = expected_cost(def, history.spells_cast[index_of(game, p)]);
             assert_eq!(game.mana_cost(id), Some(cost), "{context}: cost of {def:?}");
             assert_eq!(
@@ -275,12 +275,12 @@ fn assert_accessors(game: &Game, history: &History, context: &str) {
 
 /// Both boards hold the model's minions, in order, with the model's attack and health.
 fn assert_boards_match(game: &Game, model: &BoardModel, context: &str) {
-    type Row = (DefId, Option<i32>, Option<i32>);
+    type Row = (DefCode, Option<i32>, Option<i32>);
     for p in players(game) {
         let actual: Vec<Row> = game
             .player_board(p)
             .iter()
-            .map(|&id| (game.def_id(id), game.attack(id), game.health(id)))
+            .map(|&id| (game.def_code(id), game.attack(id), game.health(id)))
             .collect();
         let expected: Vec<Row> = model
             .minions(index_of(game, p))

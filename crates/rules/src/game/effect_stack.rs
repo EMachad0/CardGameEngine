@@ -206,18 +206,43 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::cards::binder::sets::base::static_card_definition::SPARK;
-    use crate::cards::definition::PlayerSelector;
+    use crate::cards::binder::def_code::DefCode;
+    use crate::cards::binder::def_id::DefId;
+    use crate::cards::binder::set::{Set, SetCard};
+    use crate::cards::binder::store::Binder;
     use crate::cards::object::ObjectBag;
+    use crate::cards::player_selector::PlayerSelector;
+    use crate::cards::written;
     use crate::choice::AmountBound;
     use crate::effect::{CardDestinationZone, CardVerb, EffectAmount, PlayerVerb};
     use crate::game::picking::{CardPicking, PickWindow};
     use crate::game::zone_move::CardOriginZone;
     use crate::ids::PlayerId;
 
+    /// The `DefId` of a card that no test looks up.
+    fn def_id() -> DefId {
+        let card = SetCard {
+            name: "card",
+            version: 0,
+            def: written::CardDef::default(),
+        };
+        let binder = Binder::new([Set {
+            prefix: "unit",
+            cards: vec![card],
+        }])
+        .unwrap();
+        binder
+            .def_id(DefCode {
+                set: "unit",
+                name: "card",
+                version: 0,
+            })
+            .unwrap()
+    }
+
     fn sources<const N: usize>() -> [ObjectId; N] {
         let mut objects = ObjectBag::default();
-        std::array::from_fn(|_| objects.insert(SPARK, PlayerId::new(0)))
+        std::array::from_fn(|_| objects.insert(def_id(), PlayerId::new(0)))
     }
 
     fn draw(amount: u8) -> Effect<Bound> {

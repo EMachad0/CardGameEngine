@@ -1,25 +1,28 @@
 //! What `view` shows each player.
 
 use pretty_assertions::assert_eq;
-use rules::prelude::static_card_definition::{
-    BOLT, CAPTAIN, HERO, MUSTER, PING, RECRUIT, RECYCLE, ROUSE, SPARK, TWIN_SHOT,
-};
 use rules::prelude::{
-    BoardCard, ChooserPicking, DefId, Face, Game, HeroCard, ObjectId, PickingCard, PickingView,
+    BoardCard, ChooserPicking, DefCode, Face, Game, HeroCard, ObjectId, PickingCard, PickingView,
     PlayerId, TargetingView,
 };
 
 use crate::support::*;
+use crate::test_set::{
+    BOLT, CAPTAIN, HERO, MUSTER, PING, RECRUIT, RECYCLE, ROUSE, SPARK, TWIN_SHOT,
+};
 
 /// Player 0 holds Bolt, Recruit, Captain and a drawn Bolt. Player 1 holds Spark, Spark, Recruit.
 fn after_setup() -> Game {
     let deck0 = deck_with_top(&[BOLT, RECRUIT, CAPTAIN]);
     let deck1 = deck_with_top(&[SPARK, SPARK, RECRUIT]);
-    Game::with_deck_order(0, [deck0, deck1])
+    game_with_deck_order(0, [deck0, deck1])
 }
 
-fn face(def_id: DefId, mana_cost: u8) -> Option<Face> {
-    Some(Face { def_id, mana_cost })
+fn face(def_code: DefCode, mana_cost: u8) -> Option<Face> {
+    Some(Face {
+        def_code,
+        mana_cost,
+    })
 }
 
 #[test]
@@ -99,7 +102,7 @@ fn heroes_mana_and_deck_sizes_are_public() {
 
 #[test]
 fn both_players_see_each_hero_with_its_definition_and_current_health() {
-    let mut game = Game::with_deck_order(0, [deck_with_top(&[SPARK]), deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck_with_top(&[SPARK]), deck_with_top(&[])]);
     let [p0, p1] = players(&game);
     play_def(&mut game, p0, SPARK);
 
@@ -110,7 +113,7 @@ fn both_players_see_each_hero_with_its_definition_and_current_health() {
                 player_view(&view, p).hero,
                 HeroCard {
                     object_id: game.hero_id(p),
-                    def_id: HERO,
+                    def_code: HERO,
                     health
                 },
                 "{p:?}'s hero as {viewer:?} sees it"
@@ -122,7 +125,7 @@ fn both_players_see_each_hero_with_its_definition_and_current_health() {
 #[test]
 fn both_players_see_each_minions_definition_and_current_stats() {
     let deck0 = deck_with_top(&[RECRUIT, CAPTAIN]);
-    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck0, deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 2);
     let recruit = summon(&mut game, p0, RECRUIT);
@@ -135,13 +138,13 @@ fn both_players_see_each_minions_definition_and_current_stats() {
             [
                 BoardCard {
                     object_id: recruit,
-                    def_id: RECRUIT,
+                    def_code: RECRUIT,
                     attack: 3,
                     health: 3
                 },
                 BoardCard {
                     object_id: captain,
-                    def_id: CAPTAIN,
+                    def_code: CAPTAIN,
                     attack: 1,
                     health: 1
                 },
@@ -154,7 +157,7 @@ fn both_players_see_each_minions_definition_and_current_stats() {
 /// Player 0 casts Muster over a Bolt, a Recruit and a Captain. Returns the game and the three.
 fn muster_over_bolt_recruit_and_captain() -> (Game, [ObjectId; 3]) {
     let deck0 = vec![MUSTER, SPARK, SPARK, SPARK, BOLT, RECRUIT, CAPTAIN, BOLT];
-    let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
+    let mut game = game_with_deck_order(0, [deck0, vec![SPARK; 6]]);
     let [p0, _] = players(&game);
     let deck = game.deck(p0);
     play_def(&mut game, p0, MUSTER);
@@ -171,17 +174,17 @@ fn the_chooser_sees_every_card_a_pick_covers_face_up_in_the_order_shown() {
         Some(PickingView::Chooser(ChooserPicking::Cards(vec![
             PickingCard {
                 object_id: bolt,
-                def_id: BOLT,
+                def_code: BOLT,
                 pickable: false
             },
             PickingCard {
                 object_id: recruit,
-                def_id: RECRUIT,
+                def_code: RECRUIT,
                 pickable: true
             },
             PickingCard {
                 object_id: captain,
-                def_id: CAPTAIN,
+                def_code: CAPTAIN,
                 pickable: true
             },
         ])))
@@ -232,7 +235,7 @@ fn every_other_player_sees_only_how_many_options_a_character_pick_has() {
 
 #[test]
 fn a_view_reports_the_outcome_once_the_game_is_over() {
-    let mut game = Game::with_deck_order(0, [vec![SPARK; 3], vec![SPARK; 3]]);
+    let mut game = game_with_deck_order(0, [vec![SPARK; 3], vec![SPARK; 3]]);
 
     end_turns_until_over(&mut game);
 

@@ -2,11 +2,13 @@
 
 use enumset::EnumSet;
 
+use crate::cards::binder::def_code::DefCode;
 use crate::cards::binder::def_id::DefId;
 use crate::cards::binder::store::Binder;
-use crate::cards::definition::{CardDef, CardKind};
 use crate::cards::filter::CharacterFilter;
+use crate::cards::kind::CardKind;
 use crate::cards::object::{ObjectBag, ObjectId};
+use crate::cards::parsed::CardDef;
 use crate::game::picking::PickWindow;
 use crate::game::zone_move::CardOriginZone;
 use crate::history::History;
@@ -44,6 +46,10 @@ impl<'g> CardsRef<'g> {
 
     pub(super) fn def_id(&self, object_id: ObjectId) -> DefId {
         self.objects.get(object_id).def_id
+    }
+
+    pub(super) fn def_code(&self, object_id: ObjectId) -> DefCode {
+        self.binder.code(self.def_id(object_id))
     }
 
     pub(super) fn card_def(&self, object_id: ObjectId) -> &'g CardDef {

@@ -1,6 +1,8 @@
 use crate::cards::binder::def_id::DefId;
-use crate::cards::definition::{CardSelector, CharacterSelector, PlayerSelector};
+use crate::cards::card_selector::CardSelector;
 use crate::cards::modifier::ModifierEffect;
+use crate::cards::parsed::CharacterSelector;
+use crate::cards::player_selector::PlayerSelector;
 use crate::history::HistoryQuery;
 use crate::target::{MapTargets, TargetChoiceRef, TargetForm};
 
@@ -17,7 +19,7 @@ impl From<u8> for EffectAmount {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Effect<S: TargetForm> {
+pub(crate) enum Effect<S: TargetForm> {
     Players {
         selector: PlayerSelector,
         verbs: Vec<PlayerVerb>,
@@ -33,13 +35,13 @@ pub enum Effect<S: TargetForm> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PlayerVerb {
+pub(crate) enum PlayerVerb {
     Draw(EffectAmount),
     Summon(DefId),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CharacterVerb {
+pub(crate) enum CharacterVerb {
     Damage(EffectAmount),
     Modify(ModifierEffect),
     AddFriendlyAura(ModifierEffect),
