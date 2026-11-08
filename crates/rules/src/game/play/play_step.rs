@@ -1,4 +1,4 @@
-//! The play steps: what a play reads before its first write, and what it writes.
+//! The play step: what a play reads before its first write, and what its play step writes.
 
 use crate::cards::object::ObjectId;
 use crate::effect::Effect;
