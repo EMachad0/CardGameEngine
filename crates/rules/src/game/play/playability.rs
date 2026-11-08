@@ -14,9 +14,9 @@ pub(in crate::game) struct WasPlayable {
     awaiting_targeting: Option<WasAwaitingTargeting>,
 }
 
-/// How a card its player can pay for is played.
+/// How its player could play a card they could pay for when asked.
 pub(in crate::game) enum Playability {
-    Now(WasPlayable),
+    WithoutTargeting(WasPlayable),
     FromTargeting(WasPlayableFromTargeting),
 }
 
@@ -36,7 +36,7 @@ impl Playability {
         let card = WasInHand::from(card);
         Some(match declares_targets {
             true => Self::FromTargeting(WasPlayableFromTargeting { card }),
-            false => Self::Now(WasPlayable {
+            false => Self::WithoutTargeting(WasPlayable {
                 card,
                 awaiting_targeting: None,
             }),
@@ -152,7 +152,7 @@ mod tests {
     }
 
     #[test]
-    fn a_card_without_targets_is_playable_now() {
+    fn a_card_without_targets_is_playable_without_targeting() {
         let player = PlayerId::new(0);
         let mut bag = ObjectBag::default();
         let [hero, card] = std::array::from_fn(|_| bag.insert(SPARK, player));
@@ -162,7 +162,7 @@ mod tests {
         assert!(
             matches!(
                 playability_with_one_mana(&bag, &zones, player, card),
-                Some(Playability::Now(_)),
+                Some(Playability::WithoutTargeting(_)),
             ),
             "Spark declares no target, so it is playable without a targeting",
         );

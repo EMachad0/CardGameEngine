@@ -80,7 +80,7 @@ pub(super) fn legal_actions(
             for card in cards.zones.hand_cards(player_id) {
                 let object_id = card.object_id();
                 match Playability::new(cards, &player.mana, card) {
-                    Some(Playability::Now(playable)) => {
+                    Some(Playability::WithoutTargeting(playable)) => {
                         actions.push(LegalAction::Play(playable));
                     }
                     Some(Playability::FromTargeting(_))
