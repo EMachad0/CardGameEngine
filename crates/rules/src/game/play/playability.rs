@@ -14,27 +14,37 @@ pub(in crate::game) struct WasPlayable {
     awaiting_targeting: Option<WasAwaitingTargeting>,
 }
 
-impl WasPlayable {
+/// How its player could play a card they could pay for when asked.
+pub(in crate::game) enum Playability {
+    WithoutTargeting(WasPlayable),
+    FromTargeting(WasPlayableFromTargeting),
+}
+
+/// A card that declares targets and that its player could pay for when asked. It holds no borrow,
+/// so the card may have become unplayable since.
+pub(in crate::game) struct WasPlayableFromTargeting {
+    card: WasInHand,
+}
+
+impl Playability {
     /// `None` unless the mana pays the card's cost now.
     pub(in crate::game) fn new(cards: CardsRef, mana: &Mana, card: InHand) -> Option<Self> {
-        mana.can_pay(cost(cards, card)).then(|| Self {
-            card: WasInHand::from(card),
-            awaiting_targeting: None,
+        if !mana.can_pay(cost(cards, card)) {
+            return None;
+        }
+        let declares_targets = cards.card_def(card.object_id()).targets().next().is_some();
+        let card = WasInHand::from(card);
+        Some(match declares_targets {
+            true => Self::FromTargeting(WasPlayableFromTargeting { card }),
+            false => Self::WithoutTargeting(WasPlayable {
+                card,
+                awaiting_targeting: None,
+            }),
         })
     }
+}
 
-    pub(in crate::game) fn with_targeting(self, awaiting_targeting: WasAwaitingTargeting) -> Self {
-        assert!(
-            awaiting_targeting.player_id() == self.card.player_id()
-                && awaiting_targeting.object_id() == self.card.object_id(),
-            "a card should be paired with the targeting it was found through",
-        );
-        Self {
-            awaiting_targeting: Some(awaiting_targeting),
-            ..self
-        }
-    }
-
+impl WasPlayable {
     pub(in crate::game) fn object_id(&self) -> ObjectId {
         self.card.object_id()
     }
@@ -44,10 +54,27 @@ impl WasPlayable {
     }
 }
 
+impl WasPlayableFromTargeting {
+    pub(in crate::game) fn with_targeting(
+        self,
+        awaiting_targeting: WasAwaitingTargeting,
+    ) -> WasPlayable {
+        assert!(
+            awaiting_targeting.player_id() == self.card.player_id()
+                && awaiting_targeting.object_id() == self.card.object_id(),
+            "a card should be paired with the targeting it was found through",
+        );
+        WasPlayable {
+            card: self.card,
+            awaiting_targeting: Some(awaiting_targeting),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cards::binder::sets::base::static_card_definition::SPARK;
+    use crate::cards::binder::sets::base::static_card_definition::{PING, SPARK};
     use crate::cards::binder::store::Binder;
     use crate::cards::object::ObjectBag;
     use crate::game::effect_stack::EffectStack;
@@ -82,11 +109,63 @@ mod tests {
         WasAwaitingTargeting::from(awaits_targeting)
     }
 
-    fn playable_without_mana_check(zones: &Zones, player: PlayerId, card: ObjectId) -> WasPlayable {
-        WasPlayable {
+    fn playability_with_one_mana(
+        objects: &ObjectBag,
+        zones: &Zones,
+        player: PlayerId,
+        card: ObjectId,
+    ) -> Option<Playability> {
+        let (binder, history) = (Binder::built_in(), History::default());
+        let turn_order = TurnOrder::new(vec![player]);
+        let cards = CardsRef::new(&binder, objects, zones, &history, &turn_order);
+        let mut mana = Mana::default();
+        mana.refill();
+        Playability::new(cards, &mana, zones.find_in_hand(player, card).unwrap())
+    }
+
+    fn playable_from_targeting_without_checks(
+        zones: &Zones,
+        player: PlayerId,
+        card: ObjectId,
+    ) -> WasPlayableFromTargeting {
+        WasPlayableFromTargeting {
             card: WasInHand::from(zones.find_in_hand(player, card).unwrap()),
-            awaiting_targeting: None,
         }
+    }
+
+    #[test]
+    fn a_card_that_declares_targets_is_playable_only_from_its_targeting() {
+        let player = PlayerId::new(0);
+        let mut bag = ObjectBag::default();
+        let hero = bag.insert(SPARK, player);
+        let card = bag.insert(PING, player);
+        let mut zones = Zones::new([(hero, vec![card])]);
+        zones.draw(player);
+
+        assert!(
+            matches!(
+                playability_with_one_mana(&bag, &zones, player, card),
+                Some(Playability::FromTargeting(_)),
+            ),
+            "Ping declares a target, so it is playable only from its targeting",
+        );
+    }
+
+    #[test]
+    fn a_card_without_targets_is_playable_without_targeting() {
+        let player = PlayerId::new(0);
+        let mut bag = ObjectBag::default();
+        let [hero, card] = std::array::from_fn(|_| bag.insert(SPARK, player));
+        let mut zones = Zones::new([(hero, vec![card])]);
+        zones.draw(player);
+
+        assert!(
+            matches!(
+                playability_with_one_mana(&bag, &zones, player, card),
+                Some(Playability::WithoutTargeting(_)),
+            ),
+            "Spark declares no target, so it is playable without a targeting",
+        );
     }
 
     #[test]
@@ -100,7 +179,8 @@ mod tests {
         let mut input = PlayerInput::default();
         let awaiting_targeting = started_targeting(&mut input, &bag, &zones, player, other);
 
-        playable_without_mana_check(&zones, player, card).with_targeting(awaiting_targeting);
+        playable_from_targeting_without_checks(&zones, player, card)
+            .with_targeting(awaiting_targeting);
     }
 
     #[test]
@@ -115,6 +195,7 @@ mod tests {
         let mut input = PlayerInput::default();
         let awaiting_targeting = started_targeting(&mut input, &bag, &zones, other, card);
 
-        playable_without_mana_check(&zones, player, card).with_targeting(awaiting_targeting);
+        playable_from_targeting_without_checks(&zones, player, card)
+            .with_targeting(awaiting_targeting);
     }
 }
