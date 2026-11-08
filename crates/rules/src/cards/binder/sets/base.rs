@@ -84,6 +84,7 @@ def_ids!(
     HERALD = "base.herald.v0",
     RINGMASTER = "base.ringmaster.v0",
     DISPATCH = "base.dispatch.v0",
+    TINKER = "base.tinker.v0",
 );
 
 pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
@@ -1101,6 +1102,33 @@ pub(in crate::cards::binder) fn definitions() -> Vec<(DefId, CardDef)> {
                     selector: PlayerSelector::Owner,
                     verbs: vec![PlayerVerb::Summon(COURIER)],
                 }],
+                ..Default::default()
+            },
+        ),
+        (
+            TINKER,
+            CardDef {
+                name: "Tinker".to_string(),
+                kind: CardKindDef::Spell(SpellCardDef),
+                mana_cost: 1,
+                play_effects: vec![
+                    Effect::Cards {
+                        selector: CardSelector::Targeted(Choice {
+                            options: CardTargetOptions {
+                                zone: CardTargetZone::Hand,
+                                kind: EnumSet::all(),
+                            },
+                            count: 1.into(),
+                            bound: AmountBound::Exactly,
+                            different: true,
+                        }),
+                        verbs: vec![CardVerb::Move(CardDestinationZone::DeckBottom)],
+                    },
+                    Effect::Players {
+                        selector: PlayerSelector::Owner,
+                        verbs: vec![PlayerVerb::Draw(EffectAmount::Static(1))],
+                    },
+                ],
                 ..Default::default()
             },
         ),
