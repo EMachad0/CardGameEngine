@@ -48,6 +48,11 @@ _Avoid_: avatar
 A card as printed: its name, cost, kind, stats and text. Every copy of the card shares it.
 _Avoid_: template, prototype
 
+**Code**:
+The stable name of a card definition: its set's prefix, the card's name and a version, such as
+`base.bolt.v0`.
+_Avoid_: card ID, card name
+
 **Printed**:
 What a card definition states, static, independent of context.
 _Avoid_: base, original
