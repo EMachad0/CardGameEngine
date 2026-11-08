@@ -1,8 +1,9 @@
 //! The crate's public API. Import each item by name, not with a glob.
 
 pub use crate::action::{Action, IllegalAction};
-pub use crate::cards::binder::def_id::DefId;
-pub use crate::cards::binder::sets::base::static_card_definition;
+pub use crate::cards::binder::def_code::DefCode;
+pub use crate::cards::binder::set::{Set, SetCard};
+pub use crate::cards::binder::store::{Binder, BinderError};
 pub use crate::cards::definition::{
     CardDef, CardKind, CardKindDef, CardSelector, CharacterKind, CharacterSelector, HeroCardDef,
     MinionCardDef, PlayerSelector, PlayerSelectorFilter, SpellCardDef, TriggerDef,
@@ -15,6 +16,7 @@ pub use crate::effect::{
     CardDestinationZone, CardVerb, CharacterVerb, Effect, EffectAmount, PlayerVerb,
 };
 pub use crate::event::Event;
+pub use crate::game::deck::{Deck, DeckError};
 pub use crate::game::state::{ApplyError, Game};
 pub use crate::game::view::{
     BoardCard, ChooserPicking, Face, HandCard, HeroCard, PickingCard, PickingView, PlayerView,

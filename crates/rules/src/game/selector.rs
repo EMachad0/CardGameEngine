@@ -2,12 +2,12 @@
 //! random, or the characters or cards targeted or picked.
 
 use crate::cards::definition::{
-    CardSelector, CharacterSelector, PlayerSelector, PlayerSelectorFilter,
+    CardSelector, ParsedCharacterSelector, PlayerSelector, PlayerSelectorFilter,
 };
 use crate::cards::filter::{CharacterFilter, fulfill_side_filter};
 use crate::cards::object::ObjectId;
 use crate::choice::Choice;
-use crate::effect::{CardVerb, CharacterVerb};
+use crate::effect::{CardVerb, ParsedCharacterVerb};
 use crate::game::cards_ref::CardsRef;
 use crate::game::zone_move::CardOriginZone;
 use crate::ids::PlayerId;
@@ -67,19 +67,19 @@ pub(super) fn select_characters(
     cards: CardsRef,
     owner: PlayerId,
     source: ObjectId,
-    selector: CharacterSelector<Bound>,
-) -> SelectedOrPick<Selection<ObjectId>, CharacterFilter, CharacterVerb> {
+    selector: ParsedCharacterSelector<Bound>,
+) -> SelectedOrPick<Selection<ObjectId>, CharacterFilter, ParsedCharacterVerb> {
     let values = match selector {
-        CharacterSelector::All(filter) => {
+        ParsedCharacterSelector::All(filter) => {
             Values::Each(cards.scan_characters_with_filter(owner, source, &filter))
         }
-        CharacterSelector::Itself => Values::Each(vec![source]),
-        CharacterSelector::OwnerHero => Values::Each(vec![cards.zones.hero(owner)]),
-        CharacterSelector::Random(filter) => {
+        ParsedCharacterSelector::Itself => Values::Each(vec![source]),
+        ParsedCharacterSelector::OwnerHero => Values::Each(vec![cards.zones.hero(owner)]),
+        ParsedCharacterSelector::Random(filter) => {
             Values::OneOf(cards.scan_characters_with_filter(owner, source, &filter))
         }
-        CharacterSelector::Targeted(targeted) => Values::Each(targeted),
-        CharacterSelector::Picked { choice, others } => {
+        ParsedCharacterSelector::Targeted(targeted) => Values::Each(targeted),
+        ParsedCharacterSelector::Picked { choice, others } => {
             return SelectedOrPick::Pick { choice, others };
         }
     };

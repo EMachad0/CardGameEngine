@@ -1,5 +1,6 @@
 mod amount;
 mod cards_ref;
+pub(crate) mod deck;
 mod effect_stack;
 mod legal_actions;
 mod mana;

@@ -3,7 +3,7 @@
 //! resolving effect holds the picking its last effect opened until the picking finishes.
 
 use crate::cards::object::ObjectId;
-use crate::effect::Effect;
+use crate::effect::ParsedEffect;
 use crate::game::picking::{PickedObjects, Picking};
 use crate::target::Bound;
 
@@ -16,7 +16,7 @@ pub(super) struct EffectStack {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PendingEffect {
     source: ObjectId,
-    effects: Vec<Effect<Bound>>,
+    effects: Vec<ParsedEffect<Bound>>,
 }
 
 /// Pending effects not yet on the effect stack, in the order they go on it.
@@ -34,7 +34,7 @@ struct ResolvingEffect {
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct NextEffect {
     pub(super) source: ObjectId,
-    pub(super) effect: Effect<Bound>,
+    pub(super) effect: ParsedEffect<Bound>,
 }
 
 /// The objects of a complete picking taken off the resolving effect.
@@ -95,7 +95,7 @@ impl WasAwaitingPicking {
 }
 
 impl PendingEffects {
-    pub(super) fn push(&mut self, source: ObjectId, effects: Vec<Effect<Bound>>) {
+    pub(super) fn push(&mut self, source: ObjectId, effects: Vec<ParsedEffect<Bound>>) {
         self.0.push(PendingEffect { source, effects });
     }
 }
@@ -112,7 +112,7 @@ impl ResolvingEffect {
 }
 
 impl EffectStack {
-    fn push(&mut self, source: ObjectId, effects: Vec<Effect<Bound>>) {
+    fn push(&mut self, source: ObjectId, effects: Vec<ParsedEffect<Bound>>) {
         self.pending.push(PendingEffect { source, effects });
     }
 
@@ -206,24 +206,48 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::cards::binder::sets::base::static_card_definition::SPARK;
-    use crate::cards::definition::PlayerSelector;
+    use crate::cards::binder::def_code::DefCode;
+    use crate::cards::binder::def_id::DefId;
+    use crate::cards::binder::set::{Set, SetCard};
+    use crate::cards::binder::store::Binder;
+    use crate::cards::definition::{CardDef, PlayerSelector};
     use crate::cards::object::ObjectBag;
     use crate::choice::AmountBound;
-    use crate::effect::{CardDestinationZone, CardVerb, EffectAmount, PlayerVerb};
+    use crate::effect::{CardDestinationZone, CardVerb, EffectAmount, ParsedPlayerVerb};
     use crate::game::picking::{CardPicking, PickWindow};
     use crate::game::zone_move::CardOriginZone;
     use crate::ids::PlayerId;
 
-    fn sources<const N: usize>() -> [ObjectId; N] {
-        let mut objects = ObjectBag::default();
-        std::array::from_fn(|_| objects.insert(SPARK, PlayerId::new(0)))
+    /// The `DefId` of a card that no test looks up.
+    fn def_id() -> DefId {
+        let card = SetCard {
+            name: "card",
+            version: 0,
+            def: CardDef::default(),
+        };
+        let binder = Binder::new([Set {
+            prefix: "unit",
+            cards: vec![card],
+        }])
+        .unwrap();
+        binder
+            .def_id(DefCode {
+                set: "unit",
+                name: "card",
+                version: 0,
+            })
+            .unwrap()
     }
 
-    fn draw(amount: u8) -> Effect<Bound> {
-        Effect::Players {
+    fn sources<const N: usize>() -> [ObjectId; N] {
+        let mut objects = ObjectBag::default();
+        std::array::from_fn(|_| objects.insert(def_id(), PlayerId::new(0)))
+    }
+
+    fn draw(amount: u8) -> ParsedEffect<Bound> {
+        ParsedEffect::Players {
             selector: PlayerSelector::Owner,
-            verbs: vec![PlayerVerb::Draw(EffectAmount::Static(amount))],
+            verbs: vec![ParsedPlayerVerb::Draw(EffectAmount::Static(amount))],
         }
     }
 
@@ -242,7 +266,7 @@ mod tests {
         ))
     }
 
-    fn effect(source: ObjectId, effect: Effect<Bound>) -> Advance {
+    fn effect(source: ObjectId, effect: ParsedEffect<Bound>) -> Advance {
         Advance::Effect(NextEffect { source, effect })
     }
 

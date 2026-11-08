@@ -103,7 +103,7 @@ probe finds gets a test.
 - Write expected values out by hand, in the test or in an independent model such as
   `tests/spec/model.rs`. Never read them from the crate's card data. A value the test reads from
   the code can't catch a wrong value in the code.
-- Find a card by its identity (`def_id`), not by a property under test. A test that looks for the
+- Find a card by its identity (`def_code`), not by a property under test. A test that looks for the
   Bolt as "the card that costs 2" never finds a Bolt that costs 1.
 - A seed fixes a stream of numbers, and one unrelated extra draw shifts every later outcome. Assert
   a property across many seeds instead of pinning one seed to one outcome.

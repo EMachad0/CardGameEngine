@@ -1,13 +1,13 @@
 //! A card or trigger that pauses for a pick, and what waits for it.
 
 use pretty_assertions::assert_eq;
-use rules::prelude::static_card_definition::{
-    AFTERSHOCK, BOMBER, DRUMMER, ENLIST, FORAGE, HOARDER, MENTOR, MOURNER, PACKRAT, PING,
-    RALLY_BANNER, RECRUIT, SHARPEN, SPARK, SQUIRE, SWEEP, TRIAGE,
-};
 use rules::prelude::{Action, Event, Game, PlayerId};
 
 use crate::support::*;
+use crate::test_set::{
+    AFTERSHOCK, BOMBER, DRUMMER, ENLIST, FORAGE, HOARDER, MENTOR, MOURNER, PACKRAT, PING,
+    RALLY_BANNER, RECRUIT, SHARPEN, SPARK, SQUIRE, SWEEP, TRIAGE,
+};
 
 /// A pick of each of `p`'s pick options.
 fn picks(game: &Game, p: PlayerId) -> Vec<Action> {
@@ -40,7 +40,7 @@ fn hoarder_waiting_for_its_owner() -> Boards {
 #[test]
 fn a_pick_that_is_its_cards_last_effect_stays_open_until_answered() {
     let deck0 = vec![FORAGE, SPARK, SPARK, SPARK, RECRUIT, RECRUIT];
-    let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
+    let mut game = game_with_deck_order(0, [deck0, vec![SPARK; 6]]);
     let [p0, _] = players(&game);
 
     play_def(&mut game, p0, FORAGE);
@@ -55,7 +55,7 @@ fn a_pick_that_is_its_cards_last_effect_stays_open_until_answered() {
 #[test]
 fn a_skipped_pick_lets_the_rest_of_its_card_resolve() {
     let deck0 = vec![SWEEP, SPARK, SPARK, SPARK];
-    let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 20]]);
+    let mut game = game_with_deck_order(0, [deck0, vec![SPARK; 20]]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 2);
     let sweep = in_hand(&game, p0, SWEEP);

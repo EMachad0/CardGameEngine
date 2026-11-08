@@ -1,4 +1,4 @@
-use crate::cards::definition::TriggerDef;
+use crate::cards::definition::{ParsedTriggerDef, TriggerDef};
 use crate::cards::object::ObjectId;
 use crate::effect::EffectAmount;
 
@@ -18,7 +18,7 @@ impl Modifiers {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Modifier {
     pub granted_by: ObjectId,
-    pub effect: ModifierEffect,
+    pub effect: ParsedModifierEffect,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -29,6 +29,14 @@ pub enum ModifierEffect {
     GrantTrigger(TriggerDef),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum ParsedModifierEffect {
+    BuffAtk { amount: EffectAmount },
+    BuffHealth { amount: EffectAmount },
+    ReduceManaCost { amount: EffectAmount },
+    GrantTrigger(ParsedTriggerDef),
+}
+
 /// Modifiers sorted by what each changes: a stat, or the triggers. Amounts stay unevaluated until
 /// a stat is asked for.
 #[derive(Debug, Default)]
@@ -36,16 +44,18 @@ pub(crate) struct SortedModifiers<'a> {
     attack: Vec<&'a EffectAmount>,
     health: Vec<&'a EffectAmount>,
     cost: Vec<&'a EffectAmount>,
-    triggers: Vec<(ObjectId, &'a TriggerDef)>,
+    triggers: Vec<(ObjectId, &'a ParsedTriggerDef)>,
 }
 
 impl<'a> SortedModifiers<'a> {
-    pub(crate) fn add(&mut self, granted_by: ObjectId, effect: &'a ModifierEffect) {
+    pub(crate) fn add(&mut self, granted_by: ObjectId, effect: &'a ParsedModifierEffect) {
         match effect {
-            ModifierEffect::BuffAtk { amount } => self.attack.push(amount),
-            ModifierEffect::BuffHealth { amount } => self.health.push(amount),
-            ModifierEffect::ReduceManaCost { amount } => self.cost.push(amount),
-            ModifierEffect::GrantTrigger(trigger) => self.triggers.push((granted_by, trigger)),
+            ParsedModifierEffect::BuffAtk { amount } => self.attack.push(amount),
+            ParsedModifierEffect::BuffHealth { amount } => self.health.push(amount),
+            ParsedModifierEffect::ReduceManaCost { amount } => self.cost.push(amount),
+            ParsedModifierEffect::GrantTrigger(trigger) => {
+                self.triggers.push((granted_by, trigger))
+            }
         }
     }
 
@@ -62,7 +72,9 @@ impl<'a> SortedModifiers<'a> {
     }
 
     /// In the order they were added, each with the object granting it.
-    pub(crate) fn granted_triggers(&self) -> impl Iterator<Item = (ObjectId, &'a TriggerDef)> {
+    pub(crate) fn granted_triggers(
+        &self,
+    ) -> impl Iterator<Item = (ObjectId, &'a ParsedTriggerDef)> {
         self.triggers.iter().copied()
     }
 }
@@ -72,15 +84,40 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::cards::binder::sets::base::static_card_definition::SPARK;
+    use crate::cards::binder::def_code::DefCode;
+    use crate::cards::binder::def_id::DefId;
+    use crate::cards::binder::set::{Set, SetCard};
+    use crate::cards::binder::store::Binder;
+    use crate::cards::definition::CardDef;
     use crate::cards::object::ObjectBag;
     use crate::history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter};
     use crate::ids::PlayerId;
+
+    /// The `DefId` of a card that no test looks up.
+    fn def_id() -> DefId {
+        let card = SetCard {
+            name: "card",
+            version: 0,
+            def: CardDef::default(),
+        };
+        let binder = Binder::new([Set {
+            prefix: "unit",
+            cards: vec![card],
+        }])
+        .unwrap();
+        binder
+            .def_id(DefCode {
+                set: "unit",
+                name: "card",
+                version: 0,
+            })
+            .unwrap()
+    }
     use crate::trigger::{TriggerPattern, TriggerSubject};
 
     fn ids<const N: usize>() -> [ObjectId; N] {
         let mut bag = ObjectBag::default();
-        std::array::from_fn(|_| bag.insert(SPARK, PlayerId::new(0)))
+        std::array::from_fn(|_| bag.insert(def_id(), PlayerId::new(0)))
     }
 
     fn evaluate(amount: &EffectAmount) -> u8 {
@@ -98,32 +135,32 @@ mod tests {
         })
     }
 
-    fn trigger(pattern: TriggerPattern) -> TriggerDef {
-        TriggerDef {
+    fn trigger(pattern: TriggerPattern) -> ParsedTriggerDef {
+        ParsedTriggerDef {
             pattern,
             effects: Vec::new(),
         }
     }
 
-    fn attack(amount: u8) -> ModifierEffect {
-        ModifierEffect::BuffAtk {
+    fn attack(amount: u8) -> ParsedModifierEffect {
+        ParsedModifierEffect::BuffAtk {
             amount: amount.into(),
         }
     }
 
-    fn health(amount: u8) -> ModifierEffect {
-        ModifierEffect::BuffHealth {
+    fn health(amount: u8) -> ParsedModifierEffect {
+        ParsedModifierEffect::BuffHealth {
             amount: amount.into(),
         }
     }
 
-    fn cost(amount: u8) -> ModifierEffect {
-        ModifierEffect::ReduceManaCost {
+    fn cost(amount: u8) -> ParsedModifierEffect {
+        ParsedModifierEffect::ReduceManaCost {
             amount: amount.into(),
         }
     }
 
-    fn sorted(granted_by: ObjectId, effects: &[ModifierEffect]) -> SortedModifiers<'_> {
+    fn sorted(granted_by: ObjectId, effects: &[ParsedModifierEffect]) -> SortedModifiers<'_> {
         let mut modifiers = SortedModifiers::default();
         for effect in effects {
             modifiers.add(granted_by, effect);
@@ -139,7 +176,7 @@ mod tests {
             attack(1),
             health(2),
             cost(3),
-            ModifierEffect::GrantTrigger(died.clone()),
+            ParsedModifierEffect::GrantTrigger(died.clone()),
         ];
         let modifiers = sorted(granter, &effects);
 
@@ -190,13 +227,13 @@ mod tests {
     fn an_amount_counts_as_the_callers_evaluation_of_it() {
         let [granter] = ids();
         let effects = [
-            ModifierEffect::BuffAtk {
+            ParsedModifierEffect::BuffAtk {
                 amount: spells_played(),
             },
-            ModifierEffect::BuffHealth {
+            ParsedModifierEffect::BuffHealth {
                 amount: spells_played(),
             },
-            ModifierEffect::ReduceManaCost {
+            ParsedModifierEffect::ReduceManaCost {
                 amount: spells_played(),
             },
         ];
@@ -218,8 +255,8 @@ mod tests {
         let [first, second] = ids();
         let died = trigger(TriggerPattern::Died(TriggerSubject::Itself));
         let damaged = trigger(TriggerPattern::Damaged(TriggerSubject::Itself));
-        let first_effects = [ModifierEffect::GrantTrigger(died.clone())];
-        let second_effects = [ModifierEffect::GrantTrigger(damaged.clone())];
+        let first_effects = [ParsedModifierEffect::GrantTrigger(died.clone())];
+        let second_effects = [ParsedModifierEffect::GrantTrigger(damaged.clone())];
         let mut modifiers = sorted(first, &first_effects);
         modifiers.add(second, &second_effects[0]);
 

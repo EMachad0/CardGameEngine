@@ -1,6 +1,9 @@
+use crate::cards::binder::def_code::DefCode;
 use crate::cards::binder::def_id::DefId;
-use crate::cards::definition::{CardSelector, CharacterSelector, PlayerSelector};
-use crate::cards::modifier::ModifierEffect;
+use crate::cards::definition::{
+    CardSelector, CharacterSelector, ParsedCharacterSelector, PlayerSelector,
+};
+use crate::cards::modifier::{ModifierEffect, ParsedModifierEffect};
 use crate::history::HistoryQuery;
 use crate::target::{MapTargets, TargetChoiceRef, TargetForm};
 
@@ -32,8 +35,30 @@ pub enum Effect<S: TargetForm> {
     },
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum ParsedEffect<S: TargetForm> {
+    Players {
+        selector: PlayerSelector,
+        verbs: Vec<ParsedPlayerVerb>,
+    },
+    Characters {
+        selector: ParsedCharacterSelector<S>,
+        verbs: Vec<ParsedCharacterVerb>,
+    },
+    Cards {
+        selector: CardSelector<S>,
+        verbs: Vec<CardVerb>,
+    },
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlayerVerb {
+    Draw(EffectAmount),
+    Summon(DefCode),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ParsedPlayerVerb {
     Draw(EffectAmount),
     Summon(DefId),
 }
@@ -43,6 +68,13 @@ pub enum CharacterVerb {
     Damage(EffectAmount),
     Modify(ModifierEffect),
     AddFriendlyAura(ModifierEffect),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum ParsedCharacterVerb {
+    Damage(EffectAmount),
+    Modify(ParsedModifierEffect),
+    AddFriendlyAura(ParsedModifierEffect),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -56,30 +88,33 @@ pub enum CardDestinationZone {
     DeckBottom,
 }
 
-impl<S: TargetForm> Effect<S> {
+impl<S: TargetForm> ParsedEffect<S> {
     pub(crate) fn target(&self) -> Option<TargetChoiceRef<'_, S>> {
         match self {
-            Effect::Players {
+            ParsedEffect::Players {
                 selector: _,
                 verbs: _,
             } => None,
-            Effect::Characters { selector, verbs: _ } => {
+            ParsedEffect::Characters { selector, verbs: _ } => {
                 selector.target().map(|t| TargetChoiceRef::Character(t))
             }
-            Effect::Cards { selector, verbs: _ } => {
+            ParsedEffect::Cards { selector, verbs: _ } => {
                 selector.target().map(|t| TargetChoiceRef::Card(t))
             }
         }
     }
 
-    pub(crate) fn map_targeted<R: TargetForm>(self, f: &mut impl MapTargets<S, R>) -> Effect<R> {
+    pub(crate) fn map_targeted<R: TargetForm>(
+        self,
+        f: &mut impl MapTargets<S, R>,
+    ) -> ParsedEffect<R> {
         match self {
-            Effect::Players { selector, verbs } => Effect::Players { selector, verbs },
-            Effect::Characters { selector, verbs } => Effect::Characters {
+            ParsedEffect::Players { selector, verbs } => ParsedEffect::Players { selector, verbs },
+            ParsedEffect::Characters { selector, verbs } => ParsedEffect::Characters {
                 selector: selector.map_targeted(|target| f.map_character(target)),
                 verbs,
             },
-            Effect::Cards { selector, verbs } => Effect::Cards {
+            ParsedEffect::Cards { selector, verbs } => ParsedEffect::Cards {
                 selector: selector.map_targeted(|target| f.map_card(target)),
                 verbs,
             },
@@ -120,44 +155,44 @@ mod tests {
         }
     }
 
-    fn targets_characters<T: Debug + Clone + PartialEq + Eq>(target: T) -> Effect<Holds<T>> {
-        let buff = ModifierEffect::BuffAtk { amount: 1.into() };
-        Effect::Characters {
-            selector: CharacterSelector::Targeted(target),
+    fn targets_characters<T: Debug + Clone + PartialEq + Eq>(target: T) -> ParsedEffect<Holds<T>> {
+        let buff = ParsedModifierEffect::BuffAtk { amount: 1.into() };
+        ParsedEffect::Characters {
+            selector: ParsedCharacterSelector::Targeted(target),
             verbs: vec![
-                CharacterVerb::Damage(1.into()),
-                CharacterVerb::Modify(buff.clone()),
-                CharacterVerb::AddFriendlyAura(buff),
+                ParsedCharacterVerb::Damage(1.into()),
+                ParsedCharacterVerb::Modify(buff.clone()),
+                ParsedCharacterVerb::AddFriendlyAura(buff),
             ],
         }
     }
 
-    fn targets_cards<T: Debug + Clone + PartialEq + Eq>(target: T) -> Effect<Holds<T>> {
-        Effect::Cards {
+    fn targets_cards<T: Debug + Clone + PartialEq + Eq>(target: T) -> ParsedEffect<Holds<T>> {
+        ParsedEffect::Cards {
             selector: CardSelector::Targeted(target),
             verbs: vec![CardVerb::Move(CardDestinationZone::DeckBottom)],
         }
     }
 
-    fn untargeted<S: TargetForm>() -> [Effect<S>; 3] {
+    fn untargeted<S: TargetForm>() -> [ParsedEffect<S>; 3] {
         [
-            Effect::Players {
+            ParsedEffect::Players {
                 selector: PlayerSelector::Owner,
-                verbs: vec![PlayerVerb::Draw(1.into())],
+                verbs: vec![ParsedPlayerVerb::Draw(1.into())],
             },
-            Effect::Characters {
-                selector: CharacterSelector::Picked {
+            ParsedEffect::Characters {
+                selector: ParsedCharacterSelector::Picked {
                     choice: Choice {
                         options: CharacterFilter::all(),
                         count: 1.into(),
                         bound: AmountBound::Exactly,
                         different: true,
                     },
-                    others: vec![CharacterVerb::Damage(1.into())],
+                    others: vec![ParsedCharacterVerb::Damage(1.into())],
                 },
-                verbs: vec![CharacterVerb::Damage(2.into())],
+                verbs: vec![ParsedCharacterVerb::Damage(2.into())],
             },
-            Effect::Cards {
+            ParsedEffect::Cards {
                 selector: CardSelector::Picked {
                     choice: Choice {
                         options: CardPickOptions {
@@ -191,7 +226,9 @@ mod tests {
     #[test]
     fn an_effect_with_no_targeted_selector_has_no_target() {
         assert_eq!(
-            untargeted::<Holds<usize>>().each_ref().map(Effect::target),
+            untargeted::<Holds<usize>>()
+                .each_ref()
+                .map(ParsedEffect::target),
             [None, None, None],
         );
     }

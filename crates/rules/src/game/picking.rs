@@ -3,7 +3,7 @@
 
 use crate::cards::object::ObjectId;
 use crate::choice::AmountBound;
-use crate::effect::{CardVerb, CharacterVerb};
+use crate::effect::{CardVerb, ParsedCharacterVerb};
 use crate::game::zone_move::CardOriginZone;
 use crate::ids::PlayerId;
 
@@ -30,7 +30,7 @@ pub(super) struct CardPicking {
 
 /// A pick of characters in play. It has no window, so every character it covers is an option.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct CharacterPicking(ObjectPicking<CharacterVerb>);
+pub(super) struct CharacterPicking(ObjectPicking<ParsedCharacterVerb>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ObjectPicking<V> {
@@ -66,7 +66,7 @@ pub(super) struct PickedCards {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(super) struct PickedCharacters(PickedGroups<CharacterVerb>);
+pub(super) struct PickedCharacters(PickedGroups<ParsedCharacterVerb>);
 
 /// A complete pick's objects, each group with the verbs that act on it.
 #[derive(Debug, PartialEq, Eq)]
@@ -181,8 +181,8 @@ impl CharacterPicking {
         options: Vec<ObjectId>,
         count: u8,
         bound: AmountBound,
-        verbs: Vec<CharacterVerb>,
-        others: Vec<CharacterVerb>,
+        verbs: Vec<ParsedCharacterVerb>,
+        others: Vec<ParsedCharacterVerb>,
     ) -> Self {
         let covered = options.into_iter().map(|object_id| (object_id, true));
         Self(ObjectPicking::new(covered, count, bound, verbs, others))
@@ -209,7 +209,7 @@ impl PickedCards {
 impl PickedCharacters {
     /// Each group of characters with the verbs that act on it, in the order the verbs run: the
     /// characters picked, then the rest.
-    pub(super) fn into_groups(self) -> [ObjectsWithVerbs<CharacterVerb>; 2] {
+    pub(super) fn into_groups(self) -> [ObjectsWithVerbs<ParsedCharacterVerb>; 2] {
         self.0.into_groups()
     }
 }
@@ -308,14 +308,39 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::cards::binder::sets::base::static_card_definition::SPARK;
-    use crate::cards::modifier::ModifierEffect;
+    use crate::cards::binder::def_code::DefCode;
+    use crate::cards::binder::def_id::DefId;
+    use crate::cards::binder::set::{Set, SetCard};
+    use crate::cards::binder::store::Binder;
+    use crate::cards::definition::CardDef;
+    use crate::cards::modifier::ParsedModifierEffect;
     use crate::cards::object::ObjectBag;
     use crate::effect::CardDestinationZone;
 
+    /// The `DefId` of a card that no test looks up.
+    fn def_id() -> DefId {
+        let card = SetCard {
+            name: "card",
+            version: 0,
+            def: CardDef::default(),
+        };
+        let binder = Binder::new([Set {
+            prefix: "unit",
+            cards: vec![card],
+        }])
+        .unwrap();
+        binder
+            .def_id(DefCode {
+                set: "unit",
+                name: "card",
+                version: 0,
+            })
+            .unwrap()
+    }
+
     fn ids<const N: usize>() -> [ObjectId; N] {
         let mut bag = ObjectBag::default();
-        std::array::from_fn(|_| bag.insert(SPARK, PlayerId::new(0)))
+        std::array::from_fn(|_| bag.insert(def_id(), PlayerId::new(0)))
     }
 
     /// A pick of `count` from `covered`, with tags for verbs.
@@ -343,8 +368,8 @@ mod tests {
         )
     }
 
-    fn buff(amount: u8) -> CharacterVerb {
-        CharacterVerb::Modify(ModifierEffect::BuffAtk {
+    fn buff(amount: u8) -> ParsedCharacterVerb {
+        ParsedCharacterVerb::Modify(ParsedModifierEffect::BuffAtk {
             amount: amount.into(),
         })
     }

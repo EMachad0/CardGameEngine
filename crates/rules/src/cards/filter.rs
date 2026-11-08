@@ -76,15 +76,40 @@ pub(crate) fn fulfill_side_filter(side: EnumSet<Side>, asking: PlayerId, owner: 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cards::binder::sets::base::static_card_definition::SPARK;
+    use crate::cards::binder::def_code::DefCode;
+    use crate::cards::binder::def_id::DefId;
+    use crate::cards::binder::set::{Set, SetCard};
+    use crate::cards::binder::store::Binder;
+    use crate::cards::definition::CardDef;
     use crate::cards::object::ObjectBag;
+
+    /// The `DefId` of a card that no test looks up.
+    fn def_id() -> DefId {
+        let card = SetCard {
+            name: "card",
+            version: 0,
+            def: CardDef::default(),
+        };
+        let binder = Binder::new([Set {
+            prefix: "unit",
+            cards: vec![card],
+        }])
+        .unwrap();
+        binder
+            .def_id(DefCode {
+                set: "unit",
+                name: "card",
+                version: 0,
+            })
+            .unwrap()
+    }
 
     const ME: PlayerId = PlayerId::new(0);
     const THEM: PlayerId = PlayerId::new(1);
 
     fn ids<const N: usize>() -> [ObjectId; N] {
         let mut bag = ObjectBag::default();
-        std::array::from_fn(|_| bag.insert(SPARK, ME))
+        std::array::from_fn(|_| bag.insert(def_id(), ME))
     }
 
     fn enemy_minions() -> CharacterFilter {

@@ -122,7 +122,32 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::cards::binder::sets::base::static_card_definition::{RECRUIT, SPARK};
+    use crate::cards::binder::def_code::DefCode;
+    use crate::cards::binder::def_id::DefId;
+    use crate::cards::binder::set::{Set, SetCard};
+    use crate::cards::binder::store::Binder;
+
+    /// The `DefId` of a card that no test looks up.
+    fn def_id() -> DefId {
+        let card = SetCard {
+            name: "card",
+            version: 0,
+            def: CardDef::default(),
+        };
+        let binder = Binder::new([Set {
+            prefix: "unit",
+            cards: vec![card],
+        }])
+        .unwrap();
+        binder
+            .def_id(DefCode {
+                set: "unit",
+                name: "card",
+                version: 0,
+            })
+            .unwrap()
+    }
+    use crate::cards::definition::CardDef;
 
     const P0: PlayerId = PlayerId::new(0);
     const P1: PlayerId = PlayerId::new(1);
@@ -137,7 +162,7 @@ mod tests {
     #[test]
     fn a_played_card_is_listed_for_the_player_who_played_it() {
         let mut objects = ObjectBag::default();
-        let spark = objects.insert(SPARK, P0);
+        let spark = objects.insert(def_id(), P0);
         let mut history = History::default();
 
         history.record(&played(P0, spark), 1, &objects);
@@ -148,7 +173,7 @@ mod tests {
     #[test]
     fn a_card_another_player_played_is_not_listed_for_a_player() {
         let mut objects = ObjectBag::default();
-        let spark = objects.insert(SPARK, P0);
+        let spark = objects.insert(def_id(), P0);
         let mut history = History::default();
 
         history.record(&played(P0, spark), 1, &objects);
@@ -159,8 +184,8 @@ mod tests {
     #[test]
     fn any_player_lists_the_cards_every_player_played() {
         let mut objects = ObjectBag::default();
-        let first = objects.insert(SPARK, P0);
-        let second = objects.insert(SPARK, P1);
+        let first = objects.insert(def_id(), P0);
+        let second = objects.insert(def_id(), P1);
         let mut history = History::default();
 
         history.record(&played(P0, first), 1, &objects);
@@ -175,8 +200,8 @@ mod tests {
     #[test]
     fn a_turn_lists_only_the_cards_played_in_it() {
         let mut objects = ObjectBag::default();
-        let first = objects.insert(SPARK, P0);
-        let second = objects.insert(SPARK, P0);
+        let first = objects.insert(def_id(), P0);
+        let second = objects.insert(def_id(), P0);
         let mut history = History::default();
 
         history.record(&played(P0, first), 1, &objects);
@@ -188,7 +213,7 @@ mod tests {
     #[test]
     fn a_dead_character_is_listed_for_its_owner() {
         let mut objects = ObjectBag::default();
-        let recruit = objects.insert(RECRUIT, P1);
+        let recruit = objects.insert(def_id(), P1);
         let mut history = History::default();
 
         history.record(&Event::Died { object_id: recruit }, 2, &objects);
@@ -199,8 +224,8 @@ mod tests {
     #[test]
     fn a_turn_lists_only_the_characters_that_died_in_it() {
         let mut objects = ObjectBag::default();
-        let first = objects.insert(RECRUIT, P0);
-        let second = objects.insert(RECRUIT, P0);
+        let first = objects.insert(def_id(), P0);
+        let second = objects.insert(def_id(), P0);
         let mut history = History::default();
 
         history.record(&Event::Died { object_id: first }, 1, &objects);
@@ -212,7 +237,7 @@ mod tests {
     #[test]
     fn a_dead_character_is_not_listed_for_another_player() {
         let mut objects = ObjectBag::default();
-        let recruit = objects.insert(RECRUIT, P1);
+        let recruit = objects.insert(def_id(), P1);
         let mut history = History::default();
 
         history.record(&Event::Died { object_id: recruit }, 2, &objects);
@@ -223,7 +248,7 @@ mod tests {
     #[test]
     fn a_summon_or_a_death_is_not_a_play() {
         let mut objects = ObjectBag::default();
-        let recruit = objects.insert(RECRUIT, P0);
+        let recruit = objects.insert(def_id(), P0);
         let mut history = History::default();
 
         history.record(
@@ -242,7 +267,7 @@ mod tests {
     #[test]
     fn a_play_or_a_draw_is_not_a_death() {
         let mut objects = ObjectBag::default();
-        let recruit = objects.insert(RECRUIT, P0);
+        let recruit = objects.insert(def_id(), P0);
         let mut history = History::default();
 
         history.record(

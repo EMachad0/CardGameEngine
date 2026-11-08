@@ -6,13 +6,13 @@ use pretty_assertions::assert_eq;
 use rules::prelude::{Game, PickingView};
 
 use crate::playout::{checked_playout, random_playout, sample_deck};
-use crate::support::{Recorder, observe, players};
+use crate::support::{Recorder, new_game, observe, players};
 
 #[test]
 fn new_is_a_function_of_seed_and_decks() {
     for seed in 0..20 {
-        let a = Game::new(seed, [sample_deck(), sample_deck()]);
-        let b = Game::new(seed, [sample_deck(), sample_deck()]);
+        let a = new_game(seed, [sample_deck(), sample_deck()]);
+        let b = new_game(seed, [sample_deck(), sample_deck()]);
         assert_eq!(a, b, "seed {seed}");
     }
 }
@@ -52,7 +52,7 @@ fn replaying_seed_plus_decisions_reproduces_the_game() {
     for seed in 0..50 {
         let (original, log) = random_playout(seed, seed ^ 0xC0FFEE);
 
-        let mut replay = Game::new(seed, [sample_deck(), sample_deck()]);
+        let mut replay = new_game(seed, [sample_deck(), sample_deck()]);
         for (p, a) in log {
             replay
                 .apply(p, a, &mut ())
@@ -67,7 +67,7 @@ fn replaying_seed_plus_decisions_reproduces_the_game() {
 fn for_each_observed_apply(mut check: impl FnMut(&Game, &Recorder, &str)) {
     for seed in 0..20 {
         let (_, log) = random_playout(seed, seed ^ 0xD15C);
-        let mut game = Game::new(seed, [sample_deck(), sample_deck()]);
+        let mut game = new_game(seed, [sample_deck(), sample_deck()]);
         for (step, (p, a)) in log.into_iter().enumerate() {
             let recorder = observe(&mut game, p, a);
             check(&game, &recorder, &format!("seed {seed}, step {step}"));
@@ -80,7 +80,7 @@ fn observing_leaves_the_same_game_as_not_observing() {
     for seed in 0..20 {
         let (original, log) = random_playout(seed, seed ^ 0xD15C);
 
-        let mut observed = Game::new(seed, [sample_deck(), sample_deck()]);
+        let mut observed = new_game(seed, [sample_deck(), sample_deck()]);
         for (p, a) in log {
             observe(&mut observed, p, a);
         }
@@ -92,7 +92,7 @@ fn observing_leaves_the_same_game_as_not_observing() {
 fn the_same_game_and_action_report_the_same_steps() {
     for seed in 0..20 {
         let (_, log) = random_playout(seed, seed ^ 0xD15C);
-        let mut game = Game::new(seed, [sample_deck(), sample_deck()]);
+        let mut game = new_game(seed, [sample_deck(), sample_deck()]);
         for (step, (p, a)) in log.into_iter().enumerate() {
             let first = observe(&mut game.clone(), p, a);
             let second = observe(&mut game, p, a);

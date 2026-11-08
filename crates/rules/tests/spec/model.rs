@@ -2,8 +2,9 @@
 //! boards. The playout checks compare the core against it, so a wrong value in
 //! the core can't check itself.
 
-use rules::prelude::DefId;
-use rules::prelude::static_card_definition::{
+use rules::prelude::DefCode;
+
+use crate::test_set::{
     BARRACKS, BLAST, BOLT, CAPTAIN, CROSSFIRE, FORAGE, GIANT, PING, RECRUIT, SHOVE, SPARK, SQUIRE,
     TWIN_SHOT, WILD_BOLT,
 };
@@ -11,7 +12,7 @@ use rules::prelude::static_card_definition::{
 /// Attack and health.
 pub(crate) type Stats = (i32, i32);
 
-const PRINTED: [(DefId, u8, Option<Stats>); 14] = [
+const PRINTED: [(DefCode, u8, Option<Stats>); 14] = [
     (SPARK, 1, None),
     (BOLT, 2, None),
     (WILD_BOLT, 1, None),
@@ -28,7 +29,7 @@ const PRINTED: [(DefId, u8, Option<Stats>); 14] = [
     (SHOVE, 1, None),
 ];
 
-fn printed(def: DefId) -> (u8, Option<Stats>) {
+fn printed(def: DefCode) -> (u8, Option<Stats>) {
     let (_, cost, stats) = PRINTED
         .iter()
         .find(|(d, _, _)| *d == def)
@@ -36,12 +37,12 @@ fn printed(def: DefId) -> (u8, Option<Stats>) {
     (*cost, *stats)
 }
 
-pub(crate) fn is_spell(def: DefId) -> bool {
+pub(crate) fn is_spell(def: DefCode) -> bool {
     printed(def).1.is_none()
 }
 
 /// A card's cost in hand, given how many spells its holder has cast this game.
-pub(crate) fn expected_cost(def: DefId, spells_cast: u8) -> u8 {
+pub(crate) fn expected_cost(def: DefCode, spells_cast: u8) -> u8 {
     let cost = printed(def).0;
     if def == GIANT {
         cost.saturating_sub(spells_cast)
@@ -51,7 +52,7 @@ pub(crate) fn expected_cost(def: DefId, spells_cast: u8) -> u8 {
 }
 
 /// The damage a card with targets deals to each object targeted for it.
-pub(crate) fn damage_per_target(def: DefId) -> i32 {
+pub(crate) fn damage_per_target(def: DefCode) -> i32 {
     if def == PING { 2 } else { 1 }
 }
 
@@ -59,19 +60,19 @@ pub(crate) fn damage_per_target(def: DefId) -> i32 {
 /// named by its owner's index in `Game::players`.
 #[derive(Default)]
 pub(crate) struct BoardModel {
-    boards: [Vec<(DefId, i32)>; 2],
+    boards: [Vec<(DefCode, i32)>; 2],
 }
 
 impl BoardModel {
     /// `owner`'s minions, left to right, with their current attack and health.
-    pub(crate) fn minions(&self, owner: usize) -> Vec<(DefId, Stats)> {
+    pub(crate) fn minions(&self, owner: usize) -> Vec<(DefCode, Stats)> {
         let board = &self.boards[owner];
         (0..board.len())
             .map(|i| (board[i].0, Self::stats(board, i)))
             .collect()
     }
 
-    fn stats(board: &[(DefId, i32)], i: usize) -> Stats {
+    fn stats(board: &[(DefCode, i32)], i: usize) -> Stats {
         let (def, damage) = board[i];
         let (attack, health) = printed(def).1.expect("only minions are on a board");
         let captains = board
@@ -82,7 +83,7 @@ impl BoardModel {
         (attack + captains, health + captains - damage)
     }
 
-    pub(crate) fn played(&mut self, owner: usize, def: DefId) {
+    pub(crate) fn played(&mut self, owner: usize, def: DefCode) {
         if !is_spell(def) {
             self.boards[owner].push((def, 0));
         }

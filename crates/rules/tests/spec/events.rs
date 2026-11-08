@@ -1,13 +1,13 @@
 //! What `apply` reports to its observer.
 
 use pretty_assertions::assert_eq;
-use rules::prelude::static_card_definition::{
-    BARRACKS, BLAST, BOLT, CAPTAIN, DRILLMASTER, FORAGE, PING, RECRUIT, RECYCLE, SPARK, TWIN_SHOT,
-    WILD_BOLT, ZAP,
-};
 use rules::prelude::{Action, Event, Game, ObjectId, Outcome, PlayerId, View};
 
 use crate::support::*;
+use crate::test_set::{
+    BARRACKS, BLAST, BOLT, CAPTAIN, DRILLMASTER, FORAGE, PING, RECRUIT, RECYCLE, SPARK, TWIN_SHOT,
+    WILD_BOLT, ZAP,
+};
 
 /// The events of each step, leaving out the steps with none.
 fn event_steps(recorder: &Recorder) -> Vec<Vec<Event>> {
@@ -29,7 +29,7 @@ fn every_steps_events(recorder: &Recorder) -> Vec<Vec<Event>> {
 #[test]
 fn ending_the_turn_reports_the_end_then_the_next_turn_start_and_its_draw() {
     let deck = vec![SPARK; 6];
-    let mut game = Game::with_deck_order(0, [deck.clone(), deck]);
+    let mut game = game_with_deck_order(0, [deck.clone(), deck]);
     let [p0, p1] = players(&game);
     let top = game.deck(p1)[0];
 
@@ -51,7 +51,7 @@ fn ending_the_turn_reports_the_end_then_the_next_turn_start_and_its_draw() {
 #[test]
 fn a_turn_change_and_its_draw_share_one_step() {
     let deck = vec![SPARK; 6];
-    let mut game = Game::with_deck_order(0, [deck.clone(), deck]);
+    let mut game = game_with_deck_order(0, [deck.clone(), deck]);
     let [p0, p1] = players(&game);
     let top = game.deck(p1)[0];
 
@@ -72,7 +72,7 @@ fn a_turn_change_and_its_draw_share_one_step() {
 
 #[test]
 fn a_draw_from_an_empty_deck_reports_fatigue_damage_instead() {
-    let mut game = Game::with_deck_order(0, [vec![SPARK; 6], vec![SPARK; 3]]);
+    let mut game = game_with_deck_order(0, [vec![SPARK; 6], vec![SPARK; 3]]);
     let [p0, p1] = players(&game);
     assert!(game.deck(p1).is_empty(), "setup drew player 1's whole deck");
 
@@ -94,7 +94,7 @@ fn a_draw_from_an_empty_deck_reports_fatigue_damage_instead() {
 
 #[test]
 fn spark_reports_its_play_then_its_hit_on_the_enemy_hero_id() {
-    let mut game = Game::with_deck_order(0, [vec![SPARK; 6], vec![SPARK; 6]]);
+    let mut game = game_with_deck_order(0, [vec![SPARK; 6], vec![SPARK; 6]]);
     let [p0, p1] = players(&game);
     let spark = in_hand(&game, p0, SPARK);
 
@@ -118,7 +118,7 @@ fn spark_reports_its_play_then_its_hit_on_the_enemy_hero_id() {
 
 #[test]
 fn zap_reports_its_hit_on_the_enemy_hero_then_its_draw() {
-    let mut game = Game::with_deck_order(0, [deck_with_top(&[ZAP]), deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck_with_top(&[ZAP]), deck_with_top(&[])]);
     let [p0, p1] = players(&game);
     turn_with_mana(&mut game, p0, 2);
     let zap = in_hand(&game, p0, ZAP);
@@ -148,7 +148,7 @@ fn zap_reports_its_hit_on_the_enemy_hero_then_its_draw() {
 
 #[test]
 fn zaps_hit_and_draw_are_separate_steps() {
-    let mut game = Game::with_deck_order(0, [deck_with_top(&[ZAP]), deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck_with_top(&[ZAP]), deck_with_top(&[])]);
     let [p0, p1] = players(&game);
     turn_with_mana(&mut game, p0, 2);
     let zap = in_hand(&game, p0, ZAP);
@@ -180,7 +180,7 @@ fn zaps_hit_and_draw_are_separate_steps() {
 #[test]
 fn wild_bolt_reports_its_hit_on_the_hero_that_lost_health() {
     for seed in 0..50 {
-        let mut game = Game::with_deck_order(seed, [vec![WILD_BOLT; 6], vec![SPARK; 6]]);
+        let mut game = game_with_deck_order(seed, [vec![WILD_BOLT; 6], vec![SPARK; 6]]);
         let [p0, _] = players(&game);
         let wild_bolt = in_hand(&game, p0, WILD_BOLT);
 
@@ -211,7 +211,7 @@ fn wild_bolt_reports_its_hit_on_the_hero_that_lost_health() {
 #[test]
 fn a_checkpoint_follows_a_card_leaving_the_hand() {
     for (def, mana) in [(SPARK, 1), (RECRUIT, 2)] {
-        let mut game = Game::with_deck_order(0, [deck_with_top(&[def]), deck_with_top(&[])]);
+        let mut game = game_with_deck_order(0, [deck_with_top(&[def]), deck_with_top(&[])]);
         let [p0, _] = players(&game);
         turn_with_mana(&mut game, p0, mana);
         let card = in_hand(&game, p0, def);
@@ -239,7 +239,7 @@ fn a_checkpoint_follows_a_card_leaving_the_hand() {
 
 #[test]
 fn a_minions_summon_is_reported_before_its_play() {
-    let mut game = Game::with_deck_order(0, [deck_with_top(&[RECRUIT]), deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck_with_top(&[RECRUIT]), deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 2);
     let recruit = in_hand(&game, p0, RECRUIT);
@@ -265,7 +265,7 @@ fn a_minions_summon_is_reported_before_its_play() {
 /// in hand. Returns the game, the Recruit and the Captain.
 fn recruit_and_captain_facing_blast() -> (Game, ObjectId, ObjectId) {
     let deck0 = deck_with_top(&[RECRUIT, CAPTAIN, BLAST]);
-    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck0, deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 2);
     let recruit = summon(&mut game, p0, RECRUIT);
@@ -411,7 +411,7 @@ fn the_captain_is_reported_dead_before_the_recruit_it_held_up() {
 
 #[test]
 fn barracks_reports_its_play_then_the_squires_summon() {
-    let mut game = Game::with_deck_order(0, [deck_with_top(&[BARRACKS]), deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck_with_top(&[BARRACKS]), deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 2);
     let barracks = in_hand(&game, p0, BARRACKS);
@@ -442,7 +442,7 @@ fn barracks_reports_its_play_then_the_squires_summon() {
 /// at 2 and it can cast the Blast in hand. Returns the game and the Recruit.
 fn recruit_and_low_hero_facing_blast() -> (Game, ObjectId) {
     let deck0 = vec![RECRUIT, BLAST, BLAST, BLAST];
-    let mut game = Game::with_deck_order(0, [deck0, deck_with_top(&[])]);
+    let mut game = game_with_deck_order(0, [deck0, deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 2);
     let recruit = summon(&mut game, p0, RECRUIT);
@@ -507,7 +507,7 @@ fn a_hero_dying_with_a_minion_is_reported_dead_first() {
 
 #[test]
 fn heroes_brought_to_zero_together_are_each_reported_dead_before_the_draw() {
-    let mut game = Game::with_deck_order(0, [vec![BLAST; 4], vec![BLAST; 3]]);
+    let mut game = game_with_deck_order(0, [vec![BLAST; 4], vec![BLAST; 3]]);
     let [p0, p1] = players(&game);
     turn_with_mana(&mut game, p0, 9);
     let heroes = [game.hero_id(p0), game.hero_id(p1)];
@@ -639,7 +639,7 @@ fn checkpoints_show_the_recruit_hit_then_unbuffed_before_it_leaves() {
 /// Player 0 holds a Forage, with a Recruit and a Captain on top of the deck and a Bolt under them.
 fn forage_over_recruit_and_captain() -> Game {
     let deck0 = vec![FORAGE, SPARK, SPARK, SPARK, RECRUIT, CAPTAIN, BOLT];
-    Game::with_deck_order(0, [deck0, vec![SPARK; 6]])
+    game_with_deck_order(0, [deck0, vec![SPARK; 6]])
 }
 
 #[test]
@@ -670,7 +670,7 @@ fn a_pick_opens_in_a_step_of_its_own_that_reports_nothing() {
 #[test]
 fn a_forage_on_an_empty_deck_reports_only_its_play() {
     let deck0 = vec![FORAGE, SPARK, SPARK, SPARK];
-    let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
+    let mut game = game_with_deck_order(0, [deck0, vec![SPARK; 6]]);
     let [p0, _] = players(&game);
     let forage = in_hand(&game, p0, FORAGE);
 
@@ -743,7 +743,7 @@ fn a_pick_is_its_own_step_and_the_cards_it_moves_share_the_next() {
 #[test]
 fn only_the_apply_that_ends_the_game_reports_its_outcome() {
     // Neither player plays anything, so fatigue ends the game.
-    let mut game = Game::with_deck_order(0, [vec![SPARK; 3], vec![SPARK; 3]]);
+    let mut game = game_with_deck_order(0, [vec![SPARK; 3], vec![SPARK; 3]]);
     let mut reports = Vec::new();
     while game.outcome().is_none() {
         assert!(reports.len() < 60, "no outcome after 60 turns");
@@ -770,7 +770,7 @@ fn only_the_apply_that_ends_the_game_reports_its_outcome() {
 
 #[test]
 fn a_rejected_action_reports_nothing() {
-    let mut game = Game::with_deck_order(0, [vec![SPARK; 6], vec![SPARK; 6]]);
+    let mut game = game_with_deck_order(0, [vec![SPARK; 6], vec![SPARK; 6]]);
     let [_, p1] = players(&game);
     let mut recorder = Recorder::new(&game);
 
@@ -782,7 +782,7 @@ fn a_rejected_action_reports_nothing() {
 
 #[test]
 fn an_apply_ends_with_a_checkpoint_showing_the_game_it_leaves() {
-    let mut game = Game::with_deck_order(0, [vec![SPARK; 6], vec![SPARK; 6]]);
+    let mut game = game_with_deck_order(0, [vec![SPARK; 6], vec![SPARK; 6]]);
     let [p0, _] = players(&game);
     let spark = in_hand(&game, p0, SPARK);
 

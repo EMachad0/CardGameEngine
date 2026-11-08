@@ -2,15 +2,15 @@
 //! leaves the game unchanged.
 
 use pretty_assertions::assert_eq;
-use rules::prelude::static_card_definition::{BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK};
-use rules::prelude::{Action, ApplyError, Game, IllegalAction, Outcome};
+use rules::prelude::{Action, ApplyError, IllegalAction, Outcome};
 
 use crate::support::*;
+use crate::test_set::{BLAST, BOLT, CAPTAIN, FORAGE, GIANT, RECRUIT, SPARK};
 
 #[test]
 fn acting_on_the_opponents_turn_is_rejected_and_changes_nothing() {
     let deck = vec![SPARK; 6];
-    let game = Game::with_deck_order(0, [deck.clone(), deck]);
+    let game = game_with_deck_order(0, [deck.clone(), deck]);
     let [p0, p1] = players(&game);
     let own_card = game.hand(p1)[0];
     let opponents_card = game.hand(p0)[0];
@@ -31,7 +31,7 @@ fn acting_on_the_opponents_turn_is_rejected_and_changes_nothing() {
 #[test]
 fn only_affordable_cards_in_the_hand_can_be_played() {
     let deck = vec![SPARK, BOLT, CAPTAIN, BLAST, GIANT];
-    let game = Game::with_deck_order(0, [deck.clone(), deck]);
+    let game = game_with_deck_order(0, [deck.clone(), deck]);
     let [p0, _] = players(&game);
 
     assert_actions(
@@ -45,7 +45,7 @@ fn only_affordable_cards_in_the_hand_can_be_played() {
 #[test]
 fn a_picking_rejects_everything_else() {
     let deck0 = vec![FORAGE, SPARK, SPARK, SPARK, RECRUIT, CAPTAIN, BOLT];
-    let mut game = Game::with_deck_order(0, [deck0, vec![SPARK; 6]]);
+    let mut game = game_with_deck_order(0, [deck0, vec![SPARK; 6]]);
     let [p0, _] = players(&game);
     game.apply(p0, play(in_hand(&game, p0, FORAGE)), &mut ())
         .unwrap();
@@ -58,7 +58,7 @@ fn a_picking_rejects_everything_else() {
 #[test]
 fn a_card_that_left_every_zone_cant_be_played_again() {
     let deck = vec![SPARK; 8];
-    let mut game = Game::with_deck_order(0, [deck.clone(), deck]);
+    let mut game = game_with_deck_order(0, [deck.clone(), deck]);
     let [p0, _] = players(&game);
     let spark = in_hand(&game, p0, SPARK);
     game.apply(p0, play(spark), &mut ()).unwrap();
@@ -78,7 +78,7 @@ fn a_card_that_left_every_zone_cant_be_played_again() {
 
 #[test]
 fn a_finished_game_rejects_everything() {
-    let mut game = Game::with_deck_order(0, [vec![BOLT; 30], vec![BOLT; 3]]);
+    let mut game = game_with_deck_order(0, [vec![BOLT; 30], vec![BOLT; 3]]);
     let [p0, _] = players(&game);
     end_turns_until_over(&mut game);
 
@@ -89,7 +89,7 @@ fn a_finished_game_rejects_everything() {
 #[test]
 fn applied_returns_the_next_game_without_changing_the_original() {
     let deck = vec![SPARK; 6];
-    let game = Game::with_deck_order(0, [deck.clone(), deck]);
+    let game = game_with_deck_order(0, [deck.clone(), deck]);
     let [p0, p1] = players(&game);
     let snapshot = game.clone();
 
@@ -102,7 +102,7 @@ fn applied_returns_the_next_game_without_changing_the_original() {
 #[test]
 fn applied_rejects_an_unlisted_action() {
     let deck = vec![SPARK; 6];
-    let game = Game::with_deck_order(0, [deck.clone(), deck]);
+    let game = game_with_deck_order(0, [deck.clone(), deck]);
     let [_, p1] = players(&game);
 
     assert_eq!(

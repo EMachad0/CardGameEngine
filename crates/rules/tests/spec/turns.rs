@@ -1,15 +1,15 @@
 //! Turn start: mana, the draw and fatigue.
 
 use pretty_assertions::assert_eq;
-use rules::prelude::static_card_definition::{BOLT, RECRUIT, SPARK};
-use rules::prelude::{Action, Game, Outcome};
+use rules::prelude::{Action, Outcome};
 
 use crate::support::*;
+use crate::test_set::{BOLT, RECRUIT, SPARK};
 
 #[test]
 fn ending_a_turn_hands_the_decision_to_the_opponent() {
     let deck = vec![SPARK, SPARK, BOLT, BOLT, RECRUIT, RECRUIT];
-    let mut game = Game::with_deck_order(0, [deck.clone(), deck]);
+    let mut game = game_with_deck_order(0, [deck.clone(), deck]);
     let [p0, p1] = players(&game);
 
     game.apply(p0, Action::EndTurn, &mut ()).unwrap();
@@ -23,7 +23,7 @@ fn ending_a_turn_hands_the_decision_to_the_opponent() {
 #[test]
 fn turn_start_refills_mana_to_a_max_one_higher() {
     let deck = vec![SPARK; 10];
-    let mut game = Game::with_deck_order(0, [deck.clone(), deck]);
+    let mut game = game_with_deck_order(0, [deck.clone(), deck]);
     let [p0, p1] = players(&game);
     play_def(&mut game, p0, SPARK);
     assert_eq!(game.mana(p0), 0, "the Spark spent player 0's only mana");
@@ -38,7 +38,7 @@ fn turn_start_refills_mana_to_a_max_one_higher() {
 #[test]
 fn turn_start_draws_one_card_to_the_end_of_the_hand() {
     let deck = vec![SPARK, SPARK, BOLT, BOLT, RECRUIT, RECRUIT];
-    let mut game = Game::with_deck_order(0, [deck.clone(), deck]);
+    let mut game = game_with_deck_order(0, [deck.clone(), deck]);
     let [p0, p1] = players(&game);
 
     end_turn(&mut game);
@@ -51,7 +51,7 @@ fn turn_start_draws_one_card_to_the_end_of_the_hand() {
 #[test]
 fn mana_caps_at_ten() {
     let deck = vec![BOLT; 30];
-    let mut game = Game::with_deck_order(0, [deck.clone(), deck]);
+    let mut game = game_with_deck_order(0, [deck.clone(), deck]);
     let [p0, _] = players(&game);
     for _ in 0..24 {
         end_turn(&mut game);
@@ -65,7 +65,7 @@ fn mana_caps_at_ten() {
 
 #[test]
 fn drawing_from_an_empty_deck_deals_one_damage() {
-    let mut game = Game::with_deck_order(0, [vec![BOLT; 6], vec![SPARK; 3]]);
+    let mut game = game_with_deck_order(0, [vec![BOLT; 6], vec![SPARK; 3]]);
     let [_, p1] = players(&game);
 
     end_turn(&mut game);
@@ -76,7 +76,7 @@ fn drawing_from_an_empty_deck_deals_one_damage() {
 
 #[test]
 fn fatigue_at_turn_start_can_end_the_game() {
-    let mut game = Game::with_deck_order(0, [vec![BOLT; 30], vec![BOLT; 3]]);
+    let mut game = game_with_deck_order(0, [vec![BOLT; 30], vec![BOLT; 3]]);
     let [p0, p1] = players(&game);
 
     end_turns_until_over(&mut game);

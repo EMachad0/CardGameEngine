@@ -4,10 +4,12 @@
 //! defines.
 
 use crate::action::{Action, IllegalAction};
+use crate::cards::binder::def_code::DefCode;
 use crate::cards::binder::def_id::DefId;
 use crate::cards::binder::store::Binder;
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::game::cards_ref::CardsRef;
+use crate::game::deck::{Deck, DeckError};
 use crate::game::effect_stack::{Advance, EffectStack, FinishedPick, NextEffect, PendingEffects};
 use crate::game::legal_actions::LegalAction;
 use crate::game::play::play_step::{self, PlayStep, PreparedPlay};
@@ -71,14 +73,16 @@ struct Written {
 }
 
 impl Game {
-    /// Seeds the `Rng`, shuffles both decks, draws 3 cards each and starts player 0's turn.
-    pub fn new(seed: u64, decks: [Vec<DefId>; 2]) -> Self {
-        setup::set_up(seed, decks, true)
+    /// Seeds the `Rng`, gives each player their deck's hero, shuffles both decks, draws 3 cards
+    /// each and starts player 0's turn. Fails, before making anything, on a deck whose codes don't
+    /// name cards in `binder` or whose hero names a card that is not a hero.
+    pub fn new(seed: u64, binder: Binder, decks: [Deck; 2]) -> Result<Self, DeckError> {
+        setup::set_up(seed, binder, decks, true)
     }
 
     /// Like `new`, but keeps each deck in the given order, index 0 on top.
-    pub fn with_deck_order(seed: u64, decks: [Vec<DefId>; 2]) -> Self {
-        setup::set_up(seed, decks, false)
+    pub fn with_deck_order(seed: u64, binder: Binder, decks: [Deck; 2]) -> Result<Self, DeckError> {
+        setup::set_up(seed, binder, decks, false)
     }
 
     /// `Ok` if and only if `action` is in `legal_actions(player_id)`.
@@ -140,8 +144,8 @@ impl Game {
         self.zones.hero(player_id)
     }
 
-    pub fn def_id(&self, object_id: ObjectId) -> DefId {
-        self.cards().def_id(object_id)
+    pub fn def_code(&self, object_id: ObjectId) -> DefCode {
+        self.cards().def_code(object_id)
     }
 
     /// `None` unless the card is in its owner's hand. Panics on an id the game never made.

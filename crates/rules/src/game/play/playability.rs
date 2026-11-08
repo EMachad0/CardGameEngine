@@ -73,29 +73,91 @@ impl WasPlayableFromTargeting {
 
 #[cfg(test)]
 mod tests {
+    use enumset::EnumSet;
+
     use super::*;
-    use crate::cards::binder::sets::base::static_card_definition::{PING, SPARK};
+    use crate::cards::binder::def_code::DefCode;
+    use crate::cards::binder::def_id::DefId;
+    use crate::cards::binder::set::{Set, SetCard};
     use crate::cards::binder::store::Binder;
+    use crate::cards::definition::{
+        CardDef, CardKindDef, CharacterKind, CharacterSelector, SpellCardDef,
+    };
+    use crate::cards::filter::CharacterFilter;
     use crate::cards::object::ObjectBag;
+    use crate::choice::{AmountBound, Choice};
+    use crate::effect::{CharacterVerb, Effect};
     use crate::game::effect_stack::EffectStack;
     use crate::game::player_input::awaiting::{
         Awaiting, PlayerInput, WasAwaitingNothing, awaiting,
     };
     use crate::history::History;
     use crate::ids::PlayerId;
+    use crate::target::Declared;
     use crate::turn::TurnOrder;
     use crate::zones::Zones;
 
+    const SPARK: DefCode = DefCode {
+        set: "unit",
+        name: "spark",
+        version: 0,
+    };
+    const PING: DefCode = DefCode {
+        set: "unit",
+        name: "ping",
+        version: 0,
+    };
+
+    fn spell(code: DefCode, play_effects: Vec<Effect<Declared>>) -> SetCard {
+        SetCard {
+            name: code.name,
+            version: code.version,
+            def: CardDef {
+                kind: CardKindDef::Spell(SpellCardDef),
+                mana_cost: 1,
+                play_effects,
+                ..Default::default()
+            },
+        }
+    }
+
+    /// Spark, a spell with no effects, and Ping, a spell that targets a minion. Each costs 1.
+    fn binder() -> Binder {
+        let ping_effect = Effect::Characters {
+            selector: CharacterSelector::Targeted(Choice {
+                options: CharacterFilter {
+                    kind: EnumSet::only(CharacterKind::Minion),
+                    side: EnumSet::all(),
+                    include_itself: true,
+                },
+                count: 1.into(),
+                bound: AmountBound::Exactly,
+                different: true,
+            }),
+            verbs: vec![CharacterVerb::Damage(2.into())],
+        };
+        Binder::new([Set {
+            prefix: "unit",
+            cards: vec![spell(SPARK, Vec::new()), spell(PING, vec![ping_effect])],
+        }])
+        .unwrap()
+    }
+
+    fn def_id(binder: &Binder, code: DefCode) -> DefId {
+        binder.def_id(code).unwrap()
+    }
+
     fn started_targeting(
+        binder: &Binder,
         input: &mut PlayerInput,
         objects: &ObjectBag,
         zones: &Zones,
         player: PlayerId,
         card: ObjectId,
     ) -> WasAwaitingTargeting {
-        let (binder, history) = (Binder::built_in(), History::default());
+        let history = History::default();
         let turn_order = TurnOrder::new(vec![player]);
-        let cards = CardsRef::new(&binder, objects, zones, &history, &turn_order);
+        let cards = CardsRef::new(binder, objects, zones, &history, &turn_order);
         let effect_stack = EffectStack::default();
         let Awaiting::Nothing(awaits_nothing) = awaiting(cards, input, &effect_stack, player)
         else {
@@ -110,14 +172,15 @@ mod tests {
     }
 
     fn playability_with_one_mana(
+        binder: &Binder,
         objects: &ObjectBag,
         zones: &Zones,
         player: PlayerId,
         card: ObjectId,
     ) -> Option<Playability> {
-        let (binder, history) = (Binder::built_in(), History::default());
+        let history = History::default();
         let turn_order = TurnOrder::new(vec![player]);
-        let cards = CardsRef::new(&binder, objects, zones, &history, &turn_order);
+        let cards = CardsRef::new(binder, objects, zones, &history, &turn_order);
         let mut mana = Mana::default();
         mana.refill();
         Playability::new(cards, &mana, zones.find_in_hand(player, card).unwrap())
@@ -135,16 +198,17 @@ mod tests {
 
     #[test]
     fn a_card_that_declares_targets_is_playable_only_from_its_targeting() {
+        let binder = binder();
         let player = PlayerId::new(0);
         let mut bag = ObjectBag::default();
-        let hero = bag.insert(SPARK, player);
-        let card = bag.insert(PING, player);
+        let hero = bag.insert(def_id(&binder, SPARK), player);
+        let card = bag.insert(def_id(&binder, PING), player);
         let mut zones = Zones::new([(hero, vec![card])]);
         zones.draw(player);
 
         assert!(
             matches!(
-                playability_with_one_mana(&bag, &zones, player, card),
+                playability_with_one_mana(&binder, &bag, &zones, player, card),
                 Some(Playability::FromTargeting(_)),
             ),
             "Ping declares a target, so it is playable only from its targeting",
@@ -153,15 +217,16 @@ mod tests {
 
     #[test]
     fn a_card_without_targets_is_playable_without_targeting() {
+        let binder = binder();
         let player = PlayerId::new(0);
         let mut bag = ObjectBag::default();
-        let [hero, card] = std::array::from_fn(|_| bag.insert(SPARK, player));
+        let [hero, card] = std::array::from_fn(|_| bag.insert(def_id(&binder, SPARK), player));
         let mut zones = Zones::new([(hero, vec![card])]);
         zones.draw(player);
 
         assert!(
             matches!(
-                playability_with_one_mana(&bag, &zones, player, card),
+                playability_with_one_mana(&binder, &bag, &zones, player, card),
                 Some(Playability::WithoutTargeting(_)),
             ),
             "Spark declares no target, so it is playable without a targeting",
@@ -171,13 +236,16 @@ mod tests {
     #[test]
     #[should_panic(expected = "a card should be paired with the targeting it was found through")]
     fn a_card_cannot_be_played_from_another_cards_targeting() {
+        let binder = binder();
         let player = PlayerId::new(0);
         let mut bag = ObjectBag::default();
-        let [hero, card, other] = std::array::from_fn(|_| bag.insert(SPARK, player));
+        let [hero, card, other] =
+            std::array::from_fn(|_| bag.insert(def_id(&binder, SPARK), player));
         let mut zones = Zones::new([(hero, vec![card, other])]);
         zones.draw(player);
         let mut input = PlayerInput::default();
-        let awaiting_targeting = started_targeting(&mut input, &bag, &zones, player, other);
+        let awaiting_targeting =
+            started_targeting(&binder, &mut input, &bag, &zones, player, other);
 
         playable_from_targeting_without_checks(&zones, player, card)
             .with_targeting(awaiting_targeting);
@@ -186,14 +254,15 @@ mod tests {
     #[test]
     #[should_panic(expected = "a card should be paired with the targeting it was found through")]
     fn a_card_cannot_be_played_from_another_players_targeting() {
+        let binder = binder();
         let (player, other) = (PlayerId::new(0), PlayerId::new(1));
         let mut bag = ObjectBag::default();
-        let [hero, card] = std::array::from_fn(|_| bag.insert(SPARK, player));
-        let other_hero = bag.insert(SPARK, other);
+        let [hero, card] = std::array::from_fn(|_| bag.insert(def_id(&binder, SPARK), player));
+        let other_hero = bag.insert(def_id(&binder, SPARK), other);
         let mut zones = Zones::new([(hero, vec![card]), (other_hero, Vec::new())]);
         zones.draw(player);
         let mut input = PlayerInput::default();
-        let awaiting_targeting = started_targeting(&mut input, &bag, &zones, other, card);
+        let awaiting_targeting = started_targeting(&binder, &mut input, &bag, &zones, other, card);
 
         playable_from_targeting_without_checks(&zones, player, card)
             .with_targeting(awaiting_targeting);

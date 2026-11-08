@@ -58,7 +58,7 @@ What a card definition states, static, independent of context.
 _Avoid_: base, original
 
 **Binder**:
-The card definitions a game can use, each found by its ID.
+The card definitions a game can use, each found by its code.
 _Avoid_: card table, card database, catalog
 
 **Set**:

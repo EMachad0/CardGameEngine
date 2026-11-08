@@ -2,12 +2,10 @@
 //! one at a time, and then the card is played.
 
 use pretty_assertions::assert_eq;
-use rules::prelude::static_card_definition::{
-    CROSSFIRE, PING, RECRUIT, RECYCLE, SHOVE, TINKER, TWIN_SHOT,
-};
-use rules::prelude::{Action, DefId, Game, PlayerId};
+use rules::prelude::{Action, DefCode, Game, PlayerId};
 
 use crate::support::*;
+use crate::test_set::{CROSSFIRE, PING, RECRUIT, RECYCLE, SHOVE, TINKER, TWIN_SHOT};
 
 #[test]
 fn a_card_with_targets_is_offered_as_targeting_and_not_as_a_play() {
@@ -359,7 +357,7 @@ fn recycle_does_not_offer_a_spell_card_in_the_hand() {
 
 #[test]
 fn recycle_does_not_offer_a_minion_card_in_the_opponents_hand() {
-    let mut game = Game::with_deck_order(
+    let mut game = game_with_deck_order(
         0,
         [
             deck_with_top(&[RECYCLE, RECRUIT]),
@@ -376,8 +374,8 @@ fn recycle_does_not_offer_a_minion_card_in_the_opponents_hand() {
 }
 
 /// P0's turn with at least 1 mana, holding only `hand`: P0's deck holds nothing else.
-fn holding_only(hand: &[DefId]) -> (Game, PlayerId) {
-    let mut game = Game::with_deck_order(0, [hand.to_vec(), deck_with_top(&[])]);
+fn holding_only(hand: &[DefCode]) -> (Game, PlayerId) {
+    let mut game = game_with_deck_order(0, [hand.to_vec(), deck_with_top(&[])]);
     let [p0, _] = players(&game);
     turn_with_mana(&mut game, p0, 1);
     assert_eq!(hand_defs(&game, p0), hand, "P0 holds only the given cards");
