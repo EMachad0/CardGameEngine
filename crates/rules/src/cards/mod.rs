@@ -1,8 +1,11 @@
 pub(crate) mod binder;
+pub(crate) mod card_selector;
 pub(crate) mod filter;
+pub(crate) mod hero;
 pub(crate) mod kind;
 pub(crate) mod modifier;
 pub(crate) mod object;
 pub(crate) mod parsed;
-pub(crate) mod selector;
+pub(crate) mod player_selector;
+pub(crate) mod spell;
 pub(crate) mod written;

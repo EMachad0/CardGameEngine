@@ -1,30 +1,7 @@
-use enumset::EnumSet;
-
-use crate::cards::filter::Side;
 use crate::choice::Choice;
 use crate::effect::CardVerb;
 use crate::pick::CardPickOptions;
 use crate::target::TargetForm;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct PlayerSelectorFilter {
-    pub side: EnumSet<Side>,
-}
-
-impl PlayerSelectorFilter {
-    pub fn all() -> Self {
-        Self {
-            side: EnumSet::all(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PlayerSelector {
-    All(PlayerSelectorFilter),
-    Owner,
-    Random(PlayerSelectorFilter),
-}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CardSelector<S: TargetForm> {

@@ -1,7 +1,9 @@
 use crate::cards::filter::CharacterFilter;
-use crate::cards::kind::{CardKind, CharacterKind, HeroCardDef, SpellCardDef};
+use crate::cards::hero::HeroCardDef;
+use crate::cards::kind::{CardKind, CharacterKind};
 use crate::cards::modifier::ModifierEffect;
 use crate::cards::object::ObjectId;
+use crate::cards::spell::SpellCardDef;
 use crate::choice::Choice;
 use crate::effect::{CharacterVerb, Effect};
 use crate::target::{
@@ -251,8 +253,9 @@ mod tests {
     use crate::cards::binder::def_id::DefId;
     use crate::cards::binder::set::{Set, SetCard};
     use crate::cards::binder::store::Binder;
+    use crate::cards::card_selector::CardSelector;
     use crate::cards::object::ObjectBag;
-    use crate::cards::selector::{CardSelector, PlayerSelector};
+    use crate::cards::player_selector::PlayerSelector;
     use crate::cards::written;
     use crate::choice::AmountBound;
     use crate::effect::{CardDestinationZone, CardVerb, CharacterVerb, PlayerVerb};

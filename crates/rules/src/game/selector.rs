@@ -1,10 +1,11 @@
 //! What an effect acts on, as its selector says: players or characters, each in turn or one at
 //! random, or the characters or cards targeted or picked.
 
+use crate::cards::card_selector::CardSelector;
 use crate::cards::filter::{CharacterFilter, fulfill_side_filter};
 use crate::cards::object::ObjectId;
 use crate::cards::parsed::CharacterSelector;
-use crate::cards::selector::{CardSelector, PlayerSelector, PlayerSelectorFilter};
+use crate::cards::player_selector::{PlayerSelector, PlayerSelectorFilter};
 use crate::choice::Choice;
 use crate::effect::{CardVerb, CharacterVerb};
 use crate::game::cards_ref::CardsRef;

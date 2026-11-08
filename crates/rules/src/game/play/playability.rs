@@ -81,8 +81,9 @@ mod tests {
     use crate::cards::binder::set::{Set, SetCard};
     use crate::cards::binder::store::Binder;
     use crate::cards::filter::CharacterFilter;
-    use crate::cards::kind::{CharacterKind, SpellCardDef};
+    use crate::cards::kind::CharacterKind;
     use crate::cards::object::ObjectBag;
+    use crate::cards::spell::SpellCardDef;
     use crate::cards::written::{CardDef, CardKindDef, CharacterSelector, CharacterVerb, Effect};
     use crate::choice::{AmountBound, Choice};
     use crate::game::effect_stack::EffectStack;

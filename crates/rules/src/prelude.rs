@@ -4,10 +4,13 @@ pub use crate::action::{Action, IllegalAction};
 pub use crate::cards::binder::def_code::DefCode;
 pub use crate::cards::binder::set::{Set, SetCard};
 pub use crate::cards::binder::store::{Binder, BinderError};
+pub use crate::cards::card_selector::CardSelector;
 pub use crate::cards::filter::{CardFilter, CharacterFilter, Side};
-pub use crate::cards::kind::{CardKind, CharacterKind, HeroCardDef, SpellCardDef};
+pub use crate::cards::hero::HeroCardDef;
+pub use crate::cards::kind::{CardKind, CharacterKind};
 pub use crate::cards::object::ObjectId;
-pub use crate::cards::selector::{CardSelector, PlayerSelector, PlayerSelectorFilter};
+pub use crate::cards::player_selector::{PlayerSelector, PlayerSelectorFilter};
+pub use crate::cards::spell::SpellCardDef;
 pub use crate::cards::written::{
     CardDef, CardKindDef, CharacterSelector, CharacterVerb, Effect, MinionCardDef, ModifierEffect,
     PlayerVerb, TriggerDef,
