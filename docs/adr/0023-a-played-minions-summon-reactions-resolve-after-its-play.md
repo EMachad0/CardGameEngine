@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0025
 ---
 
 # A played minion's summon reactions resolve after its play
