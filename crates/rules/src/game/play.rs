@@ -28,9 +28,7 @@ pub(super) struct WasPlayable {
 
 /// A card about to be played, with what its steps write, all read before the first write.
 pub(super) enum PreparedPlay {
-    /// Leaves the hand for the board in its summon step, before its play step.
     Minion { card: WasInHand, play: PlayStep },
-    /// Leaves the hand in its play step.
     Spell { card: WasInHand, play: PlayStep },
 }
 
