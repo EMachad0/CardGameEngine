@@ -83,13 +83,15 @@ pub(super) fn legal_actions(
                     Some(Playability::Now(playable)) => {
                         actions.push(LegalAction::Play(playable));
                     }
-                    Some(Playability::OnceTargeted(_)) if can_start_targeting(cards, object_id) => {
+                    Some(Playability::FromTargeting(_))
+                        if can_start_targeting(cards, object_id) =>
+                    {
                         actions.push(LegalAction::StartTargeting {
                             object_id,
                             awaiting_nothing: WasAwaitingNothing::from(awaits_nothing),
                         });
                     }
-                    Some(Playability::OnceTargeted(_)) | None => {}
+                    Some(Playability::FromTargeting(_)) | None => {}
                 }
             }
 
@@ -109,7 +111,7 @@ pub(super) fn legal_actions(
                 },
             ));
             if may_stop_targeting(cards, targeting)
-                && let Some(Playability::OnceTargeted(playable)) = cards
+                && let Some(Playability::FromTargeting(playable)) = cards
                     .zones
                     .find_in_hand(player_id, object_id)
                     .and_then(|card| Playability::new(cards, &player.mana, card))

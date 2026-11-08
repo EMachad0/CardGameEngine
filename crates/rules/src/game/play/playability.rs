@@ -17,12 +17,12 @@ pub(in crate::game) struct WasPlayable {
 /// How a card its player can pay for is played.
 pub(in crate::game) enum Playability {
     Now(WasPlayable),
-    OnceTargeted(WasPlayableOnceTargeted),
+    FromTargeting(WasPlayableFromTargeting),
 }
 
 /// A card that declares targets and that its player could pay for when asked. It holds no borrow,
 /// so the card may have become unplayable since.
-pub(in crate::game) struct WasPlayableOnceTargeted {
+pub(in crate::game) struct WasPlayableFromTargeting {
     card: WasInHand,
 }
 
@@ -35,7 +35,7 @@ impl Playability {
         let declares_targets = cards.card_def(card.object_id()).targets().next().is_some();
         let card = WasInHand::from(card);
         Some(match declares_targets {
-            true => Self::OnceTargeted(WasPlayableOnceTargeted { card }),
+            true => Self::FromTargeting(WasPlayableFromTargeting { card }),
             false => Self::Now(WasPlayable {
                 card,
                 awaiting_targeting: None,
@@ -54,7 +54,7 @@ impl WasPlayable {
     }
 }
 
-impl WasPlayableOnceTargeted {
+impl WasPlayableFromTargeting {
     pub(in crate::game) fn with_targeting(
         self,
         awaiting_targeting: WasAwaitingTargeting,
@@ -123,12 +123,12 @@ mod tests {
         Playability::new(cards, &mana, zones.find_in_hand(player, card).unwrap())
     }
 
-    fn playable_once_targeted_without_checks(
+    fn playable_from_targeting_without_checks(
         zones: &Zones,
         player: PlayerId,
         card: ObjectId,
-    ) -> WasPlayableOnceTargeted {
-        WasPlayableOnceTargeted {
+    ) -> WasPlayableFromTargeting {
+        WasPlayableFromTargeting {
             card: WasInHand::from(zones.find_in_hand(player, card).unwrap()),
         }
     }
@@ -145,7 +145,7 @@ mod tests {
         assert!(
             matches!(
                 playability_with_one_mana(&bag, &zones, player, card),
-                Some(Playability::OnceTargeted(_)),
+                Some(Playability::FromTargeting(_)),
             ),
             "Ping declares a target, so it is playable only from its targeting",
         );
@@ -179,7 +179,7 @@ mod tests {
         let mut input = PlayerInput::default();
         let awaiting_targeting = started_targeting(&mut input, &bag, &zones, player, other);
 
-        playable_once_targeted_without_checks(&zones, player, card)
+        playable_from_targeting_without_checks(&zones, player, card)
             .with_targeting(awaiting_targeting);
     }
 
@@ -195,7 +195,7 @@ mod tests {
         let mut input = PlayerInput::default();
         let awaiting_targeting = started_targeting(&mut input, &bag, &zones, other, card);
 
-        playable_once_targeted_without_checks(&zones, player, card)
+        playable_from_targeting_without_checks(&zones, player, card)
             .with_targeting(awaiting_targeting);
     }
 }
