@@ -135,6 +135,11 @@ agents under `.pi/`.
 Starts a separate pi session in a new worktree and zellij tab for a task that needs its own
 worktree and my input. It lives in `.agents/skills/delegate/`.
 
+### Review page
+
+Publishes a page for each pull request, which I review instead of the diff. See
+`docs/agents/review-page.md`.
+
 ### Issue tracker
 
 Local markdown in `docs/issues/`. See `docs/agents/issue-tracker.md`.
