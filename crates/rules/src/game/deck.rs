@@ -1,7 +1,7 @@
 use crate::cards::binder::def_code::DefCode;
 use crate::cards::binder::def_id::DefId;
 use crate::cards::binder::store::Binder;
-use crate::cards::definition::CardKind;
+use crate::cards::kind::CardKind;
 
 /// A player's hero and the cards of their deck, top first.
 #[derive(Debug, Clone, PartialEq, Eq)]

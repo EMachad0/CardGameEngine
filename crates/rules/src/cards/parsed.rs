@@ -1,11 +1,9 @@
-use enumset::EnumSet;
-
-use crate::cards::filter::{CharacterFilter, Side};
+use crate::cards::filter::CharacterFilter;
+use crate::cards::kind::{CardKind, CharacterKind, HeroCardDef, SpellCardDef};
 use crate::cards::modifier::ModifierEffect;
 use crate::cards::object::ObjectId;
 use crate::choice::Choice;
-use crate::effect::{CardVerb, CharacterVerb, Effect};
-use crate::pick::CardPickOptions;
+use crate::effect::{CharacterVerb, Effect};
 use crate::target::{
     Bound, BoundCards, Declared, MapTargets, TargetChoiceRef, TargetForm, TargetId, Triggered,
 };
@@ -140,19 +138,6 @@ pub(crate) enum CardKindDef {
     Hero(HeroCardDef),
 }
 
-#[derive(Debug, enumset::EnumSetType)]
-pub enum CardKind {
-    Spell,
-    Minion,
-    Hero,
-}
-
-#[derive(Debug, enumset::EnumSetType)]
-pub enum CharacterKind {
-    Hero,
-    Minion,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct MinionCardDef {
     pub attack: i32,
@@ -162,37 +147,9 @@ pub(crate) struct MinionCardDef {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SpellCardDef;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct HeroCardDef {
-    pub health: i32,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TriggerDef {
     pub pattern: TriggerPattern,
     pub effects: Vec<Effect<Triggered>>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct PlayerSelectorFilter {
-    pub side: EnumSet<Side>,
-}
-
-impl PlayerSelectorFilter {
-    pub fn all() -> Self {
-        Self {
-            side: EnumSet::all(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PlayerSelector {
-    All(PlayerSelectorFilter),
-    Owner,
-    Random(PlayerSelectorFilter),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -236,39 +193,6 @@ impl<S: TargetForm> CharacterSelector<S> {
             CharacterSelector::Picked { choice, others } => {
                 CharacterSelector::Picked { choice, others }
             }
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CardSelector<S: TargetForm> {
-    Targeted(S::CardTarget),
-    /// `others` acts on the cards the pick covered and the player didn't pick, in the order
-    /// shown, after the effect's verbs act on the cards picked.
-    Picked {
-        choice: Choice<CardPickOptions>,
-        others: Vec<CardVerb>,
-    },
-}
-
-impl<S: TargetForm> CardSelector<S> {
-    pub(crate) fn target(&self) -> Option<&S::CardTarget> {
-        match self {
-            CardSelector::Targeted(target) => Some(target),
-            CardSelector::Picked {
-                choice: _,
-                others: _,
-            } => None,
-        }
-    }
-
-    pub(crate) fn map_targeted<R: TargetForm>(
-        self,
-        f: impl FnOnce(S::CardTarget) -> R::CardTarget,
-    ) -> CardSelector<R> {
-        match self {
-            CardSelector::Targeted(target) => CardSelector::Targeted(f(target)),
-            CardSelector::Picked { choice, others } => CardSelector::Picked { choice, others },
         }
     }
 }
@@ -328,9 +252,10 @@ mod tests {
     use crate::cards::binder::set::{Set, SetCard};
     use crate::cards::binder::store::Binder;
     use crate::cards::object::ObjectBag;
+    use crate::cards::selector::{CardSelector, PlayerSelector};
     use crate::cards::written;
     use crate::choice::AmountBound;
-    use crate::effect::{CardDestinationZone, CharacterVerb, PlayerVerb};
+    use crate::effect::{CardDestinationZone, CardVerb, CharacterVerb, PlayerVerb};
     use crate::ids::PlayerId;
     use crate::target::{CardTargetOptions, CardTargetZone};
 

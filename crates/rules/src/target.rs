@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
-use crate::cards::definition::CardKind;
 use crate::cards::filter::CharacterFilter;
+use crate::cards::kind::CardKind;
 use crate::cards::object::ObjectId;
 use crate::choice::{AmountBound, Choice};
 use crate::effect::EffectAmount;

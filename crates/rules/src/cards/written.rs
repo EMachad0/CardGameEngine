@@ -2,8 +2,9 @@
 //! the forms the rules use.
 
 use crate::cards::binder::def_code::DefCode;
-use crate::cards::definition::{CardSelector, HeroCardDef, PlayerSelector, SpellCardDef};
 use crate::cards::filter::CharacterFilter;
+use crate::cards::kind::{HeroCardDef, SpellCardDef};
+use crate::cards::selector::{CardSelector, PlayerSelector};
 use crate::choice::Choice;
 use crate::effect::{CardVerb, EffectAmount};
 use crate::target::{Declared, TargetForm, Triggered};

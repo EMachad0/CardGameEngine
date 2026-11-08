@@ -1,6 +1,6 @@
-use crate::cards::definition::TriggerDef;
 use crate::cards::filter::{CardFilter, CharacterFilter};
 use crate::cards::object::ObjectId;
+use crate::cards::parsed::TriggerDef;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Trigger {

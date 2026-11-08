@@ -5,7 +5,7 @@ use crate::cards::binder::def_code::DefCode;
 use crate::cards::binder::def_id::DefId;
 use crate::cards::binder::parse;
 use crate::cards::binder::set::{Set, SetCard};
-use crate::cards::definition::CardDef;
+use crate::cards::parsed::CardDef;
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum BinderError {

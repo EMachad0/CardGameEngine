@@ -210,8 +210,8 @@ mod tests {
     use crate::cards::binder::def_id::DefId;
     use crate::cards::binder::set::{Set, SetCard};
     use crate::cards::binder::store::Binder;
-    use crate::cards::definition::PlayerSelector;
     use crate::cards::object::ObjectBag;
+    use crate::cards::selector::PlayerSelector;
     use crate::cards::written;
     use crate::choice::AmountBound;
     use crate::effect::{CardDestinationZone, CardVerb, EffectAmount, PlayerVerb};

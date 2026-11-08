@@ -1,5 +1,5 @@
-use crate::cards::definition::TriggerDef;
 use crate::cards::object::ObjectId;
+use crate::cards::parsed::TriggerDef;
 use crate::effect::EffectAmount;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]

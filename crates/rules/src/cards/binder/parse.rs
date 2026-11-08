@@ -5,10 +5,9 @@ use std::collections::BTreeMap;
 use crate::cards::binder::def_code::DefCode;
 use crate::cards::binder::def_id::DefId;
 use crate::cards::binder::store::BinderError;
-use crate::cards::definition::{
-    CardDef, CardKind, CardKindDef, CharacterSelector, MinionCardDef, TriggerDef,
-};
+use crate::cards::kind::CardKind;
 use crate::cards::modifier::ModifierEffect;
+use crate::cards::parsed::{CardDef, CardKindDef, CharacterSelector, MinionCardDef, TriggerDef};
 use crate::cards::written;
 use crate::effect::{CharacterVerb, Effect, PlayerVerb};
 use crate::target::TargetForm;

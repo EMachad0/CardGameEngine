@@ -1,6 +1,6 @@
 //! What an effect amount comes to: its printed value, or a count of what history recorded.
 
-use crate::cards::definition::{CardKind, CharacterKind};
+use crate::cards::kind::{CardKind, CharacterKind};
 use crate::effect::EffectAmount;
 use crate::game::cards_ref::CardsRef;
 use crate::history::{HistoryQuery, HistoryQueryKind, PlayerFilter, TurnFilter};

@@ -1,6 +1,6 @@
 use enumset::EnumSet;
 
-use crate::cards::definition::{CardKind, CharacterKind};
+use crate::cards::kind::{CardKind, CharacterKind};
 use crate::cards::object::ObjectId;
 use crate::ids::PlayerId;
 

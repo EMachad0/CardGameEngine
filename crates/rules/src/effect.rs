@@ -1,6 +1,7 @@
 use crate::cards::binder::def_id::DefId;
-use crate::cards::definition::{CardSelector, CharacterSelector, PlayerSelector};
 use crate::cards::modifier::ModifierEffect;
+use crate::cards::parsed::CharacterSelector;
+use crate::cards::selector::{CardSelector, PlayerSelector};
 use crate::history::HistoryQuery;
 use crate::target::{MapTargets, TargetChoiceRef, TargetForm};
 

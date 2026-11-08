@@ -80,8 +80,8 @@ mod tests {
     use crate::cards::binder::def_id::DefId;
     use crate::cards::binder::set::{Set, SetCard};
     use crate::cards::binder::store::Binder;
-    use crate::cards::definition::{CharacterKind, SpellCardDef};
     use crate::cards::filter::CharacterFilter;
+    use crate::cards::kind::{CharacterKind, SpellCardDef};
     use crate::cards::object::ObjectBag;
     use crate::cards::written::{CardDef, CardKindDef, CharacterSelector, CharacterVerb, Effect};
     use crate::choice::{AmountBound, Choice};

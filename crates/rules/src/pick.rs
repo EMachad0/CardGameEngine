@@ -1,6 +1,6 @@
 use enumset::EnumSet;
 
-use crate::cards::definition::CardKind;
+use crate::cards::kind::CardKind;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CardPickOptions {
