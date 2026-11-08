@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0024
 ---
 
 # Card data is checked by its types, and loading rejects only data with no meaning
