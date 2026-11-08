@@ -80,15 +80,15 @@ mod tests {
     use crate::cards::binder::def_id::DefId;
     use crate::cards::binder::set::{Set, SetCard};
     use crate::cards::binder::store::Binder;
-    use crate::cards::definition::CardDef;
     use crate::cards::object::ObjectBag;
+    use crate::cards::written;
 
     /// The `DefId` of a card that no test looks up.
     fn def_id() -> DefId {
         let card = SetCard {
             name: "card",
             version: 0,
-            def: CardDef::default(),
+            def: written::CardDef::default(),
         };
         let binder = Binder::new([Set {
             prefix: "unit",

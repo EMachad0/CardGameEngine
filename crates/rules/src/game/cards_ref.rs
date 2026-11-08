@@ -5,7 +5,7 @@ use enumset::EnumSet;
 use crate::cards::binder::def_code::DefCode;
 use crate::cards::binder::def_id::DefId;
 use crate::cards::binder::store::Binder;
-use crate::cards::definition::{CardKind, ParsedCardDef};
+use crate::cards::definition::{CardDef, CardKind};
 use crate::cards::filter::CharacterFilter;
 use crate::cards::object::{ObjectBag, ObjectId};
 use crate::game::picking::PickWindow;
@@ -51,7 +51,7 @@ impl<'g> CardsRef<'g> {
         self.binder.code(self.def_id(object_id))
     }
 
-    pub(super) fn card_def(&self, object_id: ObjectId) -> &'g ParsedCardDef {
+    pub(super) fn card_def(&self, object_id: ObjectId) -> &'g CardDef {
         self.binder.get(self.def_id(object_id))
     }
 

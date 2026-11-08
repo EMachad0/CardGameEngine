@@ -1,18 +1,19 @@
 use enumset::EnumSet;
 
 use crate::cards::filter::{CharacterFilter, Side};
-use crate::cards::modifier::{ModifierEffect, ParsedModifierEffect};
+use crate::cards::modifier::ModifierEffect;
 use crate::cards::object::ObjectId;
 use crate::choice::Choice;
-use crate::effect::{CardVerb, CharacterVerb, Effect, ParsedCharacterVerb, ParsedEffect};
+use crate::effect::{CardVerb, CharacterVerb, Effect};
 use crate::pick::CardPickOptions;
 use crate::target::{
     Bound, BoundCards, Declared, MapTargets, TargetChoiceRef, TargetForm, TargetId, Triggered,
 };
 use crate::trigger::TriggerPattern;
 
+/// A card definition as its binder parsed it, naming each card by a `DefId` of that binder.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CardDef {
+pub(crate) struct CardDef {
     pub name: String,
     pub kind: CardKindDef,
     pub mana_cost: u8,
@@ -21,108 +22,84 @@ pub struct CardDef {
     pub triggers: Vec<TriggerDef>,
 }
 
-impl Default for CardDef {
-    fn default() -> Self {
-        Self {
-            name: Default::default(),
-            kind: CardKindDef::Minion(MinionCardDef::new(1, 1)),
-            mana_cost: Default::default(),
-            modifier_effects: Default::default(),
-            play_effects: Default::default(),
-            triggers: Default::default(),
-        }
-    }
-}
-
-/// A `CardDef` as its binder parsed it, naming each card by a `DefId` of that binder.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ParsedCardDef {
-    pub name: String,
-    pub kind: ParsedCardKindDef,
-    pub mana_cost: u8,
-    pub modifier_effects: Vec<ParsedModifierEffect>,
-    pub play_effects: Vec<ParsedEffect<Declared>>,
-    pub triggers: Vec<ParsedTriggerDef>,
-}
-
-impl ParsedCardDef {
+impl CardDef {
     pub(crate) fn health(&self) -> Option<i32> {
         match &self.kind {
-            ParsedCardKindDef::Spell(_) => None,
-            ParsedCardKindDef::Minion(minion) => Some(minion.health),
-            ParsedCardKindDef::Hero(hero) => Some(hero.health),
+            CardKindDef::Spell(_) => None,
+            CardKindDef::Minion(minion) => Some(minion.health),
+            CardKindDef::Hero(hero) => Some(hero.health),
         }
     }
 
     pub(crate) fn attack(&self) -> Option<i32> {
         match &self.kind {
-            ParsedCardKindDef::Spell(_) => None,
-            ParsedCardKindDef::Minion(minion) => Some(minion.attack),
-            ParsedCardKindDef::Hero(_) => None,
+            CardKindDef::Spell(_) => None,
+            CardKindDef::Minion(minion) => Some(minion.attack),
+            CardKindDef::Hero(_) => None,
         }
     }
 
     pub(crate) fn card_kind(&self) -> CardKind {
         match self.kind {
-            ParsedCardKindDef::Spell(_) => CardKind::Spell,
-            ParsedCardKindDef::Minion(_) => CardKind::Minion,
-            ParsedCardKindDef::Hero(_) => CardKind::Hero,
+            CardKindDef::Spell(_) => CardKind::Spell,
+            CardKindDef::Minion(_) => CardKind::Minion,
+            CardKindDef::Hero(_) => CardKind::Hero,
         }
     }
 
     pub(crate) fn character_kind(&self) -> Option<CharacterKind> {
         match self.kind {
-            ParsedCardKindDef::Spell(_) => None,
-            ParsedCardKindDef::Minion(_) => Some(CharacterKind::Minion),
-            ParsedCardKindDef::Hero(_) => Some(CharacterKind::Hero),
+            CardKindDef::Spell(_) => None,
+            CardKindDef::Minion(_) => Some(CharacterKind::Minion),
+            CardKindDef::Hero(_) => Some(CharacterKind::Hero),
         }
     }
 
     pub(crate) fn has_board_presence(&self) -> bool {
         match self.kind {
-            ParsedCardKindDef::Spell(_) => false,
-            ParsedCardKindDef::Minion(_) => true,
-            ParsedCardKindDef::Hero(_) => false,
+            CardKindDef::Spell(_) => false,
+            CardKindDef::Minion(_) => true,
+            CardKindDef::Hero(_) => false,
         }
     }
 
     pub(crate) fn receives_auras(&self) -> bool {
         match self.kind {
-            ParsedCardKindDef::Spell(_) => false,
-            ParsedCardKindDef::Minion(_) => true,
-            ParsedCardKindDef::Hero(_) => false,
+            CardKindDef::Spell(_) => false,
+            CardKindDef::Minion(_) => true,
+            CardKindDef::Hero(_) => false,
         }
     }
 
     pub(crate) fn leaves_zone_on_death(&self) -> bool {
         match self.kind {
-            ParsedCardKindDef::Spell(_) => true,
-            ParsedCardKindDef::Minion(_) => true,
-            ParsedCardKindDef::Hero(_) => false,
+            CardKindDef::Spell(_) => true,
+            CardKindDef::Minion(_) => true,
+            CardKindDef::Hero(_) => false,
         }
     }
 
     pub(crate) fn goes_to_graveyard(&self) -> bool {
         match self.kind {
-            ParsedCardKindDef::Spell(_) => true,
-            ParsedCardKindDef::Minion(_) => true,
-            ParsedCardKindDef::Hero(_) => false,
+            CardKindDef::Spell(_) => true,
+            CardKindDef::Minion(_) => true,
+            CardKindDef::Hero(_) => false,
         }
     }
 
-    pub(crate) fn friendly_aura_effects(&self) -> &[ParsedModifierEffect] {
+    pub(crate) fn friendly_aura_effects(&self) -> &[ModifierEffect] {
         match &self.kind {
-            ParsedCardKindDef::Spell(_) => &[],
-            ParsedCardKindDef::Minion(minion) => &minion.friendly_aura_effects,
-            ParsedCardKindDef::Hero(_) => &[],
+            CardKindDef::Spell(_) => &[],
+            CardKindDef::Minion(minion) => &minion.friendly_aura_effects,
+            CardKindDef::Hero(_) => &[],
         }
     }
 
-    pub(crate) fn hostile_aura_effects(&self) -> &[ParsedModifierEffect] {
+    pub(crate) fn hostile_aura_effects(&self) -> &[ModifierEffect] {
         match &self.kind {
-            ParsedCardKindDef::Spell(_) => &[],
-            ParsedCardKindDef::Minion(minion) => &minion.hostile_aura_effects,
-            ParsedCardKindDef::Hero(_) => &[],
+            CardKindDef::Spell(_) => &[],
+            CardKindDef::Minion(minion) => &minion.hostile_aura_effects,
+            CardKindDef::Hero(_) => &[],
         }
     }
 
@@ -133,7 +110,7 @@ impl ParsedCardDef {
     ) -> impl Iterator<Item = (TargetId, TargetChoiceRef<'_, Declared>)> {
         self.play_effects
             .iter()
-            .filter_map(ParsedEffect::target)
+            .filter_map(Effect::target)
             .enumerate()
             .map(|(idx, target)| (TargetId(idx), target))
     }
@@ -143,7 +120,7 @@ impl ParsedCardDef {
     pub(crate) fn bind_play_effects(
         &self,
         targeted: impl FnMut(TargetId) -> Vec<ObjectId>,
-    ) -> Vec<ParsedEffect<Bound>> {
+    ) -> Vec<Effect<Bound>> {
         let target_ids = self.targets().map(|(target_id, _)| target_id);
         let mut bind_targets = BindTargets {
             target_ids,
@@ -157,16 +134,9 @@ impl ParsedCardDef {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CardKindDef {
+pub(crate) enum CardKindDef {
     Spell(SpellCardDef),
     Minion(MinionCardDef),
-    Hero(HeroCardDef),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum ParsedCardKindDef {
-    Spell(SpellCardDef),
-    Minion(ParsedMinionCardDef),
     Hero(HeroCardDef),
 }
 
@@ -184,30 +154,11 @@ pub enum CharacterKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MinionCardDef {
+pub(crate) struct MinionCardDef {
     pub attack: i32,
     pub health: i32,
     pub friendly_aura_effects: Vec<ModifierEffect>,
     pub hostile_aura_effects: Vec<ModifierEffect>,
-}
-
-impl MinionCardDef {
-    pub fn new(attack: i32, health: i32) -> Self {
-        Self {
-            attack,
-            health,
-            friendly_aura_effects: Default::default(),
-            hostile_aura_effects: Default::default(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ParsedMinionCardDef {
-    pub attack: i32,
-    pub health: i32,
-    pub friendly_aura_effects: Vec<ParsedModifierEffect>,
-    pub hostile_aura_effects: Vec<ParsedModifierEffect>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -219,15 +170,9 @@ pub struct HeroCardDef {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TriggerDef {
+pub(crate) struct TriggerDef {
     pub pattern: TriggerPattern,
     pub effects: Vec<Effect<Triggered>>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ParsedTriggerDef {
-    pub pattern: TriggerPattern,
-    pub effects: Vec<ParsedEffect<Triggered>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -251,62 +196,45 @@ pub enum PlayerSelector {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CharacterSelector<S: TargetForm> {
+pub(crate) enum CharacterSelector<S: TargetForm> {
     All(CharacterFilter),
     Itself,
     OwnerHero,
     Random(CharacterFilter),
     Targeted(S::CharacterTarget),
-    /// `others` acts on the options the player didn't pick, in the order shown, after the
-    /// effect's verbs act on the characters picked.
     Picked {
         choice: Choice<CharacterFilter>,
         others: Vec<CharacterVerb>,
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum ParsedCharacterSelector<S: TargetForm> {
-    All(CharacterFilter),
-    Itself,
-    OwnerHero,
-    Random(CharacterFilter),
-    Targeted(S::CharacterTarget),
-    Picked {
-        choice: Choice<CharacterFilter>,
-        others: Vec<ParsedCharacterVerb>,
-    },
-}
-
-impl<S: TargetForm> ParsedCharacterSelector<S> {
+impl<S: TargetForm> CharacterSelector<S> {
     pub(crate) fn target(&self) -> Option<&S::CharacterTarget> {
         match self {
-            ParsedCharacterSelector::All(_)
-            | ParsedCharacterSelector::Itself
-            | ParsedCharacterSelector::OwnerHero
-            | ParsedCharacterSelector::Random(_)
-            | ParsedCharacterSelector::Picked {
+            CharacterSelector::All(_)
+            | CharacterSelector::Itself
+            | CharacterSelector::OwnerHero
+            | CharacterSelector::Random(_)
+            | CharacterSelector::Picked {
                 choice: _,
                 others: _,
             } => None,
-            ParsedCharacterSelector::Targeted(target) => Some(target),
+            CharacterSelector::Targeted(target) => Some(target),
         }
     }
 
     pub(crate) fn map_targeted<R: TargetForm>(
         self,
         f: impl FnOnce(S::CharacterTarget) -> R::CharacterTarget,
-    ) -> ParsedCharacterSelector<R> {
+    ) -> CharacterSelector<R> {
         match self {
-            ParsedCharacterSelector::All(filter) => ParsedCharacterSelector::All(filter),
-            ParsedCharacterSelector::Itself => ParsedCharacterSelector::Itself,
-            ParsedCharacterSelector::OwnerHero => ParsedCharacterSelector::OwnerHero,
-            ParsedCharacterSelector::Random(filter) => ParsedCharacterSelector::Random(filter),
-            ParsedCharacterSelector::Targeted(target) => {
-                ParsedCharacterSelector::Targeted(f(target))
-            }
-            ParsedCharacterSelector::Picked { choice, others } => {
-                ParsedCharacterSelector::Picked { choice, others }
+            CharacterSelector::All(filter) => CharacterSelector::All(filter),
+            CharacterSelector::Itself => CharacterSelector::Itself,
+            CharacterSelector::OwnerHero => CharacterSelector::OwnerHero,
+            CharacterSelector::Random(filter) => CharacterSelector::Random(filter),
+            CharacterSelector::Targeted(target) => CharacterSelector::Targeted(f(target)),
+            CharacterSelector::Picked { choice, others } => {
+                CharacterSelector::Picked { choice, others }
             }
         }
     }
@@ -400,8 +328,9 @@ mod tests {
     use crate::cards::binder::set::{Set, SetCard};
     use crate::cards::binder::store::Binder;
     use crate::cards::object::ObjectBag;
+    use crate::cards::written;
     use crate::choice::AmountBound;
-    use crate::effect::{CardDestinationZone, ParsedCharacterVerb, ParsedPlayerVerb};
+    use crate::effect::{CardDestinationZone, CharacterVerb, PlayerVerb};
     use crate::ids::PlayerId;
     use crate::target::{CardTargetOptions, CardTargetZone};
 
@@ -410,7 +339,7 @@ mod tests {
         let card = SetCard {
             name: "card",
             version: 0,
-            def: CardDef::default(),
+            def: written::CardDef::default(),
         };
         let binder = Binder::new([Set {
             prefix: "unit",
@@ -460,10 +389,10 @@ mod tests {
         std::array::from_fn(|_| bag.insert(def_id(), PlayerId::new(0)))
     }
 
-    fn card(play_effects: Vec<ParsedEffect<Declared>>) -> ParsedCardDef {
-        ParsedCardDef {
+    fn card(play_effects: Vec<Effect<Declared>>) -> CardDef {
+        CardDef {
             name: String::new(),
-            kind: ParsedCardKindDef::Spell(SpellCardDef),
+            kind: CardKindDef::Spell(SpellCardDef),
             mana_cost: 0,
             modifier_effects: Vec::new(),
             play_effects,
@@ -471,40 +400,40 @@ mod tests {
         }
     }
 
-    fn draw<S: TargetForm>() -> ParsedEffect<S> {
-        ParsedEffect::Players {
+    fn draw<S: TargetForm>() -> Effect<S> {
+        Effect::Players {
             selector: PlayerSelector::Owner,
-            verbs: vec![ParsedPlayerVerb::Draw(1.into())],
+            verbs: vec![PlayerVerb::Draw(1.into())],
         }
     }
 
-    fn damage<S: TargetForm>(selector: ParsedCharacterSelector<S>) -> ParsedEffect<S> {
-        ParsedEffect::Characters {
+    fn damage<S: TargetForm>(selector: CharacterSelector<S>) -> Effect<S> {
+        Effect::Characters {
             selector,
-            verbs: vec![ParsedCharacterVerb::Damage(1.into())],
+            verbs: vec![CharacterVerb::Damage(1.into())],
         }
     }
 
-    fn bury<S: TargetForm>(selector: CardSelector<S>) -> ParsedEffect<S> {
-        ParsedEffect::Cards {
+    fn bury<S: TargetForm>(selector: CardSelector<S>) -> Effect<S> {
+        Effect::Cards {
             selector,
             verbs: vec![CardVerb::Move(CardDestinationZone::DeckBottom)],
         }
     }
 
-    fn untargeted_effects<S: TargetForm>() -> Vec<ParsedEffect<S>> {
-        vec![draw(), damage(ParsedCharacterSelector::Itself)]
+    fn untargeted_effects<S: TargetForm>() -> Vec<Effect<S>> {
+        vec![draw(), damage(CharacterSelector::Itself)]
     }
 
     fn two_targets_among_untargeted_effects<S: TargetForm>(
         first: S::CharacterTarget,
         second: S::CharacterTarget,
-    ) -> Vec<ParsedEffect<S>> {
+    ) -> Vec<Effect<S>> {
         vec![
             draw(),
-            damage(ParsedCharacterSelector::Targeted(first)),
-            damage(ParsedCharacterSelector::Itself),
-            damage(ParsedCharacterSelector::Targeted(second)),
+            damage(CharacterSelector::Targeted(first)),
+            damage(CharacterSelector::Itself),
+            damage(CharacterSelector::Targeted(second)),
         ]
     }
 
@@ -512,23 +441,23 @@ mod tests {
         first: S::CharacterTarget,
         second: S::CardTarget,
         third: S::CharacterTarget,
-    ) -> Vec<ParsedEffect<S>> {
+    ) -> Vec<Effect<S>> {
         vec![
-            damage(ParsedCharacterSelector::Targeted(first)),
+            damage(CharacterSelector::Targeted(first)),
             bury(CardSelector::Targeted(second)),
-            damage(ParsedCharacterSelector::Targeted(third)),
+            damage(CharacterSelector::Targeted(third)),
         ]
     }
 
-    fn untargeted_selectors() -> [ParsedCharacterSelector<Holds<usize>>; 5] {
+    fn untargeted_selectors() -> [CharacterSelector<Holds<usize>>; 5] {
         [
-            ParsedCharacterSelector::All(CharacterFilter::all()),
-            ParsedCharacterSelector::Itself,
-            ParsedCharacterSelector::OwnerHero,
-            ParsedCharacterSelector::Random(CharacterFilter::all()),
-            ParsedCharacterSelector::Picked {
+            CharacterSelector::All(CharacterFilter::all()),
+            CharacterSelector::Itself,
+            CharacterSelector::OwnerHero,
+            CharacterSelector::Random(CharacterFilter::all()),
+            CharacterSelector::Picked {
                 choice: character_target(1),
-                others: vec![ParsedCharacterVerb::Damage(1.into())],
+                others: vec![CharacterVerb::Damage(1.into())],
             },
         ]
     }
@@ -621,7 +550,7 @@ mod tests {
     #[test]
     fn a_targeted_selector_gives_what_it_holds() {
         assert_eq!(
-            ParsedCharacterSelector::<Holds<usize>>::Targeted(3).target(),
+            CharacterSelector::<Holds<usize>>::Targeted(3).target(),
             Some(&3)
         );
     }
@@ -631,7 +560,7 @@ mod tests {
         assert_eq!(
             untargeted_selectors()
                 .each_ref()
-                .map(ParsedCharacterSelector::target),
+                .map(CharacterSelector::target),
             [None; 5]
         );
     }
@@ -639,9 +568,8 @@ mod tests {
     #[test]
     fn mapping_a_targeted_selector_maps_what_it_holds() {
         assert_eq!(
-            ParsedCharacterSelector::<Holds<usize>>::Targeted(3)
-                .map_targeted::<Holds<_>>(|n| n * 2),
-            ParsedCharacterSelector::Targeted(6),
+            CharacterSelector::<Holds<usize>>::Targeted(3).map_targeted::<Holds<_>>(|n| n * 2),
+            CharacterSelector::Targeted(6),
         );
     }
 

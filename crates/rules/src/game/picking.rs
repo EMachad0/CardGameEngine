@@ -3,7 +3,7 @@
 
 use crate::cards::object::ObjectId;
 use crate::choice::AmountBound;
-use crate::effect::{CardVerb, ParsedCharacterVerb};
+use crate::effect::{CardVerb, CharacterVerb};
 use crate::game::zone_move::CardOriginZone;
 use crate::ids::PlayerId;
 
@@ -30,7 +30,7 @@ pub(super) struct CardPicking {
 
 /// A pick of characters in play. It has no window, so every character it covers is an option.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct CharacterPicking(ObjectPicking<ParsedCharacterVerb>);
+pub(super) struct CharacterPicking(ObjectPicking<CharacterVerb>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ObjectPicking<V> {
@@ -66,7 +66,7 @@ pub(super) struct PickedCards {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(super) struct PickedCharacters(PickedGroups<ParsedCharacterVerb>);
+pub(super) struct PickedCharacters(PickedGroups<CharacterVerb>);
 
 /// A complete pick's objects, each group with the verbs that act on it.
 #[derive(Debug, PartialEq, Eq)]
@@ -181,8 +181,8 @@ impl CharacterPicking {
         options: Vec<ObjectId>,
         count: u8,
         bound: AmountBound,
-        verbs: Vec<ParsedCharacterVerb>,
-        others: Vec<ParsedCharacterVerb>,
+        verbs: Vec<CharacterVerb>,
+        others: Vec<CharacterVerb>,
     ) -> Self {
         let covered = options.into_iter().map(|object_id| (object_id, true));
         Self(ObjectPicking::new(covered, count, bound, verbs, others))
@@ -209,7 +209,7 @@ impl PickedCards {
 impl PickedCharacters {
     /// Each group of characters with the verbs that act on it, in the order the verbs run: the
     /// characters picked, then the rest.
-    pub(super) fn into_groups(self) -> [ObjectsWithVerbs<ParsedCharacterVerb>; 2] {
+    pub(super) fn into_groups(self) -> [ObjectsWithVerbs<CharacterVerb>; 2] {
         self.0.into_groups()
     }
 }
@@ -312,9 +312,9 @@ mod tests {
     use crate::cards::binder::def_id::DefId;
     use crate::cards::binder::set::{Set, SetCard};
     use crate::cards::binder::store::Binder;
-    use crate::cards::definition::CardDef;
-    use crate::cards::modifier::ParsedModifierEffect;
+    use crate::cards::modifier::ModifierEffect;
     use crate::cards::object::ObjectBag;
+    use crate::cards::written;
     use crate::effect::CardDestinationZone;
 
     /// The `DefId` of a card that no test looks up.
@@ -322,7 +322,7 @@ mod tests {
         let card = SetCard {
             name: "card",
             version: 0,
-            def: CardDef::default(),
+            def: written::CardDef::default(),
         };
         let binder = Binder::new([Set {
             prefix: "unit",
@@ -368,8 +368,8 @@ mod tests {
         )
     }
 
-    fn buff(amount: u8) -> ParsedCharacterVerb {
-        ParsedCharacterVerb::Modify(ParsedModifierEffect::BuffAtk {
+    fn buff(amount: u8) -> CharacterVerb {
+        CharacterVerb::Modify(ModifierEffect::BuffAtk {
             amount: amount.into(),
         })
     }

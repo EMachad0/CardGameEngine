@@ -5,7 +5,7 @@ use crate::cards::binder::def_code::DefCode;
 use crate::cards::binder::def_id::DefId;
 use crate::cards::binder::parse;
 use crate::cards::binder::set::{Set, SetCard};
-use crate::cards::definition::ParsedCardDef;
+use crate::cards::definition::CardDef;
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum BinderError {
@@ -27,7 +27,7 @@ pub struct Binder {
 #[derive(Debug, PartialEq, Eq)]
 struct Cards {
     /// Each card at its `DefId`'s place.
-    by_id: Vec<(DefCode, ParsedCardDef)>,
+    by_id: Vec<(DefCode, CardDef)>,
     by_code: BTreeMap<DefCode, DefId>,
 }
 
@@ -83,11 +83,11 @@ impl Binder {
         self.entry(def_id).0
     }
 
-    pub(crate) fn get(&self, def_id: DefId) -> &ParsedCardDef {
+    pub(crate) fn get(&self, def_id: DefId) -> &CardDef {
         &self.entry(def_id).1
     }
 
-    fn entry(&self, def_id: DefId) -> &(DefCode, ParsedCardDef) {
+    fn entry(&self, def_id: DefId) -> &(DefCode, CardDef) {
         self.cards
             .by_id
             .get(def_id.idx())

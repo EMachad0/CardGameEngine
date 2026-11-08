@@ -108,13 +108,14 @@ mod tests {
     use crate::cards::binder::def_id::DefId;
     use crate::cards::binder::set::{Set, SetCard};
     use crate::cards::binder::store::Binder;
+    use crate::cards::written;
 
     /// The `DefId` of a card that no test looks up.
     fn def_id() -> DefId {
         let card = SetCard {
             name: "card",
             version: 0,
-            def: CardDef::default(),
+            def: written::CardDef::default(),
         };
         let binder = Binder::new([Set {
             prefix: "unit",
@@ -129,7 +130,6 @@ mod tests {
             })
             .unwrap()
     }
-    use crate::cards::definition::CardDef;
 
     #[test]
     fn a_card_moves_from_its_holders_zone_into_its_owners() {

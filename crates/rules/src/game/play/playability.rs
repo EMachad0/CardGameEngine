@@ -80,13 +80,11 @@ mod tests {
     use crate::cards::binder::def_id::DefId;
     use crate::cards::binder::set::{Set, SetCard};
     use crate::cards::binder::store::Binder;
-    use crate::cards::definition::{
-        CardDef, CardKindDef, CharacterKind, CharacterSelector, SpellCardDef,
-    };
+    use crate::cards::definition::{CharacterKind, SpellCardDef};
     use crate::cards::filter::CharacterFilter;
     use crate::cards::object::ObjectBag;
+    use crate::cards::written::{CardDef, CardKindDef, CharacterSelector, CharacterVerb, Effect};
     use crate::choice::{AmountBound, Choice};
-    use crate::effect::{CharacterVerb, Effect};
     use crate::game::effect_stack::EffectStack;
     use crate::game::player_input::awaiting::{
         Awaiting, PlayerInput, WasAwaitingNothing, awaiting,

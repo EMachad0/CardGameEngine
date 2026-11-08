@@ -1,6 +1,6 @@
-use crate::cards::definition::ParsedTriggerDef;
+use crate::cards::definition::TriggerDef;
 use crate::cards::object::ObjectId;
-use crate::effect::ParsedEffect;
+use crate::effect::Effect;
 use crate::event::Event;
 use crate::game::cards_ref::CardsRef;
 use crate::game::modifiers::modifiers;
@@ -29,11 +29,11 @@ impl<R: TargetForm> MapTargets<Triggered, R> for NoTargets {
 
 pub(super) struct MatchedTrigger {
     pub(super) source: ObjectId,
-    pub(super) effects: Vec<ParsedEffect<Bound>>,
+    pub(super) effects: Vec<Effect<Bound>>,
 }
 
 impl MatchedTrigger {
-    fn new(source: ObjectId, effects: Vec<ParsedEffect<Triggered>>) -> Self {
+    fn new(source: ObjectId, effects: Vec<Effect<Triggered>>) -> Self {
         let effects = effects
             .into_iter()
             .map(|effect| effect.map_targeted(&mut NoTargets))
@@ -47,7 +47,7 @@ pub(super) fn matched_triggers(cards: CardsRef, event: &Event) -> Vec<MatchedTri
     for object_id in characters_in_order_of_play(cards.zones).into_iter() {
         let player_id = cards.objects.get(object_id).player_id;
         for Trigger {
-            def: ParsedTriggerDef { pattern, effects },
+            def: TriggerDef { pattern, effects },
             ..
         } in triggers(cards, object_id)
         {

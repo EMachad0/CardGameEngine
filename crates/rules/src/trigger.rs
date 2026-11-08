@@ -1,11 +1,11 @@
-use crate::cards::definition::ParsedTriggerDef;
+use crate::cards::definition::TriggerDef;
 use crate::cards::filter::{CardFilter, CharacterFilter};
 use crate::cards::object::ObjectId;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Trigger {
     pub granted_by: ObjectId,
-    pub def: ParsedTriggerDef,
+    pub def: TriggerDef,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

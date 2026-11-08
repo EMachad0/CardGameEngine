@@ -1,7 +1,7 @@
 //! The play step, and what a play reads before its first write.
 
 use crate::cards::object::ObjectId;
-use crate::effect::ParsedEffect;
+use crate::effect::Effect;
 use crate::event::Event;
 use crate::game::cards_ref::CardsRef;
 use crate::game::effect_stack::PendingEffects;
@@ -31,7 +31,7 @@ pub(in crate::game) struct PlayStep {
     object_id: ObjectId,
     awaiting_targeting: Option<WasAwaitingTargeting>,
     cost: u8,
-    play_effects: Vec<ParsedEffect<Bound>>,
+    play_effects: Vec<Effect<Bound>>,
 }
 
 impl From<Play> for Event {

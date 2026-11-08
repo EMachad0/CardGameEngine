@@ -1,4 +1,4 @@
-use crate::cards::definition::CardDef;
+use crate::cards::written::CardDef;
 
 /// Cards released together under one prefix, which the binder puts first in each card's code.
 #[derive(Debug, Clone, PartialEq, Eq)]
