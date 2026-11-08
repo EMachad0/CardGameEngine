@@ -96,7 +96,8 @@ the code matches your intent. The work is not done until they are green.
   don't ask me about messages or how to split them. A commit may hold red tests, clippy errors or
   warnings.
 - When you push to a branch that has a pull request, or open one, keep its body up to date. After
-  each push, edit it so it describes the whole branch as it stands.
+  each push, edit it so it describes the whole branch as it stands, then publish its review page
+  with the `review-page` skill.
 
 ## Plan before implementing
 
