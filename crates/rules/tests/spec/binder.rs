@@ -9,7 +9,7 @@ use rules::prelude::{
 };
 
 use crate::support::*;
-use crate::test_set::{BOLT, RECRUIT, test_set};
+use crate::test_set::{BOLT, HERO, RECRUIT, test_set};
 
 const MISSING: DefCode = DefCode {
     set: "test",
@@ -102,6 +102,22 @@ fn a_summon_that_names_no_card_is_not_found() {
     let result = Binder::new([test_set(), set("p", vec![summoning_spell("call", MISSING)])]);
 
     assert_eq!(result.map(drop), Err(BinderError::NotFound(MISSING)));
+}
+
+#[test]
+fn a_summon_that_names_a_spell_or_a_hero_is_not_a_minion() {
+    for not_a_minion in [BOLT, HERO] {
+        let result = Binder::new([
+            test_set(),
+            set("p", vec![summoning_spell("call", not_a_minion)]),
+        ]);
+
+        assert_eq!(
+            result.map(drop),
+            Err(BinderError::NotAMinion(not_a_minion)),
+            "{not_a_minion}"
+        );
+    }
 }
 
 #[test]

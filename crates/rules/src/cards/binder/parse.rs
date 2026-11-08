@@ -6,8 +6,8 @@ use crate::cards::binder::def_code::DefCode;
 use crate::cards::binder::def_id::DefId;
 use crate::cards::binder::store::BinderError;
 use crate::cards::definition::{
-    CardDef, CardKindDef, CharacterSelector, MinionCardDef, ParsedCardDef, ParsedCardKindDef,
-    ParsedCharacterSelector, ParsedMinionCardDef, ParsedTriggerDef, TriggerDef,
+    CardDef, CardKind, CardKindDef, CharacterSelector, MinionCardDef, ParsedCardDef,
+    ParsedCardKindDef, ParsedCharacterSelector, ParsedMinionCardDef, ParsedTriggerDef, TriggerDef,
 };
 use crate::cards::modifier::{ModifierEffect, ParsedModifierEffect};
 use crate::effect::{
@@ -15,7 +15,21 @@ use crate::effect::{
 };
 use crate::target::TargetForm;
 
-type Codes = BTreeMap<DefCode, DefId>;
+/// What the parse needs to know of the card a code names.
+pub(super) struct Named {
+    pub(super) def_id: DefId,
+    pub(super) kind: CardKind,
+}
+
+type Codes = BTreeMap<DefCode, Named>;
+
+pub(super) fn kind(kind: &CardKindDef) -> CardKind {
+    match kind {
+        CardKindDef::Spell(_) => CardKind::Spell,
+        CardKindDef::Minion(_) => CardKind::Minion,
+        CardKindDef::Hero(_) => CardKind::Hero,
+    }
+}
 
 pub(super) fn card(def: CardDef, codes: &Codes) -> Result<ParsedCardDef, BinderError> {
     let CardDef {
@@ -28,7 +42,7 @@ pub(super) fn card(def: CardDef, codes: &Codes) -> Result<ParsedCardDef, BinderE
     } = def;
     Ok(ParsedCardDef {
         name,
-        kind: card_kind(kind, codes)?,
+        kind: kind_def(kind, codes)?,
         mana_cost,
         modifier_effects: each(modifier_effects, codes, modifier_effect)?,
         play_effects: each(play_effects, codes, effect)?,
@@ -44,7 +58,7 @@ fn each<W, P>(
     written.into_iter().map(|w| parse(w, codes)).collect()
 }
 
-fn card_kind(kind: CardKindDef, codes: &Codes) -> Result<ParsedCardKindDef, BinderError> {
+fn kind_def(kind: CardKindDef, codes: &Codes) -> Result<ParsedCardKindDef, BinderError> {
     Ok(match kind {
         CardKindDef::Spell(spell) => ParsedCardKindDef::Spell(spell),
         CardKindDef::Minion(minion) => ParsedCardKindDef::Minion(minion_card(minion, codes)?),
@@ -125,7 +139,7 @@ fn character_selector<S: TargetForm>(
 fn player_verb(verb: PlayerVerb, codes: &Codes) -> Result<ParsedPlayerVerb, BinderError> {
     Ok(match verb {
         PlayerVerb::Draw(amount) => ParsedPlayerVerb::Draw(amount),
-        PlayerVerb::Summon(code) => ParsedPlayerVerb::Summon(def_id(code, codes)?),
+        PlayerVerb::Summon(code) => ParsedPlayerVerb::Summon(minion(code, codes)?),
     })
 }
 
@@ -141,6 +155,10 @@ fn character_verb(verb: CharacterVerb, codes: &Codes) -> Result<ParsedCharacterV
     })
 }
 
-fn def_id(code: DefCode, codes: &Codes) -> Result<DefId, BinderError> {
-    codes.get(&code).copied().ok_or(BinderError::NotFound(code))
+fn minion(code: DefCode, codes: &Codes) -> Result<DefId, BinderError> {
+    let named = codes.get(&code).ok_or(BinderError::NotFound(code))?;
+    match named.kind {
+        CardKind::Minion => Ok(named.def_id),
+        CardKind::Spell | CardKind::Hero => Err(BinderError::NotAMinion(code)),
+    }
 }

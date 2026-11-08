@@ -13,6 +13,8 @@ pub enum BinderError {
     NotFound(DefCode),
     #[error("two cards have the code {0}")]
     Duplicate(DefCode),
+    #[error("a summon names {0}, a card that is not a minion")]
+    NotAMinion(DefCode),
 }
 
 /// The card definitions a game can use, each found by its code.
@@ -48,16 +50,24 @@ impl Binder {
             })
             .collect::<Vec<_>>();
 
-        let mut by_code = BTreeMap::new();
-        for (idx, &(code, _)) in written.iter().enumerate() {
-            if by_code.insert(code, DefId::new(idx)).is_some() {
-                return Err(BinderError::Duplicate(code));
+        let mut codes = BTreeMap::new();
+        for (idx, (code, def)) in written.iter().enumerate() {
+            let named = parse::Named {
+                def_id: DefId::new(idx),
+                kind: parse::kind(&def.kind),
+            };
+            if codes.insert(*code, named).is_some() {
+                return Err(BinderError::Duplicate(*code));
             }
         }
         let by_id = written
             .into_iter()
-            .map(|(code, def)| Ok((code, parse::card(def, &by_code)?)))
+            .map(|(code, def)| Ok((code, parse::card(def, &codes)?)))
             .collect::<Result<_, _>>()?;
+        let by_code = codes
+            .into_iter()
+            .map(|(code, named)| (code, named.def_id))
+            .collect();
 
         Ok(Self {
             cards: Arc::new(Cards { by_id, by_code }),

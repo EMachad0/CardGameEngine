@@ -1,5 +1,5 @@
 use crate::cards::binder::store::Binder;
-use crate::game::deck::{Deck, DeckError};
+use crate::game::deck::{Deck, DeckError, ParsedDeck};
 use crate::game::state::{Game, Seating};
 
 /// Parses every deck before it makes the first object.
@@ -11,7 +11,7 @@ pub(super) fn set_up(
 ) -> Result<Game, DeckError> {
     let decks = decks
         .into_iter()
-        .map(|deck| deck.parse(&binder))
+        .map(|deck| deck.parse(&binder).map(ParsedDeck::into_parts))
         .collect::<Result<Vec<_>, _>>()?;
 
     #[expect(clippy::disallowed_methods, reason = "the one start of a game's setup")]
@@ -21,13 +21,13 @@ pub(super) fn set_up(
     let heroes = player_ids
         .iter()
         .zip(&decks)
-        .map(|(&player_id, deck)| seating.make_object(deck.hero, player_id))
+        .map(|(&player_id, &(hero, _))| seating.make_object(hero, player_id))
         .collect::<Vec<_>>();
     let decks = player_ids
         .iter()
         .zip(decks)
-        .map(|(&player_id, deck)| {
-            deck.cards
+        .map(|(&player_id, (_, cards))| {
+            cards
                 .into_iter()
                 .map(|def_id| seating.make_object(def_id, player_id))
                 .collect::<Vec<_>>()

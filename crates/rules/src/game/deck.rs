@@ -20,8 +20,15 @@ pub enum DeckError {
 
 /// A deck whose codes name cards in the binder it was parsed against, with a hero card as hero.
 pub(super) struct ParsedDeck {
-    pub(super) hero: DefId,
-    pub(super) cards: Vec<DefId>,
+    hero: DefId,
+    cards: Vec<DefId>,
+}
+
+impl ParsedDeck {
+    /// The hero, then the cards, top first.
+    pub(super) fn into_parts(self) -> (DefId, Vec<DefId>) {
+        (self.hero, self.cards)
+    }
 }
 
 impl Deck {
